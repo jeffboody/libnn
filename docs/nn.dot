@@ -1,0 +1,26 @@
+// sudo apt-get install graphviz
+// dot -Tpng nn.dot -o nn.png
+// xdot nn.dot
+digraph NN
+{
+	label="Neural Network Example";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	X   [shape=box, label="X = [x1,x2]"];
+	Y   [shape=box, label="Y = [y21,y22]"];
+	f11 [label="Node11\n\ny11 = f1(X, W11)"];
+	f12 [label="Node12\n\ny12 = f1(X, W12)"];
+	f21 [label="Node21\n\ny21 = f2([y11,y12], W21)"];
+	f22 [label="Node22\n\ny22 = f2([y11,y12], W22)"];
+
+	X   -> f11;
+	X   -> f12;
+	f11 -> f21;
+	f12 -> f21;
+	f11 -> f22;
+	f12 -> f22;
+	f21 -> Y;
+	f22 -> Y;
+}

@@ -1,0 +1,25 @@
+// sudo apt-get install graphviz
+// dot -Tpng nn-perceptron.dot -o nn-perceptron.png
+// xdot nn-perceptron.dot
+digraph NN
+{
+	label="Perceptron";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	x1   [shape=box, label="x1"];
+	x2   [shape=box, label="x2"];
+	xi   [shape=box, label="..."];
+	xn   [shape=box, label="xn"];
+	y    [shape=box, label="y"];
+	f    [label="Node1\n\nW = [[w1,w2,...,wn],b]\ny1 = SUM(xi*wi) + b"];
+	fact [label="Node2\n\ny = fact(y1)"];
+
+	x1   -> f;
+	x2   -> f;
+	xi   -> f;
+	xn   -> f;
+	f    -> fact;
+	fact -> y;
+}

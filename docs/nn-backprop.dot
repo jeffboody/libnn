@@ -1,0 +1,34 @@
+// sudo apt-get install graphviz
+// dot -Tpng nn-backprop.dot -o nn-backprop.png
+// xdot nn-backprop.dot
+digraph NN
+{
+	label="Neural Network Backpropagation";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	X   [shape=box, label="X = [x1,x2]"];
+	f11 [label="Node11\n\n1) Forward Pass\ny11 = f1([x1, x2], W11)\n\n2) Forward Gradients\ndy11/dxi = df1([x1, x2], W11)/dxi\ndy11/dw11i = df1([x1, x2], W11)/dw11i\n\n9) Combine Loss\ndL/dy11 = SUM(dL2i/dy11)\n\n10) Update Parameters\ndL/dw11i = (dL/dy11)*(dy11/dw11i)\nw11i = w11i - gamma*dL/dw11i\n\n11) Backpropagate Loss (optional)\ndL11/dxi = (dL/dy11)*(dy11/dxi)"];
+	f12 [label="Node12\n\n1) Forward Pass\ny12 = f1([x1, x2], W12)\n\n2) Forward Gradients\ndy12/dxi = df1([x1, x2], W12)/dxi\ndy12/dw12i = df1([x1, x2], W12)/dw12i\n\n9) Combine Gradient\ndL/dy12 = SUM(dL2i/dy12)\n\n10) Update Parameters\ndL/dw12i = (dL/dy12)*(dy12/dw12i)\nw12i = w12i - gamma*dL/dw12i\n\n11) Backpropagate Loss (optional)\ndL12/dxi = (dL/dy12)*(dy12/dxi)"];
+	f21 [label="Node21\n\n3) Forward Pass\ny21 = f2([y11, y12], W21)\n\n4) Forward Gradients\ndy21/dy1i = df2([y11, y12], W21)/dy1i\ndy21/dw21i = df2([y11, y12], W21)/dw21i\n\n6) Combine Loss\ndL/dy21 = dL/dy21\n\n7) Update Parameters\ndL/dw21i = (dL/dy21)*(dy21/dw21i)\nw21i = w21i - gamma*dL/dw21i\n\n8) Backpropagate Loss\ndL21/dy1i = (dL/dy21)*(dy21/dy1i)"];
+	f22 [label="Node22\n\n3) Forward Pass\ny22 = f2([y11, y12], W22)\n\n4) Forward Gradients\ndy22/dy1i = df2([y11, y12], W22)/dy1i\ndy22/dw22i = df2([y11, y12], W22)/dw22i\n\n6) Combine Loss\ndL/dy22 = dL/dy22\n\n7) Update Parameters\ndL/dw22i = (dL/dy22)*(dy22/dw22i)\nw22i = w22i - gamma*dL/dw22i\n\n8) Backpropagate Loss\ndL22/dy1i = (dL/dy22)*(dy22/dy1i)"];
+	L   [label="Loss Function\n\n5) Compute Loss\ndL/dy2i = dL(y2i,ytraini)/dy2i"];
+
+	{ rank=same f11 -> f12 [style=invis] };
+	{ rank=same f21 -> f22 [style=invis] };
+	X   -> f11;
+	X   -> f12;
+	f11 -> f21;
+	f12 -> f21;
+	f11 -> f22;
+	f12 -> f22;
+	f21 -> L;
+	f22 -> L;
+	L   -> f21 [fontcolor=red, color=red, label="dL/dy21"];
+	L   -> f22 [fontcolor=red, color=red, label="dL/dy22"];
+	f21 -> f11 [fontcolor=red, color=red, label="dL21/dy11"];
+	f21 -> f12 [fontcolor=red, color=red, label="dL21/dy12"];
+	f22 -> f11 [fontcolor=red, color=red, label="dL22/dy11"];
+	f22 -> f12 [fontcolor=red, color=red, label="dL22/dy12"];
+}
