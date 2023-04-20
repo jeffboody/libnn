@@ -111,19 +111,20 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
 	nn_arch_t*        arch = base->arch;
 
-	nn_tensor_t* W     = self->W;
-	nn_tensor_t* B     = self->B;
-	nn_tensor_t* VW    = self->VW;
-	nn_tensor_t* VB    = self->VB;
-	nn_dim_t*    dim   = nn_tensor_dim(W);
-	float        lr    = arch->learning_rate;
-	float        mu    = arch->momentum_decay;
-	nn_tensor_t* dY_dX = W;
-	nn_tensor_t* dY_dW = self->dY_dW;
-	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_tensor_t* W      = self->W;
+	nn_tensor_t* B      = self->B;
+	nn_tensor_t* VW     = self->VW;
+	nn_tensor_t* VB     = self->VB;
+	nn_dim_t*    dim    = nn_tensor_dim(W);
+	float        lr     = arch->learning_rate;
+	float        mu     = arch->momentum_decay;
+	float        lambda = arch->l2_lambda;
+	nn_tensor_t* dY_dX  = W;
+	nn_tensor_t* dY_dW  = self->dY_dW;
+	nn_tensor_t* dL_dX  = self->dL_dX;
 	float        dy_dx;
 	float        dy_dw;
-	float        dy_db = 1.0f;
+	float        dy_db  = 1.0f;
 	float        dl_dy;
 	float        dl_dx;
 
@@ -132,6 +133,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	uint32_t z;
 	float    v0i;
 	float    v1i;
+	float    wi;
 	for(i = 0; i < dim->n; ++i)
 	{
 		dl_dy = nn_tensor_get(dL_dY, 0, 0, 0, i);
@@ -139,10 +141,11 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 		for(z = 0; z < dim->d; ++z)
 		{
 			dy_dw = nn_tensor_get(dY_dW, 0, 0, 0, z);
+			wi    = nn_tensor_get(W, i, 0, 0, z);
 
-			// Nesterov Momentum Update
+			// Nesterov Momentum Update and L2 Regularization
 			v0i = nn_tensor_get(VW, i, 0, 0, z);
-			v1i = mu*v0i - lr*dl_dy*dy_dw;
+			v1i = mu*v0i - lr*(dl_dy*dy_dw + 2*lambda*wi);
 			nn_tensor_set(VW, i, 0, 0, z, v1i);
 			nn_tensor_add(W, i, 0, 0, z, -mu*v0i + (1 - mu)*v1i);
 		}
