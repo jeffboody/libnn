@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 	{
 		.max_batch_size = bs,
 		.learning_rate  = 0.01f,
-		.momentum_decay = 0.5f,
+		.momentum_decay = 0.0f,
 		.batch_momentum = 0.99f,
 		.l2_lambda      = 0.01f,
 	};

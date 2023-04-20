@@ -113,8 +113,11 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 
 	nn_tensor_t* W     = self->W;
 	nn_tensor_t* B     = self->B;
+	nn_tensor_t* VW    = self->VW;
+	nn_tensor_t* VB    = self->VB;
 	nn_dim_t*    dim   = nn_tensor_dim(W);
 	float        lr    = arch->learning_rate;
+	float        mu    = arch->momentum_decay;
 	nn_tensor_t* dY_dX = W;
 	nn_tensor_t* dY_dW = self->dY_dW;
 	nn_tensor_t* dL_dX = self->dL_dX;
@@ -127,6 +130,8 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	// update parameters
 	uint32_t i;
 	uint32_t z;
+	float    v0i;
+	float    v1i;
 	for(i = 0; i < dim->n; ++i)
 	{
 		dl_dy = nn_tensor_get(dL_dY, 0, 0, 0, i);
@@ -134,10 +139,19 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 		for(z = 0; z < dim->d; ++z)
 		{
 			dy_dw = nn_tensor_get(dY_dW, 0, 0, 0, z);
-			nn_tensor_add(W, i, 0, 0, z, -lr*dl_dy*dy_dw);
+
+			// Nesterov Momentum Update
+			v0i = nn_tensor_get(VW, i, 0, 0, z);
+			v1i = mu*v0i - lr*dl_dy*dy_dw;
+			nn_tensor_set(VW, i, 0, 0, z, v1i);
+			nn_tensor_add(W, i, 0, 0, z, -mu*v0i + (1 - mu)*v1i);
 		}
 
-		nn_tensor_add(B, i, 0, 0, 0, -lr*dl_dy*dy_db);
+		// Nesterov Momentum Update
+		v0i = nn_tensor_get(VB, i, 0, 0, z);
+		v1i = mu*v0i - lr*dl_dy*dy_db;
+		nn_tensor_set(VB, i, 0, 0, z, v1i);
+		nn_tensor_add(B, i, 0, 0, z, -mu*v0i + (1 - mu)*v1i);
 	}
 
 	// backpropagate loss
@@ -290,6 +304,18 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
+	self->VW = nn_tensor_new(&dimW);
+	if(self->VW == NULL)
+	{
+		goto fail_VW;
+	}
+
+	self->VB = nn_tensor_new(&dimB);
+	if(self->VB == NULL)
+	{
+		goto fail_VB;
+	}
+
 	self->dY_dW = nn_tensor_new(nn_tensor_dim(self->W));
 	if(self->dY_dW == NULL)
 	{
@@ -316,6 +342,10 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_dL_dX:
 		nn_tensor_delete(&self->dY_dW);
 	fail_dY_dW:
+		nn_tensor_delete(&self->VB);
+	fail_VB:
+		nn_tensor_delete(&self->VW);
+	fail_VW:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_tensor_delete(&self->B);
@@ -335,6 +365,8 @@ void nn_weightLayer_delete(nn_weightLayer_t** _self)
 	{
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dY_dW);
+		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->VW);
 		nn_tensor_delete(&self->Y);
 		nn_tensor_delete(&self->B);
 		nn_tensor_delete(&self->W);
