@@ -51,19 +51,27 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 	nn_tensor_t* dY_dW = self->dY_dW;
 	nn_tensor_clear(dY_dW);
 
+	// flattened tensors
+	nn_tensor_t  Xf;
+	nn_tensor_t  Yf;
+	nn_tensor_flatten(X, &Xf);
+	nn_tensor_flatten(self->Y, &Yf);
+
+	nn_tensor_t* W = self->W;
+	nn_tensor_t* B = self->B;
+
 	// compute weighted sum and forward gradients (sum)
-	nn_tensor_t* Y     = self->Y;
-	nn_tensor_t* W     = self->W;
-	nn_tensor_t* B     = self->B;
-	float        wm;
-	float        xm;
-	float        yn;
-	uint32_t     i;
-	uint32_t     n;
-	uint32_t     z;
-	uint32_t     nc = self->nc;
-	uint32_t     xd = nn_tensor_dim(X)->d;
-	uint32_t     bs = base->arch->batch_size;
+	float     wm;
+	float     xm;
+	float     yn;
+	uint32_t  i;
+	uint32_t  n;
+	uint32_t  z;
+	nn_dim_t* dimX = nn_tensor_dim(&Xf);
+	nn_dim_t* dimY = nn_tensor_dim(&Yf);
+	uint32_t  xd   = dimX->d;
+	uint32_t  nc   = dimY->d;
+	uint32_t  bs   = base->arch->batch_size;
 	for(i = 0; i < bs; ++i)
 	{
 		for(n = 0; n < nc; ++n)
@@ -72,14 +80,14 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 			for(z = 0; z < xd; ++z)
 			{
 				// compute weighted sum
-				xm = nn_tensor_get(X, i, 0, 0, z);
+				xm = nn_tensor_get(&Xf, i, 0, 0, z);
 				wm = nn_tensor_get(W, n, 0, 0, z);
 				yn += wm*xm;
 
 				// forward gradients (sum)
 				nn_tensor_add(dY_dW, n, 0, 0, z, xm);
 			}
-			nn_tensor_set(Y, i, 0, 0, n, yn);
+			nn_tensor_set(&Yf, i, 0, 0, n, yn);
 		}
 	}
 
@@ -90,7 +98,7 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 		nn_tensor_mul(dY_dW, 0, 0, 0, z, s);
 	}
 
-	return Y;
+	return self->Y;
 }
 
 static nn_tensor_t*
@@ -215,10 +223,15 @@ nn_weightLayer_initHeWeights(nn_weightLayer_t* self)
 ***********************************************************/
 
 nn_weightLayer_t*
-nn_weightLayer_new(nn_arch_t* arch, uint32_t nc,
-                   uint32_t xd, int init_mode)
+nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                   nn_dim_t* dimY, int init_mode)
 {
 	ASSERT(arch);
+	ASSERT(dimX);
+	ASSERT(dimY);
+
+	uint32_t xd = dimX->w*dimX->h*dimX->d;
+	uint32_t nc = dimY->w*dimY->h*dimY->d;
 
 	nn_layerInfo_t info =
 	{
@@ -271,14 +284,7 @@ nn_weightLayer_new(nn_arch_t* arch, uint32_t nc,
 		goto fail_B;
 	}
 
-	nn_dim_t dimY =
-	{
-		.n = arch->max_batch_size,
-		.w = 1,
-		.h = 1,
-		.d = nc,
-	};
-	self->Y = nn_tensor_new(&dimY);
+	self->Y = nn_tensor_new(dimY);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;

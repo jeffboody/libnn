@@ -33,14 +33,17 @@ typedef struct nn_weightLayer_s
 {
 	nn_layer_t base;
 
-	// node count
-	uint32_t nc;
+	// dimX and dimY will be flattened internally
+	// to match the sizes listed below however the
+	// external sizes will match the requested sizes
 
 	// weights, bias, output
-	//           X; // dim(bs,1,1,X.d)
-	nn_tensor_t* W; // dim(nc,1,1,X.d)
-	nn_tensor_t* B; // dim(nc,1,1,1)
-	nn_tensor_t* Y; // dim(bs,1,1,nc)
+	//           bs; // batch size
+	//           nc; // node count
+	//           X;  // dim(bs,1,1,X.d)
+	nn_tensor_t* W;  // dim(nc,1,1,X.d)
+	nn_tensor_t* B;  // dim(nc,1,1,1)
+	nn_tensor_t* Y;  // dim(bs,1,1,nc)
 
 	// forward gradients (batch mean)
 	//           dY_dB; // 1
@@ -53,8 +56,8 @@ typedef struct nn_weightLayer_s
 } nn_weightLayer_t;
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,
-                                     uint32_t nc,
-                                     uint32_t xd,
+                                     nn_dim_t* dimX,
+                                     nn_dim_t* dimY,
                                      int init_mode);
 void              nn_weightLayer_delete(nn_weightLayer_t** _self);
 

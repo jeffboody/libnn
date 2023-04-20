@@ -105,6 +105,19 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	}
 }
 
+void nn_tensor_flatten(nn_tensor_t* self,
+                       nn_tensor_t* flat)
+{
+	ASSERT(self);
+	ASSERT(flat);
+
+	flat->dim.n = self->dim.n;
+	flat->dim.w = 1;
+	flat->dim.h = 1;
+	flat->dim.d = self->dim.w*self->dim.h*self->dim.d;
+	flat->data  = self->data;
+}
+
 void nn_tensor_clear(nn_tensor_t* self)
 {
 	ASSERT(self);

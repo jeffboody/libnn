@@ -70,3 +70,11 @@ void nn_layer_delete(nn_layer_t** _self)
 		*_self = self;
 	}
 }
+
+nn_dim_t* nn_layer_dim(nn_layer_t* self)
+{
+	ASSERT(self);
+
+	nn_layer_dimFn dim_fn = self->dim_fn;
+	return (*dim_fn)(self);
+}

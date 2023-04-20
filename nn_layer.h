@@ -52,5 +52,6 @@ typedef struct nn_layer_s
 nn_layer_t* nn_layer_new(size_t base_size,
                          nn_layerInfo_t* info);
 void        nn_layer_delete(nn_layer_t** _self);
+nn_dim_t*   nn_layer_dim(nn_layer_t* self);
 
 #endif

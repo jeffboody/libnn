@@ -62,7 +62,8 @@ typedef struct nn_factLayer_s
 	nn_factLayer_fn dfact;
 } nn_factLayer_t;
 
-nn_factLayer_t* nn_factLayer_new(nn_dim_t* dim,
+nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,
+                                 nn_dim_t* dim,
                                  nn_factLayer_fn fact,
                                  nn_factLayer_fn dfact);
 void            nn_factLayer_delete(nn_factLayer_t** _self);

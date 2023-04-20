@@ -221,15 +221,18 @@ float nn_factLayer_dtanh(float x)
 ***********************************************************/
 
 nn_factLayer_t*
-nn_factLayer_new(nn_dim_t* dim, nn_factLayer_fn fact,
+nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
+                 nn_factLayer_fn fact,
                  nn_factLayer_fn dfact)
 {
+	ASSERT(arch);
 	ASSERT(dim);
 	ASSERT(fact);
 	ASSERT(dfact);
 
 	nn_layerInfo_t info =
 	{
+		.arch            = arch,
 		.forward_pass_fn = nn_factLayer_forwardPassFn,
 		.backprop_fn     = nn_factLayer_backpropFn,
 		.dim_fn          = nn_factLayer_dimFn,

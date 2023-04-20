@@ -34,6 +34,8 @@ typedef struct nn_tensor_s
 
 nn_tensor_t* nn_tensor_new(nn_dim_t* dim);
 void         nn_tensor_delete(nn_tensor_t** _self);
+void         nn_tensor_flatten(nn_tensor_t* self,
+                               nn_tensor_t* flat);
 void         nn_tensor_clear(nn_tensor_t* self);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t i, uint32_t x,
