@@ -38,15 +38,16 @@ void nn_dim_copy(nn_dim_t* src,
 	ASSERT(src);
 	ASSERT(dst);
 
-	dst->n = src->n;
-	dst->w = src->w;
-	dst->h = src->h;
-	dst->d = src->d;
+	dst->count  = src->count;
+	dst->height = src->height;
+	dst->width  = src->width;
+	dst->depth  = src->depth;
 }
 
 size_t nn_dim_sizeof(nn_dim_t* self)
 {
 	ASSERT(self);
 
-	return self->n*self->w*self->h*self->d*sizeof(float);
+	return self->count*self->height*self->width*
+	       self->depth*sizeof(float);
 }

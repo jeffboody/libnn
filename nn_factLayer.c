@@ -53,28 +53,28 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 	nn_factLayer_fn dfact = self->dfact;
 	nn_tensor_t*    Y     = self->Y;
 	nn_dim_t*       dim   = nn_tensor_dim(Y);
-	float           in;
+	float           x;
+	uint32_t        m;
 	uint32_t        i;
-	uint32_t        x;
-	uint32_t        y;
-	uint32_t        z;
+	uint32_t        j;
+	uint32_t        k;
 	uint32_t        bs = base->arch->batch_size;
-	for(i = 0; i < bs; ++i)
+	for(m = 0; m < bs; ++m)
 	{
-		for(y = 0; y < dim->h; ++y)
+		for(i = 0; i < dim->height; ++i)
 		{
-			for(x = 0; x < dim->w; ++x)
+			for(j = 0; j < dim->width; ++j)
 			{
-				for(z = 0; z < dim->d; ++z)
+				for(k = 0; k < dim->depth; ++k)
 				{
 					// output
-					in = nn_tensor_get(X, i, x, y, z);
-					nn_tensor_set(Y, i, x, y, z,
-					              (*fact)(in));
+					x = nn_tensor_get(X, m, i, j, k);
+					nn_tensor_set(Y, m, i, j, k,
+					              (*fact)(x));
 
 					// forward gradients (sum)
-					nn_tensor_add(dY_dX, 0, x, y, z,
-					              (*dfact)(in));
+					nn_tensor_add(dY_dX, 0, i, j, k,
+					              (*dfact)(x));
 				}
 			}
 		}
@@ -82,13 +82,13 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 
 	// forward gradients (batch mean)
 	float s = 1.0f/((float) bs);
-	for(y = 0; y < dim->h; ++y)
+	for(i = 0; i < dim->height; ++i)
 	{
-		for(x = 0; x < dim->w; ++x)
+		for(j = 0; j < dim->width; ++j)
 		{
-			for(z = 0; z < dim->d; ++z)
+			for(k = 0; k < dim->depth; ++k)
 			{
-				nn_tensor_mul(dY_dX, 0, x, y, z, s);
+				nn_tensor_mul(dY_dX, 0, i, j, k, s);
 			}
 		}
 	}
@@ -108,22 +108,22 @@ nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 	nn_dim_t*       dim   = nn_tensor_dim(dL_dY);
 
 	// backpropagate loss
-	uint32_t x;
-	uint32_t y;
-	uint32_t z;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
 	float    dy_dx;
 	float    dl_dx;
 	float    dl_dy;
-	for(y = 0; y < dim->h; ++y)
+	for(i = 0; i < dim->height; ++i)
 	{
-		for(x = 0; x < dim->w; ++x)
+		for(j = 0; j < dim->width; ++j)
 		{
-			for(z = 0; z < dim->d; ++z)
+			for(k = 0; k < dim->depth; ++k)
 			{
-				dl_dy = nn_tensor_get(dL_dY, 0, x, y, z);
-				dy_dx = nn_tensor_get(dY_dX, 0, x, y, z);
+				dl_dy = nn_tensor_get(dL_dY, 0, i, j, k);
+				dy_dx = nn_tensor_get(dY_dX, 0, i, j, k);
 				dl_dx = dl_dy*dy_dx;
-				nn_tensor_set(dL_dX, 0, x, y, z, dl_dx);
+				nn_tensor_set(dL_dX, 0, i, j, k, dl_dx);
 			}
 		}
 	}
@@ -254,10 +254,10 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
 
 	nn_dim_t dim1 =
 	{
-		.n = 1,
-		.w = dim->w,
-		.h = dim->h,
-		.d = dim->d,
+		.count  = 1,
+		.height = dim->height,
+		.width  = dim->width,
+		.depth  = dim->depth,
 	};
 
 	self->dY_dX = nn_tensor_new(&dim1);

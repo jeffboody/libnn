@@ -28,10 +28,10 @@
 
 typedef struct nn_dim_s
 {
-	uint32_t n;
-	uint32_t w;
-	uint32_t h;
-	uint32_t d;
+	uint32_t count;
+	uint32_t height;
+	uint32_t width;
+	uint32_t depth;
 } nn_dim_t;
 
 void     nn_dim_copy(nn_dim_t* src,

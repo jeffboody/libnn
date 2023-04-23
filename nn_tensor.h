@@ -38,23 +38,23 @@ void         nn_tensor_flatten(nn_tensor_t* self,
                                nn_tensor_t* flat);
 void         nn_tensor_clear(nn_tensor_t* self);
 float        nn_tensor_get(nn_tensor_t* self,
-                           uint32_t i, uint32_t x,
-                           uint32_t y, uint32_t z);
+                           uint32_t n, uint32_t i,
+                           uint32_t j, uint32_t k);
 void         nn_tensor_set(nn_tensor_t* self,
-                           uint32_t i, uint32_t x,
-                           uint32_t y, uint32_t z,
+                           uint32_t n, uint32_t i,
+                           uint32_t j, uint32_t k,
                            float val);
 void         nn_tensor_add(nn_tensor_t* self,
-                           uint32_t i, uint32_t x,
-                           uint32_t y, uint32_t z,
+                           uint32_t n, uint32_t i,
+                           uint32_t j, uint32_t k,
                            float val);
 void         nn_tensor_mul(nn_tensor_t* self,
-                           uint32_t i, uint32_t x,
-                           uint32_t y, uint32_t z,
+                           uint32_t n, uint32_t i,
+                           uint32_t j, uint32_t k,
                            float val);
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
 int          nn_tensor_blit(nn_tensor_t* src,
                             nn_tensor_t* dst,
-                            uint32_t srci, uint32_t dsti);
+                            uint32_t srcn, uint32_t dstn);
 
 #endif

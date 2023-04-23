@@ -34,18 +34,18 @@
 ***********************************************************/
 
 static float*
-nn_tensor_data(nn_tensor_t* self, uint32_t i)
+nn_tensor_data(nn_tensor_t* self, uint32_t n)
 {
 	ASSERT(self);
 
-	if(i >= self->dim.n)
+	if(n >= self->dim.count)
 	{
-		LOGE("invalid i=%u, n=%u", i, self->dim.n);
+		LOGE("invalid n=%u, count=%u", n, self->dim.count);
 		return NULL;
 	}
 
 	nn_dim_t* dim = &self->dim;
-	return &self->data[i*dim->w*dim->h*dim->d];
+	return &self->data[n*dim->height*dim->width*dim->depth];
 }
 
 size_t nn_tensor_stride(nn_tensor_t* self)
@@ -53,7 +53,7 @@ size_t nn_tensor_stride(nn_tensor_t* self)
 	ASSERT(self);
 
 	nn_dim_t* dim = &self->dim;
-	return dim->w*dim->h*dim->d*sizeof(float);
+	return dim->height*dim->width*dim->depth*sizeof(float);
 }
 
 /***********************************************************
@@ -111,10 +111,11 @@ void nn_tensor_flatten(nn_tensor_t* self,
 	ASSERT(self);
 	ASSERT(flat);
 
-	flat->dim.n = self->dim.n;
-	flat->dim.w = 1;
-	flat->dim.h = 1;
-	flat->dim.d = self->dim.w*self->dim.h*self->dim.d;
+	flat->dim.count  = self->dim.count;
+	flat->dim.height = 1;
+	flat->dim.width  = 1;
+	flat->dim.depth  = self->dim.height*self->dim.width*
+	                   self->dim.depth;
 	flat->data  = self->data;
 }
 
@@ -124,59 +125,63 @@ void nn_tensor_clear(nn_tensor_t* self)
 
 	nn_dim_t* dim = &self->dim;
 
-	uint32_t count = dim->n*dim->w*dim->h*dim->d;
-	memset(self->data, 0, count*sizeof(float));
+	memset(self->data, 0, dim->count*dim->height*dim->width*
+	                      dim->depth*sizeof(float));
 }
 
 float nn_tensor_get(nn_tensor_t* self,
-                    uint32_t i, uint32_t x,
-                    uint32_t y, uint32_t z)
+                    uint32_t n, uint32_t i,
+                    uint32_t j, uint32_t k)
 {
 	ASSERT(self);
 
-	uint32_t sn = self->dim.w*self->dim.h*self->dim.d;
-	uint32_t sy = self->dim.w*self->dim.d;
-	uint32_t sx = self->dim.d;
-	return self->data[i*sn + y*sy + x*sx + z];
+	uint32_t sn = self->dim.height*self->dim.width*
+	              self->dim.depth;
+	uint32_t sy = self->dim.width*self->dim.depth;
+	uint32_t sx = self->dim.depth;
+	return self->data[n*sn + i*sy + j*sx + k];
 }
 
 void nn_tensor_set(nn_tensor_t* self,
-                   uint32_t i, uint32_t x,
-                   uint32_t y, uint32_t z,
+                   uint32_t n, uint32_t i,
+                   uint32_t j, uint32_t k,
                    float val)
 {
 	ASSERT(self);
 
-	uint32_t sn = self->dim.w*self->dim.h*self->dim.d;
-	uint32_t sy = self->dim.w*self->dim.d;
-	uint32_t sx = self->dim.d;
-	self->data[i*sn + y*sy + x*sx + z] = val;
+	uint32_t sn = self->dim.height*self->dim.width*
+	              self->dim.depth;
+	uint32_t sy = self->dim.width*self->dim.depth;
+	uint32_t sx = self->dim.depth;
+	self->data[n*sn + i*sy + j*sx + k] = val;
 }
 
 void nn_tensor_add(nn_tensor_t* self,
-                   uint32_t i, uint32_t x,
-                   uint32_t y, uint32_t z,
+                   uint32_t n, uint32_t i,
+                   uint32_t j, uint32_t k,
                    float val)
 {
 	ASSERT(self);
 
-	uint32_t sn = self->dim.w*self->dim.h*self->dim.d;
-	uint32_t sy = self->dim.w*self->dim.d;
-	uint32_t sx = self->dim.d;
-	self->data[i*sn + y*sy + x*sx + z] += val;
+	uint32_t sn = self->dim.height*self->dim.width*
+	              self->dim.depth;
+	uint32_t sy = self->dim.width*self->dim.depth;
+	uint32_t sx = self->dim.depth;
+	self->data[n*sn + i*sy + j*sx + k] += val;
 }
 
 void nn_tensor_mul(nn_tensor_t* self,
-                   uint32_t i, uint32_t x,
-                   uint32_t y, uint32_t z,
+                   uint32_t n, uint32_t i,
+                   uint32_t j, uint32_t k,
                    float val)
 {
 	ASSERT(self);
 
-	uint32_t sn = self->dim.w*self->dim.h*self->dim.d;
-	uint32_t sy = self->dim.w*self->dim.d;
-	uint32_t sx = self->dim.d;
-	self->data[i*sn + y*sy + x*sx + z] *= val;
+	uint32_t sn = self->dim.height*self->dim.width*
+	              self->dim.depth;
+	uint32_t sy = self->dim.width*self->dim.depth;
+	uint32_t sx = self->dim.depth;
+	self->data[n*sn + i*sy + j*sx + k] *= val;
 }
 
 nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
@@ -188,13 +193,13 @@ nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
 
 int nn_tensor_blit(nn_tensor_t* src,
                    nn_tensor_t* dst,
-                   uint32_t srci, uint32_t dsti)
+                   uint32_t srcn, uint32_t dstn)
 {
 	ASSERT(src);
 	ASSERT(dst);
 
-	float* src_data   = nn_tensor_data(src, srci);
-	float* dst_data   = nn_tensor_data(dst, dsti);
+	float* src_data   = nn_tensor_data(src, srcn);
+	float* dst_data   = nn_tensor_data(dst, dstn);
 	size_t src_stride = nn_tensor_stride(src);
 	size_t dst_stride = nn_tensor_stride(dst);
 

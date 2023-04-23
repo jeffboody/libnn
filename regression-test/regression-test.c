@@ -67,10 +67,10 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimX =
 	{
-		.n = bs,
-		.w = 1,
-		.h = 1,
-		.d = 1,
+		.count  = bs,
+		.width  = 1,
+		.height = 1,
+		.depth  = 1,
 	};
 
 	nn_tensor_t* X = nn_tensor_new(&dimX);
@@ -81,10 +81,10 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimY1 =
 	{
-		.n = bs,
-		.w = 1,
-		.h = 1,
-		.d = 4,
+		.count  = bs,
+		.width  = 1,
+		.height = 1,
+		.depth  = 4,
 	};
 
 	nn_weightLayer_t* l1;
@@ -106,10 +106,10 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimY3 =
 	{
-		.n = bs,
-		.w = 1,
-		.h = 1,
-		.d = 1,
+		.count  = bs,
+		.width  = 1,
+		.height = 1,
+		.depth  = 1,
 	};
 
 	nn_weightLayer_t* l3;
@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 	float    y;
 	float    yt;
 	uint32_t i;
-	uint32_t b;
+	uint32_t m;
 	uint32_t count = 1000000;
 	for(i = 0; i < count; ++i)
 	{
@@ -163,14 +163,14 @@ int main(int argc, char** argv)
 			LOGI("train %i", i);
 		}
 
-		for(b = 0; b < bs; ++b)
+		for(m = 0; m < bs; ++m)
 		{
 			x  = 1.0f*((float) (rand()%(count + 1)))/
 			     ((float) count);
 			yt = 2.0f*x*x + 1.0f;
 
-			nn_tensor_set(X, b, 0, 0, 0, x);
-			nn_tensor_set(Y, b, 0, 0, 0, yt);
+			nn_tensor_set(X, m, 0, 0, 0, x);
+			nn_tensor_set(Y, m, 0, 0, 0, yt);
 		}
 
 		nn_arch_train(arch, bs, X, Y);

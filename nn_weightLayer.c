@@ -61,41 +61,41 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 	nn_tensor_t* B = self->B;
 
 	// compute weighted sum and forward gradients (sum)
-	float     wm;
-	float     xm;
-	float     yn;
-	uint32_t  i;
+	float     w;
+	float     x;
+	float     y;
+	uint32_t  m;
 	uint32_t  n;
-	uint32_t  z;
+	uint32_t  k;
 	nn_dim_t* dimX = nn_tensor_dim(&Xf);
 	nn_dim_t* dimY = nn_tensor_dim(&Yf);
-	uint32_t  xd   = dimX->d;
-	uint32_t  nc   = dimY->d;
+	uint32_t  xd   = dimX->depth;
+	uint32_t  nc   = dimY->depth;
 	uint32_t  bs   = base->arch->batch_size;
-	for(i = 0; i < bs; ++i)
+	for(m = 0; m < bs; ++m)
 	{
 		for(n = 0; n < nc; ++n)
 		{
-			yn = nn_tensor_get(B, n, 0, 0, 0);
-			for(z = 0; z < xd; ++z)
+			y = nn_tensor_get(B, n, 0, 0, 0);
+			for(k = 0; k < xd; ++k)
 			{
 				// compute weighted sum
-				xm = nn_tensor_get(&Xf, i, 0, 0, z);
-				wm = nn_tensor_get(W, n, 0, 0, z);
-				yn += wm*xm;
+				x = nn_tensor_get(&Xf, m, 0, 0, k);
+				w = nn_tensor_get(W, n, 0, 0, k);
+				y += w*x;
 
 				// forward gradients (sum)
-				nn_tensor_add(dY_dW, n, 0, 0, z, xm);
+				nn_tensor_add(dY_dW, n, 0, 0, k, x);
 			}
-			nn_tensor_set(&Yf, i, 0, 0, n, yn);
+			nn_tensor_set(&Yf, m, 0, 0, n, y);
 		}
 	}
 
 	// forward gradients (batch mean)
 	float s = 1.0f/((float) bs);
-	for(z = 0; z < xd; ++z)
+	for(k = 0; k < xd; ++k)
 	{
-		nn_tensor_mul(dY_dW, 0, 0, 0, z, s);
+		nn_tensor_mul(dY_dW, 0, 0, 0, k, s);
 	}
 
 	return self->Y;
@@ -129,45 +129,45 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	float        dl_dx;
 
 	// update parameters
-	uint32_t i;
-	uint32_t z;
-	float    v0i;
-	float    v1i;
-	float    wi;
-	for(i = 0; i < dim->n; ++i)
+	uint32_t n;
+	uint32_t k;
+	float    v0;
+	float    v1;
+	float    w;
+	for(n = 0; n < dim->count; ++n)
 	{
-		dl_dy = nn_tensor_get(dL_dY, 0, 0, 0, i);
+		dl_dy = nn_tensor_get(dL_dY, 0, 0, 0, n);
 
-		for(z = 0; z < dim->d; ++z)
+		for(k = 0; k < dim->depth; ++k)
 		{
-			dy_dw = nn_tensor_get(dY_dW, 0, 0, 0, z);
-			wi    = nn_tensor_get(W, i, 0, 0, z);
+			dy_dw = nn_tensor_get(dY_dW, 0, 0, 0, k);
+			w     = nn_tensor_get(W, n, 0, 0, k);
 
 			// Nesterov Momentum Update and L2 Regularization
-			v0i = nn_tensor_get(VW, i, 0, 0, z);
-			v1i = mu*v0i - lr*(dl_dy*dy_dw + 2*lambda*wi);
-			nn_tensor_set(VW, i, 0, 0, z, v1i);
-			nn_tensor_add(W, i, 0, 0, z, -mu*v0i + (1 - mu)*v1i);
+			v0 = nn_tensor_get(VW, n, 0, 0, k);
+			v1 = mu*v0 - lr*(dl_dy*dy_dw + 2*lambda*w);
+			nn_tensor_set(VW, n, 0, 0, k, v1);
+			nn_tensor_add(W, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
 		}
 
 		// Nesterov Momentum Update
-		v0i = nn_tensor_get(VB, i, 0, 0, z);
-		v1i = mu*v0i - lr*dl_dy*dy_db;
-		nn_tensor_set(VB, i, 0, 0, z, v1i);
-		nn_tensor_add(B, i, 0, 0, z, -mu*v0i + (1 - mu)*v1i);
+		v0 = nn_tensor_get(VB, n, 0, 0, k);
+		v1 = mu*v0 - lr*dl_dy*dy_db;
+		nn_tensor_set(VB, n, 0, 0, k, v1);
+		nn_tensor_add(B, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
 	}
 
 	// backpropagate loss
-	for(z = 0; z < dim->d; ++z)
+	for(k = 0; k < dim->depth; ++k)
 	{
 		dl_dx = 0.0f;
-		for(i = 0; i < dim->n; ++i)
+		for(n = 0; n < dim->count; ++n)
 		{
-			dl_dy  = nn_tensor_get(dL_dY, 0, 0, 0, i);
-			dy_dx  = nn_tensor_get(dY_dX, i, 0, 0, z);
+			dl_dy  = nn_tensor_get(dL_dY, 0, 0, 0, n);
+			dy_dx  = nn_tensor_get(dY_dX, n, 0, 0, k);
 			dl_dx += dl_dy*dy_dx;
 		}
-		nn_tensor_set(dL_dX, 0, 0, 0, z, dl_dx);
+		nn_tensor_set(dL_dX, 0, 0, 0, k, dl_dx);
 	}
 
 	return dL_dX;
@@ -192,19 +192,19 @@ nn_weightLayer_initXavierWeights(nn_weightLayer_t* self)
 
 	nn_dim_t* dim = nn_tensor_dim(self->W);
 
-	float min = -1.0/sqrt((double) dim->d);
-	float max = 1.0/sqrt((double) dim->d);
+	float min = -1.0/sqrt((double) dim->depth);
+	float max = 1.0/sqrt((double) dim->depth);
 
-	uint32_t m;
+	uint32_t k;
 	uint32_t n;
 	float    w;
-	for(n = 0; n < dim->n; ++n)
+	for(n = 0; n < dim->count; ++n)
 	{
-		for(m = 0; m < dim->d; ++m)
+		for(k = 0; k < dim->depth; ++k)
 		{
 			w = cc_rngUniform_rand2F(&arch->rng_uniform,
 			                         min, max);
-			nn_tensor_set(self->W, n, 0, 0, m, w);
+			nn_tensor_set(self->W, n, 0, 0, k, w);
 		}
 	}
 }
@@ -219,18 +219,18 @@ nn_weightLayer_initHeWeights(nn_weightLayer_t* self)
 	nn_dim_t* dim = nn_tensor_dim(self->W);
 
 	double mu    = 0.0;
-	double sigma = sqrt(2.0/((double) dim->d));
+	double sigma = sqrt(2.0/((double) dim->depth));
 	cc_rngNormal_reset(&arch->rng_normal, mu, sigma);
 
-	uint32_t m;
+	uint32_t k;
 	uint32_t n;
 	float    w;
-	for(n = 0; n < dim->n; ++n)
+	for(n = 0; n < dim->count; ++n)
 	{
-		for(m = 0; m < dim->d; ++m)
+		for(k = 0; k < dim->depth; ++k)
 		{
 			w = cc_rngNormal_rand1F(&arch->rng_normal);
-			nn_tensor_set(self->W, n, 0, 0, m, w);
+			nn_tensor_set(self->W, n, 0, 0, k, w);
 		}
 	}
 }
@@ -247,8 +247,8 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	ASSERT(dimX);
 	ASSERT(dimY);
 
-	uint32_t xd = dimX->w*dimX->h*dimX->d;
-	uint32_t nc = dimY->w*dimY->h*dimY->d;
+	uint32_t xd = dimX->height*dimX->width*dimX->depth;
+	uint32_t nc = dimY->height*dimY->width*dimY->depth;
 
 	nn_layerInfo_t info =
 	{
@@ -268,10 +268,10 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_dim_t dimW =
 	{
-		.n = nc,
-		.w = 1,
-		.h = 1,
-		.d = xd,
+		.count  = nc,
+		.height = 1,
+		.width  = 1,
+		.depth  = xd,
 	};
 	self->W = nn_tensor_new(&dimW);
 	if(self->W == NULL)
@@ -290,10 +290,10 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_dim_t dimB =
 	{
-		.n = nc,
-		.w = 1,
-		.h = 1,
-		.d = 1,
+		.count  = nc,
+		.height = 1,
+		.width  = 1,
+		.depth  = 1,
 	};
 	self->B = nn_tensor_new(&dimB);
 	if(self->B == NULL)
@@ -327,10 +327,10 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_dim_t dim_dL_dX =
 	{
-		.n = 1,
-		.w = 1,
-		.h = 1,
-		.d = xd,
+		.count  = 1,
+		.height = 1,
+		.width  = 1,
+		.depth  = xd,
 	};
 	self->dL_dX = nn_tensor_new(&dim_dL_dX);
 	if(self->dL_dX == NULL)
