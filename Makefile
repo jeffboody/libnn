@@ -1,12 +1,13 @@
 TARGET  = libnn.a
 CLASSES = \
-	nn_arch        \
-	nn_dim         \
-	nn_factLayer   \
-	nn_layer       \
-	nn_loss        \
-	nn_mseLoss     \
-	nn_tensor      \
+	nn_arch           \
+	nn_batchNormLayer \
+	nn_dim            \
+	nn_factLayer      \
+	nn_layer          \
+	nn_loss           \
+	nn_mseLoss        \
+	nn_tensor         \
 	nn_weightLayer
 SOURCE  = $(CLASSES:%=%.c)
 OBJECTS = $(SOURCE:.c=.o)

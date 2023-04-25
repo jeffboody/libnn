@@ -21,51 +21,43 @@
  *
  */
 
-#ifndef nn_factLayer_H
-#define nn_factLayer_H
+#ifndef nn_batchNormLayer_H
+#define nn_batchNormLayer_H
 
 #include "nn_layer.h"
 
-typedef float (*nn_factLayer_fn)(float x);
-
-// activation functions
-float nn_factLayer_linear(float x);
-float nn_factLayer_logistic(float x);
-float nn_factLayer_ReLU(float x);
-float nn_factLayer_PReLU(float x);
-float nn_factLayer_tanh(float x);
-
-// activation function derivatives
-float nn_factLayer_dlinear(float x);
-float nn_factLayer_dlogistic(float x);
-float nn_factLayer_dReLU(float x);
-float nn_factLayer_dPReLU(float x);
-float nn_factLayer_dtanh(float x);
-
-typedef struct nn_factLayer_s
+typedef struct nn_batchNormLayer_s
 {
 	nn_layer_t base;
 
-	// output
-	//           X; // dim(bs,X.h,X.w,X.d)
+	// gamma, beta, output
+	nn_tensor_t* G; // dim(1,1,1,X.d)
+	nn_tensor_t* B; // dim(1,1,1,X.d)
 	nn_tensor_t* Y; // dim(X)
 
-	// forward gradients (batch mean)
-	nn_tensor_t* dY_dX; // SUM_FACT_X/bs : dim(1,X.h,X.w,X.d)
+	// mini-batch mean/variance
+	nn_tensor_t* Xmean_mb; // dim(1,1,1,X.d)
+	nn_tensor_t* Xvar_mb;  // dim(1,1,1,X.d)
+
+	// running averages
+	nn_tensor_t* Xmean_ra; // dim(1,1,1,X.d)
+	nn_tensor_t* Xvar_ra;  // dim(1,1,1,X.d)
+
+	// forward gradients
+	nn_tensor_t* dXvar_dX;    // dim(1,1,1,X.d)
+	nn_tensor_t* dXhat_dX;    // dim(1,1,1,X.d)
+	nn_tensor_t* dXhat_dXvar; // dim(1,X.h,X.w,X.d)
+	nn_tensor_t* dY_dG;       // dim(1,X.h,X.w,X.d)
 
 	// backprop gradients
-	//           dL_dY; // dim(1,X.h,X.w,X.d)
-	nn_tensor_t* dL_dX; // dim(1,X.h,X.w,X.d)
+	//           dL_dY;     // dim(1,X.h,X.w,X.d)
+	nn_tensor_t* dL_dX;     // dim(1,X.h,X.w,X.d)
+	nn_tensor_t* dL_dXvar;  // dim(1,1,1,X.d)
+	nn_tensor_t* dL_dXmean; // dim(1,1,1,X.d)
+} nn_batchNormLayer_t;
 
-	// activation functions
-	nn_factLayer_fn fact;
-	nn_factLayer_fn dfact;
-} nn_factLayer_t;
-
-nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,
-                                 nn_dim_t* dim,
-                                 nn_factLayer_fn fact,
-                                 nn_factLayer_fn dfact);
-void            nn_factLayer_delete(nn_factLayer_t** _self);
+nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,
+                                           nn_dim_t* dim);
+void                 nn_batchNormLayer_delete(nn_batchNormLayer_t** _self);
 
 #endif

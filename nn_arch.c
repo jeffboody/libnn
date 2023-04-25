@@ -204,6 +204,8 @@ int nn_arch_predict(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Y);
 
+	self->batch_size = 1;
+
 	nn_tensor_t*   Yi   = X;
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)

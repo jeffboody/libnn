@@ -26,13 +26,14 @@
 
 #include <stdint.h>
 
-typedef struct nn_arch_s        nn_arch_t;
-typedef struct nn_dim_s         nn_dim_t;
-typedef struct nn_factLayer_s   nn_factLayer_t;
-typedef struct nn_layer_s       nn_layer_t;
-typedef struct nn_loss_s        nn_loss_t;
-typedef struct nn_mseLoss_s     nn_mseLoss_t;
-typedef struct nn_tensor_s      nn_tensor_t;
-typedef struct nn_weightLayer_s nn_weightLayer_t;
+typedef struct nn_arch_s           nn_arch_t;
+typedef struct nn_batchNormLayer_s nn_batchNormLayer_t;
+typedef struct nn_dim_s            nn_dim_t;
+typedef struct nn_factLayer_s      nn_factLayer_t;
+typedef struct nn_layer_s          nn_layer_t;
+typedef struct nn_loss_s           nn_loss_t;
+typedef struct nn_mseLoss_s        nn_mseLoss_t;
+typedef struct nn_tensor_s         nn_tensor_t;
+typedef struct nn_weightLayer_s    nn_weightLayer_t;
 
 #endif

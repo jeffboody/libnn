@@ -26,12 +26,15 @@
 
 #include "nn_layer.h"
 
-#define NN_WEIGHT_LAYER_INITMODE_XAVIER 0
-#define NN_WEIGHT_LAYER_INITMODE_HE     1
+#define NN_WEIGHT_LAYER_FLAG_XAVIER       0x0001
+#define NN_WEIGHT_LAYER_FLAG_HE           0x0002
+#define NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS 0x0010
 
 typedef struct nn_weightLayer_s
 {
 	nn_layer_t base;
+
+	int flags;
 
 	// dimX and dimY will be flattened internally
 	// to match the sizes listed below however the
@@ -55,14 +58,14 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,1,1,X.d)
 
 	// backprop gradients
-	//           dL_dY; // dim(1,1,1,nc) (from next layer)
+	//           dL_dY; // dim(1,1,1,nc)
 	nn_tensor_t* dL_dX; // dim(1,1,1,X.d)
 } nn_weightLayer_t;
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,
                                      nn_dim_t* dimX,
                                      nn_dim_t* dimY,
-                                     int init_mode);
+                                     int flags);
 void              nn_weightLayer_delete(nn_weightLayer_t** _self);
 
 #endif

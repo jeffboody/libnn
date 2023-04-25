@@ -76,7 +76,15 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 	{
 		for(n = 0; n < nc; ++n)
 		{
-			y = nn_tensor_get(B, n, 0, 0, 0);
+			if(self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS)
+			{
+				y = 0.0f;
+			}
+			else
+			{
+				y = nn_tensor_get(B, n, 0, 0, 0);
+			}
+
 			for(k = 0; k < xd; ++k)
 			{
 				// compute weighted sum
@@ -144,17 +152,21 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 			w     = nn_tensor_get(W, n, 0, 0, k);
 
 			// Nesterov Momentum Update and L2 Regularization
+			// (weights)
 			v0 = nn_tensor_get(VW, n, 0, 0, k);
 			v1 = mu*v0 - lr*(dl_dy*dy_dw + 2*lambda*w);
 			nn_tensor_set(VW, n, 0, 0, k, v1);
 			nn_tensor_add(W, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
 		}
 
-		// Nesterov Momentum Update
-		v0 = nn_tensor_get(VB, n, 0, 0, k);
-		v1 = mu*v0 - lr*dl_dy*dy_db;
-		nn_tensor_set(VB, n, 0, 0, k, v1);
-		nn_tensor_add(B, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
+		// Nesterov Momentum Update (bias)
+		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
+		{
+			v0 = nn_tensor_get(VB, n, 0, 0, k);
+			v1 = mu*v0 - lr*dl_dy*dy_db;
+			nn_tensor_set(VB, n, 0, 0, k, v1);
+			nn_tensor_add(B, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
+		}
 	}
 
 	// backpropagate loss
@@ -241,7 +253,7 @@ nn_weightLayer_initHeWeights(nn_weightLayer_t* self)
 
 nn_weightLayer_t*
 nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                   nn_dim_t* dimY, int init_mode)
+                   nn_dim_t* dimY, int flags)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -266,6 +278,8 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
+	self->flags = flags;
+
 	nn_dim_t dimW =
 	{
 		.count  = nc,
@@ -279,7 +293,7 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_W;
 	}
 
-	if(init_mode == NN_WEIGHT_LAYER_INITMODE_HE)
+	if(flags & NN_WEIGHT_LAYER_FLAG_HE)
 	{
 		nn_weightLayer_initHeWeights(self);
 	}
