@@ -1,0 +1,46 @@
+// sudo apt-get install graphviz
+// dot -Tpng nn-batchNorm.dot -o nn-batchNorm.png
+// xdot nn-batchNorm.dot
+digraph NN
+{
+	label="Batch Normalization";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	X [shape=box, label="X\ndim(bs,xh,xw,xd)\n\nCombine Loss\n4) dL/dX = (dL/dXhat)*(1/sqrt(Xvar)) + (dL/dXvar)*(2/(bs*xh*xd))*SUM(m=1:bs, i=1:xh, j=1:xw, X - Xmean) + (dL/dXmean)*(1/(bs*xh*xw))"];
+	Y [shape=box, label="Y\ndim(bs,xh,xw,xd)"];
+	G [shape=box, label="G = gamma\ndim(1,1,1,xd)"];
+	B [shape=box, label="B = beta\ndim(1,1,1,xd)"];
+	V [shape=box, label="bs = batch_size\nxh = X.height\nxw = X.width\nxd = X.depth"];
+
+	Xmean [label="Mean\n\nForward Pass\nXmean = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, X)\ndim(1,1,1,xd)\n\nForward Gradients\ndXmean/dX = 1/(bs*xh*xw)\n\nCombine Loss\n3) dL/dXmean = (-1/sqrt(Xvar))*SUM(i=1:xh, j=1:xw, dL/dXhat) + (dL/dXvar)*(-2/(bs*xh*xd))*SUM(m=1:bs, i=1:xh, j=1:xw, X - Xmean)\n\nBackpropagate Loss\ndL3/dX = (dL/dXmean)*(dXmean/dX)\ndim(1,1,1,xd)"];
+	Xvar  [label="Variance\n\nForward Pass\nXvar = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, (X - Xmean)^2)\ndim(1,1,1,xd)\n\nForward Gradients\ndXvar/dX = (2/(bs*xh*xd))*(X - Xmean)\ndim(bs,xh,xw,xd)\n\ndXvar/dXmean = -dXvar/dX = (-2/(bs*xh*xd))*(X - Xmean)\ndim(bs,xh,xw,xd)\n\nBackpropagate Loss\ndL1/dXmean = SUM(m=1:bs, i=1:xh, j=1:xw, (dL/dXvar)*(dXvar/dXmean))\ndim(1,1,1,xd)\n\ndL2/dX = SUM(m=1:bs, i=1:xh, j=1:xw, (dL/dXvar)*(dXvar/dX))\ndim(1,1,1,xd)"];
+	Xhat  [label="Normalize\n\nForward Pass\nXhat = (X - Xmean)/sqrt(Xvar)\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndXhat/dX = 1/sqrt(Xvar)\ndim(1,1,1,xd)\n\ndXhat/dXmean = -1/sqrt(Xvar)\ndim(1,1,1,xd)\n\ndXhat/dXvar = (X - Xmean)*(-1/2)*Xvar^(-3/2)\ndim(bs,xh,xw,xd)\n\nBackpropagate Loss\n2) dL/dXvar = (dL/dXhat)*(dXhat/dXvar) = (-1/2)*Xvar^(-3/2)*SUM(i=1:xh, j=1:xw, (dL/dXhat)*(X - Xmean))\ndim(1,1,1,xd)\n\ndL1/dX = (dL/dXhat)*(dXhat/dX)\ndim(1,xh,xw,xd)\n\ndL2/dXmean = SUM(i=1:xh, j=1:xw, (dL/dXhat)*(dXhat/dXmean))\ndim(1,1,1,xd)"];
+	BN    [label="Scale and Shift\n\nForward Pass\nY = BN(G, B, Xhat) = G*Xhat + B\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndY/dXhat = G\ndY/dG = Xhat\ndY/dB = 1\n\nBackpropagate Loss\n1) dL/dXhat = (dL/dY)*(dY/dXhat) = (dL/dY)*G\ndim(1,xh,xw,xd)\n\n5) dL/dG = (dL/dY)*(dY/dG) = SUM(m=1:bs, i=1:xh, j=1:xw, (dL/dY)*Xhat)\ndim(1,1,1,xd)\n\n6) dL/dB = (dL/dY)*(dY/dB) = SUM(i=1:xh, j=1:xw, dL/dY)\ndim(1,1,1,xd)"];
+
+	{ rank=same Xhat -> G [style=invis] };
+	{ rank=same G -> B [style=invis] };
+	{ rank=same Xmean -> Xvar [style=invis] };
+	V     -> X     [style=invis];
+	X     -> Xmean;
+	X     -> Xvar;
+	Xmean -> Xvar;
+	Xmean -> Xhat;
+	Xvar  -> Xhat;
+	X     -> Xhat;
+	Xmean -> X     [fontcolor=magenta, color=magenta, label="dL3/dX"];
+	Xvar  -> X     [fontcolor=magenta, color=magenta, label="dL2/dX"];
+	Xvar  -> Xmean [fontcolor=magenta, color=magenta, label="dL1/dXmean"];
+	Xhat  -> Xmean [fontcolor=magenta, color=magenta, label="dL2/dXmean"];
+	Xhat  -> Xvar  [fontcolor=magenta, color=magenta, label="dL/dXvar"];
+	Xhat  -> X     [fontcolor=magenta, color=magenta, label="dL1/dX"];
+	Xhat  -> BN;
+	G     -> BN;
+	B     -> BN;
+	BN    -> Y;
+	Y     -> BN    [fontcolor=magenta, color=magenta, label="dL/dY : dim(1,xh,xw,xd)"];
+	BN    -> B     [fontcolor=magenta, color=magenta, label="dL/dB"];
+	BN    -> G     [fontcolor=magenta, color=magenta, label="dL/dG"];
+	BN    -> Xhat  [fontcolor=magenta, color=magenta, label="dL/dXhat"];
+}

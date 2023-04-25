@@ -469,34 +469,53 @@ References
 Batch Normalization
 -------------------
 
-Batch Normalization is a neural network layer that is
+Batch Normalization (BN) is a neural network layer that is
 closely related to data centering and scaling. The main
-difference is that Batch Normalization includes a pair of
-learnable parameters to scale (gamma) and offset (beta) data
-samples. This function is applied on a per-channel or
-per-filter basis. It is important to note that the function
-is differentiable as is required for backpropagation.
+difference is that BN includes a pair of learnable
+parameters per-channel/per-filter to scale (gamma) and
+offset (beta) data samples. It is important to note that
+the function is differentiable as is required for
+backpropagation.
 
-	Yi = gammai*(Xi - Mean(Xi))/StdDev(Xi) + betai
+	Y = gamma*(X - Xmean_mb)/sqrt(Xvar_mb) + beta
 
 Add a small epsilon to avoid divide-by-zero problems.
 
-The mean and standard deviation are calculated during
-training from the mini batch. Running averages of these
-values are also calculated during the training which are
-subsequently used when making predictions. The exponential
-average momentum is a hyperparameter and it was suggested
-that a good default is 0.99.
+The following computation graph shows the backpropagation
+algorithm for the BN layer. The equations have been
+rearranged slightly to pull constants outside the summations
+when compared to the BN paper. The BN paper is also missing
+a summation in the dL/dX term. This derivation is also
+intended for the convolution case but can also support the
+non-convolution case by setting the dimensions of xh and xw
+to 1.
 
-	avg_mean   = avg_mean*momentum + batch_mean*(1 - momentum)
-	avg_stddev = avg_stddev*momentum + batch_stddev*(1 - momentum)
+![BN Variance](nn-batch-norm-variance.jpg?raw=true "BN Variance")
+![BN Mean](nn-batch-norm-mean.jpg?raw=true "BN Mean")
+![BN Normalization](nn-batch-norm-normalize.jpg?raw=true "BN Normalization")
+![BN Scale and Shift](nn-batch-norm-scale-and-shift.jpg?raw=true "BN Scale and Shift")
 
-Why are the batch mean and standard deviation used during
-training rather than the running averages?
+These diagrams may be viewed in vector form using the xdot
+program.
+
+	xdot nn-batch-norm.dot
+
+The per-channel/per-filter mean and variance are also
+calculated during training from the mini-batch. Running
+averages of these values are also calculated during the
+training which are subsequently used when making
+predictions. The exponential average momentum is a
+hyperparameter and it was suggested that a good default is
+0.99.
+
+	Xmean_ra = Xmean_ra*momentum + Xmean_mb*(1 - momentum)
+	Xvar_ra  = Xvar_ra*momentum + Xvar_mb*(1 - momentum)
 
 Note that the neural network may learn the identity
 operation (e.g. beta is the mean and gamma is the inverse of
 standard deviation) should this be optimal.
+
+Note that the tensor operations are component-wise.
 
 There is some discussion as to the best place for the Batch
 Normalization layer. The original paper placed this layer
@@ -506,11 +525,10 @@ better to place after the activation function. When placed
 per the original paper, the perceptron bias is redundant
 with the beta offset.
 
-It was also mentioned that Batch Normalization can be
-performed on the input layer in place of data centering and
-scaling. However, it's unclear if the the mean and standard
-deviation should be used from the training set or mini batch
-in this case.
+It was also mentioned that BN can be performed on the input
+layer in place of data centering and scaling. However, it's
+unclear if the the mean and standard deviation should be
+used from the training set or mini-batch in this case.
 
 Weight Normalization and Layer Normalization are additional
 related techniques however these won't be covered at this
@@ -519,6 +537,7 @@ better.
 
 References
 
+* [Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift](https://arxiv.org/pdf/1502.03167.pdf)
 * [Batch Norm Explained Visually - How it works, and why neural networks need it](https://towardsdatascience.com/batch-norm-explained-visually-how-it-works-and-why-neural-networks-need-it-b18919692739)
 * [Batch normalization: What it is and how to use it](https://www.youtube.com/watch?v=yXOMHOpbon8)
 * [CS231n Winter 2016: Lecture 5: Neural Networks Part 2](https://www.youtube.com/watch?v=gYpoJMlgyXA&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=5)
