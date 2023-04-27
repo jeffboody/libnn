@@ -431,40 +431,72 @@ References
 Batch Size
 ----------
 
+As described earlier, the backpropagation algorithm may be
+applied by repeating the following steps for each training
+pattern.
+
+* Forward Pass
+* Forward Gradients
+* Compute Loss
+* Combine Loss
+* Update Parameters
+* Backpropagate Loss
+
 The batch size refers to the number of training patterns
 that are processed in the forward pass before the loss is
-backpropagated. In practice, two approaches are used to
-select the batch size including Stochastic Gradient Descent
-(SGD) and Mini-Batch Gradient Descent (MBGD). The SGD method
-performs a forward pass and backpropagation for each
-training pattern. MBGD performs a forward pass using
-multiple training patterns followed by a single
-backpropagation using the total loss and the total
-forward gradients. The advantages of each approach includes
-the following.
+backpropagated.
+
+The algorithm variations on batch size are as follows.
+
+* Stochastic Gradient Descent (SGD)
+* Mini-batch Gradient Descent
+* Gradient Descent
+
+The SGD method performs training by processing one patttern
+at a time. The mini-batch method performs training by
+subdividing the training set into batches and processes one
+batch at a time. And finally, the gradient descent method
+processes the entire training set at once.
+
+The computation of gradients for the mini-batch and gradient
+descent methods must be adjusted to compute the average
+gradient across the batch.
+
+The advantages of each approach includes the following.
 
 Stochastic Gradient Descent
 
 * Simplest to implement
-* Less memory is required
+* Less memory is required for cached state
 
 Mini-Batch Gradient Descent
 
 * Mini-batch is typically the preferred method
-* Backpropagation is amortized across the mini-batch
 * Smoother gradients results in more stable convergence
+* Backpropagation is amortized across the mini-batch
 * Implementations may vectorize code across mini-batches
-* Batch Normalization may further improve convergence
+* Improve convergence using Batch Normalization
+
+Gradient Descent
+
+* Converges slowly
+* Computationally expensive
+* Impractical for real data sets
 
 The batch size is a hyperparameter and it was suggested that
 a good default is 32. It may also be possible to increase
 the batch size over time as this reduces the variance in the
 gradients when approaching a minimal solution.
 
+Note that a training set may also be processed multiple
+times and each pass over the training set is referred to as
+an epoch.
+
 References
 
 * [A Gentle Introduction to Mini-Batch Gradient Descent and How to Configure Batch Size](https://machinelearningmastery.com/gentle-introduction-mini-batch-gradient-descent-configure-batch-size/)
 * [Variable batch-size in mini-batch gradient descent](https://www.reddit.com/r/MachineLearning/comments/481f2v/variable_batchsize_in_minibatch_gradient_descent/)
+* [Sum or average of gradients in (mini) batch gradient descent?](https://stats.stackexchange.com/questions/183840/sum-or-average-of-gradients-in-mini-batch-gradient-decent)
 
 Batch Normalization
 -------------------
@@ -477,21 +509,16 @@ offset (beta) data samples. It is important to note that
 the function is differentiable as is required for
 backpropagation.
 
-	Y = gamma*(X - Xmean_mb)/sqrt(Xvar_mb) + beta
+The following computation graph shows the batch
+normalization algorithm.
 
-Add a small epsilon to avoid divide-by-zero problems.
+![BN Overview](nn-batch-norm-overview.jpg?raw=true "BN Overview")
 
-The following computation graph shows the backpropagation
-algorithm for the BN layer. The equations have been
-rearranged slightly to pull constants outside the summations
-when compared to the BN paper. The BN paper is also missing
-a summation in the dL/dX term. This derivation is also
-intended for the convolution case but can also support the
-non-convolution case by setting the dimensions of xh and xw
-to 1.
+The following computation graphs shows the derivation of the
+backpropagation algorithm for the BN layer.
 
-![BN Variance](nn-batch-norm-variance.jpg?raw=true "BN Variance")
 ![BN Mean](nn-batch-norm-mean.jpg?raw=true "BN Mean")
+![BN Variance](nn-batch-norm-variance.jpg?raw=true "BN Variance")
 ![BN Normalization](nn-batch-norm-normalize.jpg?raw=true "BN Normalization")
 ![BN Scale and Shift](nn-batch-norm-scale-and-shift.jpg?raw=true "BN Scale and Shift")
 
@@ -500,35 +527,58 @@ program.
 
 	xdot nn-batch-norm.dot
 
-The per-channel/per-filter mean and variance are also
-calculated during training from the mini-batch. Running
-averages of these values are also calculated during the
-training which are subsequently used when making
-predictions. The exponential average momentum is a
-hyperparameter and it was suggested that a good default is
+This derivation differs from the original BN paper and the
+cs231n class references as follows.
+
+* Gradients are averaged over the mini-batch
+* Tensors are configured for convolution by default
+* Nodes of the computation graph are the BN functions
+
+WARNING: It's TBD if the use of average gradients is a valid
+approach however it seems reasonable to apply the mini-batch
+method in conjuction with the BN algorithm. This approach
+should achieve the same benefits as the mini-batch method,
+improve performance and reduce the memory footprint.
+
+As per the original algorithm, the per-channel/per-filter
+mean and variance are also calculated during training from
+the mini-batch. Running averages of these values are also
+calculated during the training which are subsequently used
+when making predictions. The exponential average momentum is
+a hyperparameter and it was suggested that a good default is
 0.99.
 
 	Xmean_ra = Xmean_ra*momentum + Xmean_mb*(1 - momentum)
 	Xvar_ra  = Xvar_ra*momentum + Xvar_mb*(1 - momentum)
 
-Note that the neural network may learn the identity
-operation (e.g. beta is the mean and gamma is the inverse of
-standard deviation) should this be optimal.
-
-Note that the tensor operations are component-wise.
-
-There is some discussion as to the best place for the Batch
-Normalization layer. The original paper placed this layer
-between the perceptron weighted average and the activation
-function, however, more recent results suggest that it's
-better to place after the activation function. When placed
-per the original paper, the perceptron bias is redundant
-with the beta offset.
+There is some discussion as to the best place for the BN
+layer. The original paper placed this layer between the
+perceptron weighted average and the activation function. It
+was suggested to place the BN layer before the ReLU/PReLU
+activation functions but after tanh/logistic activation
+functions. When placed per the original paper, the
+perceptron bias is redundant with the beta offset.
 
 It was also mentioned that BN can be performed on the input
 layer in place of data centering and scaling. However, it's
 unclear if the the mean and standard deviation should be
 used from the training set or mini-batch in this case.
+
+The neural network may learn the identity operation (e.g.
+beta is the mean and gamma is the inverse of standard
+deviation) should this be optimal.
+
+Note that the derivation of the backpropagation algorithm
+for the non-convolution case is equivalent to setting xh
+and xw to 1.
+
+Note that the tensor operations are component-wise.
+
+Note that the original BN paper is missing a summation in
+the dL/dX term.
+
+Be sure to add a small epsilon to avoid divide-by-zero
+problems.
 
 Weight Normalization and Layer Normalization are additional
 related techniques however these won't be covered at this
@@ -543,6 +593,8 @@ References
 * [CS231n Winter 2016: Lecture 5: Neural Networks Part 2](https://www.youtube.com/watch?v=gYpoJMlgyXA&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=5)
 * [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
 * [Moving average in Batch Normalization](https://jiafulow.github.io/blog/2021/01/29/moving-average-in-batch-normalization/)
+* [Understanding the backward pass through Batch Normalization Layer](http://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html)
+* [Matrix form of backpropagation with batch normalization](https://stats.stackexchange.com/questions/328242/matrix-form-of-backpropagation-with-batch-normalization)
 
 Learning Rate
 -------------
