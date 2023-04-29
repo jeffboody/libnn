@@ -31,29 +31,29 @@ typedef struct nn_batchNormLayer_s
 	nn_layer_t base;
 
 	// gamma, beta, output
-	nn_tensor_t* G; // dim(1,1,1,X.d)
-	nn_tensor_t* B; // dim(1,1,1,X.d)
-	nn_tensor_t* Y; // dim(X)
+	nn_tensor_t* G; // dim(1,1,1,xd)
+	nn_tensor_t* B; // dim(1,1,1,xd)
+	nn_tensor_t* Y; // dim(bs,xh,xw,xd)
 
 	// mini-batch mean/variance
-	nn_tensor_t* Xmean_mb; // dim(1,1,1,X.d)
-	nn_tensor_t* Xvar_mb;  // dim(1,1,1,X.d)
+	nn_tensor_t* Xmean_mb; // dim(1,1,1,xd)
+	nn_tensor_t* Xvar_mb;  // dim(1,1,1,xd)
 
 	// running averages
-	nn_tensor_t* Xmean_ra; // dim(1,1,1,X.d)
-	nn_tensor_t* Xvar_ra;  // dim(1,1,1,X.d)
+	nn_tensor_t* Xmean_ra; // dim(1,1,1,xd)
+	nn_tensor_t* Xvar_ra;  // dim(1,1,1,xd)
 
 	// forward gradients
-	nn_tensor_t* dXvar_dX;    // dim(1,1,1,X.d)
-	nn_tensor_t* dXhat_dX;    // dim(1,1,1,X.d)
-	nn_tensor_t* dXhat_dXvar; // dim(1,X.h,X.w,X.d)
-	nn_tensor_t* dY_dG;       // dim(1,X.h,X.w,X.d)
+	nn_tensor_t* dXvar_dX;    // dim(1,1,1,xd)
+	nn_tensor_t* dXhat_dX;    // dim(1,1,1,xd)
+	nn_tensor_t* dXhat_dXvar; // dim(1,xh,xw,xd)
+	nn_tensor_t* dY_dG;       // dim(1,xh,xw,xd)
 
 	// backprop gradients
-	//           dL_dY;     // dim(1,X.h,X.w,X.d)
-	nn_tensor_t* dL_dX;     // dim(1,X.h,X.w,X.d)
-	nn_tensor_t* dL_dXvar;  // dim(1,1,1,X.d)
-	nn_tensor_t* dL_dXmean; // dim(1,1,1,X.d)
+	//           dL_dY;     // dim(1,xh,xw,xd)
+	nn_tensor_t* dL_dX;     // dim(1,xh,xw,xd)
+	nn_tensor_t* dL_dXvar;  // dim(1,1,1,xd)
+	nn_tensor_t* dL_dXmean; // dim(1,1,1,xd)
 } nn_batchNormLayer_t;
 
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,

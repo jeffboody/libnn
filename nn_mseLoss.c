@@ -101,7 +101,7 @@ nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dim)
 		return NULL;
 	}
 
-	nn_dim_t dim1 =
+	nn_dim_t dim_1hwd =
 	{
 		.count  = 1,
 		.height = dim->height,
@@ -109,7 +109,7 @@ nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dim)
 		.depth  = dim->depth,
 	};
 
-	self->dL_dY = nn_tensor_new(&dim1);
+	self->dL_dY = nn_tensor_new(&dim_1hwd);
 	if(self->dL_dY == NULL)
 	{
 		goto fail_dL_dY;

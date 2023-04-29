@@ -100,7 +100,7 @@ static nn_tensor_t*
 nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
-	ASSERT(dL_dY); // dim(1,X.w,X.h,X.d)
+	ASSERT(dL_dY); // dim(1,xh,xw,xd)
 
 	nn_factLayer_t* self  = (nn_factLayer_t*) base;
 	nn_tensor_t*    dY_dX = self->dY_dX;
@@ -252,7 +252,7 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
 		goto fail_Y;
 	}
 
-	nn_dim_t dim1 =
+	nn_dim_t dim_1hwd =
 	{
 		.count  = 1,
 		.height = dim->height,
@@ -260,13 +260,13 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
 		.depth  = dim->depth,
 	};
 
-	self->dY_dX = nn_tensor_new(&dim1);
+	self->dY_dX = nn_tensor_new(&dim_1hwd);
 	if(self->dY_dX == NULL)
 	{
 		goto fail_dY_dX;
 	}
 
-	self->dL_dX = nn_tensor_new(&dim1);
+	self->dL_dX = nn_tensor_new(&dim_1hwd);
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;

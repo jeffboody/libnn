@@ -43,23 +43,23 @@ typedef struct nn_weightLayer_s
 	// weights, bias, output
 	//           bs; // batch size
 	//           nc; // node count
-	//           X;  // dim(bs,1,1,X.d)
-	nn_tensor_t* W;  // dim(nc,1,1,X.d)
+	//           X;  // dim(bs,1,1,xd)
+	nn_tensor_t* W;  // dim(nc,1,1,xd)
 	nn_tensor_t* B;  // dim(nc,1,1,1)
 	nn_tensor_t* Y;  // dim(bs,1,1,nc)
 
 	// momentum update
-	nn_tensor_t* VW; // dim(nc,1,1,X.d)
+	nn_tensor_t* VW; // dim(nc,1,1,xd)
 	nn_tensor_t* VB; // dim(nc,1,1,1)
 
 	// forward gradients (batch mean)
 	//           dY_dB; // 1
-	//           dY_dX; // W        : dim(nc,1,1,X.d)
-	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,1,1,X.d)
+	//           dY_dX; // W        : dim(nc,1,1,xd)
+	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,1,1,xd)
 
 	// backprop gradients
 	//           dL_dY; // dim(1,1,1,nc)
-	nn_tensor_t* dL_dX; // dim(1,1,1,X.d)
+	nn_tensor_t* dL_dX; // dim(1,1,1,xd)
 } nn_weightLayer_t;
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,

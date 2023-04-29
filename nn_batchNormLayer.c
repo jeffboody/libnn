@@ -263,7 +263,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
                              nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
-	ASSERT(dL_dY); // dim(1,X.w,X.h,X.d)
+	ASSERT(dL_dY); // dim(1,xh,xw,xd)
 
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
 	nn_arch_t*           arch = base->arch;

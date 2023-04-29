@@ -47,15 +47,15 @@ typedef struct nn_factLayer_s
 	nn_layer_t base;
 
 	// output
-	//           X; // dim(bs,X.h,X.w,X.d)
-	nn_tensor_t* Y; // dim(X)
+	//           X; // dim(bs,xh,xw,xd)
+	nn_tensor_t* Y; // dim(bs,xh,xw,xd)
 
 	// forward gradients (batch mean)
-	nn_tensor_t* dY_dX; // SUM_FACT_X/bs : dim(1,X.h,X.w,X.d)
+	nn_tensor_t* dY_dX; // SUM_FACT_X/bs : dim(1,xh,xw,xd)
 
 	// backprop gradients
-	//           dL_dY; // dim(1,X.h,X.w,X.d)
-	nn_tensor_t* dL_dX; // dim(1,X.h,X.w,X.d)
+	//           dL_dY; // dim(1,xh,xw,xd)
+	nn_tensor_t* dL_dX; // dim(1,xh,xw,xd)
 
 	// activation functions
 	nn_factLayer_fn fact;
