@@ -30,7 +30,7 @@ digraph NN
 
 	// Xhat [label="Normalize"];
 	// Xhat [label="Normalize\n\nXhat = (X - Xmean)/sqrt(Xvar)"];
-	Xhat [label="Normalize\n\nForward Pass\nXhat = (X - Xmean)/sqrt(Xvar)\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndXhat/dX = 1/sqrt(Xvar)\ndim(1,1,1,xd)\n\ndXhat/dXmean = -1/sqrt(Xvar) = -dXhat/dX\ndim(1,1,1,xd)\n\ndXhat/dXvar = (1/bs)*(-1/2)*Xvar^(-3/2)*SUM(m=1:bs, (X - Xmean))\ndim(1,xh,xw,xd)\n\nBackpropagate Loss\ndL/dXvar = SUM(i=1:xh, j=1:xw, (dL/dXhat)*(dXhat/dXvar))\ndim(1,1,1,xd)\n\ndL1/dX = (dL/dXhat)*(dXhat/dX)\ndim(1,xh,xw,xd)\n\ndL2/dXmean = (dL/dXhat)*(dXhat/dXmean) = (-dXhat/dX)*SUM(i=1:xh, j=1:xw, dL/dXhat)\ndim(1,1,1,xd)"];
+	Xhat [label="Normalize\n\nForward Pass\nXhat = (X - Xmean)/sqrt(Xvar)\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndXhat/dX = 1/sqrt(Xvar)\ndim(1,1,1,xd)\n\ndXhat/dXmean = -1/sqrt(Xvar) = -dXhat/dX\ndim(1,1,1,xd)\n\ndXhat/dXvar = (1/bs)*(-1/2)*Xvar^(-3/2)*SUM(m=1:bs, X - Xmean)\ndim(1,xh,xw,xd)\n\nBackpropagate Loss\ndL/dXvar = SUM(i=1:xh, j=1:xw, (dL/dXhat)*(dXhat/dXvar))\ndim(1,1,1,xd)\n\ndL1/dX = (dL/dXhat)*(dXhat/dX)\ndim(1,xh,xw,xd)\n\ndL2/dXmean = (dL/dXhat)*(dXhat/dXmean) = (-dXhat/dX)*SUM(i=1:xh, j=1:xw, dL/dXhat)\ndim(1,1,1,xd)"];
 
 	// BN [label="Scale and Shift"];
 	// BN [label="Scale and Shift\n\nY = G*Xhat + B"];

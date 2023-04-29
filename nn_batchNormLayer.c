@@ -45,6 +45,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
 
+	float epsilon = 0.0001f;
+
 	nn_tensor_t* G           = self->G;
 	nn_tensor_t* B           = self->B;
 	nn_tensor_t* Y           = self->Y;
@@ -69,8 +71,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 
 	// compute mini-batch mean
 	// update running mean
-	float     avg_mean;
-	float     mean;
+	float     xmean_ra;
+	float     xmean_mb;
 	float     momentum = base->arch->batch_momentum;
 	uint32_t  m;
 	uint32_t  i;
@@ -82,67 +84,69 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		for(k = 0; k < dim->depth; ++k)
 		{
 			// compute mini-batch mean
-			mean = 0.0f;
+			xmean_mb = 0.0f;
 			for(m = 0; m < bs; ++m)
 			{
 				for(i = 0; i < dim->height; ++i)
 				{
 					for(j = 0; j < dim->width; ++j)
 					{
-						mean += nn_tensor_get(X, m, i, j, k);
+						xmean_mb += nn_tensor_get(X, m, i, j, k);
 					}
 				}
 			}
-			mean /= (float) (bs*dim->width*dim->height);
-			nn_tensor_set(Xmean_mb, 0, 0, 0, k, mean);
+			xmean_mb /= (float) (bs*dim->width*dim->height);
+			nn_tensor_set(Xmean_mb, 0, 0, 0, k, xmean_mb);
 
 			// update running mean
-			avg_mean = nn_tensor_get(Xmean_ra, 0, 0, 0, k);
-			avg_mean = avg_mean*momentum + (1 - momentum)*mean;
-			nn_tensor_set(Xmean_ra, 0, 0, 0, k, avg_mean);
+			xmean_ra = nn_tensor_get(Xmean_ra, 0, 0, 0, k);
+			xmean_ra = momentum*xmean_ra + (1 - momentum)*xmean_mb;
+			nn_tensor_set(Xmean_ra, 0, 0, 0, k, xmean_ra);
 		}
 	}
 
 	// compute mini-batch variance
 	// update running variance
-	float avg_var;
-	float var;
+	float xvar_ra;
+	float xvar_mb;
 	float dx;
 	if(bs > 1)
 	{
 		for(k = 0; k < dim->depth; ++k)
 		{
 			// compute mini-batch variance
-			var  = 0.0f;
-			mean = nn_tensor_get(Xmean_mb, 0, 0, 0, k);
+			xvar_mb  = 0.0f;
+			xmean_mb = nn_tensor_get(Xmean_mb, 0, 0, 0, k);
 			for(m = 0; m < bs; ++m)
 			{
 				for(i = 0; i < dim->height; ++i)
 				{
 					for(j = 0; j < dim->width; ++j)
 					{
-						dx   = nn_tensor_get(X, m, i, j, k) - mean;
-						var += dx*dx;
+						dx       = nn_tensor_get(X, m, i, j, k) - xmean_mb;
+						xvar_mb += dx*dx;
 					}
 				}
 			}
-			var /= (float) (bs*dim->width*dim->height);
-			nn_tensor_set(Xvar_mb, 0, 0, 0, k, var);
+			xvar_mb /= (float) (bs*dim->width*dim->height);
+			nn_tensor_set(Xvar_mb, 0, 0, 0, k, xvar_mb);
 
 			// update running variance
-			avg_var = nn_tensor_get(Xvar_ra, 0, 0, 0, k);
-			avg_var = avg_var*momentum + (1 - momentum)*var;
-			nn_tensor_set(Xvar_ra, 0, 0, 0, k, avg_var);
+			xvar_ra = nn_tensor_get(Xvar_ra, 0, 0, 0, k);
+			xvar_ra = momentum*xvar_ra + (1 - momentum)*xvar_mb;
+			nn_tensor_set(Xvar_ra, 0, 0, 0, k, xvar_ra);
 		}
 	}
 
 	// compute dXvar_dX
 	float dxvar_dx;
+	float xmean;
+	float xvar;
 	float x;
 	for(k = 0; k < dim->depth; ++k)
 	{
 		dxvar_dx = 0.0f;
-		mean     = nn_tensor_get(Xmean, 0, 0, 0, k);
+		xmean    = nn_tensor_get(Xmean, 0, 0, 0, k);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < dim->height; ++i)
@@ -150,7 +154,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 				for(j = 0; j < dim->width; ++j)
 				{
 					x         = nn_tensor_get(X, m, i, j, k);
-					dxvar_dx += x - mean;
+					dxvar_dx += x - xmean;
 				}
 			}
 		}
@@ -161,8 +165,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	// compute dXhat_dX
 	for(k = 0; k < dim->depth; ++k)
 	{
-		var = nn_tensor_get(Xvar, 0, 0, 0, k);
-		nn_tensor_set(dXhat_dX, 0, 0, 0, k, 1.0f/sqrtf(var));
+		xvar = nn_tensor_get(Xvar, 0, 0, 0, k);
+		nn_tensor_set(dXhat_dX, 0, 0, 0, k,
+		              1.0f/(sqrtf(xvar) + epsilon));
 	}
 
 	// compute dXhat_dXvar
@@ -170,9 +175,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	float s;
 	for(k = 0; k < dim->depth; ++k)
 	{
-		mean = nn_tensor_get(Xmean, 0, 0, 0, k);
-		var  = nn_tensor_get(Xvar,  0, 0, 0, k);
-		s    = (1.0f/((float) bs))*(-0.5f)*powf(var, -3.0f/2.0f);
+		xmean = nn_tensor_get(Xmean, 0, 0, 0, k);
+		xvar  = nn_tensor_get(Xvar,  0, 0, 0, k);
+		s     = (1.0f/((float) bs))*(-0.5f)*powf(xvar, -3.0f/2.0f);
 		for(i = 0; i < dim->height; ++i)
 		{
 			for(j = 0; j < dim->width; ++j)
@@ -181,7 +186,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 				for(m = 0; m < bs; ++m)
 				{
 					x = nn_tensor_get(X, m, i, j, k);
-					dxhat_dxvar += x - mean;
+					dxhat_dxvar += x - xmean;
 				}
 				nn_tensor_set(dXhat_dXvar, 0, i, j, k, s*dxhat_dxvar);
 			}
@@ -193,8 +198,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	float xhat;
 	for(k = 0; k < dim->depth; ++k)
 	{
-		mean = nn_tensor_get(Xmean, 0, 0, 0, k);
-		var  = nn_tensor_get(Xvar,  0, 0, 0, k);
+		xmean = nn_tensor_get(Xmean, 0, 0, 0, k);
+		xvar  = nn_tensor_get(Xvar,  0, 0, 0, k);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < dim->height; ++i)
@@ -202,7 +207,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 				for(j = 0; j < dim->width; ++j)
 				{
 					x    = nn_tensor_get(X, m, i, j, k);
-					xhat = (x - mean)/sqrtf(var + 0.0001f);
+					xhat = (x - xmean)/(sqrtf(xvar) + epsilon);
 					nn_tensor_set(Xhat, m, i, j, k, xhat);
 				}
 			}
@@ -223,7 +228,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 					xhat = nn_tensor_get(Xhat, m, i, j, k);
 					dy_dg += xhat;
 				}
-				nn_tensor_set(dY_dG, 0, 0, 0, k, dy_dg/((float) bs));
+				nn_tensor_set(dY_dG, 0, i, j, k, dy_dg/((float) bs));
 			}
 		}
 	}
@@ -329,7 +334,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		nn_tensor_add(B, 0, 0, 0, k, -lr*dl_db);
 	}
 
-	// compute dL_dXvar
+	// compute dL_dXvar (use dL_dXhat)
 	float dl_dxvar;
 	float dl_dxhat;
 	float dxhat_dxvar;
@@ -348,7 +353,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		nn_tensor_set(dL_dXvar, 0, 0, 0, k, dl_dxvar);
 	}
 
-	// compute dL2_dXmean (store in dL_dXmean)
+	// compute dL2_dXmean (use dL_dXhat, store in dL_dXmean)
 	float dl_dxmean;
 	float dxhat_dx;
 	for(k = 0; k < dim->depth; ++k)
@@ -364,10 +369,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 			}
 		}
 		dl_dxmean *= -dxhat_dx;
+
+		// dL_dXmean = dL2_dXmean
 		nn_tensor_set(dL_dXmean, 0, 0, 0, k, dl_dxmean);
 	}
 
-	// compute dL1_dX (store in dL_dX, replace dL_dXhat)
+	// compute dL1_dX (use/replace dL_dXhat, store in dL_dX)
 	nn_tensor_t* dL1_dX = dL_dX;
 	for(k = 0; k < dim->depth; ++k)
 	{
@@ -376,6 +383,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
+				// dL_dX = dL1_dX = dL_dXhat*dXhat_dX
 				nn_tensor_mul(dL1_dX, 0, i, j, k, dxhat_dx);
 			}
 		}
@@ -387,6 +395,8 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		dl_dxvar = nn_tensor_get(dL_dXvar, 0, 0, 0, k);
 		dxvar_dx = nn_tensor_get(dXvar_dX, 0, 0, 0, k);
+
+		// dL_dXmean = dL2_dXmean + dL1_dXmean
 		nn_tensor_add(dL_dXmean, 0, 0, 0, k, -dl_dxvar*dxvar_dx);
 	}
 
@@ -402,6 +412,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
+				// dL_dX = dL1_dX + dL2_dX
 				nn_tensor_add(dL_dX, 0, i, j, k, dl2_dx);
 			}
 		}
@@ -414,10 +425,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		dl_dxmean = nn_tensor_get(dL_dXmean, 0, 0, 0, k);
 		dl3_dx    = dl_dxmean*dxmean_dx;
+
 		for(i = 0; i < dim->height; ++i)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
+				// dL_dX = dL1_dX + dL2_dX + dL3_dX
 				nn_tensor_add(dL_dX, 0, i, j, k, dl3_dx);
 			}
 		}
