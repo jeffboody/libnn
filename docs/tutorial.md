@@ -907,3 +907,11 @@ References
 * [Hyper-Parameter Optimization: A Review of Algorithms and Applications](https://arxiv.org/pdf/2003.05689.pdf)
 * [CMA-ES for Hyperparameter Optimization of Deep Neural Networks](https://arxiv.org/pdf/1604.07269.pdf)
 * [gnuplot 5.4](http://www.gnuplot.info/docs_5.4/Gnuplot_5_4.pdf)
+
+Convolutional Neural Networks (CNN)
+-----------------------------------
+
+The following computation graphs shows the derivation of the
+backpropagation algorithm for the convolution layer.
+
+![Convolution (Valid Padding)](nn-conv-valid.jpg?raw=true "Convolution (Valid Padding)")
