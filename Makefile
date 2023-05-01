@@ -2,6 +2,7 @@ TARGET  = libnn.a
 CLASSES = \
 	nn_arch           \
 	nn_batchNormLayer \
+	nn_convLayer      \
 	nn_dim            \
 	nn_factLayer      \
 	nn_layer          \
