@@ -26,6 +26,7 @@
 
 #include "nn_layer.h"
 
+// XAVIER is default
 #define NN_WEIGHT_LAYER_FLAG_XAVIER       0x0001
 #define NN_WEIGHT_LAYER_FLAG_HE           0x0002
 #define NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS 0x0010
@@ -52,7 +53,7 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* VW; // dim(nc,1,1,xd)
 	nn_tensor_t* VB; // dim(nc,1,1,1)
 
-	// forward gradients (batch mean)
+	// forward gradients
 	//           dY_dB; // 1
 	//           dY_dX; // W        : dim(nc,1,1,xd)
 	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,1,1,xd)

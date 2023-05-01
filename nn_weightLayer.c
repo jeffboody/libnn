@@ -124,6 +124,8 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* VW     = self->VW;
 	nn_tensor_t* VB     = self->VB;
 	nn_dim_t*    dim    = nn_tensor_dim(W);
+	uint32_t     nc     = dim->count;
+	uint32_t     xd     = dim->depth;
 	float        lr     = arch->learning_rate;
 	float        mu     = arch->momentum_decay;
 	float        lambda = arch->l2_lambda;
@@ -142,11 +144,11 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	float    v0;
 	float    v1;
 	float    w;
-	for(n = 0; n < dim->count; ++n)
+	for(n = 0; n < nc; ++n)
 	{
 		dl_dy = nn_tensor_get(dL_dY, 0, 0, 0, n);
 
-		for(k = 0; k < dim->depth; ++k)
+		for(k = 0; k < xd; ++k)
 		{
 			dy_dw = nn_tensor_get(dY_dW, 0, 0, 0, k);
 			w     = nn_tensor_get(W, n, 0, 0, k);
@@ -162,18 +164,18 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 		// Nesterov Momentum Update (bias)
 		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			v0 = nn_tensor_get(VB, n, 0, 0, k);
+			v0 = nn_tensor_get(VB, n, 0, 0, 0);
 			v1 = mu*v0 - lr*dl_dy*dy_db;
-			nn_tensor_set(VB, n, 0, 0, k, v1);
-			nn_tensor_add(B, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
+			nn_tensor_set(VB, n, 0, 0, 0, v1);
+			nn_tensor_add(B, n, 0, 0, 0, -mu*v0 + (1 - mu)*v1);
 		}
 	}
 
 	// backpropagate loss
-	for(k = 0; k < dim->depth; ++k)
+	for(k = 0; k < xd; ++k)
 	{
 		dl_dx = 0.0f;
-		for(n = 0; n < dim->count; ++n)
+		for(n = 0; n < nc; ++n)
 		{
 			dl_dy  = nn_tensor_get(dL_dY, 0, 0, 0, n);
 			dy_dx  = nn_tensor_get(dY_dX, n, 0, 0, k);
