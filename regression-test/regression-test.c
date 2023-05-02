@@ -40,18 +40,18 @@
 
 int main(int argc, char** argv)
 {
-	uint32_t bs = 32;
+	uint32_t max_batch_size = 64;
 
 	nn_archInfo_t arch_info =
 	{
 #if 0
-		.max_batch_size = bs,
+		.max_batch_size = max_batch_size,
 		.learning_rate  = 0.01f,
 		.momentum_decay = 0.5f,
 		.batch_momentum = 0.99f,
 		.l2_lambda      = 0.01f,
 #else
-		.max_batch_size = bs,
+		.max_batch_size = max_batch_size,
 		.learning_rate  = 0.01f,
 		.momentum_decay = 0.0f,
 		.batch_momentum = 0.99f,
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimX =
 	{
-		.count  = bs,
+		.count  = max_batch_size,
 		.width  = 1,
 		.height = 1,
 		.depth  = 1,
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimY1 =
 	{
-		.count  = bs,
+		.count  = max_batch_size,
 		.width  = 1,
 		.height = 1,
 		.depth  = 4,
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 
 	nn_weightLayer_t* l1;
 	l1 = nn_weightLayer_new(arch, &dimX, &dimY1,
-	                        NN_WEIGHT_LAYER_INITMODE_XAVIER);
+	                        NN_WEIGHT_LAYER_FLAG_XAVIER);
 	if(l1 == NULL)
 	{
 		goto fail_l1;
@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 
 	nn_dim_t dimY3 =
 	{
-		.count  = bs,
+		.count  = max_batch_size,
 		.width  = 1,
 		.height = 1,
 		.depth  = 1,
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 	nn_weightLayer_t* l3;
 	l3 = nn_weightLayer_new(arch, nn_layer_dim(&l2->base),
 	                        &dimY3,
-	                        NN_WEIGHT_LAYER_INITMODE_XAVIER);
+	                        NN_WEIGHT_LAYER_FLAG_XAVIER);
 	if(l3 == NULL)
 	{
 		goto fail_l3;
@@ -142,59 +142,71 @@ int main(int argc, char** argv)
 		goto fail_attach;
 	}
 
-	FILE* fdat;
-	fdat = fopen("output.dat", "w");
-	if(fdat == NULL)
-	{
-		goto fail_fdat;
-	}
-
 	// training
 	float    x;
 	float    y;
 	float    yt;
 	uint32_t i;
 	uint32_t m;
-	uint32_t count = 1000000;
-	for(i = 0; i < count; ++i)
+	uint32_t epoch;
+	uint32_t bs    = 1;
+	uint32_t count = 100000;
+	for(epoch = 0; epoch < 10; ++epoch)
 	{
-		if(i%1000 == 0)
+		bs *= 2;
+		if(bs > max_batch_size)
 		{
-			LOGI("train %i", i);
+			bs = max_batch_size;
 		}
 
-		for(m = 0; m < bs; ++m)
+		for(i = 0; i < count; ++i)
 		{
-			x  = 1.0f*((float) (rand()%(count + 1)))/
-			     ((float) count);
-			yt = 2.0f*x*x + 1.0f;
+			if(i%1000 == 0)
+			{
+				LOGI("train %i:%i", epoch, i);
+			}
 
-			nn_tensor_set(X, m, 0, 0, 0, x);
-			nn_tensor_set(Y, m, 0, 0, 0, yt);
+			for(m = 0; m < bs; ++m)
+			{
+				x  = 1.0f*((float) (rand()%(count + 1)))/
+				     ((float) count);
+				yt = 2.0f*x*x + 1.0f;
+
+				nn_tensor_set(X, m, 0, 0, 0, x);
+				nn_tensor_set(Y, m, 0, 0, 0, yt);
+			}
+
+			nn_arch_train(arch, bs, X, Y);
 		}
 
-		nn_arch_train(arch, bs, X, Y);
+		char fname[256];
+		snprintf(fname, 256, "output-%u.dat", epoch);
+
+		FILE* fdat;
+		fdat = fopen(fname, "w");
+		if(fdat)
+		{
+			// prediction
+			uint32_t predictions = 20;
+			for(i = 0; i < predictions; ++i)
+			{
+				LOGI("predict %i", i);
+
+				x  = 1.0f*((float) i)/((float) predictions);
+				yt = 2.0f*x*x + 1.0f;
+
+				nn_tensor_set(X, 0, 0, 0, 0, x);
+				if(nn_arch_predict(arch, X, Y))
+				{
+					y = nn_tensor_get(Y, 0, 0, 0, 0);
+
+					fprintf(fdat, "%f %f %f\n", x, yt, y);
+				}
+			}
+			fclose(fdat);
+		}
 	}
 
-	// prediction
-	count = 20;
-	for(i = 0; i < count; ++i)
-	{
-		LOGI("predict %i", i);
-
-		x  = 1.0f*((float) i)/((float) count);
-		yt = 2.0f*x*x + 1.0f;
-
-		nn_tensor_set(X, 0, 0, 0, 0, x);
-		if(nn_arch_predict(arch, X, Y))
-		{
-			y = nn_tensor_get(Y, 0, 0, 0, 0);
-
-			fprintf(fdat, "%f %f %f\n", x, yt, y);
-		}
-	}
-
-	fclose(fdat);
 	nn_mseLoss_delete(&mse_loss);
 	nn_tensor_delete(&Y);
 	nn_weightLayer_delete(&l3);
@@ -207,7 +219,6 @@ int main(int argc, char** argv)
 	return EXIT_SUCCESS;
 
 	// failure
-	fail_fdat:
 	fail_attach:
 		nn_mseLoss_delete(&mse_loss);
 	fail_mse_loss:
