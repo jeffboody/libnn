@@ -460,7 +460,18 @@ processes the entire training set at once.
 
 The computation of gradients for the mini-batch and gradient
 descent methods must be adjusted to compute the average
-gradient across the batch.
+gradient across the batch. However, it's unclear at what
+point the average gradient should be computed. For example,
+the following forward/backprop gradients can be averaged
+before or after backpropagation. Some references suggest
+that averaging should happen before while the batch
+normalization algorithm suggests that averaging should
+happen after.
+
+	dY/dX = { 4, 7 }
+	dL/dY = { 3, 6 }
+	dL/dX = (3 + 6)/2 * (4 + 7)/2 = 24.75 (average before)
+	dL/dX = (3*4 + 6*7)/2         = 27.0  (average after)
 
 The advantages of each approach includes the following.
 
