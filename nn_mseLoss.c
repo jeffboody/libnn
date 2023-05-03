@@ -42,35 +42,30 @@ nn_mseLoss_backpropFn(nn_loss_t* base, nn_tensor_t* Y,
 	ASSERT(Y);
 	ASSERT(Yt);
 
-	nn_mseLoss_t* self  = (nn_mseLoss_t*) base;
-	nn_tensor_t*  dL_dY = self->dL_dY;
-	nn_dim_t*     dim   = nn_tensor_dim(dL_dY);
+	nn_mseLoss_t* self = (nn_mseLoss_t*) base;
 
-	uint32_t bs = base->arch->batch_size;
+	nn_tensor_t* dL_dY = self->dL_dY;
+	nn_dim_t*    dim   = nn_tensor_dim(dL_dY);
+	uint32_t     bs    = base->arch->batch_size;
 
+	float    y;
+	float    yt;
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
-	uint32_t size = bs*dim->height*dim->width*dim->depth;
-	float    y;
-	float    yt;
-	float    dl_dy;
-	float    s = 2.0f/((float) size);
-	for(i = 0; i < dim->height; ++i)
+	for(m = 0; m < bs; ++m)
 	{
-		for(j = 0; j < dim->width; ++j)
+		for(i = 0; i < dim->height; ++i)
 		{
-			for(k = 0; k < dim->depth; ++k)
+			for(j = 0; j < dim->width; ++j)
 			{
-				dl_dy = 0.0f;
-				for(m = 0; m < bs; ++m)
+				for(k = 0; k < dim->depth; ++k)
 				{
 					y  = nn_tensor_get(Y, m, i, j, k);
 					yt = nn_tensor_get(Yt, m, i, j, k);
-					dl_dy += y - yt;
+					nn_tensor_set(dL_dY, m, i, j, k, 2.0f*(y - yt));
 				}
-				nn_tensor_set(dL_dY, 0, i, j, k, s*dl_dy);
 			}
 		}
 	}
@@ -83,7 +78,7 @@ nn_mseLoss_backpropFn(nn_loss_t* base, nn_tensor_t* Y,
 ***********************************************************/
 
 nn_mseLoss_t*
-nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dim)
+nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dimY)
 {
 	ASSERT(arch);
 
@@ -101,15 +96,7 @@ nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dim)
 		return NULL;
 	}
 
-	nn_dim_t dim_1hwd =
-	{
-		.count  = 1,
-		.height = dim->height,
-		.width  = dim->width,
-		.depth  = dim->depth,
-	};
-
-	self->dL_dY = nn_tensor_new(&dim_1hwd);
+	self->dL_dY = nn_tensor_new(dimY);
 	if(self->dL_dY == NULL)
 	{
 		goto fail_dL_dY;

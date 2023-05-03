@@ -44,21 +44,20 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 
 	nn_factLayer_t* self = (nn_factLayer_t*) base;
 
-	// clear forward gradients
+	nn_tensor_t* Y     = self->Y;
 	nn_tensor_t* dY_dX = self->dY_dX;
-	nn_tensor_clear(dY_dX);
+	nn_dim_t*    dim   = nn_tensor_dim(Y);
+	uint32_t     bs    = base->arch->batch_size;
 
-	// output and forward gradients (sum)
 	nn_factLayer_fn fact  = self->fact;
 	nn_factLayer_fn dfact = self->dfact;
-	nn_tensor_t*    Y     = self->Y;
-	nn_dim_t*       dim   = nn_tensor_dim(Y);
-	float           x;
-	uint32_t        m;
-	uint32_t        i;
-	uint32_t        j;
-	uint32_t        k;
-	uint32_t        bs = base->arch->batch_size;
+
+	// output and forward gradients
+	float    x;
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
 		for(i = 0; i < dim->height; ++i)
@@ -72,23 +71,10 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 					nn_tensor_set(Y, m, i, j, k,
 					              (*fact)(x));
 
-					// forward gradients (sum)
-					nn_tensor_add(dY_dX, 0, i, j, k,
+					// forward gradients
+					nn_tensor_set(dY_dX, m, i, j, k,
 					              (*dfact)(x));
 				}
-			}
-		}
-	}
-
-	// forward gradients (batch mean)
-	float s = 1.0f/((float) bs);
-	for(i = 0; i < dim->height; ++i)
-	{
-		for(j = 0; j < dim->width; ++j)
-		{
-			for(k = 0; k < dim->depth; ++k)
-			{
-				nn_tensor_mul(dY_dX, 0, i, j, k, s);
 			}
 		}
 	}
@@ -100,30 +86,36 @@ static nn_tensor_t*
 nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
-	ASSERT(dL_dY); // dim(1,xh,xw,xd)
+	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
-	nn_factLayer_t* self  = (nn_factLayer_t*) base;
-	nn_tensor_t*    dY_dX = self->dY_dX;
-	nn_tensor_t*    dL_dX = self->dL_dX;
-	nn_dim_t*       dim   = nn_tensor_dim(dL_dY);
+	nn_factLayer_t* self = (nn_factLayer_t*) base;
+
+	nn_tensor_t* dY_dX = self->dY_dX;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_dim_t*    dim   = nn_tensor_dim(dL_dY);
+	uint32_t     bs    = base->arch->batch_size;
 
 	// backpropagate loss
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
 	float    dy_dx;
 	float    dl_dx;
 	float    dl_dy;
-	for(i = 0; i < dim->height; ++i)
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(m = 0; m < bs; ++m)
 	{
-		for(j = 0; j < dim->width; ++j)
+		for(i = 0; i < dim->height; ++i)
 		{
-			for(k = 0; k < dim->depth; ++k)
+			for(j = 0; j < dim->width; ++j)
 			{
-				dl_dy = nn_tensor_get(dL_dY, 0, i, j, k);
-				dy_dx = nn_tensor_get(dY_dX, 0, i, j, k);
-				dl_dx = dl_dy*dy_dx;
-				nn_tensor_set(dL_dX, 0, i, j, k, dl_dx);
+				for(k = 0; k < dim->depth; ++k)
+				{
+					dl_dy = nn_tensor_get(dL_dY, m, i, j, k);
+					dy_dx = nn_tensor_get(dY_dX, m, i, j, k);
+					dl_dx = dl_dy*dy_dx;
+					nn_tensor_set(dL_dX, m, i, j, k, dl_dx);
+				}
 			}
 		}
 	}
@@ -221,12 +213,12 @@ float nn_factLayer_dtanh(float x)
 ***********************************************************/
 
 nn_factLayer_t*
-nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
+nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
                  nn_factLayer_fn fact,
                  nn_factLayer_fn dfact)
 {
 	ASSERT(arch);
-	ASSERT(dim);
+	ASSERT(dimX);
 	ASSERT(fact);
 	ASSERT(dfact);
 
@@ -246,27 +238,19 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dim,
 		return NULL;
 	}
 
-	self->Y = nn_tensor_new(dim);
+	self->Y = nn_tensor_new(dimX);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	nn_dim_t dim_1hwd =
-	{
-		.count  = 1,
-		.height = dim->height,
-		.width  = dim->width,
-		.depth  = dim->depth,
-	};
-
-	self->dY_dX = nn_tensor_new(&dim_1hwd);
+	self->dY_dX = nn_tensor_new(dimX);
 	if(self->dY_dX == NULL)
 	{
 		goto fail_dY_dX;
 	}
 
-	self->dL_dX = nn_tensor_new(&dim_1hwd);
+	self->dL_dX = nn_tensor_new(dimX);
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;

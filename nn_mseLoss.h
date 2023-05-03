@@ -31,11 +31,11 @@ typedef struct nn_mseLoss_s
 	nn_loss_t base;
 
 	// backprop gradients
-	nn_tensor_t* dL_dY; // dim(1,yh,yw,yd)
+	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
 } nn_mseLoss_t;
 
 nn_mseLoss_t* nn_mseLoss_new(nn_arch_t* arch,
-                             nn_dim_t* dim);
+                             nn_dim_t* dimY);
 void          nn_mseLoss_delete(nn_mseLoss_t** _self);
 
 #endif

@@ -37,14 +37,11 @@ typedef struct nn_weightLayer_s
 
 	int flags;
 
-	// dimX and dimY will be flattened internally
-	// to match the sizes listed below however the
-	// external sizes will match the requested sizes
-
 	// weights, bias, output
 	//           bs; // batch size
 	//           nc; // node count
 	//           X;  // dim(bs,1,1,xd)
+	nn_tensor_t* X;  // dim(bs,1,1,xd) (reference)
 	nn_tensor_t* W;  // dim(nc,1,1,xd)
 	nn_tensor_t* B;  // dim(nc,1,1,1)
 	nn_tensor_t* Y;  // dim(bs,1,1,nc)
@@ -54,13 +51,15 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* VB; // dim(nc,1,1,1)
 
 	// forward gradients
-	//           dY_dB; // 1
-	//           dY_dX; // W        : dim(nc,1,1,xd)
-	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,1,1,xd)
+	// dY_dB; // 1
+	// dY_dX; // W : dim(nc,1,1,xd)
+	// dY_dW; // X : dim(bs,1,1,xd)
 
 	// backprop gradients
-	//           dL_dY; // dim(1,1,1,nc)
-	nn_tensor_t* dL_dX; // dim(1,1,1,xd)
+	//           dL_dY; // dim(bs,1,1,nc)
+	nn_tensor_t* dL_dW; // dim(nc,1,1,xd)
+	nn_tensor_t* dL_dB; // dim(nc,1,1,1)
+	nn_tensor_t* dL_dX; // dim(bs,1,1,xd)
 } nn_weightLayer_t;
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,

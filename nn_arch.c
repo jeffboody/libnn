@@ -55,7 +55,6 @@ nn_arch_t* nn_arch_new(size_t base_size,
 		return NULL;
 	}
 
-	self->max_batch_size = info->max_batch_size;
 	self->learning_rate  = info->learning_rate;
 	self->momentum_decay = info->momentum_decay;
 	self->batch_momentum = info->batch_momentum;

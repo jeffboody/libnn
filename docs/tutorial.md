@@ -218,11 +218,11 @@ highly sensitive to outliers due to the squared term.
 
 	MSE
 	L(Y,Yt) = (1/n)*SUM((yi - yti)^2)
-	dL/dyi  = (2/n)*(yi - yti)
+	dL/dyi  = 2*(yi - yti)
 
 	MAE
 	L(Y,Yt) = (1/n)*SUM(|yi - yti|)
-	dL/dyi  = (1/n)*(yi - yti)/|yi - yti|
+	dL/dyi  = (yi - yti)/|yi - yti|
 
 The Categorical Cross Entropy Loss is the most commonly used
 loss function for classification problems. Additionally, the

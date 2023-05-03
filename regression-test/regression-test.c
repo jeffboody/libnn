@@ -44,19 +44,10 @@ int main(int argc, char** argv)
 
 	nn_archInfo_t arch_info =
 	{
-#if 0
-		.max_batch_size = max_batch_size,
-		.learning_rate  = 0.01f,
-		.momentum_decay = 0.5f,
-		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.01f,
-#else
-		.max_batch_size = max_batch_size,
 		.learning_rate  = 0.01f,
 		.momentum_decay = 0.0f,
 		.batch_momentum = 0.99f,
 		.l2_lambda      = 0.0001f,
-#endif
 	};
 
 	nn_arch_t* arch = nn_arch_new(0, &arch_info);

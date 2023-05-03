@@ -42,21 +42,21 @@ typedef struct
 	// weights, bias, output
 	// yh = (xh - fh + 1) (valid) or xh (same)
 	// yw = (xw - fw + 1) (valid) or xw (same)
-	//           X; // dim(bs,xh,xw,xd)
+	nn_tensor_t* X; // dim(bs,xh,xw,xd) (reference)
 	nn_tensor_t* W; // dim(fc,fh,fw,xd)
 	nn_tensor_t* B; // dim(fc,1,1,1)
 	nn_tensor_t* Y; // dim(bs,yh,yw,fc)
 
 	// forward gradients
-	//           dY_dB; // 1
-	//           dY_dX; // W        : dim(fc,fh,fw,xd)
-	nn_tensor_t* dY_dW; // SUM_X/bs : dim(1,xh,xw,xd)
+	// dY_dB; // 1
+	// dY_dX; // W : dim(fc,fh,fw,xd)
+	// dY_dW; // X : dim(bs,xh,xw,xd)
 
 	// backprop gradients
-	//           dL_dY; // dim(1,yh,yw,fc)
+	//           dL_dY; // dim(bs,yh,yw,fc)
 	nn_tensor_t* dL_dW; // dim(fc,fh,fw,xd)
 	nn_tensor_t* dL_dB; // dim(fc,1,1,1)
-	nn_tensor_t* dL_dX; // dim(1,xh,xw,xd)
+	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 } nn_convLayer_t;
 
 nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,

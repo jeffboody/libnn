@@ -11,8 +11,8 @@ digraph NN
 	X    [shape=box, label="X\ndim(bs,xh,xw,xd)"];
 	W    [shape=box, label="W\ndim(fc,fh,fw,xd)"];
 	B    [shape=box, label="B\ndim(fc,1,1,1)"];
-	Y    [shape=box, label="Y\ndim(bs,yh,yw,fc)\n\nyh = xh - fh + 1\nyw = xw - fw + 1\n\ndL/dY\ndim(1,yh,yw,fc)"];
-	conv [label="Convolution\n\nForward Pass\nY = conv(X, W, B)\nY[m,i,j,f] = SUM(fi=0:fh, fj=0:fw, k=0:xd, W[f,fi,fj,k]*X[m,i + fi,j + fj,k]) + B[f,0,0,0]\ndim(bs,yh,yw,fc)\n\nForward Gradients\ndY/dX = W\ndim(fc,fh,fw,xd)\n\ndY/dW = (1/bs)*SUM(m=0:bs, X)\ndim(1,xh,xw,xd)\n\ndY/dB = 1\n\nBackpropagation\ndL/dX = (dL/dY)*(dY/dX)\ndL_dX[0,i + fi,j + fj,k] += dL_dY[0,i,j,f]*dY_dX[f,fi,fj,k]\ndim(1,xh,xw,xd)\n\ndL/dW = (dL/dY)*(dY/dW)\ndL_dW[f,fi,fj,k] += dL_dY[0,i,j,f]*dY_dW[0, i + fi, j + fj, k]\ndim(fc,fh,fw,xd)\n\ndL/dB = (dL/dY)*(dY/dB)\ndL/dB[f,0,0,0] += dL/dY[0,i,j,f]\ndim(fc,1,1,1)"];
+	Y    [shape=box, label="Y\ndim(bs,yh,yw,fc)\n\nyh = xh - fh + 1\nyw = xw - fw + 1\n\ndL/dY\ndim(bs,yh,yw,fc)"];
+	conv [label="Convolution\n\nForward Pass\nY = conv(X, W, B)\nY[m,i,j,f] = SUM(fi=0:fh, fj=0:fw, k=0:xd, W[f,fi,fj,k]*X[m,i + fi,j + fj,k]) + B[f,0,0,0]\ndim(bs,yh,yw,fc)\n\nForward Gradients\ndY/dX = W\ndim(fc,fh,fw,xd)\n\ndY/dW = X\ndim(bs,xh,xw,xd)\n\ndY/dB = 1\n\nBackpropagation\ndL/dX = (dL/dY)*(dY/dX)\ndL_dX[m,i + fi,j + fj,k] += dL_dY[m,i,j,f]*dY_dX[f,fi,fj,k]\ndim(bs,xh,xw,xd)\n\ndL/dW = (dL/dY)*(dY/dW)\ndL_dW[f,fi,fj,k] += dL_dY[m,i,j,f]*dY_dW[m, i + fi, j + fj, k]\ndL_dW *= 1/bs\ndim(fc,fh,fw,xd)\n\ndL/dB = (dL/dY)*(dY/dB)\ndL_dB[f,0,0,0] += dL/dY[m,i,j,f]\ndL_dB *= 1/bs\ndim(fc,1,1,1)"];
 
 	{ rank=same X -> W [style=invis] };
 	{ rank=same W -> B [style=invis] };
