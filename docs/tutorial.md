@@ -525,31 +525,11 @@ normalization algorithm.
 
 ![BN Overview](nn-batch-norm-overview.jpg?raw=true "BN Overview")
 
-The following computation graphs shows the derivation of the
-backpropagation algorithm for the BN layer.
+The backpropagation equations derived by the original BN
+paper are reportedly 3x slower than these derived by Kevin
+Zakka's blog post.
 
-![BN Mean](nn-batch-norm-mean.jpg?raw=true "BN Mean")
-![BN Variance](nn-batch-norm-variance.jpg?raw=true "BN Variance")
-![BN Normalization](nn-batch-norm-normalize.jpg?raw=true "BN Normalization")
-![BN Scale and Shift](nn-batch-norm-scale-and-shift.jpg?raw=true "BN Scale and Shift")
-
-These diagrams may be viewed in vector form using the xdot
-program.
-
-	xdot nn-batch-norm.dot
-
-This derivation differs from the original BN paper and the
-cs231n class references as follows.
-
-* Gradients are averaged over the mini-batch
-* Tensors are configured for convolution by default
-* Nodes of the computation graph are the BN functions
-
-WARNING: It's TBD if the use of average gradients is a valid
-approach however it seems reasonable to apply the mini-batch
-method in conjuction with the BN algorithm. This approach
-should achieve the same benefits as the mini-batch method,
-improve performance and reduce the memory footprint.
+![BN Backpropagation](nn-batch-norm-backprop.jpg?raw=true "BN Backpropagation")
 
 As per the original algorithm, the per-channel/per-filter
 mean and variance are also calculated during training from
@@ -604,6 +584,7 @@ References
 * [CS231n Winter 2016: Lecture 5: Neural Networks Part 2](https://www.youtube.com/watch?v=gYpoJMlgyXA&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=5)
 * [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
 * [Moving average in Batch Normalization](https://jiafulow.github.io/blog/2021/01/29/moving-average-in-batch-normalization/)
+* [Deriving the Gradient for the Backward Pass of Batch Normalization](https://kevinzakka.github.io/2016/09/14/batch_normalization/)
 * [Understanding the backward pass through Batch Normalization Layer](http://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html)
 * [Matrix form of backpropagation with batch normalization](https://stats.stackexchange.com/questions/328242/matrix-form-of-backpropagation-with-batch-normalization)
 

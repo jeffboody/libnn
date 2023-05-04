@@ -5,36 +5,18 @@ digraph NN
 {
 	label="Batch Normalization";
 	fontsize=20;
-	size="4,3";
+	size="16,9";
 	ratio=fill;
 
-	// X [shape=box, label="X"];
-	X [shape=box, label="X\ndim(bs,xh,xw,xd)\n\nbs = batch_size\nxh = X.height\nxw = X.width\nxd = X.depth\n\nCombine Loss\ndL/dX = dL1/dX + dL2/dX + dL3/dX"];
-
-	// Y [shape=box, label="Y"];
-	Y [shape=box, label="Y\ndim(bs,xh,xw,xd)\n\ndL/dY\ndim(1,xh,xw,xd)"];
-
-	// G [shape=box, label="G = gamma"];
+	X [shape=box, label="X\ndim(bs,xh,xw,xd)\n\nbs = batch_size\nxh = X.height\nxw = X.width\nxd = X.depth"];
+	Y [shape=box, label="Y\ndim(bs,xh,xw,xd)\n\ndL/dY\ndim(bs,xh,xw,xd)"];
 	G [shape=box, label="G = gamma\ndim(1,1,1,xd)"];
-
-	// B [shape=box, label="B = beta"];
 	B [shape=box, label="B = beta\ndim(1,1,1,xd)"];
 
-	// Xmean [label="Mean"];
-	// Xmean [label="Mean\n\nXmean = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, X)"];
-	Xmean [label="Mean\n\nForward Pass\nXmean = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, X)\ndim(1,1,1,xd)\n\nForward Gradients\ndXmean/dX = 1/(xw*xh) (Special Case)\n\nCombine Loss\ndL/dXmean = (dL1/dXmean) + (dL2/dXmean)\n\nBackpropagate Loss\ndL3/dX = (dL/dXmean)*(dXmean/dX)\ndim(1,1,1,xd)"];
-
-	// Xvar [label="Variance"];
-	// Xvar [label="Variance\n\nXvar = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, (X - Xmean)^2)"];
-	Xvar [label="Variance\n\nForward Pass\nXvar = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, (X - Xmean)^2)\ndim(1,1,1,xd)\n\nForward Gradients\ndXvar/dX = 2/(bs*xh*xd)*SUM(m=1:bs, i=1:xh, j=1:xw, X - Xmean)\ndim(1,1,1,xd)\n\ndXvar/dXmean = -2/(bs*xh*xd)*SUM(m=0:bs, i=0:xh, j=0:xw, X - Xmean) = -dXvar/dX\ndim(1,1,1,xd)\n\nBackpropagate Loss\ndL1/dXmean = (dL/dXvar)*(dXvar/dXmean) = (dL/dXvar)*(-dXvar/dX)\ndim(1,1,1,xd)\n\ndL2/dX = (dL/dXvar)*(dXvar/dX)\ndim(1,1,1,xd)"];
-
-	// Xhat [label="Normalize"];
-	// Xhat [label="Normalize\n\nXhat = (X - Xmean)/sqrt(Xvar)"];
-	Xhat [label="Normalize\n\nForward Pass\nXhat = (X - Xmean)/sqrt(Xvar)\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndXhat/dX = 1/sqrt(Xvar)\ndim(1,1,1,xd)\n\ndXhat/dXmean = -1/sqrt(Xvar) = -dXhat/dX\ndim(1,1,1,xd)\n\ndXhat/dXvar = (1/bs)*(-1/2)*Xvar^(-3/2)*SUM(m=1:bs, X - Xmean)\ndim(1,xh,xw,xd)\n\nBackpropagate Loss\ndL/dXvar = SUM(i=1:xh, j=1:xw, (dL/dXhat)*(dXhat/dXvar))\ndim(1,1,1,xd)\n\ndL1/dX = (dL/dXhat)*(dXhat/dX)\ndim(1,xh,xw,xd)\n\ndL2/dXmean = (dL/dXhat)*(dXhat/dXmean) = (-dXhat/dX)*SUM(i=1:xh, j=1:xw, dL/dXhat)\ndim(1,1,1,xd)"];
-
-	// BN [label="Scale and Shift"];
-	// BN [label="Scale and Shift\n\nY = G*Xhat + B"];
-	BN [label="Scale and Shift\n\nForward Pass\nY = G*Xhat + B\ndim(bs,xh,xw,xd)\n\nForward Gradients\ndY/dXhat = G\n\ndY/dG = (1/bs)*SUM(m=1:bs, Xhat)\ndim(1,xh,xw,xd)\n\ndY/dB = 1\n\nBackpropagate Loss\ndL/dXhat = (dL/dY)*(dY/dXhat) = (dL/dY)*G\ndim(1,xh,xw,xd)\n\ndL/dG = SUM(i=1:xh, j=1:xw, (dL/dY)*(dY/dG))\ndim(1,1,1,xd)\n\ndL/dB = (dL/dY)*(dY/dB) = SUM(i=1:xh, j=1:xw, dL/dY)\ndim(1,1,1,xd)"];
+	Xmean [label="Mean\n\nXmean = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, X)\ndim(1,1,1,xd)"];
+	Xvar  [label="Variance\n\nXvar = (1/(bs*xh*xw))*SUM(m=1:bs, i=1:xh, j=1:xw, (X - Xmean)^2)\ndim(1,1,1,xd)"];
+	Xhat  [label="Normalize\n\nXhat = (X - Xmean)/sqrt(Xvar)\ndim(bs,xh,xw,xd)"];
+	BN    [label="Scale and Shift\n\nY = G*Xhat + B\ndim(bs,xh,xw,xd)"];
 
 	{ rank=same Xhat -> G [style=invis] };
 	{ rank=same G -> B [style=invis] };
@@ -51,16 +33,4 @@ digraph NN
 	G     -> BN;
 	B     -> BN;
 	BN    -> Y;
-
-	// backpropagation
-	Xmean -> X     [fontcolor=magenta, color=magenta, label="dL3/dX"];
-	Xvar  -> X     [fontcolor=magenta, color=magenta, label="dL2/dX"];
-	Xvar  -> Xmean [fontcolor=magenta, color=magenta, label="dL1/dXmean"];
-	Xhat  -> Xmean [fontcolor=magenta, color=magenta, label="dL2/dXmean"];
-	Xhat  -> Xvar  [fontcolor=magenta, color=magenta, label="dL/dXvar"];
-	Xhat  -> X     [fontcolor=magenta, color=magenta, label="dL1/dX"];
-	Y     -> BN    [fontcolor=magenta, color=magenta, label="dL/dY"];
-	BN    -> B     [fontcolor=magenta, color=magenta, label="dL/dB"];
-	BN    -> G     [fontcolor=magenta, color=magenta, label="dL/dG"];
-	BN    -> Xhat  [fontcolor=magenta, color=magenta, label="dL/dXhat"];
 }
