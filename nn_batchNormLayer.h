@@ -30,10 +30,11 @@ typedef struct nn_batchNormLayer_s
 {
 	nn_layer_t base;
 
-	// gamma, beta, output
-	nn_tensor_t* G; // dim(1,1,1,xd)
-	nn_tensor_t* B; // dim(1,1,1,xd)
-	nn_tensor_t* Y; // dim(bs,xh,xw,xd)
+	// gamma, beta, xhat, output
+	nn_tensor_t* G;    // dim(1,1,1,xd)
+	nn_tensor_t* B;    // dim(1,1,1,xd)
+	nn_tensor_t* Xhat; // dim(bs,xh,xw,xd)
+	nn_tensor_t* Y;    // dim(bs,xh,xw,xd)
 
 	// mini-batch mean/variance
 	nn_tensor_t* Xmean_mb; // dim(1,1,1,xd)
@@ -43,21 +44,14 @@ typedef struct nn_batchNormLayer_s
 	nn_tensor_t* Xmean_ra; // dim(1,1,1,xd)
 	nn_tensor_t* Xvar_ra;  // dim(1,1,1,xd)
 
-	// forward gradients
-	nn_tensor_t* dXvar_dX;    // dim(1,1,1,xd)
-	nn_tensor_t* dXhat_dX;    // dim(1,1,1,xd)
-	nn_tensor_t* dXhat_dXvar; // dim(1,xh,xw,xd)
-	nn_tensor_t* dY_dG;       // dim(1,xh,xw,xd)
-
 	// backprop gradients
-	//           dL_dY;     // dim(1,xh,xw,xd)
-	nn_tensor_t* dL_dX;     // dim(1,xh,xw,xd)
-	nn_tensor_t* dL_dXvar;  // dim(1,1,1,xd)
-	nn_tensor_t* dL_dXmean; // dim(1,1,1,xd)
+	//           dL_dY;     // dim(bs,xh,xw,xd)
+	nn_tensor_t* dL_dX;     // dim(bs,xh,xw,xd)
+	nn_tensor_t* dL_dXhat;  // dim(bs,xh,xw,xd)
 } nn_batchNormLayer_t;
 
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,
-                                           nn_dim_t* dim);
+                                           nn_dim_t* dimX);
 void                 nn_batchNormLayer_delete(nn_batchNormLayer_t** _self);
 
 #endif

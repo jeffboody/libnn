@@ -559,14 +559,7 @@ The neural network may learn the identity operation (e.g.
 beta is the mean and gamma is the inverse of standard
 deviation) should this be optimal.
 
-Note that the derivation of the backpropagation algorithm
-for the non-convolution case is equivalent to setting xh
-and xw to 1.
-
 Note that the tensor operations are component-wise.
-
-Note that the original BN paper is missing a summation in
-the dL/dX term.
 
 Be sure to add a small epsilon to avoid divide-by-zero
 problems.

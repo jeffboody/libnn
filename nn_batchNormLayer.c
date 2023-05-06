@@ -44,25 +44,27 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	ASSERT(X);
 
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
+	nn_arch_t*           arch = base->arch;
 
 	float epsilon = 0.0001f;
 
-	nn_tensor_t* G           = self->G;
-	nn_tensor_t* B           = self->B;
-	nn_tensor_t* Y           = self->Y;
-	nn_tensor_t* Xmean_mb    = self->Xmean_mb;
-	nn_tensor_t* Xvar_mb     = self->Xvar_mb;
-	nn_tensor_t* Xmean_ra    = self->Xmean_ra;
-	nn_tensor_t* Xvar_ra     = self->Xvar_ra;
-	nn_tensor_t* dXvar_dX    = self->dXvar_dX;
-	nn_tensor_t* dXhat_dX    = self->dXhat_dX;
-	nn_tensor_t* dXhat_dXvar = self->dXhat_dXvar;
-	nn_tensor_t* dY_dG       = self->dY_dG;
+	nn_tensor_t* G        = self->G;
+	nn_tensor_t* B        = self->B;
+	nn_tensor_t* Xhat     = self->Xhat;
+	nn_tensor_t* Y        = self->Y;
+	nn_tensor_t* Xmean_mb = self->Xmean_mb;
+	nn_tensor_t* Xvar_mb  = self->Xvar_mb;
+	nn_tensor_t* Xmean_ra = self->Xmean_ra;
+	nn_tensor_t* Xvar_ra  = self->Xvar_ra;
+	nn_dim_t*    dim      = nn_tensor_dim(X);
+	uint32_t     bs       = arch->batch_size;
+	uint32_t     xh       = dim->height;
+	uint32_t     xw       = dim->width;
+	uint32_t     xd       = dim->depth;
 
 	// prediction or training
 	nn_tensor_t* Xmean = self->Xmean_ra;
 	nn_tensor_t* Xvar  = self->Xvar_ra;
-	uint32_t     bs    = base->arch->batch_size;
 	if(bs > 1)
 	{
 		Xmean = self->Xmean_mb;
@@ -71,31 +73,31 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 
 	// compute mini-batch mean
 	// update running mean
-	float     xmean_ra;
-	float     xmean_mb;
-	float     momentum = base->arch->batch_momentum;
-	uint32_t  m;
-	uint32_t  i;
-	uint32_t  j;
-	uint32_t  k;
-	nn_dim_t* dim = nn_tensor_dim(X);
+	float    xmean_ra;
+	float    xmean_mb;
+	float    momentum = arch->batch_momentum;
+	float    M = (float) (bs*xh*xw);
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
 	if(bs > 1)
 	{
-		for(k = 0; k < dim->depth; ++k)
+		for(k = 0; k < xd; ++k)
 		{
 			// compute mini-batch mean
 			xmean_mb = 0.0f;
 			for(m = 0; m < bs; ++m)
 			{
-				for(i = 0; i < dim->height; ++i)
+				for(i = 0; i < xh; ++i)
 				{
-					for(j = 0; j < dim->width; ++j)
+					for(j = 0; j < xw; ++j)
 					{
 						xmean_mb += nn_tensor_get(X, m, i, j, k);
 					}
 				}
 			}
-			xmean_mb /= (float) (bs*dim->width*dim->height);
+			xmean_mb /= M;
 			nn_tensor_set(Xmean_mb, 0, 0, 0, k, xmean_mb);
 
 			// update running mean
@@ -112,23 +114,23 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	float dx;
 	if(bs > 1)
 	{
-		for(k = 0; k < dim->depth; ++k)
+		for(k = 0; k < xd; ++k)
 		{
 			// compute mini-batch variance
 			xvar_mb  = 0.0f;
 			xmean_mb = nn_tensor_get(Xmean_mb, 0, 0, 0, k);
 			for(m = 0; m < bs; ++m)
 			{
-				for(i = 0; i < dim->height; ++i)
+				for(i = 0; i < xh; ++i)
 				{
-					for(j = 0; j < dim->width; ++j)
+					for(j = 0; j < xw; ++j)
 					{
 						dx       = nn_tensor_get(X, m, i, j, k) - xmean_mb;
 						xvar_mb += dx*dx;
 					}
 				}
 			}
-			xvar_mb /= (float) (bs*dim->width*dim->height);
+			xvar_mb /= M;
 			nn_tensor_set(Xvar_mb, 0, 0, 0, k, xvar_mb);
 
 			// update running variance
@@ -138,73 +140,20 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		}
 	}
 
-	// compute dXvar_dX
-	float dxvar_dx;
+	// compute Xhat
+	float xhat;
+	float x;
 	float xmean;
 	float xvar;
-	float x;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dxvar_dx = 0.0f;
-		xmean    = nn_tensor_get(Xmean, 0, 0, 0, k);
-		for(m = 0; m < bs; ++m)
-		{
-			for(i = 0; i < dim->height; ++i)
-			{
-				for(j = 0; j < dim->width; ++j)
-				{
-					x         = nn_tensor_get(X, m, i, j, k);
-					dxvar_dx += x - xmean;
-				}
-			}
-		}
-		dxvar_dx *= 2.0f/((float) (bs*dim->height*dim->width));
-		nn_tensor_set(dXvar_dX, 0, 0, 0, k, dxvar_dx);
-	}
-
-	// compute dXhat_dX
-	for(k = 0; k < dim->depth; ++k)
-	{
-		xvar = nn_tensor_get(Xvar, 0, 0, 0, k);
-		nn_tensor_set(dXhat_dX, 0, 0, 0, k,
-		              1.0f/(sqrtf(xvar) + epsilon));
-	}
-
-	// compute dXhat_dXvar
-	float dxhat_dxvar;
-	float s;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		xmean = nn_tensor_get(Xmean, 0, 0, 0, k);
-		xvar  = nn_tensor_get(Xvar,  0, 0, 0, k);
-		s     = (1.0f/((float) bs))*(-0.5f)*powf(xvar, -3.0f/2.0f);
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				dxhat_dxvar = 0.0f;
-				for(m = 0; m < bs; ++m)
-				{
-					x = nn_tensor_get(X, m, i, j, k);
-					dxhat_dxvar += x - xmean;
-				}
-				nn_tensor_set(dXhat_dXvar, 0, i, j, k, s*dxhat_dxvar);
-			}
-		}
-	}
-
-	// compute Xhat (store in Y)
-	nn_tensor_t* Xhat = Y;
-	float xhat;
-	for(k = 0; k < dim->depth; ++k)
+	for(k = 0; k < xd; ++k)
 	{
 		xmean = nn_tensor_get(Xmean, 0, 0, 0, k);
 		xvar  = nn_tensor_get(Xvar,  0, 0, 0, k);
 		for(m = 0; m < bs; ++m)
 		{
-			for(i = 0; i < dim->height; ++i)
+			for(i = 0; i < xh; ++i)
 			{
-				for(j = 0; j < dim->width; ++j)
+				for(j = 0; j < xw; ++j)
 				{
 					x    = nn_tensor_get(X, m, i, j, k);
 					xhat = (x - xmean)/(sqrtf(xvar) + epsilon);
@@ -214,38 +163,19 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		}
 	}
 
-	// compute dY_dG (use Xhat)
-	float dy_dg;
-	for(i = 0; i < dim->height; ++i)
-	{
-		for(j = 0; j < dim->width; ++j)
-		{
-			for(k = 0; k < dim->depth; ++k)
-			{
-				dy_dg = 0.0f;
-				for(m = 0; m < bs; ++m)
-				{
-					xhat = nn_tensor_get(Xhat, m, i, j, k);
-					dy_dg += xhat;
-				}
-				nn_tensor_set(dY_dG, 0, i, j, k, dy_dg/((float) bs));
-			}
-		}
-	}
-
-	// compute Y (replace Xhat)
+	// compute Y
 	float y;
 	float gamma;
 	float beta;
-	for(k = 0; k < dim->depth; ++k)
+	for(k = 0; k < xd; ++k)
 	{
 		gamma = nn_tensor_get(G, 0, 0, 0, k);
-		beta  = nn_tensor_get(B,  0, 0, 0, k);
+		beta  = nn_tensor_get(B, 0, 0, 0, k);
 		for(m = 0; m < bs; ++m)
 		{
-			for(i = 0; i < dim->height; ++i)
+			for(i = 0; i < xh; ++i)
 			{
-				for(j = 0; j < dim->width; ++j)
+				for(j = 0; j < xw; ++j)
 				{
 					xhat = nn_tensor_get(Xhat, m, i, j, k);
 					y    = gamma*xhat + beta;
@@ -258,182 +188,140 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	return Y;
 }
 
+static void
+nn_batchNormLayer_backpropSum(nn_batchNormLayer_t* self,
+                              uint32_t k, float* _b, float* _c)
+{
+	ASSERT(self);
+	ASSERT(_b);
+	ASSERT(_c);
+
+	nn_arch_t* arch = self->base.arch;
+
+	nn_tensor_t* Xhat     = self->Xhat;
+	nn_tensor_t* dL_dXhat = self->dL_dXhat;
+	nn_dim_t*    dim      = nn_tensor_dim(Xhat);
+
+	uint32_t bs = arch->batch_size;
+	uint32_t xh = dim->height;
+	uint32_t xw = dim->width;
+
+	float b = 0.0f;
+	float c = 0.0f;
+
+	float    dl_dxhat;
+	float    xhat;
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	for(m = 0; m < bs; ++m)
+	{
+		for(i = 0; i < xh; ++i)
+		{
+			for(j = 0; j < xw; ++j)
+			{
+				dl_dxhat = nn_tensor_get(dL_dXhat, m, i, j, k);
+				xhat     = nn_tensor_get(Xhat, m, i, j, k);
+				b       += dl_dxhat;
+				c       += dl_dxhat*xhat;
+			}
+		}
+	}
+
+	*_b = b;
+	*_c = c;
+}
+
 static nn_tensor_t*
 nn_batchNormLayer_backpropFn(nn_layer_t* base,
                              nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
-	ASSERT(dL_dY); // dim(1,xh,xw,xd)
+	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
 	nn_arch_t*           arch = base->arch;
 
-	nn_tensor_t* G           = self->G;
-	nn_tensor_t* B           = self->B;
-	nn_tensor_t* dXvar_dX    = self->dXvar_dX;
-	nn_tensor_t* dXhat_dX    = self->dXhat_dX;
-	nn_tensor_t* dXhat_dXvar = self->dXhat_dXvar;
-	nn_tensor_t* dY_dG       = self->dY_dG;
-	nn_tensor_t* dL_dX       = self->dL_dX;
-	nn_tensor_t* dL_dXvar    = self->dL_dXvar;
-	nn_tensor_t* dL_dXmean   = self->dL_dXmean;
-	nn_dim_t*    dim         = nn_tensor_dim(dL_dY);
-	float        lr          = arch->learning_rate;
+	float epsilon = 0.0001f;
 
-	// compute dL_dXhat (store in dL_dX)
-	nn_tensor_t* dL_dXhat = dL_dX;
+	nn_tensor_t* G        = self->G;
+	nn_tensor_t* B        = self->B;
+	nn_tensor_t* Xhat     = self->Xhat;
+	nn_tensor_t* Xvar_mb  = self->Xvar_mb;
+	nn_tensor_t* dL_dX    = self->dL_dX;
+	nn_tensor_t* dL_dXhat = self->dL_dXhat;
+	nn_dim_t*    dim      = nn_tensor_dim(dL_dY);
+	float        lr       = arch->learning_rate;
+	uint32_t     bs       = arch->batch_size;
+	uint32_t     xh       = dim->height;
+	uint32_t     xw       = dim->width;
+	uint32_t     xd       = dim->depth;
+
+	// compute dL_dXhat
+	float dl_dy;
+	float gamma;
+	uint32_t m;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
-	float    gamma;
-	float    dl_dy;
-	for(k = 0; k < dim->depth; ++k)
+	for(k = 0; k < xd; ++k)
 	{
 		gamma = nn_tensor_get(G, 0, 0, 0, k);
-		for(i = 0; i < dim->height; ++i)
+		for(m = 0; m < bs; ++m)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(i = 0; i < xh; ++i)
 			{
-				dl_dy = nn_tensor_get(dL_dY, 0, i, j, k);
-				nn_tensor_set(dL_dXhat, 0, i, j, k, dl_dy*gamma);
+				for(j = 0; j < xw; ++j)
+				{
+					dl_dy = nn_tensor_get(dL_dY, m, i, j, k);
+					nn_tensor_set(dL_dXhat, m, i, j, k, dl_dy*gamma);
+				}
 			}
 		}
 	}
 
-	// compute dL_dG and update G
-	float dy_dg;
+	// update G and B
+	// compute dL_dX
+	float dl_db;
 	float dl_dg;
-	for(k = 0; k < dim->depth; ++k)
+	float xhat;
+	float a;
+	float b;
+	float c;
+	float d;
+	float xvar;
+	float dl_dxhat;
+	float M = (float) (bs*xh*xw);
+	for(k = 0; k < xd; ++k)
 	{
 		dl_dg = 0.0f;
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				dl_dy  = nn_tensor_get(dL_dY, 0, i, j, k);
-				dy_dg  = nn_tensor_get(dY_dG, 0, i, j, k);
-				dl_dg += dl_dy*dy_dg;
-			}
-		}
-		nn_tensor_add(G, 0, 0, 0, k, -lr*dl_dg);
-	}
-
-	// compute dL_dB and update B
-	float dl_db;
-	for(k = 0; k < dim->depth; ++k)
-	{
 		dl_db = 0.0f;
-		for(i = 0; i < dim->height; ++i)
+		xvar  = nn_tensor_get(Xvar_mb, 0, 0, 0, k);
+		d     = M*sqrtf(xvar + epsilon);
+		for(m = 0; m < bs; ++m)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(i = 0; i < xh; ++i)
 			{
-				dl_dy = nn_tensor_get(dL_dY, 0, i, j, k);
-				dl_db += dl_dy;
+				for(j = 0; j < xw; ++j)
+				{
+					// compute dl_dg and dl_db
+					dl_dy  = nn_tensor_get(dL_dY, m, i, j, k);
+					xhat   = nn_tensor_get(Xhat, m, i, j, k);
+					dl_dg += dl_dy*xhat;
+					dl_db += dl_dy;
+
+					// compute dL_dX
+					dl_dxhat = nn_tensor_get(dL_dXhat, m, i, j, k);
+					a        = M*dl_dxhat;
+					nn_batchNormLayer_backpropSum(self, k, &b, &c);
+					nn_tensor_set(dL_dX, m, i, j, k, (a - b - xhat*c)/d);
+				}
 			}
 		}
+
+		// update G and B
+		nn_tensor_add(G, 0, 0, 0, k, -lr*dl_dg);
 		nn_tensor_add(B, 0, 0, 0, k, -lr*dl_db);
-	}
-
-	// compute dL_dXvar (use dL_dXhat)
-	float dl_dxvar;
-	float dl_dxhat;
-	float dxhat_dxvar;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dl_dxvar = 0.0f;
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				dl_dxhat     = nn_tensor_get(dL_dXhat, 0, i, j, k);
-				dxhat_dxvar  = nn_tensor_get(dXhat_dXvar, 0, i, j, k);
-				dl_dxvar    += dl_dxhat*dxhat_dxvar;
-			}
-		}
-		nn_tensor_set(dL_dXvar, 0, 0, 0, k, dl_dxvar);
-	}
-
-	// compute dL2_dXmean (use dL_dXhat, store in dL_dXmean)
-	float dl_dxmean;
-	float dxhat_dx;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dl_dxmean = 0.0f;
-		dxhat_dx  = nn_tensor_get(dXhat_dX, 0, 0, 0, k);
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				dl_dxhat   = nn_tensor_get(dL_dXhat, 0, i, j, k);
-				dl_dxmean += dl_dxhat;
-			}
-		}
-		dl_dxmean *= -dxhat_dx;
-
-		// dL_dXmean = dL2_dXmean
-		nn_tensor_set(dL_dXmean, 0, 0, 0, k, dl_dxmean);
-	}
-
-	// compute dL1_dX (use/replace dL_dXhat, store in dL_dX)
-	nn_tensor_t* dL1_dX = dL_dX;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dxhat_dx = nn_tensor_get(dXhat_dX, 0, 0, 0, k);
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				// dL_dX = dL1_dX = dL_dXhat*dXhat_dX
-				nn_tensor_mul(dL1_dX, 0, i, j, k, dxhat_dx);
-			}
-		}
-	}
-
-	// compute dL1_dXmean and combine with dL_dXmean
-	float dxvar_dx;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dl_dxvar = nn_tensor_get(dL_dXvar, 0, 0, 0, k);
-		dxvar_dx = nn_tensor_get(dXvar_dX, 0, 0, 0, k);
-
-		// dL_dXmean = dL2_dXmean + dL1_dXmean
-		nn_tensor_add(dL_dXmean, 0, 0, 0, k, -dl_dxvar*dxvar_dx);
-	}
-
-	// compute dL2_dX and combine with dL_dX
-	float dl2_dx;
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dl_dxvar = nn_tensor_get(dL_dXvar, 0, 0, 0, k);
-		dxvar_dx = nn_tensor_get(dXvar_dX, 0, 0, 0, k);
-		dl2_dx   = dl_dxvar*dxvar_dx;
-
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				// dL_dX = dL1_dX + dL2_dX
-				nn_tensor_add(dL_dX, 0, i, j, k, dl2_dx);
-			}
-		}
-	}
-
-	// compute dL3_dX and combine with dL_dX
-	float dl3_dx;
-	float dxmean_dx = 1.0f/((float) (dim->height*dim->width));
-	for(k = 0; k < dim->depth; ++k)
-	{
-		dl_dxmean = nn_tensor_get(dL_dXmean, 0, 0, 0, k);
-		dl3_dx    = dl_dxmean*dxmean_dx;
-
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				// dL_dX = dL1_dX + dL2_dX + dL3_dX
-				nn_tensor_add(dL_dX, 0, i, j, k, dl3_dx);
-			}
-		}
 	}
 
 	return dL_dX;
@@ -454,25 +342,19 @@ nn_batchNormLayer_dimFn(nn_layer_t* base)
 ***********************************************************/
 
 nn_batchNormLayer_t*
-nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dim)
+nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 {
 	ASSERT(arch);
-	ASSERT(dim);
+	ASSERT(dimX);
+
+	uint32_t xd = dimX->depth;
 
 	nn_dim_t dim_111d =
 	{
 		.count  = 1,
 		.height = 1,
 		.width  = 1,
-		.depth  = dim->depth,
-	};
-
-	nn_dim_t dim_1hwd =
-	{
-		.count  = 1,
-		.height = dim->height,
-		.width  = dim->width,
-		.depth  = dim->depth,
+		.depth  = xd,
 	};
 
 	nn_layerInfo_t info =
@@ -499,7 +381,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dim)
 
 	// initialize G to 1.0f
 	uint32_t k;
-	for(k = 0; k < dim->depth; ++k)
+	for(k = 0; k < xd; ++k)
 	{
 		nn_tensor_set(self->G, 0, 0, 0, k, 1.0f);
 	}
@@ -510,7 +392,13 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dim)
 		goto fail_B;
 	}
 
-	self->Y = nn_tensor_new(dim);
+	self->Xhat = nn_tensor_new(dimX);
+	if(self->Xhat == NULL)
+	{
+		goto fail_Xhat;
+	}
+
+	self->Y = nn_tensor_new(dimX);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
@@ -540,65 +428,25 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dim)
 		goto fail_Xvar_ra;
 	}
 
-	self->dXvar_dX = nn_tensor_new(&dim_111d);
-	if(self->dXvar_dX == NULL)
-	{
-		goto fail_dXvar_dX;
-	}
-
-	self->dXhat_dX = nn_tensor_new(&dim_111d);
-	if(self->dXhat_dX == NULL)
-	{
-		goto fail_dXhat_dX;
-	}
-
-	self->dXhat_dXvar = nn_tensor_new(&dim_1hwd);
-	if(self->dXhat_dXvar == NULL)
-	{
-		goto fail_dXhat_dXvar;
-	}
-
-	self->dY_dG = nn_tensor_new(&dim_1hwd);
-	if(self->dY_dG == NULL)
-	{
-		goto fail_dY_dG;
-	}
-
-	self->dL_dX = nn_tensor_new(&dim_1hwd);
+	self->dL_dX = nn_tensor_new(dimX);
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;
 	}
 
-	self->dL_dXvar = nn_tensor_new(&dim_111d);
-	if(self->dL_dXvar == NULL)
+	self->dL_dXhat = nn_tensor_new(dimX);
+	if(self->dL_dXhat == NULL)
 	{
-		goto fail_dL_dXvar;
-	}
-
-	self->dL_dXmean = nn_tensor_new(&dim_111d);
-	if(self->dL_dXmean == NULL)
-	{
-		goto fail_dL_dXmean;
+		goto fail_dL_dXhat;
 	}
 
 	// success
 	return self;
 
 	// failure
-	fail_dL_dXmean:
-		nn_tensor_delete(&self->dL_dXvar);
-	fail_dL_dXvar:
+	fail_dL_dXhat:
 		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
-		nn_tensor_delete(&self->dY_dG);
-	fail_dY_dG:
-		nn_tensor_delete(&self->dXhat_dXvar);
-	fail_dXhat_dXvar:
-		nn_tensor_delete(&self->dXhat_dX);
-	fail_dXhat_dX:
-		nn_tensor_delete(&self->dXvar_dX);
-	fail_dXvar_dX:
 		nn_tensor_delete(&self->Xvar_ra);
 	fail_Xvar_ra:
 		nn_tensor_delete(&self->Xmean_ra);
@@ -609,6 +457,8 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dim)
 	fail_Xmean_mb:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
+		nn_tensor_delete(&self->Xhat);
+	fail_Xhat:
 		nn_tensor_delete(&self->B);
 	fail_B:
 		nn_tensor_delete(&self->G);
@@ -624,18 +474,14 @@ void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)
 	nn_batchNormLayer_t* self = *_self;
 	if(self)
 	{
-		nn_tensor_delete(&self->dL_dXmean);
-		nn_tensor_delete(&self->dL_dXvar);
+		nn_tensor_delete(&self->dL_dXhat);
 		nn_tensor_delete(&self->dL_dX);
-		nn_tensor_delete(&self->dY_dG);
-		nn_tensor_delete(&self->dXhat_dXvar);
-		nn_tensor_delete(&self->dXhat_dX);
-		nn_tensor_delete(&self->dXvar_dX);
 		nn_tensor_delete(&self->Xvar_ra);
 		nn_tensor_delete(&self->Xmean_ra);
 		nn_tensor_delete(&self->Xvar_mb);
 		nn_tensor_delete(&self->Xmean_mb);
 		nn_tensor_delete(&self->Y);
+		nn_tensor_delete(&self->Xhat);
 		nn_tensor_delete(&self->B);
 		nn_tensor_delete(&self->G);
 		nn_layer_delete((nn_layer_t**) &self);
