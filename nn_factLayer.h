@@ -50,7 +50,7 @@ typedef struct nn_factLayer_s
 	//           X; // dim(bs,xh,xw,xd)
 	nn_tensor_t* Y; // dim(bs,xh,xw,xd)
 
-	// forward gradients (batch mean)
+	// forward gradients
 	nn_tensor_t* dY_dX; // dfact(x) : dim(bs,xh,xw,xd)
 
 	// backprop gradients
