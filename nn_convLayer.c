@@ -189,17 +189,21 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
 	nn_arch_t*      arch = base->arch;
 
-	nn_tensor_t* W   = self->W;
-	nn_tensor_t* B   = self->B;
-	nn_dim_t*    dim = nn_tensor_dim(dL_dY);
-	uint32_t     yh  = dim->height;
-	uint32_t     yw  = dim->width;
-	uint32_t     fc  = dim->count;
-	uint32_t     fh  = dim->height;
-	uint32_t     fw  = dim->width;
-	uint32_t     xd  = dim->depth;
-	uint32_t     bs  = arch->batch_size;
-	float        lr  = self->base.arch->learning_rate;
+	nn_tensor_t* W      = self->W;
+	nn_tensor_t* B      = self->B;
+	nn_tensor_t* VW     = self->VW;
+	nn_tensor_t* VB     = self->VB;
+	nn_dim_t*    dim    = nn_tensor_dim(dL_dY);
+	uint32_t     yh     = dim->height;
+	uint32_t     yw     = dim->width;
+	uint32_t     fc     = dim->count;
+	uint32_t     fh     = dim->height;
+	uint32_t     fw     = dim->width;
+	uint32_t     xd     = dim->depth;
+	uint32_t     bs     = arch->batch_size;
+	float        lr     = arch->learning_rate;
+	float        mu     = arch->momentum_decay;
+	float        lambda = arch->l2_lambda;
 
 	// clear backprop gradients
 	nn_tensor_t* dL_dW = self->dL_dW;
@@ -232,6 +236,9 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	}
 
 	// update parameters
+	float    v0;
+	float    v1;
+	float    w;
 	float    dl_dw;
 	float    dl_db;
 	float    s = 1.0f/((float) bs);
@@ -248,7 +255,13 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 				for(k = 0; k < xd; ++k)
 				{
 					dl_dw = s*nn_tensor_get(dL_dW, f, fi, fj, k);
-					nn_tensor_add(W, f, fi, fj, k, -lr*dl_dw);
+					w     = nn_tensor_get(W, f, fi, fj, k);
+
+					// Nesterov Momentum Update and L2 Regularization
+					v0 = nn_tensor_get(VW, f, fi, fj, k);
+					v1 = mu*v0 - lr*(dl_dw + 2*lambda*w);
+					nn_tensor_set(VW, f, fi, fj, k, v1);
+					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 - mu)*v1);
 				}
 			}
 		}
@@ -257,7 +270,12 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
 			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
-			nn_tensor_add(B, f, 0, 0, 0, -lr*dl_db);
+
+			// Nesterov Momentum Update
+			v0    = nn_tensor_get(VB, f, 0, 0, 0);
+			v1    = mu*v0 - lr*dl_db;
+			nn_tensor_set(VB, f, 0, 0, 0, v1);
+			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 - mu)*v1);
 		}
 	}
 
@@ -440,6 +458,18 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
+	self->VW = nn_tensor_new(dimW);
+	if(self->VW == NULL)
+	{
+		goto fail_VW;
+	}
+
+	self->VB = nn_tensor_new(&dimB);
+	if(self->VB == NULL)
+	{
+		goto fail_VB;
+	}
+
 	self->dL_dW = nn_tensor_new(dimW);
 	if(self->dL_dW == NULL)
 	{
@@ -467,6 +497,10 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_dL_dB:
 		nn_tensor_delete(&self->dL_dW);
 	fail_dL_dW:
+		nn_tensor_delete(&self->VB);
+	fail_VB:
+		nn_tensor_delete(&self->VW);
+	fail_VW:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_tensor_delete(&self->B);
@@ -487,6 +521,8 @@ void nn_convLayer_delete(nn_convLayer_t** _self)
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);
+		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->VW);
 		nn_tensor_delete(&self->Y);
 		nn_tensor_delete(&self->B);
 		nn_tensor_delete(&self->W);

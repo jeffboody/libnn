@@ -47,6 +47,10 @@ typedef struct
 	nn_tensor_t* B; // dim(fc,1,1,1)
 	nn_tensor_t* Y; // dim(bs,yh,yw,fc)
 
+	// momentum update
+	nn_tensor_t* VW; // dim(fc,fh,fw,xd)
+	nn_tensor_t* VB; // dim(fc,1,1,1)
+
 	// forward gradients
 	// dY_dB; // 1
 	// dY_dX; // W : dim(fc,fh,fw,xd)
