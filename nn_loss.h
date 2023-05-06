@@ -40,6 +40,7 @@ typedef struct nn_loss_s
 {
 	nn_arch_t*         arch;
 	nn_loss_backpropFn backprop_fn;
+	float              loss;
 } nn_loss_t;
 
 nn_loss_t* nn_loss_new(size_t base_size,

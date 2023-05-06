@@ -195,6 +195,13 @@ int nn_arch_train(nn_arch_t* self,
 	return 1;
 }
 
+float nn_arch_loss(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	return self->loss->loss;
+}
+
 int nn_arch_predict(nn_arch_t* self,
                     nn_tensor_t* X,
                     nn_tensor_t* Y)
