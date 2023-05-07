@@ -66,6 +66,10 @@ nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,
                                      nn_dim_t* dimX,
                                      nn_dim_t* dimY,
                                      int flags);
+nn_weightLayer_t* nn_weightLayer_import(nn_arch_t* arch,
+                                        jsmn_val_t* val);
+int               nn_weightLayer_export(nn_weightLayer_t* self,
+                                        jsmn_stream_t* stream);
 void              nn_weightLayer_delete(nn_weightLayer_t** _self);
 
 #endif

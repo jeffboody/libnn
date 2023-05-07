@@ -23,6 +23,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define LOG_TAG "nn"
 #include "../libcc/cc_log.h"
@@ -465,6 +466,124 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	fail_G:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
+}
+
+nn_batchNormLayer_t*
+nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+{
+	ASSERT(arch);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_dimX     = NULL;
+	jsmn_val_t* val_G        = NULL;
+	jsmn_val_t* val_B        = NULL;
+	jsmn_val_t* val_Xmean_ra = NULL;
+	jsmn_val_t* val_Xvar_ra  = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "dimX") == 0)
+			{
+				val_dimX = kv->val;
+			}
+			else if(strcmp(kv->key, "G") == 0)
+			{
+				val_G = kv->val;
+			}
+			else if(strcmp(kv->key, "B") == 0)
+			{
+				val_B = kv->val;
+			}
+			else if(strcmp(kv->key, "Xmean_ra") == 0)
+			{
+				val_Xmean_ra = kv->val;
+			}
+			else if(strcmp(kv->key, "Xvar_ra") == 0)
+			{
+				val_Xvar_ra = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_dimX     == NULL) ||
+	   (val_G        == NULL) ||
+	   (val_B        == NULL) ||
+	   (val_Xmean_ra == NULL) ||
+	   (val_Xvar_ra  == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_dim_t dimX;
+	if(nn_dim_load(&dimX, val_dimX) == 0)
+	{
+		return NULL;
+	}
+
+	nn_batchNormLayer_t* self;
+	self = nn_batchNormLayer_new(arch, &dimX);
+	if(self == NULL)
+	{
+		return NULL;
+	}
+
+	// load tensors
+	if((nn_tensor_load(self->G,        val_G) == 0)        ||
+	   (nn_tensor_load(self->B,        val_B) == 0)        ||
+	   (nn_tensor_load(self->Xmean_ra, val_Xmean_ra) == 0) ||
+	   (nn_tensor_load(self->Xvar_ra,  val_Xvar_ra) == 0))
+	{
+		goto fail_tensor;
+	}
+
+	// success
+	return self;
+
+	// failure
+	fail_tensor:
+		nn_batchNormLayer_delete(&self);
+	return NULL;
+}
+
+int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
+                             jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dimX = nn_tensor_dim(self->Xhat);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= nn_dim_store(dimX, stream);
+	ret &= jsmn_stream_key(stream, "%s", "G");
+	ret &= nn_tensor_store(self->G, stream);
+	ret &= jsmn_stream_key(stream, "%s", "B");
+	ret &= nn_tensor_store(self->B, stream);
+	ret &= jsmn_stream_key(stream, "%s", "Xmean_ra");
+	ret &= nn_tensor_store(self->Xmean_ra, stream);
+	ret &= jsmn_stream_key(stream, "%s", "Xvar_ra");
+	ret &= nn_tensor_store(self->Xvar_ra, stream);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)

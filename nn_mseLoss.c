@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LOG_TAG "nn"
 #include "../libcc/cc_log.h"
@@ -118,6 +119,77 @@ nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dimY)
 	fail_dL_dY:
 		nn_loss_delete((nn_loss_t**) &self);
 	return NULL;
+}
+
+nn_mseLoss_t*
+nn_mseLoss_import(nn_arch_t* arch, jsmn_val_t* val)
+{
+	ASSERT(arch);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_dimY = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "val_dimY") == 0)
+			{
+				val_dimY = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if(val_dimY == NULL)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_dim_t dimY;
+	if(nn_dim_load(&dimY, val_dimY) == 0)
+	{
+		return NULL;
+	}
+
+	nn_mseLoss_t* self;
+	self = nn_mseLoss_new(arch, &dimY);
+	if(self == NULL)
+	{
+		return NULL;
+	}
+
+	return self;
+}
+
+int nn_mseLoss_export(nn_mseLoss_t* self,
+                      jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dimY = nn_tensor_dim(self->dL_dY);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimY");
+	ret &= nn_dim_store(dimY, stream);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_mseLoss_delete(nn_mseLoss_t** _self)

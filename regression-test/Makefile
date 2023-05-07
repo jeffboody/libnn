@@ -8,18 +8,21 @@ OBJECTS  = $(TARGET).o $(CLASSES:%=%.o)
 HFILES   = $(CLASSES:%=%.h)
 OPT      = -O2 -Wall
 CFLAGS   = $(OPT) -I.
-LDFLAGS  = -Llibnn -lnn -Llibcc -lcc -ldl -lpthread -lm
+LDFLAGS  = -Llibnn -lnn -Ljsmn/wrapper -ljsmn -Llibcc -lcc -ldl -lpthread -lm
 CCC      = gcc
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS) libnn libcc
+$(TARGET): $(OBJECTS) libnn jsmn libcc
 	$(CCC) $(OPT) $(OBJECTS) -o $@ $(LDFLAGS)
 
-.PHONY: libnn libcc
+.PHONY: libnn jsmn libcc
 
 libnn:
 	$(MAKE) -C libnn
+
+jsmn:
+	$(MAKE) -C jsmn/wrapper
 
 libcc:
 	$(MAKE) -C libcc
@@ -27,7 +30,8 @@ libcc:
 clean:
 	rm -f $(OBJECTS) *~ \#*\# $(TARGET)
 	$(MAKE) -C libnn clean
+	$(MAKE) -C jsmn/wrapper clean
 	$(MAKE) -C libcc clean
-	rm libnn libcc pcg-c-basic
+	rm libnn jsmn libcc pcg-c-basic
 
 $(OBJECTS): $(HFILES)

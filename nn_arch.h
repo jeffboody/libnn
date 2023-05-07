@@ -24,6 +24,8 @@
 #ifndef nn_arch_H
 #define nn_arch_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "../libcc/rng/cc_rngNormal.h"
 #include "../libcc/rng/cc_rngUniform.h"
 #include "../libcc/cc_list.h"
@@ -58,6 +60,10 @@ typedef struct nn_arch_s
 
 nn_arch_t* nn_arch_new(size_t base_size,
                        nn_archInfo_t* info);
+nn_arch_t* nn_arch_import(size_t base_size,
+                          jsmn_val_t* val);
+int        nn_arch_export(nn_arch_t* self,
+                          jsmn_stream_t* stream);
 void       nn_arch_delete(nn_arch_t** _self);
 int        nn_arch_attachLayer(nn_arch_t* self,
                                nn_layer_t* layer);

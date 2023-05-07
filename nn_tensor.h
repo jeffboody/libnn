@@ -24,6 +24,8 @@
 #ifndef nn_tensor_H
 #define nn_tensor_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn_dim.h"
 
 typedef struct nn_tensor_s
@@ -34,6 +36,10 @@ typedef struct nn_tensor_s
 
 nn_tensor_t* nn_tensor_new(nn_dim_t* dim);
 void         nn_tensor_delete(nn_tensor_t** _self);
+int          nn_tensor_load(nn_tensor_t* self,
+                            jsmn_val_t* val);
+int          nn_tensor_store(nn_tensor_t* self,
+                             jsmn_stream_t* stream);
 void         nn_tensor_flatten(nn_tensor_t* self,
                                nn_tensor_t* flat);
 void         nn_tensor_clear(nn_tensor_t* self);

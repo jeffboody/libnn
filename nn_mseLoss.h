@@ -36,6 +36,10 @@ typedef struct nn_mseLoss_s
 
 nn_mseLoss_t* nn_mseLoss_new(nn_arch_t* arch,
                              nn_dim_t* dimY);
+nn_mseLoss_t* nn_mseLoss_import(nn_arch_t* arch,
+                                jsmn_val_t* val);
+int           nn_mseLoss_export(nn_mseLoss_t* self,
+                                jsmn_stream_t* stream);
 void          nn_mseLoss_delete(nn_mseLoss_t** _self);
 
 #endif

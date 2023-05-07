@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LOG_TAG "nn"
 #include "../libcc/cc_log.h"
@@ -76,6 +77,92 @@ nn_arch_t* nn_arch_new(size_t base_size,
 	fail_layers:
 		FREE(self);
 	return NULL;
+}
+
+nn_arch_t*
+nn_arch_import(size_t base_size, jsmn_val_t* val)
+{
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_learning_rate  = NULL;
+	jsmn_val_t* val_momentum_decay = NULL;
+	jsmn_val_t* val_batch_momentum = NULL;
+	jsmn_val_t* val_l2_lambda      = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		{
+			if(strcmp(kv->key, "learning_rate") == 0)
+			{
+				val_learning_rate = kv->val;
+			}
+			else if(strcmp(kv->key, "momentum_decay") == 0)
+			{
+				val_momentum_decay = kv->val;
+			}
+			else if(strcmp(kv->key, "batch_momentum") == 0)
+			{
+				val_batch_momentum = kv->val;
+			}
+			else if(strcmp(kv->key, "l2_lambda") == 0)
+			{
+				val_l2_lambda = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_learning_rate  == NULL) ||
+	   (val_momentum_decay == NULL) ||
+	   (val_batch_momentum == NULL) ||
+	   (val_l2_lambda      == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_archInfo_t info =
+	{
+		.learning_rate  = strtof(val_learning_rate->data,  NULL),
+		.momentum_decay = strtof(val_momentum_decay->data, NULL),
+		.batch_momentum = strtof(val_batch_momentum->data, NULL),
+		.l2_lambda      = strtof(val_l2_lambda->data,      NULL),
+	};
+
+	return nn_arch_new(base_size, &info);
+}
+
+int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "learning_rate");
+	ret &= jsmn_stream_float(stream, self->learning_rate);
+	ret &= jsmn_stream_key(stream, "%s", "momentum_decay");
+	ret &= jsmn_stream_float(stream, self->momentum_decay);
+	ret &= jsmn_stream_key(stream, "%s", "batch_momentum");
+	ret &= jsmn_stream_float(stream, self->batch_momentum);
+	ret &= jsmn_stream_key(stream, "%s", "l2_lambda");
+	ret &= jsmn_stream_float(stream, self->l2_lambda);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_arch_delete(nn_arch_t** _self)

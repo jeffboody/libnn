@@ -23,6 +23,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define LOG_TAG "nn"
 #include "../libcc/cc_log.h"
@@ -31,6 +32,17 @@
 #include "nn_factLayer.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
+
+const char* NN_FACT_LAYER_STRING_LINEAR    = "linear";
+const char* NN_FACT_LAYER_STRING_LOGISTIC  = "logistic";
+const char* NN_FACT_LAYER_STRING_RELU      = "ReLU";
+const char* NN_FACT_LAYER_STRING_PRELU     = "PReLU";
+const char* NN_FACT_LAYER_STRING_TANH      = "tanh";
+const char* NN_FACT_LAYER_STRING_DLINEAR   = "dlinear";
+const char* NN_FACT_LAYER_STRING_DLOGISTIC = "dlogistic";
+const char* NN_FACT_LAYER_STRING_DRELU     = "dReLU";
+const char* NN_FACT_LAYER_STRING_DPRELU    = "dPReLU";
+const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 
 /***********************************************************
 * private                                                  *
@@ -208,6 +220,104 @@ float nn_factLayer_dtanh(float x)
 	return 1.0f - tanhfx*tanhfx;
 }
 
+const char* nn_factLayer_string(nn_factLayer_fn fact)
+{
+	ASSERT(fact)
+
+	if(fact == nn_factLayer_linear)
+	{
+		return NN_FACT_LAYER_STRING_LINEAR;
+	}
+	else if(fact == nn_factLayer_logistic)
+	{
+		return NN_FACT_LAYER_STRING_LOGISTIC;
+	}
+	else if(fact == nn_factLayer_ReLU)
+	{
+		return NN_FACT_LAYER_STRING_RELU;
+	}
+	else if(fact == nn_factLayer_PReLU)
+	{
+		return NN_FACT_LAYER_STRING_PRELU;
+	}
+	else if(fact == nn_factLayer_tanh)
+	{
+		return NN_FACT_LAYER_STRING_TANH;
+	}
+	else if(fact == nn_factLayer_dlinear)
+	{
+		return NN_FACT_LAYER_STRING_DLINEAR;
+	}
+	else if(fact == nn_factLayer_dlogistic)
+	{
+		return NN_FACT_LAYER_STRING_DLOGISTIC;
+	}
+	else if(fact == nn_factLayer_dReLU)
+	{
+		return NN_FACT_LAYER_STRING_DRELU;
+	}
+	else if(fact == nn_factLayer_dPReLU)
+	{
+		return NN_FACT_LAYER_STRING_DPRELU;
+	}
+	else if(fact == nn_factLayer_dtanh)
+	{
+		return NN_FACT_LAYER_STRING_DTANH;
+	}
+
+	LOGE("invalid");
+	return NULL;
+}
+
+nn_factLayer_fn nn_factLayer_function(const char* str)
+{
+	ASSERT(str);
+
+	if(strcmp(str, NN_FACT_LAYER_STRING_LINEAR) == 0)
+	{
+		return nn_factLayer_linear;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_LOGISTIC) == 0)
+	{
+		return nn_factLayer_logistic;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_RELU) == 0)
+	{
+		return nn_factLayer_ReLU;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_PRELU) == 0)
+	{
+		return nn_factLayer_PReLU;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_TANH) == 0)
+	{
+		return nn_factLayer_tanh;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_DLINEAR) == 0)
+	{
+		return nn_factLayer_dlinear;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_DLOGISTIC) == 0)
+	{
+		return nn_factLayer_dlogistic;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_DRELU) == 0)
+	{
+		return nn_factLayer_dReLU;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_DPRELU) == 0)
+	{
+		return nn_factLayer_dPReLU;
+	}
+	else if(strcmp(str, NN_FACT_LAYER_STRING_DTANH) == 0)
+	{
+		return nn_factLayer_dtanh;
+	}
+
+	LOGE("invalid %s", str);
+	return NULL;
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -270,6 +380,106 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
+}
+
+nn_factLayer_t*
+nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+{
+	ASSERT(arch);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_dimX  = NULL;
+	jsmn_val_t* val_fact  = NULL;
+	jsmn_val_t* val_dfact = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_STRING)
+		{
+			if(strcmp(kv->key, "fact") == 0)
+			{
+				val_fact = kv->val;
+			}
+			else if(strcmp(kv->key, "dfact") == 0)
+			{
+				val_dfact = kv->val;
+			}
+		}
+		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "val_dimX") == 0)
+			{
+				val_dimX = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_dimX  == NULL) ||
+	   (val_fact  == NULL) ||
+	   (val_dfact == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_dim_t dimX;
+	if(nn_dim_load(&dimX, val_dimX) == 0)
+	{
+		return NULL;
+	}
+
+	nn_factLayer_fn fact;
+	nn_factLayer_fn dfact;
+	fact  = nn_factLayer_function(val_fact->data);
+	dfact = nn_factLayer_function(val_dfact->data);
+	if((fact == NULL) || (dfact == NULL))
+	{
+		return NULL;
+	}
+
+	return nn_factLayer_new(arch, &dimX, fact, dfact);
+}
+
+int nn_factLayer_export(nn_factLayer_t* self,
+                        jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
+
+	const char* str_fact  = nn_factLayer_string(self->fact);
+	const char* str_dfact = nn_factLayer_string(self->dfact);
+	if((str_fact == NULL) || (str_dfact == NULL))
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= nn_dim_store(dimX, stream);
+	ret &= jsmn_stream_key(stream, "%s", "fact");
+	ret &= jsmn_stream_string(stream, "%s", str_fact);
+	ret &= jsmn_stream_key(stream, "%s", "dfact");
+	ret &= jsmn_stream_string(stream, "%s", str_dfact);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_factLayer_delete(nn_factLayer_t** _self)

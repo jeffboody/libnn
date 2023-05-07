@@ -23,6 +23,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define LOG_TAG "nn"
 #include "../libcc/rng/cc_rngNormal.h"
@@ -398,6 +399,148 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_W:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
+}
+
+nn_weightLayer_t*
+nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+{
+	ASSERT(arch);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_dimX  = NULL;
+	jsmn_val_t* val_dimW  = NULL;
+	jsmn_val_t* val_flags = NULL;
+	jsmn_val_t* val_W     = NULL;
+	jsmn_val_t* val_B     = NULL;
+	jsmn_val_t* val_VW    = NULL;
+	jsmn_val_t* val_VB    = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		{
+			if(strcmp(kv->key, "flags") == 0)
+			{
+				val_flags = kv->val;
+			}
+		}
+		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "val_dimX") == 0)
+			{
+				val_dimX = kv->val;
+			}
+			else if(strcmp(kv->key, "val_dimW") == 0)
+			{
+				val_dimW = kv->val;
+			}
+			else if(strcmp(kv->key, "val_W") == 0)
+			{
+				val_W = kv->val;
+			}
+			else if(strcmp(kv->key, "val_B") == 0)
+			{
+				val_B = kv->val;
+			}
+			else if(strcmp(kv->key, "val_VW") == 0)
+			{
+				val_VW = kv->val;
+			}
+			else if(strcmp(kv->key, "val_VB") == 0)
+			{
+				val_VB = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_dimX  == NULL) ||
+	   (val_dimW  == NULL) ||
+	   (val_flags == NULL) ||
+	   (val_W     == NULL) ||
+	   (val_B     == NULL) ||
+	   (val_VW    == NULL) ||
+	   (val_VB    == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	int flags = strtol(val_flags->data, NULL, 0);
+
+	nn_dim_t dimX;
+	nn_dim_t dimW;
+	if((nn_dim_load(&dimX, val_dimX) == 0) ||
+	   (nn_dim_load(&dimW, val_dimW) == 0))
+	{
+		return NULL;
+	}
+
+	nn_weightLayer_t* self;
+	self = nn_weightLayer_new(arch, &dimX, &dimW, flags);
+	if(self == NULL)
+	{
+		return NULL;
+	}
+
+	// load tensors
+	if((nn_tensor_load(self->W,  val_W)  == 0) ||
+	   (nn_tensor_load(self->B,  val_B)  == 0) ||
+	   (nn_tensor_load(self->VW, val_VW) == 0) ||
+	   (nn_tensor_load(self->VB, val_VB) == 0))
+	{
+		goto fail_tensor;
+	}
+
+	// success
+	return self;
+
+	// failure
+	fail_tensor:
+		nn_weightLayer_delete(&self);
+	return NULL;
+}
+
+int nn_weightLayer_export(nn_weightLayer_t* self,
+                          jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= nn_dim_store(dimX, stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimW");
+	ret &= nn_dim_store(dimW, stream);
+	ret &= jsmn_stream_key(stream, "%s", "flags");
+	ret &= jsmn_stream_int(stream, self->flags);
+	ret &= jsmn_stream_key(stream, "%s", "W");
+	ret &= nn_tensor_store(self->W, stream);
+	ret &= jsmn_stream_key(stream, "%s", "B");
+	ret &= nn_tensor_store(self->B, stream);
+	ret &= jsmn_stream_key(stream, "%s", "VW");
+	ret &= nn_tensor_store(self->VW, stream);
+	ret &= jsmn_stream_key(stream, "%s", "VB");
+	ret &= nn_tensor_store(self->VB, stream);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_weightLayer_delete(nn_weightLayer_t** _self)

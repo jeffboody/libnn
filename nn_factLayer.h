@@ -42,6 +42,10 @@ float nn_factLayer_dReLU(float x);
 float nn_factLayer_dPReLU(float x);
 float nn_factLayer_dtanh(float x);
 
+// string/function conversions
+const char*     nn_factLayer_string(nn_factLayer_fn fact);
+nn_factLayer_fn nn_factLayer_function(const char* str);
+
 typedef struct nn_factLayer_s
 {
 	nn_layer_t base;
@@ -66,6 +70,10 @@ nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,
                                  nn_dim_t* dimX,
                                  nn_factLayer_fn fact,
                                  nn_factLayer_fn dfact);
+nn_factLayer_t* nn_factLayer_import(nn_arch_t* arch,
+                                    jsmn_val_t* val);
+int             nn_factLayer_export(nn_factLayer_t* self,
+                                    jsmn_stream_t* stream);
 void            nn_factLayer_delete(nn_factLayer_t** _self);
 
 #endif

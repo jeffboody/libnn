@@ -24,6 +24,8 @@
 #ifndef nn_dim_H
 #define nn_dim_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn.h"
 
 typedef struct nn_dim_s
@@ -34,8 +36,12 @@ typedef struct nn_dim_s
 	uint32_t depth;
 } nn_dim_t;
 
+int      nn_dim_load(nn_dim_t* self, jsmn_val_t* val);
+int      nn_dim_store(nn_dim_t* self,
+                      jsmn_stream_t* stream);
 void     nn_dim_copy(nn_dim_t* src,
                      nn_dim_t* dst);
 size_t   nn_dim_sizeof(nn_dim_t* self);
+int      nn_dim_equals(nn_dim_t* self, nn_dim_t* dim);
 
 #endif
