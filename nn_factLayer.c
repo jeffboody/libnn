@@ -135,7 +135,17 @@ nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 }
 
 static nn_dim_t*
-nn_factLayer_dimFn(nn_layer_t* base)
+nn_factLayer_dimXFn(nn_layer_t* base)
+{
+	ASSERT(base);
+
+	nn_factLayer_t* self = (nn_factLayer_t*) base;
+
+	return nn_tensor_dim(self->dL_dX);
+}
+
+static nn_dim_t*
+nn_factLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
@@ -337,7 +347,8 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_factLayer_forwardPassFn,
 		.backprop_fn     = nn_factLayer_backpropFn,
-		.dim_fn          = nn_factLayer_dimFn,
+		.dimX_fn         = nn_factLayer_dimXFn,
+		.dimY_fn         = nn_factLayer_dimYFn,
 	};
 
 	nn_factLayer_t* self;
@@ -417,7 +428,7 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
-			if(strcmp(kv->key, "val_dimX") == 0)
+			if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}

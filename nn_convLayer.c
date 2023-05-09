@@ -284,7 +284,17 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 }
 
 static nn_dim_t*
-nn_convLayer_dimFn(nn_layer_t* base)
+nn_convLayer_dimXFn(nn_layer_t* base)
+{
+	ASSERT(base);
+
+	nn_convLayer_t* self = (nn_convLayer_t*) base;
+
+	return nn_tensor_dim(self->dL_dX);
+}
+
+static nn_dim_t*
+nn_convLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
@@ -400,7 +410,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_convLayer_forwardPassFn,
 		.backprop_fn     = nn_convLayer_backpropFn,
-		.dim_fn          = nn_convLayer_dimFn,
+		.dimX_fn         = nn_convLayer_dimXFn,
+		.dimY_fn         = nn_convLayer_dimYFn,
 	};
 
 	nn_convLayer_t* self;
@@ -547,27 +558,27 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
-			if(strcmp(kv->key, "val_dimX") == 0)
+			if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}
-			else if(strcmp(kv->key, "val_dimW") == 0)
+			else if(strcmp(kv->key, "dimW") == 0)
 			{
 				val_dimW = kv->val;
 			}
-			else if(strcmp(kv->key, "val_W") == 0)
+			else if(strcmp(kv->key, "W") == 0)
 			{
 				val_W = kv->val;
 			}
-			else if(strcmp(kv->key, "val_B") == 0)
+			else if(strcmp(kv->key, "B") == 0)
 			{
 				val_B = kv->val;
 			}
-			else if(strcmp(kv->key, "val_VW") == 0)
+			else if(strcmp(kv->key, "VW") == 0)
 			{
 				val_VW = kv->val;
 			}
-			else if(strcmp(kv->key, "val_VB") == 0)
+			else if(strcmp(kv->key, "VB") == 0)
 			{
 				val_VB = kv->val;
 			}

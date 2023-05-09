@@ -53,7 +53,8 @@ nn_layer_t* nn_layer_new(size_t base_size,
 	self->arch            = info->arch;
 	self->forward_pass_fn = info->forward_pass_fn;
 	self->backprop_fn     = info->backprop_fn;
-	self->dim_fn          = info->dim_fn;
+	self->dimX_fn         = info->dimX_fn;
+	self->dimY_fn         = info->dimY_fn;
 
 	// success
 	return self;
@@ -71,10 +72,18 @@ void nn_layer_delete(nn_layer_t** _self)
 	}
 }
 
-nn_dim_t* nn_layer_dim(nn_layer_t* self)
+nn_dim_t* nn_layer_dimX(nn_layer_t* self)
 {
 	ASSERT(self);
 
-	nn_layer_dimFn dim_fn = self->dim_fn;
-	return (*dim_fn)(self);
+	nn_layer_dimFn dimX_fn = self->dimX_fn;
+	return (*dimX_fn)(self);
+}
+
+nn_dim_t* nn_layer_dimY(nn_layer_t* self)
+{
+	ASSERT(self);
+
+	nn_layer_dimFn dimY_fn = self->dimY_fn;
+	return (*dimY_fn)(self);
 }

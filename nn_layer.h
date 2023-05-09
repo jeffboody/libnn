@@ -38,7 +38,8 @@ typedef struct nn_layerInfo_s
 	nn_arch_t*             arch;
 	nn_layer_forwardPassFn forward_pass_fn;
 	nn_layer_backpropFn    backprop_fn;
-	nn_layer_dimFn         dim_fn;
+	nn_layer_dimFn         dimX_fn;
+	nn_layer_dimFn         dimY_fn;
 } nn_layerInfo_t;
 
 typedef struct nn_layer_s
@@ -46,12 +47,14 @@ typedef struct nn_layer_s
 	nn_arch_t*             arch;
 	nn_layer_forwardPassFn forward_pass_fn;
 	nn_layer_backpropFn    backprop_fn;
-	nn_layer_dimFn         dim_fn;
+	nn_layer_dimFn         dimX_fn;
+	nn_layer_dimFn         dimY_fn;
 } nn_layer_t;
 
 nn_layer_t* nn_layer_new(size_t base_size,
                          nn_layerInfo_t* info);
 void        nn_layer_delete(nn_layer_t** _self);
-nn_dim_t*   nn_layer_dim(nn_layer_t* self);
+nn_dim_t*   nn_layer_dimX(nn_layer_t* self);
+nn_dim_t*   nn_layer_dimY(nn_layer_t* self);
 
 #endif

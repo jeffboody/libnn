@@ -70,56 +70,61 @@ int main(int argc, char** argv)
 		goto fail_X;
 	}
 
-	nn_dim_t dimY1 =
+	nn_dim_t* dim = nn_tensor_dim(X);
+
+	nn_dim_t dimW1 =
 	{
-		.count  = max_batch_size,
+		.count  = 4,
 		.width  = 1,
 		.height = 1,
-		.depth  = 4,
+		.depth  = dim->depth,
 	};
 
 	nn_weightLayer_t* l1;
-	l1 = nn_weightLayer_new(arch, &dimX, &dimY1,
+	l1 = nn_weightLayer_new(arch, dim, &dimW1,
 	                        NN_WEIGHT_LAYER_FLAG_XAVIER);
 	if(l1 == NULL)
 	{
 		goto fail_l1;
 	}
+	dim = nn_layer_dimY(&l1->base);
 
 	nn_factLayer_t* l2;
-	l2 = nn_factLayer_new(arch, nn_layer_dim(&l1->base),
+	l2 = nn_factLayer_new(arch, dim,
 	                      nn_factLayer_tanh,
 	                      nn_factLayer_dtanh);
 	if(l2 == NULL)
 	{
 		goto fail_l2;
 	}
+	dim = nn_layer_dimY(&l2->base);
 
-	nn_dim_t dimY3 =
+	nn_dim_t dimW3 =
 	{
-		.count  = max_batch_size,
+		.count  = 1,
 		.width  = 1,
 		.height = 1,
-		.depth  = 1,
+		.depth  = dim->depth,
 	};
 
 	nn_weightLayer_t* l3;
-	l3 = nn_weightLayer_new(arch, nn_layer_dim(&l2->base),
-	                        &dimY3,
+	l3 = nn_weightLayer_new(arch, dim,
+	                        &dimW3,
 	                        NN_WEIGHT_LAYER_FLAG_XAVIER);
 	if(l3 == NULL)
 	{
 		goto fail_l3;
 	}
+	dim = nn_layer_dimY(&l3->base);
 
-	nn_tensor_t* Y = nn_tensor_new(&dimY3);
+	nn_tensor_t* Y = nn_tensor_new(dim);
 	if(Y == NULL)
 	{
 		goto fail_Y;
 	}
 
 	nn_mseLoss_t* mse_loss;
-	mse_loss = nn_mseLoss_new(arch, nn_layer_dim(&l3->base));
+	mse_loss = nn_mseLoss_new(arch, dim);
 	if(mse_loss == NULL)
 	{
 		goto fail_mse_loss;

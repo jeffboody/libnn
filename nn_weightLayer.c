@@ -203,7 +203,17 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 }
 
 static nn_dim_t*
-nn_weightLayer_dimFn(nn_layer_t* base)
+nn_weightLayer_dimXFn(nn_layer_t* base)
+{
+	ASSERT(base);
+
+	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
+
+	return nn_tensor_dim(self->dL_dX);
+}
+
+static nn_dim_t*
+nn_weightLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
@@ -270,31 +280,27 @@ nn_weightLayer_initHeWeights(nn_weightLayer_t* self)
 
 nn_weightLayer_t*
 nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                   nn_dim_t* dimY, int flags)
+                   nn_dim_t* dimW, int flags)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
-	ASSERT(dimY);
+	ASSERT(dimW);
 
 	// X and Y must be flattened
-	if((dimX->height != 1) || (dimX->width != 1) ||
-	   (dimY->height != 1) || (dimY->width != 1))
+	if((dimX->height != 1) || (dimX->width != 1))
 	{
-		LOGE("invalid dimX=%u:%u, dimY=%u:%u",
-		     dimX->height, dimX->width,
-		     dimY->height, dimY->width);
+		LOGE("invalid dimX=%u:%u",
+		     dimX->height, dimX->width);
 		return NULL;
 	}
-
-	uint32_t xd = dimX->depth;
-	uint32_t nc = dimY->depth;
 
 	nn_layerInfo_t info =
 	{
 		.arch            = arch,
 		.forward_pass_fn = nn_weightLayer_forwardPassFn,
 		.backprop_fn     = nn_weightLayer_backpropFn,
-		.dim_fn          = nn_weightLayer_dimFn,
+		.dimX_fn         = nn_weightLayer_dimXFn,
+		.dimY_fn         = nn_weightLayer_dimYFn,
 	};
 
 	nn_weightLayer_t* self;
@@ -307,14 +313,7 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	self->flags = flags;
 
-	nn_dim_t dimW =
-	{
-		.count  = nc,
-		.height = 1,
-		.width  = 1,
-		.depth  = xd,
-	};
-	self->W = nn_tensor_new(&dimW);
+	self->W = nn_tensor_new(dimW);
 	if(self->W == NULL)
 	{
 		goto fail_W;
@@ -329,6 +328,7 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		nn_weightLayer_initXavierWeights(self);
 	}
 
+	uint32_t nc = dimW->count;
 	nn_dim_t dimB =
 	{
 		.count  = nc,
@@ -342,13 +342,22 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_B;
 	}
 
-	self->Y = nn_tensor_new(dimY);
+	uint32_t bs = dimX->count;
+	nn_dim_t dimY =
+	{
+		.count  = bs,
+		.height = 1,
+		.width  = 1,
+		.depth  = nc,
+	};
+
+	self->Y = nn_tensor_new(&dimY);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->VW = nn_tensor_new(&dimW);
+	self->VW = nn_tensor_new(dimW);
 	if(self->VW == NULL)
 	{
 		goto fail_VW;
@@ -360,7 +369,7 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_VB;
 	}
 
-	self->dL_dW = nn_tensor_new(&dimW);
+	self->dL_dW = nn_tensor_new(dimW);
 	if(self->dL_dW == NULL)
 	{
 		goto fail_dL_dW;
@@ -436,27 +445,27 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
-			if(strcmp(kv->key, "val_dimX") == 0)
+			if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}
-			else if(strcmp(kv->key, "val_dimW") == 0)
+			else if(strcmp(kv->key, "dimW") == 0)
 			{
 				val_dimW = kv->val;
 			}
-			else if(strcmp(kv->key, "val_W") == 0)
+			else if(strcmp(kv->key, "W") == 0)
 			{
 				val_W = kv->val;
 			}
-			else if(strcmp(kv->key, "val_B") == 0)
+			else if(strcmp(kv->key, "B") == 0)
 			{
 				val_B = kv->val;
 			}
-			else if(strcmp(kv->key, "val_VW") == 0)
+			else if(strcmp(kv->key, "VW") == 0)
 			{
 				val_VW = kv->val;
 			}
-			else if(strcmp(kv->key, "val_VB") == 0)
+			else if(strcmp(kv->key, "VB") == 0)
 			{
 				val_VB = kv->val;
 			}

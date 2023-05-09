@@ -83,6 +83,16 @@ nn_mseLoss_backpropFn(nn_loss_t* base, nn_tensor_t* Y,
 	return dL_dY;
 }
 
+static nn_dim_t*
+nn_mseLoss_dimYFn(nn_loss_t* base)
+{
+	ASSERT(base);
+
+	nn_mseLoss_t* self = (nn_mseLoss_t*) base;
+
+	return nn_tensor_dim(self->dL_dY);
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -96,6 +106,7 @@ nn_mseLoss_new(nn_arch_t* arch, nn_dim_t* dimY)
 	{
 		.arch        = arch,
 		.backprop_fn = nn_mseLoss_backpropFn,
+		.dimY_fn     = nn_mseLoss_dimYFn,
 	};
 
 	nn_mseLoss_t* self;
@@ -143,7 +154,7 @@ nn_mseLoss_import(nn_arch_t* arch, jsmn_val_t* val)
 
 		if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
-			if(strcmp(kv->key, "val_dimY") == 0)
+			if(strcmp(kv->key, "dimY") == 0)
 			{
 				val_dimY = kv->val;
 			}

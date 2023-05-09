@@ -29,22 +29,27 @@
 typedef nn_tensor_t* (*nn_loss_backpropFn)
                      (nn_loss_t* base, nn_tensor_t* Y,
                       nn_tensor_t* Yt);
+typedef nn_dim_t* (*nn_loss_dimFn)
+                  (nn_loss_t* base);
 
 typedef struct nn_lossInfo_s
 {
 	nn_arch_t*         arch;
 	nn_loss_backpropFn backprop_fn;
+	nn_loss_dimFn      dimY_fn;
 } nn_lossInfo_t;
 
 typedef struct nn_loss_s
 {
 	nn_arch_t*         arch;
 	nn_loss_backpropFn backprop_fn;
+	nn_loss_dimFn      dimY_fn;
 	float              loss;
 } nn_loss_t;
 
 nn_loss_t* nn_loss_new(size_t base_size,
                        nn_lossInfo_t* info);
 void       nn_loss_delete(nn_loss_t** _self);
+nn_dim_t*  nn_loss_dimY(nn_loss_t* self);
 
 #endif

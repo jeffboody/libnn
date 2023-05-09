@@ -191,6 +191,25 @@ int nn_arch_attachLayer(nn_arch_t* self,
 		return 0;
 	}
 
+	// validate dimensions
+	nn_layer_t* tail;
+	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
+	if(tail)
+	{
+		if(nn_dim_equals(nn_layer_dimY(tail),
+		                 nn_layer_dimX(layer)) == 0)
+		{
+			nn_dim_t* dimY = nn_layer_dimY(tail);
+			nn_dim_t* dimX = nn_layer_dimX(layer);
+			LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
+			     dimX->count,  dimY->count,
+			     dimX->height, dimY->height,
+			     dimX->width,  dimY->width,
+			     dimX->depth,  dimY->depth);
+			return 0;
+		}
+	}
+
 	if(cc_list_append(self->layers, NULL, layer) == NULL)
 	{
 		return 0;
@@ -206,6 +225,17 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	ASSERT(loss);
 
 	if(self->loss)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	// validate dimensions
+	nn_layer_t* tail;
+	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
+	if((tail == NULL) ||
+	   (nn_dim_equals(nn_layer_dimY(tail),
+	                  nn_loss_dimY(loss)) == 0))
 	{
 		LOGE("invalid");
 		return 0;

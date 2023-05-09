@@ -64,7 +64,7 @@ typedef struct nn_weightLayer_s
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,
                                      nn_dim_t* dimX,
-                                     nn_dim_t* dimY,
+                                     nn_dim_t* dimW,
                                      int flags);
 nn_weightLayer_t* nn_weightLayer_import(nn_arch_t* arch,
                                         jsmn_val_t* val);

@@ -329,7 +329,17 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 }
 
 static nn_dim_t*
-nn_batchNormLayer_dimFn(nn_layer_t* base)
+nn_batchNormLayer_dimXFn(nn_layer_t* base)
+{
+	ASSERT(base);
+
+	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
+
+	return nn_tensor_dim(self->dL_dX);
+}
+
+static nn_dim_t*
+nn_batchNormLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
@@ -363,7 +373,8 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		.arch            = arch,
 		.forward_pass_fn = nn_batchNormLayer_forwardPassFn,
 		.backprop_fn     = nn_batchNormLayer_backpropFn,
-		.dim_fn          = nn_batchNormLayer_dimFn,
+		.dimX_fn         = nn_batchNormLayer_dimXFn,
+		.dimY_fn         = nn_batchNormLayer_dimYFn,
 	};
 
 	nn_batchNormLayer_t* self;

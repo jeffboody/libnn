@@ -52,6 +52,7 @@ nn_loss_t* nn_loss_new(size_t base_size,
 
 	self->arch        = info->arch;
 	self->backprop_fn = info->backprop_fn;
+	self->dimY_fn     = info->dimY_fn;
 
 	// success
 	return self;
@@ -67,4 +68,12 @@ void nn_loss_delete(nn_loss_t** _self)
 		FREE(self);
 		*_self = self;
 	}
+}
+
+nn_dim_t* nn_loss_dimY(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	nn_loss_dimFn dimY_fn = self->dimY_fn;
+	return (*dimY_fn)(self);
 }
