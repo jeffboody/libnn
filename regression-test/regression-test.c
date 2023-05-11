@@ -142,6 +142,7 @@ int main(int argc, char** argv)
 	float    x;
 	float    y;
 	float    yt;
+	float    loss;
 	uint32_t i;
 	uint32_t m;
 	uint32_t epoch;
@@ -159,7 +160,8 @@ int main(int argc, char** argv)
 		{
 			if(i%1000 == 0)
 			{
-				LOGI("train %i:%i", epoch, i);
+				loss = nn_arch_loss(arch);
+				LOGI("train %u:%u, bs=%u, loss=%f", epoch, i, bs, loss);
 			}
 
 			for(m = 0; m < bs; ++m)
