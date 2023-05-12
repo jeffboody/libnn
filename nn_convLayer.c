@@ -262,7 +262,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 					v0 = nn_tensor_get(VW, f, fi, fj, k);
 					v1 = mu*v0 - lr*(dl_dw + 2*lambda*w);
 					nn_tensor_set(VW, f, fi, fj, k, v1);
-					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 - mu)*v1);
+					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 + mu)*v1);
 				}
 			}
 		}
@@ -276,7 +276,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 			v0    = nn_tensor_get(VB, f, 0, 0, 0);
 			v1    = mu*v0 - lr*dl_db;
 			nn_tensor_set(VB, f, 0, 0, 0, v1);
-			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 - mu)*v1);
+			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
 		}
 	}
 

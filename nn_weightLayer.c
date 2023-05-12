@@ -152,7 +152,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 				nn_tensor_add(dL_dX, m, 0, 0, k, dl_dy*dy_dx);
 
 				// sum dL_dW
-				dy_dw = nn_tensor_get(dY_dW, n, 0, 0, k);
+				dy_dw = nn_tensor_get(dY_dW, m, 0, 0, k);
 				nn_tensor_add(dL_dW, n, 0, 0, k, dl_dy*dy_dw);
 			}
 
@@ -183,7 +183,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 			v0 = nn_tensor_get(VW, n, 0, 0, k);
 			v1 = mu*v0 - lr*(dl_dw + 2*lambda*w);
 			nn_tensor_set(VW, n, 0, 0, k, v1);
-			nn_tensor_add(W, n, 0, 0, k, -mu*v0 + (1 - mu)*v1);
+			nn_tensor_add(W, n, 0, 0, k, -mu*v0 + (1 + mu)*v1);
 		}
 
 		// bias
@@ -195,7 +195,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 			v0    = nn_tensor_get(VB, n, 0, 0, 0);
 			v1    = mu*v0 - lr*dl_db;
 			nn_tensor_set(VB, n, 0, 0, 0, v1);
-			nn_tensor_add(B, n, 0, 0, 0, -mu*v0 + (1 - mu)*v1);
+			nn_tensor_add(B, n, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
 		}
 	}
 
