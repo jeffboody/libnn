@@ -39,9 +39,12 @@ typedef struct
 
 	int flags;
 
+	uint32_t stride;
+
 	// weights, bias, output
-	// yh = (xh - fh + 1) (valid) or xh (same)
-	// yw = (xw - fw + 1) (valid) or xw (same)
+	// s  = stride
+	// yh = ((xh - fh)/s + 1) (valid) or xh/s (same)
+	// yw = ((xw - fw)/s + 1) (valid) or xw/s (same)
 	nn_tensor_t* X; // dim(bs,xh,xw,xd) (reference)
 	nn_tensor_t* W; // dim(fc,fh,fw,xd)
 	nn_tensor_t* B; // dim(fc,1,1,1)
@@ -66,6 +69,7 @@ typedef struct
 nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,
                                  nn_dim_t* dimX,
                                  nn_dim_t* dimW,
+                                 uint32_t stride,
                                  int flags);
 nn_convLayer_t* nn_convLayer_import(nn_arch_t* arch,
                                     jsmn_val_t* val);

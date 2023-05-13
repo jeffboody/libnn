@@ -55,6 +55,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 	uint32_t     xd   = dimX->depth;
 	uint32_t     fh   = dimW->height;
 	uint32_t     fw   = dimW->width;
+	uint32_t     s    = self->stride;
 
 	// initialize y
 	float y;
@@ -80,7 +81,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 			for(k = 0; k < xd; ++k)
 			{
 				w  = nn_tensor_get(W, f, fi, fj, k);
-				x  = nn_tensor_get(X, m, i + fi, j + fj, k);
+				x  = nn_tensor_get(X, m, s*i + fi, s*j + fj, k);
 				y += w*x;
 			}
 		}
@@ -147,6 +148,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	uint32_t     fh    = dimW->height;
 	uint32_t     fw    = dimW->width;
 	uint32_t     xd    = dimW->depth;
+	uint32_t     s     = self->stride;
 
 	float    dl_dy = nn_tensor_get(dL_dY, m, i, j, f);
 	float    dy_dx;
@@ -163,10 +165,10 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 			{
 				// backpropagate dL_dX
 				dy_dx = nn_tensor_get(dY_dX, f, fi, fj, k);
-				nn_tensor_add(dL_dX, m, i + fi, j + fj, k, dl_dy*dy_dx);
+				nn_tensor_add(dL_dX, m, s*i + fi, s*j + fj, k, dl_dy*dy_dx);
 
 				// sum dL_dW
-				dy_dw = nn_tensor_get(dY_dW, m, i + fi, j + fj, k);
+				dy_dw = nn_tensor_get(dY_dW, m, s*i + fi, s*j + fj, k);
 				nn_tensor_add(dL_dW, f, fi, fj, k, dl_dy*dy_dw);
 			}
 		}
@@ -384,7 +386,8 @@ nn_convLayer_initHeWeights(nn_convLayer_t* self)
 
 nn_convLayer_t*
 nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                 nn_dim_t* dimW, int flags)
+                 nn_dim_t* dimW, uint32_t stride,
+                 int flags)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -401,6 +404,12 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	{
 		LOGE("invalid depth=%u:%u",
 		     dimX->depth, dimW->depth);
+		return NULL;
+	}
+
+	if(stride < 1)
+	{
+		LOGE("invalid stride=%u", stride);
 		return NULL;
 	}
 
@@ -428,7 +437,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	self->flags = flags;
+	self->flags  = flags;
+	self->stride = stride;
 
 	self->W = nn_tensor_new(dimW);
 	if(self->W == NULL)
@@ -459,8 +469,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_B;
 	}
 
-	uint32_t yh = xh - fh + 1;
-	uint32_t yw = xw - fw + 1;
+	uint32_t yh = (xh - fh)/stride + 1;
+	uint32_t yw = (xw - fw)/stride + 1;
 
 	nn_dim_t dimY =
 	{
@@ -541,13 +551,14 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX  = NULL;
-	jsmn_val_t* val_dimW  = NULL;
-	jsmn_val_t* val_flags = NULL;
-	jsmn_val_t* val_W     = NULL;
-	jsmn_val_t* val_B     = NULL;
-	jsmn_val_t* val_VW    = NULL;
-	jsmn_val_t* val_VB    = NULL;
+	jsmn_val_t* val_dimX   = NULL;
+	jsmn_val_t* val_dimW   = NULL;
+	jsmn_val_t* val_flags  = NULL;
+	jsmn_val_t* val_stride = NULL;
+	jsmn_val_t* val_W      = NULL;
+	jsmn_val_t* val_B      = NULL;
+	jsmn_val_t* val_VW     = NULL;
+	jsmn_val_t* val_VB     = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -560,6 +571,10 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			if(strcmp(kv->key, "flags") == 0)
 			{
 				val_flags = kv->val;
+			}
+			else if(strcmp(kv->key, "stride") == 0)
+			{
+				val_stride = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -594,19 +609,21 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX  == NULL) ||
-	   (val_dimW  == NULL) ||
-	   (val_flags == NULL) ||
-	   (val_W     == NULL) ||
-	   (val_B     == NULL) ||
-	   (val_VW    == NULL) ||
-	   (val_VB    == NULL))
+	if((val_dimX   == NULL) ||
+	   (val_dimW   == NULL) ||
+	   (val_flags  == NULL) ||
+	   (val_stride == NULL) ||
+	   (val_W      == NULL) ||
+	   (val_B      == NULL) ||
+	   (val_VW     == NULL) ||
+	   (val_VB     == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	int flags = strtol(val_flags->data, NULL, 0);
+	int      flags  = strtol(val_flags->data, NULL, 0);
+	uint32_t stride = strtol(val_stride->data, NULL, 0);
 
 	nn_dim_t dimX;
 	nn_dim_t dimW;
@@ -617,7 +634,8 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_convLayer_t* self;
-	self = nn_convLayer_new(arch, &dimX, &dimW, flags);
+	self = nn_convLayer_new(arch, &dimX, &dimW,
+	                        stride, flags);
 	if(self == NULL)
 	{
 		return NULL;
@@ -658,6 +676,8 @@ int nn_convLayer_export(nn_convLayer_t* self,
 	ret &= nn_dim_store(dimW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "flags");
 	ret &= jsmn_stream_int(stream, self->flags);
+	ret &= jsmn_stream_key(stream, "%s", "stride");
+	ret &= jsmn_stream_int(stream, (int) self->stride);
 	ret &= jsmn_stream_key(stream, "%s", "W");
 	ret &= nn_tensor_store(self->W, stream);
 	ret &= jsmn_stream_key(stream, "%s", "B");
