@@ -40,14 +40,13 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_weightLayer_forwardPassFn(nn_layer_t* base,
+nn_weightLayer_forwardPassFn(nn_layer_t* base, uint32_t bs,
                              nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
 
 	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
-	nn_arch_t*        arch = base->arch;
 
 	nn_tensor_t* W    = self->W;
 	nn_tensor_t* B    = self->B;
@@ -56,7 +55,6 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 	nn_dim_t*    dimY = nn_tensor_dim(Y);
 	uint32_t     xd   = dimX->depth;
 	uint32_t     nc   = dimY->depth;
-	uint32_t     bs   = arch->batch_size;
 
 	float    w;
 	float    x;
@@ -97,7 +95,7 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_weightLayer_backpropFn(nn_layer_t* base,
+nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
                           nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -113,7 +111,6 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dY_dX  = W;
 	nn_tensor_t* dY_dW  = self->X;
 	nn_dim_t*    dim    = nn_tensor_dim(W);
-	uint32_t     bs     = arch->batch_size;
 	uint32_t     nc     = dim->count;
 	uint32_t     xd     = dim->depth;
 	float        lr     = arch->learning_rate;

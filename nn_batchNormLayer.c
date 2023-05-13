@@ -39,6 +39,7 @@
 
 static nn_tensor_t*
 nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
+                                uint32_t bs,
                                 nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -58,7 +59,6 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	nn_tensor_t* Xmean_ra = self->Xmean_ra;
 	nn_tensor_t* Xvar_ra  = self->Xvar_ra;
 	nn_dim_t*    dim      = nn_tensor_dim(X);
-	uint32_t     bs       = arch->batch_size;
 	uint32_t     xh       = dim->height;
 	uint32_t     xw       = dim->width;
 	uint32_t     xd       = dim->depth;
@@ -191,21 +191,18 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 
 static void
 nn_batchNormLayer_backpropSum(nn_batchNormLayer_t* self,
-                              uint32_t k, float* _b, float* _c)
+                              uint32_t bs, uint32_t k,
+                              float* _b, float* _c)
 {
 	ASSERT(self);
 	ASSERT(_b);
 	ASSERT(_c);
 
-	nn_arch_t* arch = self->base.arch;
-
 	nn_tensor_t* Xhat     = self->Xhat;
 	nn_tensor_t* dL_dXhat = self->dL_dXhat;
 	nn_dim_t*    dim      = nn_tensor_dim(Xhat);
-
-	uint32_t bs = arch->batch_size;
-	uint32_t xh = dim->height;
-	uint32_t xw = dim->width;
+	uint32_t     xh       = dim->height;
+	uint32_t     xw       = dim->width;
 
 	float b = 0.0f;
 	float c = 0.0f;
@@ -234,7 +231,7 @@ nn_batchNormLayer_backpropSum(nn_batchNormLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_batchNormLayer_backpropFn(nn_layer_t* base,
+nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
                              nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -253,7 +250,6 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dL_dXhat = self->dL_dXhat;
 	nn_dim_t*    dim      = nn_tensor_dim(dL_dY);
 	float        lr       = arch->learning_rate;
-	uint32_t     bs       = arch->batch_size;
 	uint32_t     xh       = dim->height;
 	uint32_t     xw       = dim->width;
 	uint32_t     xd       = dim->depth;
@@ -314,7 +310,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 					// compute dL_dX
 					dl_dxhat = nn_tensor_get(dL_dXhat, m, i, j, k);
 					a        = M*dl_dxhat;
-					nn_batchNormLayer_backpropSum(self, k, &b, &c);
+					nn_batchNormLayer_backpropSum(self, bs, k, &b, &c);
 					nn_tensor_set(dL_dX, m, i, j, k, (a - b - xhat*c)/d);
 				}
 			}

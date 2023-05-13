@@ -36,8 +36,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_mseLoss_backpropFn(nn_loss_t* base, nn_tensor_t* Y,
-                      nn_tensor_t* Yt)
+nn_mseLoss_backpropFn(nn_loss_t* base, uint32_t bs,
+                      nn_tensor_t* Y, nn_tensor_t* Yt)
 {
 	ASSERT(base);
 	ASSERT(Y);
@@ -47,7 +47,6 @@ nn_mseLoss_backpropFn(nn_loss_t* base, nn_tensor_t* Y,
 
 	nn_tensor_t* dL_dY = self->dL_dY;
 	nn_dim_t*    dim   = nn_tensor_dim(Y);
-	uint32_t     bs    = base->arch->batch_size;
 	uint32_t     yh    = dim->height;
 	uint32_t     yw    = dim->width;
 	uint32_t     yd    = dim->depth;

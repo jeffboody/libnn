@@ -247,15 +247,13 @@ int nn_arch_attachLoss(nn_arch_t* self,
 }
 
 int nn_arch_train(nn_arch_t* self,
-                  uint32_t batch_size,
+                  uint32_t bs,
                   nn_tensor_t* X,
                   nn_tensor_t* Yt)
 {
 	ASSERT(self);
 	ASSERT(X);
 	ASSERT(Yt);
-
-	self->batch_size = batch_size;
 
 	// perform forward pass for each batch
 	nn_tensor_t*   Yi = X;
@@ -268,7 +266,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_forwardPassFn forward_pass_fn;
 		forward_pass_fn = layer->forward_pass_fn;
 
-		Yi = (*forward_pass_fn)(layer, Yi);
+		Yi = (*forward_pass_fn)(layer, bs, Yi);
 		if(Yi == NULL)
 		{
 			return 0;
@@ -283,7 +281,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_loss_backpropFn backprop_fn;
 		backprop_fn = self->loss->backprop_fn;
 
-		dL_dY = (*backprop_fn)(self->loss, Yi, Yt);
+		dL_dY = (*backprop_fn)(self->loss, bs, Yi, Yt);
 		if(dL_dY == NULL)
 		{
 			return 0;
@@ -300,7 +298,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_backpropFn backprop_fn;
 		backprop_fn = layer->backprop_fn;
 
-		dL_dY = (*backprop_fn)(layer, dL_dY);
+		dL_dY = (*backprop_fn)(layer, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return 0;
@@ -327,8 +325,6 @@ int nn_arch_predict(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Y);
 
-	self->batch_size = 1;
-
 	nn_tensor_t*   Yi   = X;
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)
@@ -339,7 +335,7 @@ int nn_arch_predict(nn_arch_t* self,
 		nn_layer_forwardPassFn forward_pass_fn;
 		forward_pass_fn = layer->forward_pass_fn;
 
-		Yi = (*forward_pass_fn)(layer, Yi);
+		Yi = (*forward_pass_fn)(layer, 1, Yi);
 		if(Yi == NULL)
 		{
 			return 0;

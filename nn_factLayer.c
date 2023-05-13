@@ -49,7 +49,8 @@ const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 ***********************************************************/
 
 static nn_tensor_t*
-nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
+nn_factLayer_forwardPassFn(nn_layer_t* base, uint32_t bs,
+                           nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -59,7 +60,6 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 	nn_tensor_t* Y     = self->Y;
 	nn_tensor_t* dY_dX = self->dY_dX;
 	nn_dim_t*    dimX  = nn_tensor_dim(X);
-	uint32_t     bs    = base->arch->batch_size;
 	uint32_t     xh    = dimX->height;
 	uint32_t     xw    = dimX->width;
 	uint32_t     xd    = dimX->depth;
@@ -98,7 +98,8 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 }
 
 static nn_tensor_t*
-nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
+nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+                        nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -108,7 +109,6 @@ nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 	nn_tensor_t* dY_dX = self->dY_dX;
 	nn_tensor_t* dL_dX = self->dL_dX;
 	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
-	uint32_t     bs    = base->arch->batch_size;
 	uint32_t     xh    = dimX->height;
 	uint32_t     xw    = dimX->width;
 	uint32_t     xd    = dimX->depth;

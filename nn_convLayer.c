@@ -89,7 +89,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base,
+nn_convLayer_forwardPassFn(nn_layer_t* base, uint32_t bs,
                            nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -99,7 +99,6 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 
 	nn_dim_t* dimW = nn_tensor_dim(self->W);
 	nn_dim_t* dimY = nn_tensor_dim(self->Y);
-	uint32_t  bs   = base->arch->batch_size;
 	uint32_t  fc   = dimW->count;
 	uint32_t  yh   = dimY->height;
 	uint32_t  yw   = dimY->width;
@@ -181,7 +180,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropFn(nn_layer_t* base,
+nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
                         nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -201,7 +200,6 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	uint32_t     fh     = dim->height;
 	uint32_t     fw     = dim->width;
 	uint32_t     xd     = dim->depth;
-	uint32_t     bs     = arch->batch_size;
 	float        lr     = arch->learning_rate;
 	float        mu     = arch->momentum_decay;
 	float        lambda = arch->l2_lambda;

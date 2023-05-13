@@ -27,8 +27,8 @@
 #include "nn.h"
 
 typedef nn_tensor_t* (*nn_loss_backpropFn)
-                     (nn_loss_t* base, nn_tensor_t* Y,
-                      nn_tensor_t* Yt);
+                     (nn_loss_t* base, uint32_t bs,
+                      nn_tensor_t* Y, nn_tensor_t* Yt);
 typedef nn_dim_t* (*nn_loss_dimFn)
                   (nn_loss_t* base);
 

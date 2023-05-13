@@ -43,11 +43,10 @@ typedef struct nn_archInfo_s
 typedef struct nn_arch_s
 {
 	// hyperparameters
-	uint32_t batch_size;
-	float    learning_rate;
-	float    momentum_decay;
-	float    batch_momentum;
-	float    l2_lambda;
+	float learning_rate;
+	float momentum_decay;
+	float batch_momentum;
+	float l2_lambda;
 
 	// neural network (references)
 	cc_list_t* layers;
@@ -70,7 +69,7 @@ int        nn_arch_attachLayer(nn_arch_t* self,
 int        nn_arch_attachLoss(nn_arch_t* self,
                               nn_loss_t* loss);
 int        nn_arch_train(nn_arch_t* self,
-                         uint32_t batch_size,
+                         uint32_t bs,
                          nn_tensor_t* X,
                          nn_tensor_t* Yt);
 float      nn_arch_loss(nn_arch_t* self);

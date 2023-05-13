@@ -27,9 +27,11 @@
 #include "nn.h"
 
 typedef nn_tensor_t* (*nn_layer_forwardPassFn)
-                     (nn_layer_t* base, nn_tensor_t* X);
+                     (nn_layer_t* base, uint32_t bs,
+                      nn_tensor_t* X);
 typedef nn_tensor_t* (*nn_layer_backpropFn)
-                     (nn_layer_t* base, nn_tensor_t* dL_dY);
+                     (nn_layer_t* base, uint32_t bs,
+                      nn_tensor_t* dL_dY);
 typedef nn_dim_t* (*nn_layer_dimFn)
                   (nn_layer_t* base);
 
