@@ -38,9 +38,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
-                                uint32_t bs,
-                                nn_tensor_t* X)
+nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
+                                uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -63,27 +62,26 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	uint32_t     xw       = dim->width;
 	uint32_t     xd       = dim->depth;
 
-	// prediction or training
+	// prediction (running average) or
+	// training (mini-batch)
 	nn_tensor_t* Xmean = self->Xmean_ra;
 	nn_tensor_t* Xvar  = self->Xvar_ra;
-	if(bs > 1)
-	{
-		Xmean = self->Xmean_mb;
-		Xvar  = self->Xvar_mb;
-	}
 
-	// compute mini-batch mean
-	// update running mean
-	float    xmean_ra;
-	float    xmean_mb;
-	float    momentum = arch->batch_momentum;
-	float    M = (float) (bs*xh*xw);
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
-	if(bs > 1)
+	if(mode == NN_LAYER_MODE_TRAIN)
 	{
+		Xmean = self->Xmean_mb;
+		Xvar  = self->Xvar_mb;
+
+		// compute mini-batch mean
+		// update running mean
+		float xmean_ra;
+		float xmean_mb;
+		float momentum = arch->batch_momentum;
+		float M = (float) (bs*xh*xw);
 		for(k = 0; k < xd; ++k)
 		{
 			// compute mini-batch mean
@@ -106,15 +104,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 			xmean_ra = momentum*xmean_ra + (1 - momentum)*xmean_mb;
 			nn_tensor_set(Xmean_ra, 0, 0, 0, k, xmean_ra);
 		}
-	}
 
-	// compute mini-batch variance
-	// update running variance
-	float xvar_ra;
-	float xvar_mb;
-	float dx;
-	if(bs > 1)
-	{
+		// compute mini-batch variance
+		// update running variance
+		float xvar_ra;
+		float xvar_mb;
+		float dx;
 		for(k = 0; k < xd; ++k)
 		{
 			// compute mini-batch variance

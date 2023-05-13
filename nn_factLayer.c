@@ -49,8 +49,8 @@ const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 ***********************************************************/
 
 static nn_tensor_t*
-nn_factLayer_forwardPassFn(nn_layer_t* base, uint32_t bs,
-                           nn_tensor_t* X)
+nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
+                           uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);

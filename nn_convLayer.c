@@ -89,8 +89,8 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base, uint32_t bs,
-                           nn_tensor_t* X)
+nn_convLayer_forwardPassFn(nn_layer_t* base, int mode,
+                           uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);

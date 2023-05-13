@@ -26,9 +26,12 @@
 
 #include "nn.h"
 
+#define NN_LAYER_MODE_TRAIN   0
+#define NN_LAYER_MODE_PREDICT 1
+
 typedef nn_tensor_t* (*nn_layer_forwardPassFn)
-                     (nn_layer_t* base, uint32_t bs,
-                      nn_tensor_t* X);
+                     (nn_layer_t* base, int mode,
+                      uint32_t bs, nn_tensor_t* X);
 typedef nn_tensor_t* (*nn_layer_backpropFn)
                      (nn_layer_t* base, uint32_t bs,
                       nn_tensor_t* dL_dY);

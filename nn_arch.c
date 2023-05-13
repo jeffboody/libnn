@@ -266,7 +266,8 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_forwardPassFn forward_pass_fn;
 		forward_pass_fn = layer->forward_pass_fn;
 
-		Yi = (*forward_pass_fn)(layer, bs, Yi);
+		Yi = (*forward_pass_fn)(layer, NN_LAYER_MODE_TRAIN,
+		                        bs, Yi);
 		if(Yi == NULL)
 		{
 			return 0;
@@ -335,7 +336,8 @@ int nn_arch_predict(nn_arch_t* self,
 		nn_layer_forwardPassFn forward_pass_fn;
 		forward_pass_fn = layer->forward_pass_fn;
 
-		Yi = (*forward_pass_fn)(layer, 1, Yi);
+		Yi = (*forward_pass_fn)(layer, NN_LAYER_MODE_PREDICT,
+		                        1, Yi);
 		if(Yi == NULL)
 		{
 			return 0;
