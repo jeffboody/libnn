@@ -58,8 +58,11 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 
 	nn_tensor_t* Y     = self->Y;
 	nn_tensor_t* dY_dX = self->dY_dX;
-	nn_dim_t*    dim   = nn_tensor_dim(Y);
+	nn_dim_t*    dimX  = nn_tensor_dim(X);
 	uint32_t     bs    = base->arch->batch_size;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
 
 	nn_factLayer_fn fact  = self->fact;
 	nn_factLayer_fn dfact = self->dfact;
@@ -72,11 +75,11 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, nn_tensor_t* X)
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < dim->height; ++i)
+		for(i = 0; i < xh; ++i)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(j = 0; j < xw; ++j)
 			{
-				for(k = 0; k < dim->depth; ++k)
+				for(k = 0; k < xd; ++k)
 				{
 					// output
 					x = nn_tensor_get(X, m, i, j, k);
@@ -104,8 +107,11 @@ nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 
 	nn_tensor_t* dY_dX = self->dY_dX;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_dim_t*    dim   = nn_tensor_dim(dL_dY);
+	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
 	uint32_t     bs    = base->arch->batch_size;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
 
 	// backpropagate loss
 	float    dy_dx;
@@ -117,11 +123,11 @@ nn_factLayer_backpropFn(nn_layer_t* base, nn_tensor_t* dL_dY)
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < dim->height; ++i)
+		for(i = 0; i < xh; ++i)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(j = 0; j < xw; ++j)
 			{
-				for(k = 0; k < dim->depth; ++k)
+				for(k = 0; k < xd; ++k)
 				{
 					dl_dy = nn_tensor_get(dL_dY, m, i, j, k);
 					dy_dx = nn_tensor_get(dY_dX, m, i, j, k);

@@ -310,23 +310,27 @@ nn_convLayer_initXavierWeights(nn_convLayer_t* self)
 
 	nn_arch_t* arch = self->base.arch;
 
-	nn_dim_t* dim = nn_tensor_dim(self->W);
-	uint32_t  hwd = dim->height*dim->width*dim->depth;
-	float     min = -1.0/sqrt((double) hwd);
-	float     max = 1.0/sqrt((double) hwd);
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	uint32_t  fc   = dimW->count;
+	uint32_t  fh   = dimW->height;
+	uint32_t  fw   = dimW->width;
+	uint32_t  xd   = dimW->depth;
+	uint32_t  hwd  = fh*fw*xd;
+	float     min  = -1.0/sqrt((double) hwd);
+	float     max  = 1.0/sqrt((double) hwd);
 
 	float    w;
 	uint32_t n;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
-	for(n = 0; n < dim->count; ++n)
+	for(n = 0; n < fc; ++n)
 	{
-		for(i = 0; i < dim->height; ++i)
+		for(i = 0; i < fh; ++i)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(j = 0; j < fw; ++j)
 			{
-				for(k = 0; k < dim->depth; ++k)
+				for(k = 0; k < xd; ++k)
 				{
 					w = cc_rngUniform_rand2F(&arch->rng_uniform,
 					                         min, max);
@@ -344,8 +348,12 @@ nn_convLayer_initHeWeights(nn_convLayer_t* self)
 
 	nn_arch_t* arch = self->base.arch;
 
-	nn_dim_t* dim = nn_tensor_dim(self->W);
-	uint32_t  hwd = dim->height*dim->width*dim->depth;
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	uint32_t  fc   = dimW->count;
+	uint32_t  fh   = dimW->height;
+	uint32_t  fw   = dimW->width;
+	uint32_t  xd   = dimW->depth;
+	uint32_t  hwd  = fh*fw*xd;
 
 	double mu    = 0.0;
 	double sigma = sqrt(2.0/((double) hwd));
@@ -356,13 +364,13 @@ nn_convLayer_initHeWeights(nn_convLayer_t* self)
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
-	for(n = 0; n < dim->count; ++n)
+	for(n = 0; n < fc; ++n)
 	{
-		for(i = 0; i < dim->height; ++i)
+		for(i = 0; i < fh; ++i)
 		{
-			for(j = 0; j < dim->width; ++j)
+			for(j = 0; j < fw; ++j)
 			{
-				for(k = 0; k < dim->depth; ++k)
+				for(k = 0; k < xd; ++k)
 				{
 					w = cc_rngNormal_rand1F(&arch->rng_normal);
 					nn_tensor_set(self->W, n, i, j, k, w);

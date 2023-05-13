@@ -229,17 +229,19 @@ nn_weightLayer_initXavierWeights(nn_weightLayer_t* self)
 
 	nn_arch_t* arch = self->base.arch;
 
-	nn_dim_t* dim = nn_tensor_dim(self->W);
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	uint32_t  nc   = dimW->count;
+	uint32_t  xd   = dimW->depth;
 
-	float min = -1.0/sqrt((double) dim->depth);
-	float max = 1.0/sqrt((double) dim->depth);
+	float min = -1.0/sqrt((double) xd);
+	float max = 1.0/sqrt((double) xd);
 
 	float    w;
 	uint32_t k;
 	uint32_t n;
-	for(n = 0; n < dim->count; ++n)
+	for(n = 0; n < nc; ++n)
 	{
-		for(k = 0; k < dim->depth; ++k)
+		for(k = 0; k < xd; ++k)
 		{
 			w = cc_rngUniform_rand2F(&arch->rng_uniform,
 			                         min, max);
@@ -255,18 +257,20 @@ nn_weightLayer_initHeWeights(nn_weightLayer_t* self)
 
 	nn_arch_t* arch = self->base.arch;
 
-	nn_dim_t* dim = nn_tensor_dim(self->W);
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	uint32_t  nc   = dimW->count;
+	uint32_t  xd   = dimW->depth;
 
 	double mu    = 0.0;
-	double sigma = sqrt(2.0/((double) dim->depth));
+	double sigma = sqrt(2.0/((double) xd));
 	cc_rngNormal_reset(&arch->rng_normal, mu, sigma);
 
 	float    w;
 	uint32_t k;
 	uint32_t n;
-	for(n = 0; n < dim->count; ++n)
+	for(n = 0; n < nc; ++n)
 	{
-		for(k = 0; k < dim->depth; ++k)
+		for(k = 0; k < xd; ++k)
 		{
 			w = cc_rngNormal_rand1F(&arch->rng_normal);
 			nn_tensor_set(self->W, n, 0, 0, k, w);
