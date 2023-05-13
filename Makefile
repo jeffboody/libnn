@@ -5,6 +5,7 @@ CLASSES = \
 	nn_convLayer      \
 	nn_dim            \
 	nn_factLayer      \
+	nn_flattenLayer   \
 	nn_layer          \
 	nn_loss           \
 	nn_mseLoss        \
