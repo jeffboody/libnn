@@ -28,6 +28,7 @@
 
 typedef struct nn_arch_s           nn_arch_t;
 typedef struct nn_batchNormLayer_s nn_batchNormLayer_t;
+typedef struct nn_convLayer_s      nn_convLayer_t;
 typedef struct nn_dim_s            nn_dim_t;
 typedef struct nn_factLayer_s      nn_factLayer_t;
 typedef struct nn_layer_s          nn_layer_t;

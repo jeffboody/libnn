@@ -50,11 +50,10 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 	nn_tensor_t* W    = self->W;
 	nn_tensor_t* B    = self->B;
 	nn_tensor_t* Y    = self->Y;
-	nn_dim_t*    dimX = nn_tensor_dim(X);
 	nn_dim_t*    dimW = nn_tensor_dim(W);
-	uint32_t     xd   = dimX->depth;
 	uint32_t     fh   = dimW->height;
 	uint32_t     fw   = dimW->width;
+	uint32_t     xd   = dimW->depth;
 	uint32_t     s    = self->stride;
 
 	// initialize y
@@ -195,13 +194,14 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_tensor_t* B      = self->B;
 	nn_tensor_t* VW     = self->VW;
 	nn_tensor_t* VB     = self->VB;
-	nn_dim_t*    dim    = nn_tensor_dim(dL_dY);
-	uint32_t     yh     = dim->height;
-	uint32_t     yw     = dim->width;
-	uint32_t     fc     = dim->count;
-	uint32_t     fh     = dim->height;
-	uint32_t     fw     = dim->width;
-	uint32_t     xd     = dim->depth;
+	nn_dim_t*    dimY   = nn_tensor_dim(dL_dY);
+	nn_dim_t*    dimW   = nn_tensor_dim(W);
+	uint32_t     yh     = dimY->height;
+	uint32_t     yw     = dimY->width;
+	uint32_t     fc     = dimW->count;
+	uint32_t     fh     = dimW->height;
+	uint32_t     fw     = dimW->width;
+	uint32_t     xd     = dimW->depth;
 	float        lr     = arch->learning_rate;
 	float        mu     = arch->momentum_decay;
 	float        lambda = arch->l2_lambda;

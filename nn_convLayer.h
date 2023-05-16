@@ -33,7 +33,7 @@
 #define NN_CONV_LAYER_FLAG_PAD_VALID    0x0100
 #define NN_CONV_LAYER_FLAG_PAD_SAME     0x0200
 
-typedef struct
+typedef struct nn_convLayer_s
 {
 	nn_layer_t base;
 
