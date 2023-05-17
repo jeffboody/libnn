@@ -21,6 +21,7 @@
  *
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -139,6 +140,28 @@ void nn_tensor_delete(nn_tensor_t** _self)
 		FREE(self);
 		*_self = NULL;
 	}
+}
+
+void nn_tensor_print(nn_tensor_t* self, const char* name)
+{
+	ASSERT(self);
+
+	jsmn_stream_t* stream = jsmn_stream_new();
+	if(stream == NULL)
+	{
+		return;
+	}
+
+	nn_tensor_store(self, stream);
+
+	size_t size = 0;
+	const char* buffer = jsmn_stream_buffer(stream, &size);
+	if(buffer)
+	{
+		printf("%s: %s\n", name, buffer);
+	}
+
+	jsmn_stream_delete(&stream);
 }
 
 int nn_tensor_load(nn_tensor_t* self, jsmn_val_t* val)

@@ -36,6 +36,8 @@ typedef struct nn_tensor_s
 
 nn_tensor_t* nn_tensor_new(nn_dim_t* dim);
 void         nn_tensor_delete(nn_tensor_t** _self);
+void         nn_tensor_print(nn_tensor_t* self,
+                             const char* name);
 int          nn_tensor_load(nn_tensor_t* self,
                             jsmn_val_t* val);
 int          nn_tensor_store(nn_tensor_t* self,
