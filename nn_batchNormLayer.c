@@ -290,6 +290,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		dl_db = 0.0f;
 		xvar  = nn_tensor_get(Xvar_mb, 0, 0, 0, k);
 		d     = M*sqrtf(xvar + epsilon);
+		nn_batchNormLayer_backpropSum(self, bs, k, &b, &c);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < xh; ++i)
@@ -305,7 +306,6 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 					// compute dL_dX
 					dl_dxhat = nn_tensor_get(dL_dXhat, m, i, j, k);
 					a        = M*dl_dxhat;
-					nn_batchNormLayer_backpropSum(self, bs, k, &b, &c);
 					nn_tensor_set(dL_dX, m, i, j, k, (a - b - xhat*c)/d);
 				}
 			}
