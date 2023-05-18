@@ -28,20 +28,23 @@
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
+#include "libnn/nn_batchNormLayer.h"
+#include "libnn/nn_convLayer.h"
 #include "libnn/nn_dim.h"
 #include "libnn/nn_mseLoss.h"
 #include "libnn/nn_tensor.h"
-#include "libnn/nn_convLayer.h"
 
 /***********************************************************
 * private                                                  *
 ***********************************************************/
 
 static void
-fillXY(uint32_t m, cc_rngNormal_t* rng,
+fillXY(uint32_t m,
+       cc_rngNormal_t* rng1, cc_rngNormal_t* rng2,
        nn_tensor_t* X, nn_tensor_t* Y)
 {
-	ASSERT(rng);
+	ASSERT(rng1);
+	ASSERT(rng2);
 	ASSERT(X);
 	ASSERT(Y);
 
@@ -59,7 +62,7 @@ fillXY(uint32_t m, cc_rngNormal_t* rng,
 	{
 		for(j = 0; j < xw; ++j)
 		{
-			x = cc_rngNormal_rand1F(rng);
+			x = cc_rngNormal_rand1F(rng1);
 			nn_tensor_set(X, m, i, j, k, x);
 		}
 	}
@@ -90,10 +93,23 @@ fillXY(uint32_t m, cc_rngNormal_t* rng,
 				{
 					s  = sobel[ii*fw + jj];
 					x  = nn_tensor_get(X, m, i + ii, j + jj, k);
+
+					// add noise
+					x += cc_rngNormal_rand1F(rng2);
 					y += s*x;
 				}
 			}
 			nn_tensor_set(Y, m, i, j, k, y);
+		}
+	}
+
+	// shift/scale X
+	for(i = 0; i < xh; ++i)
+	{
+		for(j = 0; j < xw; ++j)
+		{
+			nn_tensor_mul(X, m, i, j, k, 100.0f);
+			nn_tensor_add(X, m, i, j, k, 10.0f);
 		}
 	}
 }
@@ -108,7 +124,10 @@ int main(int argc, char** argv)
 
 	nn_archInfo_t arch_info =
 	{
-		.learning_rate = 0.00001f,
+		.learning_rate  = 0.000001f,
+		.momentum_decay = 0.5f,
+		.batch_momentum = 0.99f,
+		.l2_lambda      = 0.0001f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(0, &arch_info);
@@ -133,6 +152,13 @@ int main(int argc, char** argv)
 
 	nn_dim_t* dim = nn_tensor_dim(X);
 
+	nn_batchNormLayer_t* bn;
+	bn = nn_batchNormLayer_new(arch, dim);
+	if(bn == NULL)
+	{
+		goto fail_bn;
+	}
+
 	nn_dim_t dimW =
 	{
 		.count  = 1,
@@ -142,7 +168,7 @@ int main(int argc, char** argv)
 	};
 
 	nn_convLayer_t* conv;
-	conv = nn_convLayer_new(arch, &dimX, &dimW, 1,
+	conv = nn_convLayer_new(arch, dim, &dimW, 1,
 	                        NN_CONV_LAYER_FLAG_XAVIER);
 	if(conv == NULL)
 	{
@@ -163,16 +189,20 @@ int main(int argc, char** argv)
 		goto fail_mse_loss;
 	}
 
-	if((nn_arch_attachLayer(arch, (nn_layer_t*) conv) == 0) ||
+	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn)     == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv)   == 0) ||
 	   (nn_arch_attachLoss(arch, (nn_loss_t*) mse_loss) == 0))
 	{
 		goto fail_attach;
 	}
 
-	float mu    = 0.0f;
-	float sigma = 1.0f;
-	cc_rngNormal_t rng;
-	cc_rngNormal_init(&rng, mu, sigma);
+	float mu     = 0.0f;
+	float sigma1 = 1.0f;
+	float sigma2 = 0.1f;
+	cc_rngNormal_t rng1;
+	cc_rngNormal_t rng2;
+	cc_rngNormal_init(&rng1, mu, sigma1);
+	cc_rngNormal_init(&rng2, mu, sigma2);
 
 	// training
 	uint32_t idx;
@@ -182,7 +212,7 @@ int main(int argc, char** argv)
 	{
 		for(m = 0; m < bs; ++m)
 		{
-			fillXY(m, &rng, X, Y);
+			fillXY(m, &rng1, &rng2, X, Y);
 		}
 
 		nn_arch_train(arch, bs, X, Y);
@@ -193,6 +223,12 @@ int main(int argc, char** argv)
 			     idx, nn_arch_loss(arch));
 			// nn_tensor_print(X, "X");
 			// nn_tensor_print(Y, "Y");
+			nn_tensor_print(bn->G, "G");
+			nn_tensor_print(bn->B, "B");
+			nn_tensor_print(bn->Xmean_mb, "Xmean_mb");
+			nn_tensor_print(bn->Xmean_ra, "Xmean_ra");
+			nn_tensor_print(bn->Xvar_mb, "Xvar_mb");
+			nn_tensor_print(bn->Xvar_ra, "Xvar_ra");
 			nn_tensor_print(conv->W, "W");
 			nn_tensor_print(conv->B, "B");
 		}
@@ -201,6 +237,7 @@ int main(int argc, char** argv)
 	nn_mseLoss_delete(&mse_loss);
 	nn_tensor_delete(&Y);
 	nn_convLayer_delete(&conv);
+	nn_batchNormLayer_delete(&bn);
 	nn_tensor_delete(&X);
 	nn_arch_delete(&arch);
 
@@ -215,6 +252,8 @@ int main(int argc, char** argv)
 	fail_Y:
 		nn_convLayer_delete(&conv);
 	fail_conv:
+		nn_batchNormLayer_delete(&bn);
+	fail_bn:
 		nn_tensor_delete(&X);
 	fail_X:
 		nn_arch_delete(&arch);
