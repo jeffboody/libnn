@@ -9,6 +9,7 @@ CLASSES = \
 	nn_layer          \
 	nn_loss           \
 	nn_mseLoss        \
+	nn_poolingLayer   \
 	nn_tensor         \
 	nn_weightLayer
 SOURCE  = $(CLASSES:%=%.c)
