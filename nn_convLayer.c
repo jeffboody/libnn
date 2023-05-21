@@ -47,14 +47,18 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 {
 	ASSERT(self);
 
-	nn_tensor_t* W    = self->W;
-	nn_tensor_t* B    = self->B;
-	nn_tensor_t* Y    = self->Y;
-	nn_dim_t*    dimW = nn_tensor_dim(W);
-	uint32_t     fh   = dimW->height;
-	uint32_t     fw   = dimW->width;
-	uint32_t     xd   = dimW->depth;
-	uint32_t     s    = self->stride;
+	nn_tensor_t* W     = self->W;
+	nn_tensor_t* B     = self->B;
+	nn_tensor_t* Y     = self->Y;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_dim_t*    dimW  = nn_tensor_dim(W);
+	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
+	uint32_t     fh    = dimW->height;
+	uint32_t     fw    = dimW->width;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
+	uint32_t     s     = self->stride;
 
 	// initialize y
 	float y;
@@ -67,21 +71,53 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 		y = nn_tensor_get(B, f, 0, 0, 0);
 	}
 
+	int same = self->flags & NN_CONV_LAYER_FLAG_PAD_SAME;
+
 	// compute weighted sum
 	float    w;
 	float    x;
 	uint32_t fi;
 	uint32_t fj;
 	uint32_t k;
-	for(fi = 0; fi < fh; ++fi)
+	if(same)
 	{
-		for(fj = 0; fj < fw; ++fj)
+		for(fi = 0; fi < fh; ++fi)
 		{
-			for(k = 0; k < xd; ++k)
+			int ii = s*i + fi - fh/2;
+			if((ii < 0) || (ii >= xh))
 			{
-				w  = nn_tensor_get(W, f, fi, fj, k);
-				x  = nn_tensor_get(X, m, s*i + fi, s*j + fj, k);
-				y += w*x;
+				continue;
+			}
+
+			for(fj = 0; fj < fw; ++fj)
+			{
+				int jj = s*j + fj - fw/2;
+				if((jj < 0) || (jj >= xw))
+				{
+					continue;
+				}
+
+				for(k = 0; k < xd; ++k)
+				{
+					w  = nn_tensor_get(W, f, fi, fj, k);
+					x  = nn_tensor_get(X, m, ii, jj, k);
+					y += w*x;
+				}
+			}
+		}
+	}
+	else
+	{
+		for(fi = 0; fi < fh; ++fi)
+		{
+			for(fj = 0; fj < fw; ++fj)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					w  = nn_tensor_get(W, f, fi, fj, k);
+					x  = nn_tensor_get(X, m, s*i + fi, s*j + fj, k);
+					y += w*x;
+				}
 			}
 		}
 	}
@@ -144,10 +180,15 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
 	nn_dim_t*    dimW  = nn_tensor_dim(W);
+	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
 	uint32_t     fh    = dimW->height;
 	uint32_t     fw    = dimW->width;
-	uint32_t     xd    = dimW->depth;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
 	uint32_t     s     = self->stride;
+
+	int same = self->flags & NN_CONV_LAYER_FLAG_PAD_SAME;
 
 	float    dl_dy = nn_tensor_get(dL_dY, m, i, j, f);
 	float    dy_dx;
@@ -156,19 +197,54 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	uint32_t fi;
 	uint32_t fj;
 	uint32_t k;
-	for(fi = 0; fi < fh; ++fi)
+	if(same)
 	{
-		for(fj = 0; fj < fw; ++fj)
+		int ii;
+		for(fi = 0; fi < fh; ++fi)
 		{
-			for(k = 0; k < xd; ++k)
+			ii = s*i + fi - fh/2;
+			if((ii < 0) || (ii >= xh))
 			{
-				// backpropagate dL_dX
-				dy_dx = nn_tensor_get(dY_dX, f, fi, fj, k);
-				nn_tensor_add(dL_dX, m, s*i + fi, s*j + fj, k, dl_dy*dy_dx);
+				continue;
+			}
 
-				// sum dL_dW
-				dy_dw = nn_tensor_get(dY_dW, m, s*i + fi, s*j + fj, k);
-				nn_tensor_add(dL_dW, f, fi, fj, k, dl_dy*dy_dw);
+			for(fj = 0; fj < fw; ++fj)
+			{
+				int jj = s*j + fj - fw/2;
+				if((jj < 0) || (jj >= xw))
+				{
+					continue;
+				}
+
+				for(k = 0; k < xd; ++k)
+				{
+					// backpropagate dL_dX
+					dy_dx = nn_tensor_get(dY_dX, f, fi, fj, k);
+					nn_tensor_add(dL_dX, m, ii, jj, k, dl_dy*dy_dx);
+
+					// sum dL_dW
+					dy_dw = nn_tensor_get(dY_dW, m, ii, jj, k);
+					nn_tensor_add(dL_dW, f, fi, fj, k, dl_dy*dy_dw);
+				}
+			}
+		}
+	}
+	else
+	{
+		for(fi = 0; fi < fh; ++fi)
+		{
+			for(fj = 0; fj < fw; ++fj)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					// backpropagate dL_dX
+					dy_dx = nn_tensor_get(dY_dX, f, fi, fj, k);
+					nn_tensor_add(dL_dX, m, s*i + fi, s*j + fj, k, dl_dy*dy_dx);
+
+					// sum dL_dW
+					dy_dw = nn_tensor_get(dY_dW, m, s*i + fi, s*j + fj, k);
+					nn_tensor_add(dL_dW, f, fi, fj, k, dl_dy*dy_dw);
+				}
 			}
 		}
 	}
@@ -413,13 +489,6 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	// TODO - add same padding
-	if(flags & NN_CONV_LAYER_FLAG_PAD_SAME)
-	{
-		LOGE("unsupported");
-		return NULL;
-	}
-
 	nn_layerInfo_t info =
 	{
 		.arch            = arch,
@@ -471,6 +540,11 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	uint32_t yh = (xh - fh)/stride + 1;
 	uint32_t yw = (xw - fw)/stride + 1;
+	if(flags & NN_CONV_LAYER_FLAG_PAD_SAME)
+	{
+		yh = xh/stride;
+		yw = xw/stride;
+	}
 
 	nn_dim_t dimY =
 	{
