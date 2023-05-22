@@ -359,6 +359,307 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	return dL_dX;
 }
 
+static void
+nn_convLayer_forwardPassT(nn_convLayer_t* self,
+                          nn_tensor_t* X,
+                          uint32_t m, uint32_t i,
+                          uint32_t j, uint32_t f)
+{
+	ASSERT(self);
+
+	nn_tensor_t* W     = self->W;
+	nn_tensor_t* B     = self->B;
+	nn_tensor_t* Y     = self->Y;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_dim_t*    dimW  = nn_tensor_dim(W);
+	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
+	nn_dim_t*    dimY  = nn_tensor_dim(Y);
+	uint32_t     fh    = dimW->height;
+	uint32_t     fw    = dimW->width;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
+	uint32_t     yh    = dimY->height;
+	uint32_t     yw    = dimY->width;
+	uint32_t     s     = self->stride;
+
+	// initialize y
+	float y;
+	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
+	{
+		y = 0.0f;
+	}
+	else
+	{
+		y = nn_tensor_get(B, f, 0, 0, 0);
+	}
+
+	// compute weighted sum
+	float    w;
+	float    x;
+	uint32_t fi;
+	uint32_t fj;
+	uint32_t k;
+	uint32_t vh = yh + 2*(fh/2);         // virtual size
+	uint32_t vw = yw + 2*(fw/2);
+	uint32_t sh = xh + (xh - 1)*(s - 1); // strided size
+	uint32_t sw = xw + (xw - 1)*(s - 1);
+	uint32_t oi = (vh - sh)/2;           // strided offset
+	uint32_t oj = (vw - sw)/2;
+	for(fi = 0; fi < fh; ++fi)
+	{
+		// input index ii
+		int ii = i + fi - oi;
+		if((ii < 0) || (ii >= sh) || (ii%s))
+		{
+			continue;
+		}
+		ii = ii/s;
+
+		for(fj = 0; fj < fw; ++fj)
+		{
+			// input index jj
+			int jj = j + fj - oj;
+			if((jj < 0) || (jj >= sw) || (jj%s))
+			{
+				continue;
+			}
+			jj = jj/s;
+
+			for(k = 0; k < xd; ++k)
+			{
+				w  = nn_tensor_get(W, f, fi, fj, k);
+				x  = nn_tensor_get(X, m, ii, jj, k);
+				y += w*x;
+			}
+		}
+	}
+	nn_tensor_set(Y, m, i, j, f, y);
+}
+
+static nn_tensor_t*
+nn_convLayer_forwardPassTFn(nn_layer_t* base, int mode,
+                            uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_convLayer_t* self = (nn_convLayer_t*) base;
+
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	nn_dim_t* dimY = nn_tensor_dim(self->Y);
+	uint32_t  fc   = dimW->count;
+	uint32_t  yh   = dimY->height;
+	uint32_t  yw   = dimY->width;
+
+	// forward pass Y
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t f;
+	for(m = 0; m < bs; ++m)
+	{
+		for(i = 0; i < yh; ++i)
+		{
+			for(j = 0; j < yw; ++j)
+			{
+				for(f = 0; f < fc; ++f)
+				{
+					nn_convLayer_forwardPassT(self, X, m, i, j, f);
+				}
+			}
+		}
+	}
+
+	// store reference
+	self->X = X;
+
+	return self->Y;
+}
+
+static void
+nn_convLayer_backpropT(nn_convLayer_t* self,
+                       nn_tensor_t* dL_dY,
+                       uint32_t m, uint32_t i,
+                       uint32_t j, uint32_t f)
+{
+	ASSERT(self);
+	ASSERT(dL_dY); // dim(bs, yh, yw, fc)
+
+	nn_tensor_t* W     = self->W;
+	nn_tensor_t* dY_dX = W;
+	nn_tensor_t* dY_dW = self->X;
+	nn_tensor_t* dL_dW = self->dL_dW;
+	nn_tensor_t* dL_dB = self->dL_dB;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_dim_t*    dimW  = nn_tensor_dim(W);
+	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
+	nn_dim_t*    dimY  = nn_tensor_dim(dL_dY);
+	uint32_t     fh    = dimW->height;
+	uint32_t     fw    = dimW->width;
+	uint32_t     xh    = dimX->height;
+	uint32_t     xw    = dimX->width;
+	uint32_t     xd    = dimX->depth;
+	uint32_t     yh    = dimY->height;
+	uint32_t     yw    = dimY->width;
+	uint32_t     s     = self->stride;
+
+	float    dl_dy = nn_tensor_get(dL_dY, m, i, j, f);
+	float    dy_dx;
+	float    dy_dw;
+	float    dy_db = 1.0f;
+	uint32_t fi;
+	uint32_t fj;
+	uint32_t k;
+	uint32_t vh = yh + 2*(fh/2);         // virtual size
+	uint32_t vw = yw + 2*(fw/2);
+	uint32_t sh = xh + (xh - 1)*(s - 1); // strided size
+	uint32_t sw = xw + (xw - 1)*(s - 1);
+	uint32_t oi = (vh - sh)/2;           // strided offset
+	uint32_t oj = (vw - sw)/2;
+	for(fi = 0; fi < fh; ++fi)
+	{
+		// input index ii
+		int ii = i + fi - oi;
+		if((ii < 0) || (ii >= sh) || (ii%s))
+		{
+			continue;
+		}
+		ii = ii/s;
+
+		for(fj = 0; fj < fw; ++fj)
+		{
+			// input index jj
+			int jj = j + fj - oj;
+			if((jj < 0) || (jj >= sw) || (jj%s))
+			{
+				continue;
+			}
+			jj = jj/s;
+
+			for(k = 0; k < xd; ++k)
+			{
+				// backpropagate dL_dX
+				dy_dx = nn_tensor_get(dY_dX, f, fi, fj, k);
+				nn_tensor_add(dL_dX, m, ii, jj, k, dl_dy*dy_dx);
+
+				// sum dL_dW
+				dy_dw = nn_tensor_get(dY_dW, m, ii, jj, k);
+				nn_tensor_add(dL_dW, f, fi, fj, k, dl_dy*dy_dw);
+			}
+		}
+	}
+
+	// sum dL_dB
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
+	{
+		nn_tensor_add(dL_dB, f, 0, 0, 0, dl_dy*dy_db);
+	}
+}
+
+static nn_tensor_t*
+nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
+                         nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
+
+	nn_convLayer_t* self = (nn_convLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+
+	nn_tensor_t* W      = self->W;
+	nn_tensor_t* B      = self->B;
+	nn_tensor_t* VW     = self->VW;
+	nn_tensor_t* VB     = self->VB;
+	nn_dim_t*    dimY   = nn_tensor_dim(dL_dY);
+	nn_dim_t*    dimW   = nn_tensor_dim(W);
+	uint32_t     yh     = dimY->height;
+	uint32_t     yw     = dimY->width;
+	uint32_t     fc     = dimW->count;
+	uint32_t     fh     = dimW->height;
+	uint32_t     fw     = dimW->width;
+	uint32_t     xd     = dimW->depth;
+	float        lr     = arch->learning_rate;
+	float        mu     = arch->momentum_decay;
+	float        lambda = arch->l2_lambda;
+
+	// clear backprop gradients
+	nn_tensor_t* dL_dW = self->dL_dW;
+	nn_tensor_t* dL_dB = self->dL_dB;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_tensor_clear(dL_dW);
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
+	{
+		nn_tensor_clear(dL_dB);
+	}
+	nn_tensor_clear(dL_dX);
+
+	// sum gradients and backpropagate loss
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t f;
+	for(m = 0; m < bs; ++m)
+	{
+		for(i = 0; i < yh; ++i)
+		{
+			for(j = 0; j < yw; ++j)
+			{
+				for(f = 0; f < fc; ++f)
+				{
+					nn_convLayer_backpropT(self, dL_dY, m, i, j, f);
+				}
+			}
+		}
+	}
+
+	// update parameters
+	float    v0;
+	float    v1;
+	float    w;
+	float    dl_dw;
+	float    dl_db;
+	float    s = 1.0f/((float) bs);
+	uint32_t fi;
+	uint32_t fj;
+	uint32_t k;
+	for(f = 0; f < fc; ++f)
+	{
+		// weights
+		for(fi = 0; fi < fh; ++fi)
+		{
+			for(fj = 0; fj < fw; ++fj)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					dl_dw = s*nn_tensor_get(dL_dW, f, fi, fj, k);
+					w     = nn_tensor_get(W, f, fi, fj, k);
+
+					// Nesterov Momentum Update and L2 Regularization
+					v0 = nn_tensor_get(VW, f, fi, fj, k);
+					v1 = mu*v0 - lr*(dl_dw + 2*lambda*w);
+					nn_tensor_set(VW, f, fi, fj, k, v1);
+					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 + mu)*v1);
+				}
+			}
+		}
+
+		// bias
+		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
+		{
+			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
+
+			// Nesterov Momentum Update
+			v0    = nn_tensor_get(VB, f, 0, 0, 0);
+			v1    = mu*v0 - lr*dl_db;
+			nn_tensor_set(VB, f, 0, 0, 0, v1);
+			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
+		}
+	}
+
+	return dL_dX;
+}
+
 static nn_dim_t*
 nn_convLayer_dimXFn(nn_layer_t* base)
 {
@@ -498,6 +799,12 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.dimY_fn         = nn_convLayer_dimYFn,
 	};
 
+	if(flags & NN_CONV_LAYER_FLAG_TRANSPOSE)
+	{
+		info.forward_pass_fn = nn_convLayer_forwardPassTFn;
+		info.backprop_fn     = nn_convLayer_backpropTFn;
+	}
+
 	nn_convLayer_t* self;
 	self = (nn_convLayer_t*)
 	       nn_layer_new(sizeof(nn_convLayer_t), &info);
@@ -538,12 +845,27 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_B;
 	}
 
-	uint32_t yh = (xh - fh)/stride + 1;
-	uint32_t yw = (xw - fw)/stride + 1;
-	if(flags & NN_CONV_LAYER_FLAG_PAD_SAME)
+	uint32_t yh;
+	uint32_t yw;
+	if(flags & NN_CONV_LAYER_FLAG_TRANSPOSE)
 	{
-		yh = xh/stride;
-		yw = xw/stride;
+		yh = stride*(xh - 1) + fh;
+		yw = stride*(xw - 1) + fw;
+		if(flags & NN_CONV_LAYER_FLAG_PAD_SAME)
+		{
+			yh = stride*xh;
+			yw = stride*xw;
+		}
+	}
+	else
+	{
+		yh = (xh - fh)/stride + 1;
+		yw = (xw - fw)/stride + 1;
+		if(flags & NN_CONV_LAYER_FLAG_PAD_SAME)
+		{
+			yh = xh/stride;
+			yw = xw/stride;
+		}
 	}
 
 	nn_dim_t dimY =

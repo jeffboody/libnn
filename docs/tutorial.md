@@ -900,3 +900,7 @@ The following computation graphs shows the derivation of the
 backpropagation algorithm for the convolution layer.
 
 ![Convolution (Valid Padding)](nn-conv-valid.jpg?raw=true "Convolution (Valid Padding)")
+
+References
+
+* [What is Transposed Convolutional Layer?](https://towardsdatascience.com/what-is-transposed-convolutional-layer-40e5e6e31c11)
