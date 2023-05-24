@@ -560,57 +560,61 @@ int main(int argc, char** argv)
 			     epoch, step, n, l);
 			++step;
 		}
-	}
 
-	jsmn_stream_t* stream = jsmn_stream_new();
-	if(stream)
-	{
-		FILE* farch = fopen("arch.json", "w");
-		if(farch)
+		// save arch
+		jsmn_stream_t* stream = jsmn_stream_new();
+		if(stream)
 		{
-			int ret = 1;
-			ret &= jsmn_stream_beginObject(stream);
-			ret &= jsmn_stream_key(stream, "%s", "conv1");
-			ret &= nn_convLayer_export(conv1, stream);
-			ret &= jsmn_stream_key(stream, "%s", "fact1");
-			ret &= nn_factLayer_export(fact1, stream);
-			ret &= jsmn_stream_key(stream, "%s", "pool1");
-			ret &= nn_poolingLayer_export(pool1, stream);
-			ret &= jsmn_stream_key(stream, "%s", "conv2");
-			ret &= nn_convLayer_export(conv2, stream);
-			ret &= jsmn_stream_key(stream, "%s", "fact2");
-			ret &= nn_factLayer_export(fact2, stream);
-			ret &= jsmn_stream_key(stream, "%s", "pool2");
-			ret &= nn_poolingLayer_export(pool2, stream);
-			ret &= jsmn_stream_key(stream, "%s", "conv3");
-			ret &= nn_convLayer_export(conv3, stream);
-			ret &= jsmn_stream_key(stream, "%s", "fact3");
-			ret &= nn_factLayer_export(fact3, stream);
-			ret &= jsmn_stream_key(stream, "%s", "convT3");
-			ret &= nn_convLayer_export(convT3, stream);
-			ret &= jsmn_stream_key(stream, "%s", "conv4");
-			ret &= nn_convLayer_export(conv4, stream);
-			ret &= jsmn_stream_key(stream, "%s", "fact4");
-			ret &= nn_factLayer_export(fact4, stream);
-			ret &= jsmn_stream_key(stream, "%s", "convT4");
-			ret &= nn_convLayer_export(convT4, stream);
-			ret &= jsmn_stream_key(stream, "%s", "conv5");
-			ret &= nn_convLayer_export(conv5, stream);
-			ret &= jsmn_stream_key(stream, "%s", "fact5");
-			ret &= nn_factLayer_export(fact5, stream);
-			ret &= jsmn_stream_key(stream, "%s", "loss");
-			ret &= nn_loss_export(loss, stream);
-			ret &= jsmn_stream_end(stream);
+			snprintf(fname, 256, "data/arch-%i-%i.json",
+			         epoch, step - 1);
 
-			size_t size = 0;
-			const char* buf = jsmn_stream_buffer(stream, &size);
-			if(buf)
+			FILE* farch = fopen(fname, "w");
+			if(farch)
 			{
-				fprintf(farch, "%s", buf);
+				int ret = 1;
+				ret &= jsmn_stream_beginObject(stream);
+				ret &= jsmn_stream_key(stream, "%s", "conv1");
+				ret &= nn_convLayer_export(conv1, stream);
+				ret &= jsmn_stream_key(stream, "%s", "fact1");
+				ret &= nn_factLayer_export(fact1, stream);
+				ret &= jsmn_stream_key(stream, "%s", "pool1");
+				ret &= nn_poolingLayer_export(pool1, stream);
+				ret &= jsmn_stream_key(stream, "%s", "conv2");
+				ret &= nn_convLayer_export(conv2, stream);
+				ret &= jsmn_stream_key(stream, "%s", "fact2");
+				ret &= nn_factLayer_export(fact2, stream);
+				ret &= jsmn_stream_key(stream, "%s", "pool2");
+				ret &= nn_poolingLayer_export(pool2, stream);
+				ret &= jsmn_stream_key(stream, "%s", "conv3");
+				ret &= nn_convLayer_export(conv3, stream);
+				ret &= jsmn_stream_key(stream, "%s", "fact3");
+				ret &= nn_factLayer_export(fact3, stream);
+				ret &= jsmn_stream_key(stream, "%s", "convT3");
+				ret &= nn_convLayer_export(convT3, stream);
+				ret &= jsmn_stream_key(stream, "%s", "conv4");
+				ret &= nn_convLayer_export(conv4, stream);
+				ret &= jsmn_stream_key(stream, "%s", "fact4");
+				ret &= nn_factLayer_export(fact4, stream);
+				ret &= jsmn_stream_key(stream, "%s", "convT4");
+				ret &= nn_convLayer_export(convT4, stream);
+				ret &= jsmn_stream_key(stream, "%s", "conv5");
+				ret &= nn_convLayer_export(conv5, stream);
+				ret &= jsmn_stream_key(stream, "%s", "fact5");
+				ret &= nn_factLayer_export(fact5, stream);
+				ret &= jsmn_stream_key(stream, "%s", "loss");
+				ret &= nn_loss_export(loss, stream);
+				ret &= jsmn_stream_end(stream);
+
+				size_t size = 0;
+				const char* buf = jsmn_stream_buffer(stream, &size);
+				if(buf)
+				{
+					fprintf(farch, "%s", buf);
+				}
+				fclose(farch);
 			}
-			fclose(farch);
+			jsmn_stream_delete(&stream);
 		}
-		jsmn_stream_delete(&stream);
 	}
 
 	// cleanup
