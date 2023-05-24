@@ -279,10 +279,10 @@ int nn_arch_train(nn_arch_t* self,
 	// backpropagate loss
 	nn_tensor_t* dL_dY = NULL;
 	{
-		nn_loss_backpropFn backprop_fn;
-		backprop_fn = self->loss->backprop_fn;
+		nn_loss_fn loss_fn;
+		loss_fn = self->loss->loss_fn;
 
-		dL_dY = (*backprop_fn)(self->loss, bs, Yi, Yt);
+		dL_dY = (*loss_fn)(self->loss, bs, Yi, Yt);
 		if(dL_dY == NULL)
 		{
 			return 0;

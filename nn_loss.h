@@ -24,32 +24,41 @@
 #ifndef nn_loss_H
 #define nn_loss_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn.h"
 
-typedef nn_tensor_t* (*nn_loss_backpropFn)
+typedef nn_tensor_t* (*nn_loss_fn)
                      (nn_loss_t* base, uint32_t bs,
                       nn_tensor_t* Y, nn_tensor_t* Yt);
-typedef nn_dim_t* (*nn_loss_dimFn)
-                  (nn_loss_t* base);
 
-typedef struct nn_lossInfo_s
-{
-	nn_arch_t*         arch;
-	nn_loss_backpropFn backprop_fn;
-	nn_loss_dimFn      dimY_fn;
-} nn_lossInfo_t;
+// loss functions
+nn_tensor_t* nn_loss_mse(nn_loss_t* base, uint32_t bs,
+                         nn_tensor_t* Y, nn_tensor_t* Yt);
+
+// string/function conversions
+const char* nn_loss_string(nn_loss_fn loss_fn);
+nn_loss_fn  nn_loss_function(const char* str);
 
 typedef struct nn_loss_s
 {
-	nn_arch_t*         arch;
-	nn_loss_backpropFn backprop_fn;
-	nn_loss_dimFn      dimY_fn;
-	float              loss;
+	nn_arch_t* arch;
+	nn_loss_fn loss_fn;
+	float      loss;
+
+	// backprop gradients
+	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
 } nn_loss_t;
 
-nn_loss_t* nn_loss_new(size_t base_size,
-                       nn_lossInfo_t* info);
+nn_loss_t* nn_loss_new(nn_arch_t* arch,
+                       nn_dim_t* dimY,
+                       nn_loss_fn loss_fn);
+nn_loss_t* nn_loss_import(nn_arch_t* arch,
+                          jsmn_val_t* val);
+int        nn_loss_export(nn_loss_t* self,
+                          jsmn_stream_t* stream);
 void       nn_loss_delete(nn_loss_t** _self);
 nn_dim_t*  nn_loss_dimY(nn_loss_t* self);
+float      nn_loss_loss(nn_loss_t* self);
 
 #endif

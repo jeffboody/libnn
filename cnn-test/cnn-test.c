@@ -31,7 +31,7 @@
 #include "libnn/nn_batchNormLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_dim.h"
-#include "libnn/nn_mseLoss.h"
+#include "libnn/nn_loss.h"
 #include "libnn/nn_tensor.h"
 
 /***********************************************************
@@ -182,16 +182,16 @@ int main(int argc, char** argv)
 		goto fail_Y;
 	}
 
-	nn_mseLoss_t* mse_loss;
-	mse_loss = nn_mseLoss_new(arch, dim);
-	if(mse_loss == NULL)
+	nn_loss_t* loss;
+	loss = nn_loss_new(arch, dim, nn_loss_mse);
+	if(loss == NULL)
 	{
-		goto fail_mse_loss;
+		goto fail_loss;
 	}
 
-	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn)     == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv)   == 0) ||
-	   (nn_arch_attachLoss(arch, (nn_loss_t*) mse_loss) == 0))
+	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn)   == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv) == 0) ||
+	   (nn_arch_attachLoss(arch,  (nn_loss_t*) loss)  == 0))
 	{
 		goto fail_attach;
 	}
@@ -234,7 +234,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	nn_mseLoss_delete(&mse_loss);
+	nn_loss_delete(&loss);
 	nn_tensor_delete(&Y);
 	nn_convLayer_delete(&conv);
 	nn_batchNormLayer_delete(&bn);
@@ -246,8 +246,8 @@ int main(int argc, char** argv)
 
 	// failure
 	fail_attach:
-		nn_mseLoss_delete(&mse_loss);
-	fail_mse_loss:
+		nn_loss_delete(&loss);
+	fail_loss:
 		nn_tensor_delete(&Y);
 	fail_Y:
 		nn_convLayer_delete(&conv);

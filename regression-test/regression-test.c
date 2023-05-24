@@ -30,7 +30,7 @@
 #include "libnn/nn_arch.h"
 #include "libnn/nn_dim.h"
 #include "libnn/nn_factLayer.h"
-#include "libnn/nn_mseLoss.h"
+#include "libnn/nn_loss.h"
 #include "libnn/nn_tensor.h"
 #include "libnn/nn_weightLayer.h"
 
@@ -123,9 +123,9 @@ int main(int argc, char** argv)
 		goto fail_Y;
 	}
 
-	nn_mseLoss_t* mse_loss;
-	mse_loss = nn_mseLoss_new(arch, dim);
-	if(mse_loss == NULL)
+	nn_loss_t* loss;
+	loss = nn_loss_new(arch, dim, nn_loss_mse);
+	if(loss == NULL)
 	{
 		goto fail_mse_loss;
 	}
@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 	if((nn_arch_attachLayer(arch, (nn_layer_t*) l1) == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) l2) == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) l3) == 0) ||
-	   (nn_arch_attachLoss(arch, (nn_loss_t*) mse_loss) == 0))
+	   (nn_arch_attachLoss(arch, (nn_loss_t*) loss) == 0))
 	{
 		goto fail_attach;
 	}
@@ -142,7 +142,6 @@ int main(int argc, char** argv)
 	float    x;
 	float    y;
 	float    yt;
-	float    loss;
 	uint32_t i;
 	uint32_t m;
 	uint32_t epoch;
@@ -160,8 +159,8 @@ int main(int argc, char** argv)
 		{
 			if(i%1000 == 0)
 			{
-				loss = nn_arch_loss(arch);
-				LOGI("train %u:%u, bs=%u, loss=%f", epoch, i, bs, loss);
+				LOGI("train %u:%u, bs=%u, loss=%f",
+				     epoch, i, bs, nn_arch_loss(arch));
 			}
 
 			for(m = 0; m < bs; ++m)
@@ -205,7 +204,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	nn_mseLoss_delete(&mse_loss);
+	nn_loss_delete(&loss);
 	nn_tensor_delete(&Y);
 	nn_weightLayer_delete(&l3);
 	nn_factLayer_delete(&l2);
@@ -218,7 +217,7 @@ int main(int argc, char** argv)
 
 	// failure
 	fail_attach:
-		nn_mseLoss_delete(&mse_loss);
+		nn_loss_delete(&loss);
 	fail_mse_loss:
 		nn_tensor_delete(&Y);
 	fail_Y:

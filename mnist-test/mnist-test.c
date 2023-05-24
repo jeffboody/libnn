@@ -32,7 +32,7 @@
 #include "libnn/nn_batchNormLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
-#include "libnn/nn_mseLoss.h"
+#include "libnn/nn_loss.h"
 #include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_tensor.h"
 #include "texgz/texgz_png.h"
@@ -453,11 +453,11 @@ int main(int argc, char** argv)
 		goto fail_fact5;
 	}
 
-	nn_mseLoss_t* mse_loss;
-	mse_loss = nn_mseLoss_new(arch, dim);
-	if(mse_loss == NULL)
+	nn_loss_t* loss;
+	loss = nn_loss_new(arch, dim, nn_loss_mse);
+	if(loss == NULL)
 	{
-		goto fail_mse_loss;
+		goto fail_loss;
 	}
 
 	nn_tensor_t* Y = nn_tensor_new(dim);
@@ -480,7 +480,7 @@ int main(int argc, char** argv)
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT4)   == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv5)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact5)    == 0) ||
-	   (nn_arch_attachLoss(arch,  (nn_loss_t*)  mse_loss) == 0))
+	   (nn_arch_attachLoss(arch,  (nn_loss_t*)  loss) == 0))
 	{
 		goto fail_attach;
 	}
@@ -549,15 +549,15 @@ int main(int argc, char** argv)
 			}
 
 			// plot loss
-			float loss = nn_arch_loss(arch);
+			float l = nn_arch_loss(arch);
 			if((step % 50) == 0)
 			{
-				fprintf(fplot, "%u %f\n", step, loss);
+				fprintf(fplot, "%u %f\n", step, l);
 				fflush(fplot);
 			}
 
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
-			     epoch, step, n, loss);
+			     epoch, step, n, l);
 			++step;
 		}
 	}
@@ -599,7 +599,7 @@ int main(int argc, char** argv)
 			ret &= jsmn_stream_key(stream, "%s", "fact5");
 			ret &= nn_factLayer_export(fact5, stream);
 			ret &= jsmn_stream_key(stream, "%s", "loss");
-			ret &= nn_mseLoss_export(mse_loss, stream);
+			ret &= nn_loss_export(loss, stream);
 			ret &= jsmn_stream_end(stream);
 
 			size_t size = 0;
@@ -616,7 +616,7 @@ int main(int argc, char** argv)
 	// cleanup
 	fclose(fplot);
 	texgz_tex_delete(&tex);
-	nn_mseLoss_delete(&mse_loss);
+	nn_loss_delete(&loss);
 	nn_tensor_delete(&Y);
 	nn_factLayer_delete(&fact5);
 	nn_convLayer_delete(&conv5);
@@ -646,8 +646,8 @@ int main(int argc, char** argv)
 	fail_attach:
 		nn_tensor_delete(&Y);
 	fail_Y:
-		nn_mseLoss_delete(&mse_loss);
-	fail_mse_loss:
+		nn_loss_delete(&loss);
+	fail_loss:
 		nn_factLayer_delete(&fact5);
 	fail_fact5:
 		nn_convLayer_delete(&conv5);
