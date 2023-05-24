@@ -495,7 +495,7 @@ int main(int argc, char** argv)
 		goto fail_tex;
 	}
 
-	FILE* fplot = fopen("plot.dat", "w");
+	FILE* fplot = fopen("data/plot.dat", "w");
 	if(fplot == NULL)
 	{
 		goto fail_fplot;
