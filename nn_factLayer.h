@@ -43,7 +43,7 @@ float nn_factLayer_dPReLU(float x);
 float nn_factLayer_dtanh(float x);
 
 // string/function conversions
-const char*     nn_factLayer_string(nn_factLayer_fn fact);
+const char*     nn_factLayer_string(nn_factLayer_fn fact_fn);
 nn_factLayer_fn nn_factLayer_function(const char* str);
 
 typedef struct nn_factLayer_s
@@ -62,14 +62,14 @@ typedef struct nn_factLayer_s
 	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 
 	// activation functions
-	nn_factLayer_fn fact;
-	nn_factLayer_fn dfact;
+	nn_factLayer_fn fact_fn;
+	nn_factLayer_fn dfact_fn;
 } nn_factLayer_t;
 
 nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,
                                  nn_dim_t* dimX,
-                                 nn_factLayer_fn fact,
-                                 nn_factLayer_fn dfact);
+                                 nn_factLayer_fn fact_fn,
+                                 nn_factLayer_fn dfact_fn);
 nn_factLayer_t* nn_factLayer_import(nn_arch_t* arch,
                                     jsmn_val_t* val);
 int             nn_factLayer_export(nn_factLayer_t* self,
