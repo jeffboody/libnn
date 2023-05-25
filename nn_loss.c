@@ -21,6 +21,8 @@
  *
  */
 
+#include <float.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,6 +34,7 @@
 #include "nn_tensor.h"
 
 const char* NN_LOSS_STRING_MSE = "mse";
+const char* NN_LOSS_STRING_MAE = "mae";
 
 /***********************************************************
 * public - loss functions                                  *
@@ -82,6 +85,54 @@ nn_loss_mse(nn_loss_t* self, uint32_t bs,
 	return dL_dY;
 }
 
+nn_tensor_t*
+nn_loss_mae(nn_loss_t* self, uint32_t bs,
+            nn_tensor_t* Y, nn_tensor_t* Yt)
+{
+	ASSERT(self);
+	ASSERT(Y);
+	ASSERT(Yt);
+
+	nn_tensor_t* dL_dY = self->dL_dY;
+	nn_dim_t*    dim   = nn_tensor_dim(Y);
+	uint32_t     yh    = dim->height;
+	uint32_t     yw    = dim->width;
+	uint32_t     yd    = dim->depth;
+
+	float    y;
+	float    yt;
+	float    dy;
+	float    ady;
+	float    M    = (float) (bs*yh*yw*yd);
+	float    loss = 0.0f;
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(m = 0; m < bs; ++m)
+	{
+		for(i = 0; i < yh; ++i)
+		{
+			for(j = 0; j < yw; ++j)
+			{
+				for(k = 0; k < yd; ++k)
+				{
+					y     = nn_tensor_get(Y, m, i, j, k);
+					yt    = nn_tensor_get(Yt, m, i, j, k);
+					dy    = y - yt;
+					ady   = fabs(dy);
+					loss += ady;
+					nn_tensor_set(dL_dY, m, i, j, k,
+					              dy/(ady + FLT_EPSILON));
+				}
+			}
+		}
+	}
+	self->loss = loss/M;
+
+	return dL_dY;
+}
+
 const char* nn_loss_string(nn_loss_fn loss_fn)
 {
 	ASSERT(loss_fn)
@@ -89,6 +140,10 @@ const char* nn_loss_string(nn_loss_fn loss_fn)
 	if(loss_fn == nn_loss_mse)
 	{
 		return NN_LOSS_STRING_MSE;
+	}
+	else if(loss_fn == nn_loss_mae)
+	{
+		return NN_LOSS_STRING_MAE;
 	}
 
 	LOGE("invalid");
@@ -102,6 +157,10 @@ nn_loss_fn nn_loss_function(const char* str)
 	if(strcmp(str, NN_LOSS_STRING_MSE) == 0)
 	{
 		return nn_loss_mse;
+	}
+	else if(strcmp(str, NN_LOSS_STRING_MAE) == 0)
+	{
+		return nn_loss_mae;
 	}
 
 	LOGE("invalid %s", str);

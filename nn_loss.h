@@ -33,7 +33,11 @@ typedef nn_tensor_t* (*nn_loss_fn)
                       nn_tensor_t* Y, nn_tensor_t* Yt);
 
 // loss functions
+// mse: mean squared error
+// mae: mean absolute error
 nn_tensor_t* nn_loss_mse(nn_loss_t* base, uint32_t bs,
+                         nn_tensor_t* Y, nn_tensor_t* Yt);
+nn_tensor_t* nn_loss_mae(nn_loss_t* base, uint32_t bs,
                          nn_tensor_t* Y, nn_tensor_t* Yt);
 
 // string/function conversions
