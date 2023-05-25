@@ -262,6 +262,13 @@ int main(int argc, char** argv)
 
 	nn_dim_t* dim = nn_tensor_dim(X);
 
+	nn_batchNormLayer_t* bn0;
+	bn0 = nn_batchNormLayer_new(arch, dim);
+	if(bn0 == NULL)
+	{
+		goto fail_bn0;
+	}
+
 	nn_dim_t dimW1 =
 	{
 		.count  = 32,
@@ -272,13 +279,21 @@ int main(int argc, char** argv)
 
 	nn_convLayer_t* conv1;
 	conv1 = nn_convLayer_new(arch, dim, &dimW1, 1,
-	                        NN_CONV_LAYER_FLAG_PAD_SAME |
+	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
+	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
 	                        NN_CONV_LAYER_FLAG_HE);
 	if(conv1 == NULL)
 	{
 		goto fail_conv1;
 	}
 	dim = nn_layer_dimY(&conv1->base);
+
+	nn_batchNormLayer_t* bn1;
+	bn1 = nn_batchNormLayer_new(arch, dim);
+	if(bn1 == NULL)
+	{
+		goto fail_bn1;
+	}
 
 	nn_factLayer_t* fact1;
 	fact1 = nn_factLayer_new(arch, dim,
@@ -308,13 +323,21 @@ int main(int argc, char** argv)
 
 	nn_convLayer_t* conv2;
 	conv2 = nn_convLayer_new(arch, dim, &dimW2, 1,
-	                        NN_CONV_LAYER_FLAG_PAD_SAME |
+	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
+	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
 	                        NN_CONV_LAYER_FLAG_HE);
 	if(conv2 == NULL)
 	{
 		goto fail_conv2;
 	}
 	dim = nn_layer_dimY(&conv2->base);
+
+	nn_batchNormLayer_t* bn2;
+	bn2 = nn_batchNormLayer_new(arch, dim);
+	if(bn2 == NULL)
+	{
+		goto fail_bn2;
+	}
 
 	nn_factLayer_t* fact2;
 	fact2 = nn_factLayer_new(arch, dim,
@@ -344,13 +367,21 @@ int main(int argc, char** argv)
 
 	nn_convLayer_t* conv3;
 	conv3 = nn_convLayer_new(arch, dim, &dimW3, 1,
-	                        NN_CONV_LAYER_FLAG_PAD_SAME |
+	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
+	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
 	                        NN_CONV_LAYER_FLAG_HE);
 	if(conv3 == NULL)
 	{
 		goto fail_conv3;
 	}
 	dim = nn_layer_dimY(&conv3->base);
+
+	nn_batchNormLayer_t* bn3;
+	bn3 = nn_batchNormLayer_new(arch, dim);
+	if(bn3 == NULL)
+	{
+		goto fail_bn3;
+	}
 
 	nn_factLayer_t* fact3;
 	fact3 = nn_factLayer_new(arch, dim,
@@ -390,13 +421,21 @@ int main(int argc, char** argv)
 
 	nn_convLayer_t* conv4;
 	conv4 = nn_convLayer_new(arch, dim, &dimW4, 1,
-	                        NN_CONV_LAYER_FLAG_PAD_SAME |
+	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
+	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
 	                        NN_CONV_LAYER_FLAG_HE);
 	if(conv4 == NULL)
 	{
 		goto fail_conv4;
 	}
 	dim = nn_layer_dimY(&conv4->base);
+
+	nn_batchNormLayer_t* bn4;
+	bn4 = nn_batchNormLayer_new(arch, dim);
+	if(bn4 == NULL)
+	{
+		goto fail_bn4;
+	}
 
 	nn_factLayer_t* fact4;
 	fact4 = nn_factLayer_new(arch, dim,
@@ -466,16 +505,21 @@ int main(int argc, char** argv)
 		goto fail_Y;
 	}
 
-	if((nn_arch_attachLayer(arch, (nn_layer_t*) conv1)    == 0) ||
+	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn0)      == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv1)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn1)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact1)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) pool1)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv2)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn2)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact2)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) pool2)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv3)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn3)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact3)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT3)   == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv4)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn4)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact4)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT4)   == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv5)    == 0) ||
@@ -573,26 +617,38 @@ int main(int argc, char** argv)
 			{
 				int ret = 1;
 				ret &= jsmn_stream_beginObject(stream);
+				ret &= jsmn_stream_key(stream, "%s", "arch");
+				ret &= nn_arch_export(arch, stream);
+				ret &= jsmn_stream_key(stream, "%s", "bn0");
+				ret &= nn_batchNormLayer_export(bn0, stream);
 				ret &= jsmn_stream_key(stream, "%s", "conv1");
 				ret &= nn_convLayer_export(conv1, stream);
+				ret &= jsmn_stream_key(stream, "%s", "bn1");
+				ret &= nn_batchNormLayer_export(bn1, stream);
 				ret &= jsmn_stream_key(stream, "%s", "fact1");
 				ret &= nn_factLayer_export(fact1, stream);
 				ret &= jsmn_stream_key(stream, "%s", "pool1");
 				ret &= nn_poolingLayer_export(pool1, stream);
 				ret &= jsmn_stream_key(stream, "%s", "conv2");
 				ret &= nn_convLayer_export(conv2, stream);
+				ret &= jsmn_stream_key(stream, "%s", "bn2");
+				ret &= nn_batchNormLayer_export(bn2, stream);
 				ret &= jsmn_stream_key(stream, "%s", "fact2");
 				ret &= nn_factLayer_export(fact2, stream);
 				ret &= jsmn_stream_key(stream, "%s", "pool2");
 				ret &= nn_poolingLayer_export(pool2, stream);
 				ret &= jsmn_stream_key(stream, "%s", "conv3");
 				ret &= nn_convLayer_export(conv3, stream);
+				ret &= jsmn_stream_key(stream, "%s", "bn3");
+				ret &= nn_batchNormLayer_export(bn3, stream);
 				ret &= jsmn_stream_key(stream, "%s", "fact3");
 				ret &= nn_factLayer_export(fact3, stream);
 				ret &= jsmn_stream_key(stream, "%s", "convT3");
 				ret &= nn_convLayer_export(convT3, stream);
 				ret &= jsmn_stream_key(stream, "%s", "conv4");
 				ret &= nn_convLayer_export(conv4, stream);
+				ret &= jsmn_stream_key(stream, "%s", "bn4");
+				ret &= nn_batchNormLayer_export(bn4, stream);
 				ret &= jsmn_stream_key(stream, "%s", "fact4");
 				ret &= nn_factLayer_export(fact4, stream);
 				ret &= jsmn_stream_key(stream, "%s", "convT4");
@@ -626,16 +682,21 @@ int main(int argc, char** argv)
 	nn_convLayer_delete(&conv5);
 	nn_convLayer_delete(&convT4);
 	nn_factLayer_delete(&fact4);
+	nn_batchNormLayer_delete(&bn4);
 	nn_convLayer_delete(&conv4);
 	nn_convLayer_delete(&convT3);
 	nn_factLayer_delete(&fact3);
+	nn_batchNormLayer_delete(&bn3);
 	nn_convLayer_delete(&conv3);
 	nn_poolingLayer_delete(&pool2);
 	nn_factLayer_delete(&fact2);
+	nn_batchNormLayer_delete(&bn2);
 	nn_convLayer_delete(&conv2);
 	nn_poolingLayer_delete(&pool1);
 	nn_factLayer_delete(&fact1);
+	nn_batchNormLayer_delete(&bn1);
 	nn_convLayer_delete(&conv1);
+	nn_batchNormLayer_delete(&bn0);
 	nn_tensor_delete(&X);
 	nn_arch_delete(&arch);
 	nn_tensor_delete(&Xt);
@@ -660,26 +721,36 @@ int main(int argc, char** argv)
 	fail_convT4:
 		nn_factLayer_delete(&fact4);
 	fail_fact4:
+		nn_batchNormLayer_delete(&bn4);
+	fail_bn4:
 		nn_convLayer_delete(&conv4);
 	fail_conv4:
 		nn_convLayer_delete(&convT3);
 	fail_convT3:
 		nn_factLayer_delete(&fact3);
 	fail_fact3:
+		nn_batchNormLayer_delete(&bn3);
+	fail_bn3:
 		nn_convLayer_delete(&conv3);
 	fail_conv3:
 		nn_poolingLayer_delete(&pool2);
 	fail_pool2:
 		nn_factLayer_delete(&fact2);
 	fail_fact2:
+		nn_batchNormLayer_delete(&bn2);
+	fail_bn2:
 		nn_convLayer_delete(&conv2);
 	fail_conv2:
 		nn_poolingLayer_delete(&pool1);
 	fail_pool1:
 		nn_factLayer_delete(&fact1);
 	fail_fact1:
+		nn_batchNormLayer_delete(&bn1);
+	fail_bn1:
 		nn_convLayer_delete(&conv1);
 	fail_conv1:
+		nn_batchNormLayer_delete(&bn0);
+	fail_bn0:
 		nn_tensor_delete(&X);
 	fail_X:
 		nn_arch_delete(&arch);
