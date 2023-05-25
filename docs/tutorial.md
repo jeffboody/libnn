@@ -320,6 +320,13 @@ the desired range of your output. For example, probability
 outputs exist in the range 0.0 to 1.0 which makes the
 logistic function a good choice.
 
+The vanishing gradient problem may occur for the tanh and
+logistic functions because the gradient approaches zero
+when the input is large. This problem is more likely to
+occur in the earlier layers of a deep neural network. If
+this occurs it is recommended to use the ReLU function
+instead which does not cause small gradients.
+
 ReLU (Rectified Linear Unit)
 
 	f(x)  = max(0, x)
@@ -358,6 +365,7 @@ References
 
 * [Activation Functions in Neural Networks](https://towardsdatascience.com/activation-functions-neural-networks-1cbd9f8d91d6)
 * [How to Choose an Activation Function for Deep Learning](https://machinelearningmastery.com/choose-an-activation-function-for-deep-learning/)
+* [The Vanishing Gradient Problem](https://towardsdatascience.com/the-vanishing-gradient-problem-69bf08b15484)
 
 Parameter Initialization
 ------------------------
