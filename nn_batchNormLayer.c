@@ -21,6 +21,7 @@
  *
  */
 
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,8 +47,6 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
 	nn_arch_t*           arch = base->arch;
-
-	float epsilon = 0.0001f;
 
 	nn_tensor_t* G        = self->G;
 	nn_tensor_t* B        = self->B;
@@ -152,7 +151,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 				for(j = 0; j < xw; ++j)
 				{
 					x    = nn_tensor_get(X, m, i, j, k);
-					xhat = (x - xmean)/(sqrtf(xvar) + epsilon);
+					xhat = (x - xmean)/(sqrtf(xvar) + FLT_EPSILON);
 					nn_tensor_set(Xhat, m, i, j, k, xhat);
 				}
 			}
@@ -235,8 +234,6 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
 	nn_arch_t*           arch = base->arch;
 
-	float epsilon = 0.0001f;
-
 	nn_tensor_t* G        = self->G;
 	nn_tensor_t* B        = self->B;
 	nn_tensor_t* Xhat     = self->Xhat;
@@ -289,7 +286,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		dl_dg = 0.0f;
 		dl_db = 0.0f;
 		xvar  = nn_tensor_get(Xvar_mb, 0, 0, 0, k);
-		d     = M*sqrtf(xvar + epsilon);
+		d     = M*sqrtf(xvar + FLT_EPSILON);
 		nn_batchNormLayer_backpropSum(self, bs, k, &b, &c);
 		for(m = 0; m < bs; ++m)
 		{
