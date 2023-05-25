@@ -214,7 +214,9 @@ The Mean Squared Error (MSE) and Mean Absolute Error (MAE)
 are the most commonly used loss functions for regression
 problems. The MSE is typically used unless the training data
 has a large number of outliers. This is because the MSE is
-highly sensitive to outliers due to the squared term.
+highly sensitive to outliers due to the squared term. The
+Binary Cross-Entropy (BCE) may also be used for regression
+problems when the output values are in the range [0, 1].
 
 	MSE
 	L(Y,Yt) = (1/n)*SUM((yi - yti)^2)
@@ -224,6 +226,12 @@ highly sensitive to outliers due to the squared term.
 	L(Y,Yt) = (1/n)*SUM(|yi - yti|)
 	dL/dyi  = (yi - yti)/|yi - yti|
 
+	BCE
+	L(Y,Yt) = (-1/n)*SUM(yti*log10(yi) + (1 - yti)*log10(1 - yi))
+	dL/dyi  = -(yi - yti)/(ln(10)*(yi - 1)*yi)
+
+Add a small epsilon to avoid divide-by-zero problems.
+
 The Categorical Cross Entropy Loss is the most commonly used
 loss function for classification problems. Additionally, the
 Variational Autoencoder Loss is often used for autoencoder
@@ -232,6 +240,10 @@ neural networks.
 References
 
 * [Loss Functions and Their Use In Neural Networks](https://towardsdatascience.com/loss-functions-and-their-use-in-neural-networks-a470e703f1e9)
+* [Binary Crossentropy in its core!](https://medium.com/analytics-vidhya/binary-crossentropy-in-its-core-35bcecf27a8a)
+* [Introduction to Autoencoders? What are Autoencoders Applications and Types?](https://www.mygreatlearning.com/blog/autoencoder/)
+* [Tensorflow Cross Entropy for Regression?](https://stats.stackexchange.com/questions/223256/tensorflow-cross-entropy-for-regression)
+* [On denoising autoencoders trained to minimise binary cross-entropy](https://arxiv.org/pdf/1708.08487.pdf)
 * [Variational autoencoders](https://www.jeremyjordan.me/variational-autoencoders/)
 * [Derivative Calculator](https://www.derivative-calculator.net/)
 

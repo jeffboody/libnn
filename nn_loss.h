@@ -35,9 +35,12 @@ typedef nn_tensor_t* (*nn_loss_fn)
 // loss functions
 // mse: mean squared error
 // mae: mean absolute error
+// bce: binary cross-entropy
 nn_tensor_t* nn_loss_mse(nn_loss_t* base, uint32_t bs,
                          nn_tensor_t* Y, nn_tensor_t* Yt);
 nn_tensor_t* nn_loss_mae(nn_loss_t* base, uint32_t bs,
+                         nn_tensor_t* Y, nn_tensor_t* Yt);
+nn_tensor_t* nn_loss_bce(nn_loss_t* base, uint32_t bs,
                          nn_tensor_t* Y, nn_tensor_t* Yt);
 
 // string/function conversions

@@ -27,6 +27,7 @@
 #include <string.h>
 
 #define LOG_TAG "nn"
+#include "../libcc/math/cc_float.h"
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
@@ -35,6 +36,7 @@
 
 const char* NN_LOSS_STRING_MSE = "mse";
 const char* NN_LOSS_STRING_MAE = "mae";
+const char* NN_LOSS_STRING_BCE = "bce";
 
 /***********************************************************
 * public - loss functions                                  *
@@ -57,6 +59,7 @@ nn_loss_mse(nn_loss_t* self, uint32_t bs,
 	float    y;
 	float    yt;
 	float    dy;
+	float    dl_dy;
 	float    M    = (float) (bs*yh*yw*yd);
 	float    loss = 0.0f;
 	uint32_t m;
@@ -74,8 +77,9 @@ nn_loss_mse(nn_loss_t* self, uint32_t bs,
 					y     = nn_tensor_get(Y, m, i, j, k);
 					yt    = nn_tensor_get(Yt, m, i, j, k);
 					dy    = y - yt;
+					dl_dy = 2.0f*dy;
 					loss += dy*dy;
-					nn_tensor_set(dL_dY, m, i, j, k, 2.0f*dy);
+					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
 				}
 			}
 		}
@@ -103,6 +107,7 @@ nn_loss_mae(nn_loss_t* self, uint32_t bs,
 	float    yt;
 	float    dy;
 	float    ady;
+	float    dl_dy;
 	float    M    = (float) (bs*yh*yw*yd);
 	float    loss = 0.0f;
 	uint32_t m;
@@ -121,9 +126,57 @@ nn_loss_mae(nn_loss_t* self, uint32_t bs,
 					yt    = nn_tensor_get(Yt, m, i, j, k);
 					dy    = y - yt;
 					ady   = fabs(dy);
+					dl_dy = dy/(ady + FLT_EPSILON);
 					loss += ady;
-					nn_tensor_set(dL_dY, m, i, j, k,
-					              dy/(ady + FLT_EPSILON));
+					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
+				}
+			}
+		}
+	}
+	self->loss = loss/M;
+
+	return dL_dY;
+}
+
+nn_tensor_t*
+nn_loss_bce(nn_loss_t* self, uint32_t bs,
+            nn_tensor_t* Y, nn_tensor_t* Yt)
+{
+	ASSERT(self);
+	ASSERT(Y);
+	ASSERT(Yt);
+
+	nn_tensor_t* dL_dY = self->dL_dY;
+	nn_dim_t*    dim   = nn_tensor_dim(Y);
+	uint32_t     yh    = dim->height;
+	uint32_t     yw    = dim->width;
+	uint32_t     yd    = dim->depth;
+
+	float    y;
+	float    yt;
+	float    dl_dy;
+	float    M    = (float) (bs*yh*yw*yd);
+	float    loss = 0.0f;
+	float    eps  = FLT_EPSILON;
+	uint32_t m;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(m = 0; m < bs; ++m)
+	{
+		for(i = 0; i < yh; ++i)
+		{
+			for(j = 0; j < yw; ++j)
+			{
+				for(k = 0; k < yd; ++k)
+				{
+					y     = nn_tensor_get(Y, m, i, j, k);
+					y     = cc_clamp(y, eps, 1.0f - eps);
+					yt    = nn_tensor_get(Yt, m, i, j, k);
+					dl_dy = -(y - yt)/(logf(10.0f)*(y - 1.0f)*y + eps);
+					loss += -(yt*log10f(y + eps) +
+					          (1.0f - yt)*log10f(1.0f - y + eps));
+					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
 				}
 			}
 		}
@@ -145,6 +198,10 @@ const char* nn_loss_string(nn_loss_fn loss_fn)
 	{
 		return NN_LOSS_STRING_MAE;
 	}
+	else if(loss_fn == nn_loss_bce)
+	{
+		return NN_LOSS_STRING_BCE;
+	}
 
 	LOGE("invalid");
 	return NULL;
@@ -161,6 +218,10 @@ nn_loss_fn nn_loss_function(const char* str)
 	else if(strcmp(str, NN_LOSS_STRING_MAE) == 0)
 	{
 		return nn_loss_mae;
+	}
+	else if(strcmp(str, NN_LOSS_STRING_BCE) == 0)
+	{
+		return nn_loss_bce;
 	}
 
 	LOGE("invalid %s", str);
