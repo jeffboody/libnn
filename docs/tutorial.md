@@ -833,10 +833,29 @@ The advantages of skip connections are.
 * Recover spatial information lost during downsampling
 * Stabilize training and convergence
 
+The order of the skip connection should be as follows.
+
+* Convolution
+* Skip Fork
+* Batch Normalization
+* Activation Function
+* Convolution
+* Batch Normalization
+* Activation Function
+* Convolution
+* Skip Add
+
+Conceptually, the signal and residual should have the same
+bias and be scaled proportionally when added which is not
+possible when the skip is placed after the batch
+normalization layer.
+
 References
 
 * [Intuitive Explanation of Skip Connections in Deep Learning](https://theaisummer.com/skip-connections/)
 * [Normalization is dead, long live normalization!](https://iclr-blog-track.github.io/2022/03/25/unnormalized-resnets/)
+* [It Is Necessary to Combine Batch Normalization and Skip Connections](https://towardsdatascience.com/its-necessary-to-combine-batch-norm-and-skip-connections-e92210ca04da)
+* [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf)
 
 Dropout
 -------
