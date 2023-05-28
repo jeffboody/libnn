@@ -812,6 +812,32 @@ References
 * [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
 * [Chapter 8 Training Neural Networks Part 2](https://srdas.github.io/DLBook/ImprovingModelGeneralization.html)
 
+Skip Connections
+----------------
+
+A skip connection is an alternate path through the neural
+network where the output of one layer may be fed forward to
+skip one or more layers. The skip connection is typically
+joined back to the neural network through addition or
+concatenation of a subsequent layer with compatible
+dimensions. The (w,h,d) dimensions must match for addition
+and the (w,h) dimensions must match for concatenation. Some
+example neural networks that use skip connections are
+ResNet (residual network) using addition and DenseNet using
+concatenation.
+
+The advantages of skip connections are.
+
+* Improved gradient flow to reduce vanishing gradients
+* Enables feature reusability
+* Recover spatial information lost during downsampling
+* Stabilize training and convergence
+
+References
+
+* [Intuitive Explanation of Skip Connections in Deep Learning](https://theaisummer.com/skip-connections/)
+* [Normalization is dead, long live normalization!](https://iclr-blog-track.github.io/2022/03/25/unnormalized-resnets/)
+
 Dropout
 -------
 
