@@ -34,6 +34,7 @@
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_poolingLayer.h"
+#include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "texgz/texgz_png.h"
 
@@ -348,6 +349,13 @@ int main(int argc, char** argv)
 		goto fail_fact2;
 	}
 
+	nn_skipLayer_t* skip2;
+	skip2 = nn_skipLayer_newFork(arch, dim);
+	if(skip2 == NULL)
+	{
+		goto fail_skip2;
+	}
+
 	nn_poolingLayer_t* pool2;
 	pool2 = nn_poolingLayer_new(arch, dim, 2, 2,
 	                            NN_POOLING_LAYER_MODE_MAX);
@@ -446,6 +454,14 @@ int main(int argc, char** argv)
 		goto fail_fact4;
 	}
 
+	nn_skipLayer_t* skip4;
+	skip4 = nn_skipLayer_newAdd(arch, dim, skip2);
+	if(skip4 == NULL)
+	{
+		goto fail_skip4;
+	}
+	dim = nn_layer_dimY(&skip4->base);
+
 	nn_dim_t dimWT4 =
 	{
 		.count  = dim->depth,
@@ -513,6 +529,7 @@ int main(int argc, char** argv)
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv2)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn2)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact2)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) skip2)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) pool2)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv3)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn3)      == 0) ||
@@ -521,6 +538,7 @@ int main(int argc, char** argv)
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv4)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn4)      == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact4)    == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) skip4)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT4)   == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv5)    == 0) ||
 	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact5)    == 0) ||
@@ -681,6 +699,7 @@ int main(int argc, char** argv)
 	nn_factLayer_delete(&fact5);
 	nn_convLayer_delete(&conv5);
 	nn_convLayer_delete(&convT4);
+	nn_skipLayer_delete(&skip4);
 	nn_factLayer_delete(&fact4);
 	nn_batchNormLayer_delete(&bn4);
 	nn_convLayer_delete(&conv4);
@@ -689,6 +708,7 @@ int main(int argc, char** argv)
 	nn_batchNormLayer_delete(&bn3);
 	nn_convLayer_delete(&conv3);
 	nn_poolingLayer_delete(&pool2);
+	nn_skipLayer_delete(&skip2);
 	nn_factLayer_delete(&fact2);
 	nn_batchNormLayer_delete(&bn2);
 	nn_convLayer_delete(&conv2);
@@ -719,6 +739,8 @@ int main(int argc, char** argv)
 	fail_conv5:
 		nn_convLayer_delete(&convT4);
 	fail_convT4:
+		nn_skipLayer_delete(&skip4);
+	fail_skip4:
 		nn_factLayer_delete(&fact4);
 	fail_fact4:
 		nn_batchNormLayer_delete(&bn4);
@@ -735,6 +757,8 @@ int main(int argc, char** argv)
 	fail_conv3:
 		nn_poolingLayer_delete(&pool2);
 	fail_pool2:
+		nn_skipLayer_delete(&skip2);
+	fail_skip2:
 		nn_factLayer_delete(&fact2);
 	fail_fact2:
 		nn_batchNormLayer_delete(&bn2);
