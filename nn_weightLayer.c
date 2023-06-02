@@ -94,6 +94,62 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int mode,
 	return Y;
 }
 
+static void
+nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
+                                uint32_t bs,
+                                float* _gcw,
+                                float* _gcb)
+{
+	ASSERT(self);
+	ASSERT(_gcw);
+	ASSERT(_gcb);
+
+	nn_arch_t*   arch      = self->base.arch;
+	nn_tensor_t* W         = self->W;
+	nn_tensor_t* dL_dW     = self->dL_dW;
+	nn_tensor_t* dL_dB     = self->dL_dB;
+	nn_dim_t*    dimW      = nn_tensor_dim(W);
+	uint32_t     nc        = dimW->count;
+	uint32_t     xd        = dimW->depth;
+	float        s         = 1.0f/((float) bs);
+	float        clip_norm = arch->clip_norm;
+	float        norm_gw   = 0.0f;
+	float        norm_gb   = 0.0f;
+
+	float    dl_dw;
+	float    dl_db;
+	uint32_t n;
+	uint32_t k;
+	for(n = 0; n < nc; ++n)
+	{
+		// weights gradient
+		for(k = 0; k < xd; ++k)
+		{
+			dl_dw    = s*nn_tensor_get(dL_dW, n, 0, 0, k);
+			norm_gw += dl_dw*dl_dw;
+		}
+
+		// bias gradient
+		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
+		{
+			dl_db    = s*nn_tensor_get(dL_dB, n, 0, 0, 0);
+			norm_gb += dl_db*dl_db;
+		}
+	}
+
+	norm_gw = sqrtf(norm_gw);
+	if(norm_gw > clip_norm)
+	{
+		*_gcw = clip_norm/norm_gw;
+	}
+
+	norm_gb = sqrtf(norm_gb);
+	if(norm_gb > clip_norm)
+	{
+		*_gcb = clip_norm/norm_gb;
+	}
+}
+
 static nn_tensor_t*
 nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
                           nn_tensor_t* dL_dY)
@@ -104,18 +160,19 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
 	nn_arch_t*        arch = base->arch;
 
-	nn_tensor_t* W      = self->W;
-	nn_tensor_t* B      = self->B;
-	nn_tensor_t* VW     = self->VW;
-	nn_tensor_t* VB     = self->VB;
-	nn_tensor_t* dY_dX  = W;
-	nn_tensor_t* dY_dW  = self->X;
-	nn_dim_t*    dim    = nn_tensor_dim(W);
-	uint32_t     nc     = dim->count;
-	uint32_t     xd     = dim->depth;
-	float        lr     = arch->learning_rate;
-	float        mu     = arch->momentum_decay;
-	float        lambda = arch->l2_lambda;
+	nn_tensor_t* W         = self->W;
+	nn_tensor_t* B         = self->B;
+	nn_tensor_t* VW        = self->VW;
+	nn_tensor_t* VB        = self->VB;
+	nn_tensor_t* dY_dX     = W;
+	nn_tensor_t* dY_dW     = self->X;
+	nn_dim_t*    dimW      = nn_tensor_dim(W);
+	uint32_t     nc        = dimW->count;
+	uint32_t     xd        = dimW->depth;
+	float        lr        = arch->learning_rate;
+	float        mu        = arch->momentum_decay;
+	float        lambda    = arch->l2_lambda;
+	float        clip_norm = arch->clip_norm;
 
 	// clear backprop gradients
 	nn_tensor_t* dL_dW = self->dL_dW;
@@ -161,6 +218,14 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
+	// optionally compute gradient clipping
+	float gcw = 1.0f;
+	float gcb = 1.0f;
+	if(clip_norm > 0.0f)
+	{
+		nn_weightLayer_gradientClipping(self, bs, &gcw, &gcb);
+	}
+
 	// update parameters
 	float v0;
 	float v1;
@@ -178,7 +243,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 			// Nesterov Momentum Update and L2 Regularization
 			v0 = nn_tensor_get(VW, n, 0, 0, k);
-			v1 = mu*v0 - lr*(dl_dw + 2*lambda*w);
+			v1 = mu*v0 - lr*(gcw*dl_dw + 2*lambda*w);
 			nn_tensor_set(VW, n, 0, 0, k, v1);
 			nn_tensor_add(W, n, 0, 0, k, -mu*v0 + (1 + mu)*v1);
 		}
@@ -190,7 +255,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 			// Nesterov Momentum Update
 			v0    = nn_tensor_get(VB, n, 0, 0, 0);
-			v1    = mu*v0 - lr*dl_db;
+			v1    = mu*v0 - lr*gcb*dl_db;
 			nn_tensor_set(VB, n, 0, 0, 0, v1);
 			nn_tensor_add(B, n, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
 		}

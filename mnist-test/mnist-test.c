@@ -237,6 +237,7 @@ int main(int argc, char** argv)
 		.momentum_decay = 0.5f,
 		.batch_momentum = 0.99f,
 		.l2_lambda      = 0.01f,
+		.clip_norm      = 0.0f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(0, &arch_info);

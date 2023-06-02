@@ -857,6 +857,32 @@ References
 * [It Is Necessary to Combine Batch Normalization and Skip Connections](https://towardsdatascience.com/its-necessary-to-combine-batch-norm-and-skip-connections-e92210ca04da)
 * [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf)
 
+Gradient Clipping
+-----------------
+
+Gradient clipping is a technique that can help to address
+numerical overflow/underflow problems for gradients.
+
+	gcw = 1.0
+	if(norm(g) > c)
+		gcw = c/norm(g)
+
+Recall that the backpropagation update is the following.
+
+	wi = wi - gamma*dL/dwi
+
+The clipped gradient would be the following.
+
+	wi = wi - gamma*gcw*dL/dwi
+
+It was suggested that a good default for c is 1.0 or 10.0.
+
+References
+
+* [Gradient Clipping](https://paperswithcode.com/method/gradient-clipping)
+* [How to Avoid Exploding Gradients With Gradient Clipping](https://machinelearningmastery.com/how-to-avoid-exploding-gradients-in-neural-networks-with-gradient-clipping/)
+* [Accurate Image Super-Resolution Using Very Deep Convolutional Networks](https://arxiv.org/pdf/1511.04587v2.pdf)
+
 Dropout
 -------
 

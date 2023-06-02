@@ -60,6 +60,7 @@ nn_arch_t* nn_arch_new(size_t base_size,
 	self->momentum_decay = info->momentum_decay;
 	self->batch_momentum = info->batch_momentum;
 	self->l2_lambda      = info->l2_lambda;
+	self->clip_norm      = info->clip_norm;
 
 	self->layers = cc_list_new();
 	if(self->layers == NULL)
@@ -94,6 +95,7 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 	jsmn_val_t* val_momentum_decay = NULL;
 	jsmn_val_t* val_batch_momentum = NULL;
 	jsmn_val_t* val_l2_lambda      = NULL;
+	jsmn_val_t* val_clip_norm      = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -119,6 +121,10 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 			{
 				val_l2_lambda = kv->val;
 			}
+			else if(strcmp(kv->key, "clip_norm") == 0)
+			{
+				val_clip_norm = kv->val;
+			}
 		}
 
 		iter = cc_list_next(iter);
@@ -128,7 +134,8 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 	if((val_learning_rate  == NULL) ||
 	   (val_momentum_decay == NULL) ||
 	   (val_batch_momentum == NULL) ||
-	   (val_l2_lambda      == NULL))
+	   (val_l2_lambda      == NULL) ||
+	   (val_clip_norm      == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -140,6 +147,7 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 		.momentum_decay = strtof(val_momentum_decay->data, NULL),
 		.batch_momentum = strtof(val_batch_momentum->data, NULL),
 		.l2_lambda      = strtof(val_l2_lambda->data,      NULL),
+		.clip_norm      = strtof(val_clip_norm->data,      NULL),
 	};
 
 	return nn_arch_new(base_size, &info);
@@ -160,6 +168,8 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_float(stream, self->batch_momentum);
 	ret &= jsmn_stream_key(stream, "%s", "l2_lambda");
 	ret &= jsmn_stream_float(stream, self->l2_lambda);
+	ret &= jsmn_stream_key(stream, "%s", "clip_norm");
+	ret &= jsmn_stream_float(stream, self->clip_norm);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
