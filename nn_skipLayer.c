@@ -171,17 +171,13 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
 		return NULL;
 	}
 
-	nn_tensor_t* dL_dY1 = dL_dY;
 	nn_tensor_t* dL_dY2 = self->skip->dL_dX2;
-	nn_tensor_t* dL_dX1 = self->dL_dX1;
 	nn_dim_t*    dimX   = &self->dimX;
 	uint32_t     xh     = dimX->height;
 	uint32_t     xw     = dimX->width;
 	uint32_t     xd     = dimX->depth;
 
 	// backpropagate loss
-	float    dl_dx;
-	float    dl_dy1;
 	float    dl_dy2;
 	uint32_t m;
 	uint32_t i;
@@ -195,16 +191,16 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					dl_dy1 = nn_tensor_get(dL_dY1, m, i, j, k);
+					// dL_dY replaced by dL_dY1 + dL_dY2
 					dl_dy2 = nn_tensor_get(dL_dY2, m, i, j, k);
-					dl_dx  = dl_dy1 + dl_dy2;
-					nn_tensor_set(dL_dX1, m, i, j, k, dl_dx);
+					nn_tensor_add(dL_dY, m, i, j, k, dl_dy2);
 				}
 			}
 		}
 	}
 
-	return dL_dX1;
+	// dL_dY replaced by dL_dY1 + dL_dY2
+	return dL_dY;
 }
 
 static nn_tensor_t*
@@ -216,8 +212,7 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base, uint32_t bs,
 
 	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
 
-	self->dL_dX1 = dL_dY; // ref
-	self->dL_dX2 = dL_dY; // ref
+	self->dL_dX2 = dL_dY; // reference
 
 	return dL_dY;
 }
@@ -330,21 +325,7 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 
 	// Y is set by forwardPassForkFn
 
-	self->dL_dX1 = nn_tensor_new(dimX);
-	if(self->dL_dX1 == NULL)
-	{
-		goto fail_dL_dX1;
-	}
-
-	self->dL_dX2 = self->dL_dX1; // ref
-
-	// success
 	return self;
-
-	// failure
-	fail_dL_dX1:
-		nn_layer_delete((nn_layer_t**) &self);
-	return NULL;
 }
 
 nn_skipLayer_t*
@@ -514,11 +495,7 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 	nn_skipLayer_t* self = *_self;
 	if(self)
 	{
-		if(self->mode == NN_SKIP_LAYER_MODE_FORK)
-		{
-			nn_tensor_delete(&self->dL_dX1);
-		}
-		else if(self->mode == NN_SKIP_LAYER_MODE_CAT)
+		if(self->mode == NN_SKIP_LAYER_MODE_CAT)
 		{
 			nn_tensor_delete(&self->dL_dX2);
 			nn_tensor_delete(&self->dL_dX1);

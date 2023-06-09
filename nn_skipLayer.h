@@ -39,14 +39,14 @@ typedef struct nn_skipLayer_s
 
 	// fork    : Y2 output layer
 	// add/cat : X2 input layer
-	nn_skipLayer_t* skip; // ref
+	nn_skipLayer_t* skip; // reference
 
 	// fork    : dim(bs,xh,xw,xd)
 	// add/cat : dim(bs,x1h,x1w,x1d)
 	nn_dim_t dimX;
 
 	// output
-	// Yfork : X (ref)
+	// Yfork : X (reference)
 	// Yadd  : dim(bs,xh,xw,xd)
 	//         x1h==x2h, x1w==x2w, x1d==x2d
 	// Ycat  : dim(bs,xh,xw,x1d + x2d)
@@ -57,22 +57,25 @@ typedef struct nn_skipLayer_s
 
 	// backprop gradients
 	// fork:
+	//   dL_dY replaced by dL_dY1 + dL_dY2
+	//   dL_dY  : dim(bs,xh,xw,xd)
 	//   dL_dY1 : dim(bs,xh,xw,xd)
 	//   dL_dY2 : dim(bs,xh,xw,xd)
-	//   dL_dX1 = dL_dY1 + dL_dY2 : dim(bs,xh,xw,xd)
-	//   dL_dX2 = dL_dX1 (ref)
+	//   dL_dX1 : NULL
+	//   dL_dX2 : NULL
 	// add:
+	//   dL_dY passed through
 	//   dL_dY  : dim(bs,xh,xw,xd)
 	//            x1h==x2h, x1w==x2w, x1d==x2d
-	//   dL_dX1 : dL_dY (ref)
-	//   dL_dX2 : dL_dY (ref)
+	//   dL_dX1 : NULL
+	//   dL_dX2 : dL_dY (reference)
 	// cat:
 	//   dL_dY  : dim(bs,xh,xw,x1d + x2d)
 	//            x1h==x2h, x1w==x2w
 	//   dL_dX1 : dim(bs,xh,xw,x1d)
 	//   dL_dX2 : dim(bs,xh,xw,x2d)
-	nn_tensor_t* dL_dX1; // fork, cat, add(ref)
-	nn_tensor_t* dL_dX2; // fork (ref), cat, add(ref)
+	nn_tensor_t* dL_dX1;
+	nn_tensor_t* dL_dX2;
 } nn_skipLayer_t;
 
 nn_skipLayer_t* nn_skipLayer_newFork(nn_arch_t* arch,
