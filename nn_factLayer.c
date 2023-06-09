@@ -58,14 +58,12 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 	nn_factLayer_t* self = (nn_factLayer_t*) base;
 
 	nn_tensor_t* Y     = self->Y;
-	nn_tensor_t* dY_dX = self->dY_dX;
 	nn_dim_t*    dimX  = nn_tensor_dim(X);
 	uint32_t     xh    = dimX->height;
 	uint32_t     xw    = dimX->width;
 	uint32_t     xd    = dimX->depth;
 
-	nn_factLayer_fn fact_fn  = self->fact_fn;
-	nn_factLayer_fn dfact_fn = self->dfact_fn;
+	nn_factLayer_fn fact_fn = self->fact_fn;
 
 	// output and forward gradients
 	float    x;
@@ -85,14 +83,13 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 					x = nn_tensor_get(X, m, i, j, k);
 					nn_tensor_set(Y, m, i, j, k,
 					              (*fact_fn)(x));
-
-					// forward gradients
-					nn_tensor_set(dY_dX, m, i, j, k,
-					              (*dfact_fn)(x));
 				}
 			}
 		}
 	}
+
+	// reference for backprop
+	self->X = X;
 
 	return Y;
 }
@@ -106,17 +103,17 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	nn_factLayer_t* self = (nn_factLayer_t*) base;
 
-	nn_tensor_t* dY_dX = self->dY_dX;
-	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
-	uint32_t     xh    = dimX->height;
-	uint32_t     xw    = dimX->width;
-	uint32_t     xd    = dimX->depth;
+	nn_tensor_t* X    = self->X;
+	nn_dim_t*    dimX = nn_tensor_dim(X);
+	uint32_t     xh   = dimX->height;
+	uint32_t     xw   = dimX->width;
+	uint32_t     xd   = dimX->depth;
+
+	nn_factLayer_fn dfact_fn = self->dfact_fn;
 
 	// backpropagate loss
 	float    dy_dx;
-	float    dl_dx;
-	float    dl_dy;
+	float    x;
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
@@ -129,15 +126,20 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					dl_dy = nn_tensor_get(dL_dY, m, i, j, k);
-					dy_dx = nn_tensor_get(dY_dX, m, i, j, k);
-					dl_dx = dl_dy*dy_dx;
-					nn_tensor_set(dL_dX, m, i, j, k, dl_dx);
+					// forward gradient
+					x     = nn_tensor_get(X, m, i, j, k);
+					dy_dx = (*dfact_fn)(x);
+
+					// dL_dY replaced by dL_dX
+					// dl_dx = dl_dy*dy_dx;
+					nn_tensor_mul(dL_dY, m, i, j, k, dy_dx);
 				}
 			}
 		}
 	}
-	return dL_dX;
+
+	// dL_dY replaced by dL_dX
+	return dL_dY;
 }
 
 static nn_dim_t*
@@ -147,7 +149,9 @@ nn_factLayer_dimXFn(nn_layer_t* base)
 
 	nn_factLayer_t* self = (nn_factLayer_t*) base;
 
-	return nn_tensor_dim(self->dL_dX);
+	// Y and X are the same dimensions
+	// but X is a reference
+	return nn_tensor_dim(self->Y);
 }
 
 static nn_dim_t*
@@ -371,18 +375,6 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
-	self->dY_dX = nn_tensor_new(dimX);
-	if(self->dY_dX == NULL)
-	{
-		goto fail_dY_dX;
-	}
-
-	self->dL_dX = nn_tensor_new(dimX);
-	if(self->dL_dX == NULL)
-	{
-		goto fail_dL_dX;
-	}
-
 	self->fact_fn  = fact_fn;
 	self->dfact_fn = dfact_fn;
 
@@ -390,10 +382,6 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	return self;
 
 	// failure
-	fail_dL_dX:
-		nn_tensor_delete(&self->dY_dX);
-	fail_dY_dX:
-		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
@@ -478,7 +466,7 @@ int nn_factLayer_export(nn_factLayer_t* self,
 	ASSERT(self);
 	ASSERT(stream);
 
-	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
+	nn_dim_t* dimX = nn_factLayer_dimXFn(&self->base);
 
 	const char* str_fact_fn;
 	const char* str_dfact_fn;
@@ -510,8 +498,6 @@ void nn_factLayer_delete(nn_factLayer_t** _self)
 	nn_factLayer_t* self = *_self;
 	if(self)
 	{
-		nn_tensor_delete(&self->dL_dX);
-		nn_tensor_delete(&self->dY_dX);
 		nn_tensor_delete(&self->Y);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
