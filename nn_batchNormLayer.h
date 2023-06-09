@@ -46,9 +46,9 @@ typedef struct nn_batchNormLayer_s
 	nn_tensor_t* Xmean_ra; // dim(1,1,1,xd)
 	nn_tensor_t* Xvar_ra;  // dim(1,1,1,xd)
 
-	// backprop gradients
+	// backprop gradients (dL_dY replaced by dL_dX)
 	//           dL_dY;     // dim(bs,xh,xw,xd)
-	nn_tensor_t* dL_dX;     // dim(bs,xh,xw,xd)
+	//           dL_dX;     // dim(bs,xh,xw,xd)
 	nn_tensor_t* dL_dXhat;  // dim(bs,xh,xw,xd)
 } nn_batchNormLayer_t;
 
