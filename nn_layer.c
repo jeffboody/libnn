@@ -72,6 +72,30 @@ void nn_layer_delete(nn_layer_t** _self)
 	}
 }
 
+nn_tensor_t*
+nn_layer_forwardPass(nn_layer_t* self, int mode,
+                     uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(self);
+	ASSERT(X);
+
+	nn_layer_forwardPassFn forward_pass_fn;
+	forward_pass_fn = self->forward_pass_fn;
+	return (*forward_pass_fn)(self, mode, bs, X);
+}
+
+nn_tensor_t*
+nn_layer_backprop(nn_layer_t* self, uint32_t bs,
+                  nn_tensor_t* dL_dY)
+{
+	ASSERT(self);
+	ASSERT(dL_dY);
+
+	nn_layer_backpropFn backprop_fn;
+	backprop_fn = self->backprop_fn;
+	return (*backprop_fn)(self, bs, dL_dY);
+}
+
 nn_dim_t* nn_layer_dimX(nn_layer_t* self)
 {
 	ASSERT(self);

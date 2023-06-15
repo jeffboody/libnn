@@ -273,11 +273,9 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_forwardPassFn forward_pass_fn;
-		forward_pass_fn = layer->forward_pass_fn;
-
-		Yi = (*forward_pass_fn)(layer, NN_LAYER_MODE_TRAIN,
-		                        bs, Yi);
+		Yi = nn_layer_forwardPass(layer,
+		                          NN_LAYER_MODE_TRAIN,
+		                          bs, Yi);
 		if(Yi == NULL)
 		{
 			return 0;
@@ -306,10 +304,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_backpropFn backprop_fn;
-		backprop_fn = layer->backprop_fn;
-
-		dL_dY = (*backprop_fn)(layer, bs, dL_dY);
+		dL_dY = nn_layer_backprop(layer, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return 0;
@@ -343,11 +338,9 @@ int nn_arch_predict(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_forwardPassFn forward_pass_fn;
-		forward_pass_fn = layer->forward_pass_fn;
-
-		Yi = (*forward_pass_fn)(layer, NN_LAYER_MODE_PREDICT,
-		                        1, Yi);
+		Yi = nn_layer_forwardPass(layer,
+		                          NN_LAYER_MODE_PREDICT,
+		                          1, Yi);
 		if(Yi == NULL)
 		{
 			return 0;

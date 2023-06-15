@@ -57,15 +57,17 @@ typedef struct nn_loss_s
 	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
 } nn_loss_t;
 
-nn_loss_t* nn_loss_new(nn_arch_t* arch,
-                       nn_dim_t* dimY,
-                       nn_loss_fn loss_fn);
-nn_loss_t* nn_loss_import(nn_arch_t* arch,
-                          jsmn_val_t* val);
-int        nn_loss_export(nn_loss_t* self,
-                          jsmn_stream_t* stream);
-void       nn_loss_delete(nn_loss_t** _self);
-nn_dim_t*  nn_loss_dimY(nn_loss_t* self);
-float      nn_loss_loss(nn_loss_t* self);
+nn_loss_t*   nn_loss_new(nn_arch_t* arch,
+                         nn_dim_t* dimY,
+                         nn_loss_fn loss_fn);
+nn_loss_t*   nn_loss_import(nn_arch_t* arch,
+                            jsmn_val_t* val);
+int          nn_loss_export(nn_loss_t* self,
+                            jsmn_stream_t* stream);
+void         nn_loss_delete(nn_loss_t** _self);
+nn_tensor_t* nn_loss_loss(nn_loss_t* self, uint32_t bs,
+                          nn_tensor_t* Y,
+                          nn_tensor_t* Yt);
+nn_dim_t*    nn_loss_dimY(nn_loss_t* self);
 
 #endif

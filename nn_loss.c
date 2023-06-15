@@ -368,16 +368,21 @@ void nn_loss_delete(nn_loss_t** _self)
 	}
 }
 
+nn_tensor_t*
+nn_loss_loss(nn_loss_t* self, uint32_t bs,
+             nn_tensor_t* Y, nn_tensor_t* Yt)
+{
+	ASSERT(self);
+	ASSERT(Y);
+	ASSERT(Yt);
+
+	nn_loss_fn loss_fn = self->loss_fn;
+	return (*loss_fn)(self, bs, Y, Yt);
+}
+
 nn_dim_t* nn_loss_dimY(nn_loss_t* self)
 {
 	ASSERT(self);
 
 	return nn_tensor_dim(self->dL_dY);
-}
-
-float nn_loss_loss(nn_loss_t* self)
-{
-	ASSERT(self);
-
-	return self->loss;
 }

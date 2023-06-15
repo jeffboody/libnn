@@ -56,10 +56,16 @@ typedef struct nn_layer_s
 	nn_layer_dimFn         dimY_fn;
 } nn_layer_t;
 
-nn_layer_t* nn_layer_new(size_t base_size,
-                         nn_layerInfo_t* info);
-void        nn_layer_delete(nn_layer_t** _self);
-nn_dim_t*   nn_layer_dimX(nn_layer_t* self);
-nn_dim_t*   nn_layer_dimY(nn_layer_t* self);
+nn_layer_t*  nn_layer_new(size_t base_size,
+                          nn_layerInfo_t* info);
+void         nn_layer_delete(nn_layer_t** _self);
+nn_tensor_t* nn_layer_forwardPass(nn_layer_t* self,
+                                  int mode, uint32_t bs,
+                                  nn_tensor_t* X);
+nn_tensor_t* nn_layer_backprop(nn_layer_t* self,
+                               uint32_t bs,
+                               nn_tensor_t* dL_dY);
+nn_dim_t*    nn_layer_dimX(nn_layer_t* self);
+nn_dim_t*    nn_layer_dimY(nn_layer_t* self);
 
 #endif
