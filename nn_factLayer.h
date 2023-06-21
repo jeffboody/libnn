@@ -24,6 +24,8 @@
 #ifndef nn_factLayer_H
 #define nn_factLayer_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn_layer.h"
 
 typedef float (*nn_factLayer_fn)(float x);
