@@ -21,6 +21,7 @@
  *
  */
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -327,6 +328,126 @@ void nn_tensor_mul(nn_tensor_t* self,
 	uint32_t sy = self->dim.width*self->dim.depth;
 	uint32_t sx = self->dim.depth;
 	self->data[n*sn + i*sy + j*sx + k] *= val;
+}
+
+float nn_tensor_norm(nn_tensor_t* self, uint32_t count)
+{
+	ASSERT(self);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+
+	float    xx = 0.0f;
+	float    x;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < count; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				for(k = 0; k < dim->depth; ++k)
+				{
+					x = nn_tensor_get(self, n, i, j, k);
+					xx += x*x;
+				}
+			}
+		}
+	}
+	return sqrtf(xx);
+}
+
+float nn_tensor_min(nn_tensor_t* self, uint32_t count)
+{
+	ASSERT(self);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+
+	float    min = nn_tensor_get(self, 0, 0, 0, 0);
+	float    x;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < count; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				for(k = 0; k < dim->depth; ++k)
+				{
+					x = nn_tensor_get(self, n, i, j, k);
+					if(x < min)
+					{
+						min = x;
+					}
+				}
+			}
+		}
+	}
+	return min;
+}
+
+float nn_tensor_max(nn_tensor_t* self, uint32_t count)
+{
+	ASSERT(self);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+
+	float    max = nn_tensor_get(self, 0, 0, 0, 0);
+	float    x;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < count; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				for(k = 0; k < dim->depth; ++k)
+				{
+					x = nn_tensor_get(self, n, i, j, k);
+					if(x > max)
+					{
+						max = x;
+					}
+				}
+			}
+		}
+	}
+	return max;
+}
+
+float nn_tensor_avg(nn_tensor_t* self, uint32_t count)
+{
+	ASSERT(self);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+
+	float    sum = 0.0f;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < count; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				for(k = 0; k < dim->depth; ++k)
+				{
+					sum += nn_tensor_get(self, n, i, j, k);
+				}
+			}
+		}
+	}
+	return sum/((float) (count*dim->height*dim->width));
 }
 
 nn_dim_t* nn_tensor_dim(nn_tensor_t* self)

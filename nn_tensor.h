@@ -60,6 +60,14 @@ void         nn_tensor_mul(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k,
                            float val);
+float        nn_tensor_norm(nn_tensor_t* self,
+                            uint32_t count);
+float        nn_tensor_min(nn_tensor_t* self,
+                           uint32_t count);
+float        nn_tensor_max(nn_tensor_t* self,
+                           uint32_t count);
+float        nn_tensor_avg(nn_tensor_t* self,
+                           uint32_t count);
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
 int          nn_tensor_blit(nn_tensor_t* src,
                             nn_tensor_t* dst,
