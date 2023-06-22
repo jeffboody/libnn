@@ -331,15 +331,15 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 nn_skipLayer_t*
 nn_skipLayer_newAdd(nn_arch_t* arch,
                     nn_dim_t* dimX1,
-                    nn_skipLayer_t* X2)
+                    nn_skipLayer_t* skip_fork)
 {
 	ASSERT(arch);
 	ASSERT(dimX1);
-	ASSERT(X2);
+	ASSERT(skip_fork);
 
 	// check required dimensions
 	// x1h==x2h, x1w==x2w, x1d==x2d
-	nn_dim_t* dimX2 = nn_layer_dimY(&X2->base);
+	nn_dim_t* dimX2 = nn_layer_dimY(&skip_fork->base);
 	if((dimX1->count  != dimX2->count)  ||
 	   (dimX1->height != dimX2->height) ||
 	   (dimX1->width  != dimX2->width)  ||
@@ -350,7 +350,7 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	}
 
 	// only one skip connection is allowed
-	if(X2->skip)
+	if(skip_fork->skip)
 	{
 		LOGE("invalid");
 		return NULL;
@@ -374,7 +374,7 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	}
 
 	self->mode = NN_SKIP_LAYER_MODE_ADD;
-	self->skip = X2;
+	self->skip = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
 
@@ -387,7 +387,7 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	// dL_X1 and dL_X2 are set by backpropAddFn
 
 	// connect skip
-	X2->skip = self;
+	skip_fork->skip = self;
 
 	// success
 	return self;
@@ -401,14 +401,14 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 nn_skipLayer_t*
 nn_skipLayer_newCat(nn_arch_t* arch,
                     nn_dim_t* dimX1,
-                    nn_skipLayer_t* X2)
+                    nn_skipLayer_t* skip_fork)
 {
 	ASSERT(arch);
-	ASSERT(X2);
+	ASSERT(skip_fork);
 
 	// check required dimensions
 	// x1h==x2h, x1w==x2w
-	nn_dim_t* dimX2 = nn_layer_dimY(&X2->base);
+	nn_dim_t* dimX2 = nn_layer_dimY(&skip_fork->base);
 	if((dimX1->count  != dimX2->count)  ||
 	   (dimX1->height != dimX2->height) ||
 	   (dimX1->width  != dimX2->width))
@@ -418,7 +418,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	}
 
 	// only one skip connection is allowed
-	if(X2->skip)
+	if(skip_fork->skip)
 	{
 		LOGE("invalid");
 		return NULL;
@@ -442,7 +442,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	}
 
 	self->mode = NN_SKIP_LAYER_MODE_CAT;
-	self->skip = X2;
+	self->skip = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
 
@@ -473,7 +473,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	}
 
 	// connect skip
-	X2->skip = self;
+	skip_fork->skip = self;
 
 	// success
 	return self;
@@ -486,6 +486,110 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
+}
+
+nn_skipLayer_t*
+nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
+                    nn_skipLayer_t* skip_fork)
+{
+	// skip_fork is optional for add/cat
+	ASSERT(arch);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	jsmn_val_t* val_dimX = NULL;
+	jsmn_val_t* val_mode = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_STRING)
+		{
+			if(strcmp(kv->key, "mode") == 0)
+			{
+				val_mode = kv->val;
+			}
+		}
+		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "dimX") == 0)
+			{
+				val_dimX = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_dimX == NULL) ||
+	   (val_mode == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_dim_t dimX;
+	if(nn_dim_load(&dimX, val_dimX) == 0)
+	{
+		return NULL;
+	}
+
+	if(strcmp(val_mode->data, "fork") == 0)
+	{
+		return nn_skipLayer_newFork(arch, &dimX);
+	}
+	else if(strcmp(val_mode->data, "add") == 0)
+	{
+		return nn_skipLayer_newAdd(arch, &dimX, skip_fork);
+	}
+	else if(strcmp(val_mode->data, "cat") == 0)
+	{
+		return nn_skipLayer_newCat(arch, &dimX, skip_fork);
+	}
+	else
+	{
+		LOGE("invalid mode=%s", val_mode->data);
+		return NULL;
+	}
+}
+
+int nn_skipLayer_export(nn_skipLayer_t* self,
+                        jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dimX = nn_skipLayer_dimXFn(&self->base);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= nn_dim_store(dimX, stream);
+	ret &= jsmn_stream_key(stream, "%s", "mode");
+	if(self->mode == NN_SKIP_LAYER_MODE_ADD)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "add");
+	}
+	else if(self->mode == NN_SKIP_LAYER_MODE_CAT)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "cat");
+	}
+	else
+	{
+		ret &= jsmn_stream_string(stream, "%s", "fork");
+	}
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
 }
 
 void nn_skipLayer_delete(nn_skipLayer_t** _self)

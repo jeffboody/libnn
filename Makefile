@@ -3,6 +3,7 @@ CLASSES = \
 	nn_arch           \
 	nn_batchNormLayer \
 	nn_convLayer      \
+	nn_coderLayer     \
 	nn_dim            \
 	nn_factLayer      \
 	nn_flattenLayer   \

@@ -26,17 +26,20 @@
 
 #include <stdint.h>
 
-typedef struct nn_arch_s           nn_arch_t;
-typedef struct nn_batchNormLayer_s nn_batchNormLayer_t;
-typedef struct nn_convLayer_s      nn_convLayer_t;
-typedef struct nn_dim_s            nn_dim_t;
-typedef struct nn_factLayer_s      nn_factLayer_t;
-typedef struct nn_flattenLayer_s   nn_flattenLayer_t;
-typedef struct nn_layer_s          nn_layer_t;
-typedef struct nn_loss_s           nn_loss_t;
-typedef struct nn_poolingLayer_s   nn_poolingLayer_t;
-typedef struct nn_skipLayer_s      nn_skipLayer_t;
-typedef struct nn_tensor_s         nn_tensor_t;
-typedef struct nn_weightLayer_s    nn_weightLayer_t;
+typedef struct nn_arch_s               nn_arch_t;
+typedef struct nn_batchNormLayer_s     nn_batchNormLayer_t;
+typedef struct nn_convLayer_s          nn_convLayer_t;
+typedef struct nn_dim_s                nn_dim_t;
+typedef struct nn_coderLayer_s         nn_coderLayer_t;
+typedef struct nn_coderOpLayer_s       nn_coderOpLayer_t;
+typedef struct nn_coderRepeaterLayer_s nn_coderRepeaterLayer_t;
+typedef struct nn_factLayer_s          nn_factLayer_t;
+typedef struct nn_flattenLayer_s       nn_flattenLayer_t;
+typedef struct nn_layer_s              nn_layer_t;
+typedef struct nn_loss_s               nn_loss_t;
+typedef struct nn_poolingLayer_s       nn_poolingLayer_t;
+typedef struct nn_skipLayer_s          nn_skipLayer_t;
+typedef struct nn_tensor_s             nn_tensor_t;
+typedef struct nn_weightLayer_s        nn_weightLayer_t;
 
 #endif

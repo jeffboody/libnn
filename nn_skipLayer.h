@@ -37,8 +37,7 @@ typedef struct nn_skipLayer_s
 
 	int mode;
 
-	// fork    : Y2 output layer
-	// add/cat : X2 input layer
+	// fork/add/cat layer
 	nn_skipLayer_t* skip; // reference
 
 	// fork    : dim(bs,xh,xw,xd)
@@ -82,10 +81,15 @@ nn_skipLayer_t* nn_skipLayer_newFork(nn_arch_t* arch,
                                      nn_dim_t* dimX);
 nn_skipLayer_t* nn_skipLayer_newAdd(nn_arch_t* arch,
                                     nn_dim_t* dimX,
-                                    nn_skipLayer_t* X2);
+                                    nn_skipLayer_t* skip_fork);
 nn_skipLayer_t* nn_skipLayer_newCat(nn_arch_t* arch,
                                     nn_dim_t* dimX,
-                                    nn_skipLayer_t* X2);
+                                    nn_skipLayer_t* skip_fork);
+nn_skipLayer_t* nn_skipLayer_import(nn_arch_t* arch,
+                                    jsmn_val_t* val,
+                                    nn_skipLayer_t* skip_fork);
+int             nn_skipLayer_export(nn_skipLayer_t* self,
+                                    jsmn_stream_t* stream);
 void            nn_skipLayer_delete(nn_skipLayer_t** _self);
 
 #endif

@@ -31,10 +31,10 @@
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn_batchNormLayer.h"
+#include "libnn/nn_coderLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
-#include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "texgz/texgz_png.h"
@@ -247,6 +247,7 @@ int main(int argc, char** argv)
 		goto fail_arch;
 	}
 
+	uint32_t  fc     = 32;
 	uint32_t  max_bs = 32;
 	nn_dim_t* dimXt  = nn_tensor_dim(Xt);
 	nn_dim_t  dimX   =
@@ -272,218 +273,87 @@ int main(int argc, char** argv)
 		goto fail_bn0;
 	}
 
-	nn_dim_t dimW1 =
+	nn_coderLayerInfo_t info_enc1 =
 	{
-		.count  = 32,
-		.width  = 3,
-		.height = 3,
-		.depth  = dim->depth,
+		.arch        = arch,
+		.dimX        = dim,
+		.fc          = fc,
+		.skip_enable = 0,
+		.skip_mode   = NN_SKIP_LAYER_MODE_FORK,
+		.skip_coder  = NULL,
+		.repeat      = 0,
+		.op_mode     = NN_CODER_OP_MODE_POOLMAX,
 	};
 
-	nn_convLayer_t* conv1;
-	conv1 = nn_convLayer_new(arch, dim, &dimW1, 1,
-	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
-	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
-	                        NN_CONV_LAYER_FLAG_HE);
-	if(conv1 == NULL)
+	nn_coderLayer_t* enc1;
+	enc1 = nn_coderLayer_new(&info_enc1);
+	if(enc1 == NULL)
 	{
-		goto fail_conv1;
+		goto fail_enc1;
 	}
-	dim = nn_layer_dimY(&conv1->base);
+	dim = nn_layer_dimY(&enc1->base);
 
-	nn_batchNormLayer_t* bn1;
-	bn1 = nn_batchNormLayer_new(arch, dim);
-	if(bn1 == NULL)
+	nn_coderLayerInfo_t info_enc2 =
 	{
-		goto fail_bn1;
-	}
-
-	nn_factLayer_t* fact1;
-	fact1 = nn_factLayer_new(arch, dim,
-	                         nn_factLayer_ReLU,
-	                         nn_factLayer_dReLU);
-	if(fact1 == NULL)
-	{
-		goto fail_fact1;
-	}
-
-	nn_poolingLayer_t* pool1;
-	pool1 = nn_poolingLayer_new(arch, dim, 2, 2,
-	                            NN_POOLING_LAYER_MODE_MAX);
-	if(pool1 == NULL)
-	{
-		goto fail_pool1;
-	}
-	dim = nn_layer_dimY(&pool1->base);
-
-	nn_dim_t dimW2 =
-	{
-		.count  = 32,
-		.width  = 3,
-		.height = 3,
-		.depth  = dim->depth,
+		.arch        = arch,
+		.dimX        = dim,
+		.fc          = fc,
+		.skip_enable = 0,
+		.skip_mode   = NN_SKIP_LAYER_MODE_FORK,
+		.skip_coder  = NULL,
+		.repeat      = 0,
+		.op_mode     = NN_CODER_OP_MODE_POOLMAX,
 	};
 
-	nn_convLayer_t* conv2;
-	conv2 = nn_convLayer_new(arch, dim, &dimW2, 1,
-	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
-	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
-	                        NN_CONV_LAYER_FLAG_HE);
-	if(conv2 == NULL)
+	nn_coderLayer_t* enc2;
+	enc2 = nn_coderLayer_new(&info_enc2);
+	if(enc2 == NULL)
 	{
-		goto fail_conv2;
+		goto fail_enc2;
 	}
-	dim = nn_layer_dimY(&conv2->base);
+	dim = nn_layer_dimY(&enc2->base);
 
-	nn_skipLayer_t* skip2;
-	skip2 = nn_skipLayer_newFork(arch, dim);
-	if(skip2 == NULL)
+	nn_coderLayerInfo_t info_dec3 =
 	{
-		goto fail_skip2;
-	}
-
-	nn_batchNormLayer_t* bn2;
-	bn2 = nn_batchNormLayer_new(arch, dim);
-	if(bn2 == NULL)
-	{
-		goto fail_bn2;
-	}
-
-	nn_factLayer_t* fact2;
-	fact2 = nn_factLayer_new(arch, dim,
-	                         nn_factLayer_ReLU,
-	                         nn_factLayer_dReLU);
-	if(fact2 == NULL)
-	{
-		goto fail_fact2;
-	}
-
-	nn_poolingLayer_t* pool2;
-	pool2 = nn_poolingLayer_new(arch, dim, 2, 2,
-	                            NN_POOLING_LAYER_MODE_MAX);
-	if(pool2 == NULL)
-	{
-		goto fail_pool2;
-	}
-	dim = nn_layer_dimY(&pool2->base);
-
-	nn_dim_t dimW3 =
-	{
-		.count  = 32,
-		.width  = 3,
-		.height = 3,
-		.depth  = dim->depth,
+		.arch        = arch,
+		.dimX        = dim,
+		.fc          = fc,
+		.skip_enable = 0,
+		.skip_mode   = NN_SKIP_LAYER_MODE_ADD,
+		.skip_coder  = NULL,
+		.repeat      = 0,
+		.op_mode     = NN_CODER_OP_MODE_UPSCALE,
 	};
 
-	nn_convLayer_t* conv3;
-	conv3 = nn_convLayer_new(arch, dim, &dimW3, 1,
-	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
-	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
-	                        NN_CONV_LAYER_FLAG_HE);
-	if(conv3 == NULL)
+	nn_coderLayer_t* dec3;
+	dec3 = nn_coderLayer_new(&info_dec3);
+	if(dec3 == NULL)
 	{
-		goto fail_conv3;
+		goto fail_dec3;
 	}
-	dim = nn_layer_dimY(&conv3->base);
+	dim = nn_layer_dimY(&dec3->base);
 
-	nn_batchNormLayer_t* bn3;
-	bn3 = nn_batchNormLayer_new(arch, dim);
-	if(bn3 == NULL)
+	nn_coderLayerInfo_t info_dec4 =
 	{
-		goto fail_bn3;
-	}
-
-	nn_factLayer_t* fact3;
-	fact3 = nn_factLayer_new(arch, dim,
-	                         nn_factLayer_ReLU,
-	                         nn_factLayer_dReLU);
-	if(fact3 == NULL)
-	{
-		goto fail_fact3;
-	}
-
-	nn_dim_t dimWT3 =
-	{
-		.count  = dim->depth,
-		.width  = 2,
-		.height = 2,
-		.depth  = dim->depth,
+		.arch        = arch,
+		.dimX        = dim,
+		.fc          = fc,
+		.skip_enable = 0,
+		.skip_mode   = NN_SKIP_LAYER_MODE_ADD,
+		.skip_coder  = NULL,
+		.repeat      = 0,
+		.op_mode     = NN_CODER_OP_MODE_UPSCALE,
 	};
 
-	nn_convLayer_t* convT3;
-	convT3 = nn_convLayer_new(arch, dim, &dimWT3, 2,
-	                          NN_CONV_LAYER_FLAG_TRANSPOSE |
-	                          NN_CONV_LAYER_FLAG_PAD_SAME  |
-	                          NN_CONV_LAYER_FLAG_XAVIER);
-	if(convT3 == NULL)
+	nn_coderLayer_t* dec4;
+	dec4 = nn_coderLayer_new(&info_dec4);
+	if(dec4 == NULL)
 	{
-		goto fail_convT3;
+		goto fail_dec4;
 	}
-	dim = nn_layer_dimY(&convT3->base);
+	dim = nn_layer_dimY(&dec4->base);
 
-	nn_dim_t dimW4 =
-	{
-		.count  = 32,
-		.width  = 3,
-		.height = 3,
-		.depth  = dim->depth,
-	};
-
-	nn_convLayer_t* conv4;
-	conv4 = nn_convLayer_new(arch, dim, &dimW4, 1,
-	                        NN_CONV_LAYER_FLAG_DISABLE_BIAS |
-	                        NN_CONV_LAYER_FLAG_PAD_SAME     |
-	                        NN_CONV_LAYER_FLAG_HE);
-	if(conv4 == NULL)
-	{
-		goto fail_conv4;
-	}
-	dim = nn_layer_dimY(&conv4->base);
-
-	nn_skipLayer_t* skip4;
-	skip4 = nn_skipLayer_newAdd(arch, dim, skip2);
-	if(skip4 == NULL)
-	{
-		goto fail_skip4;
-	}
-	dim = nn_layer_dimY(&skip4->base);
-
-	nn_batchNormLayer_t* bn4;
-	bn4 = nn_batchNormLayer_new(arch, dim);
-	if(bn4 == NULL)
-	{
-		goto fail_bn4;
-	}
-
-	nn_factLayer_t* fact4;
-	fact4 = nn_factLayer_new(arch, dim,
-	                         nn_factLayer_ReLU,
-	                         nn_factLayer_dReLU);
-	if(fact4 == NULL)
-	{
-		goto fail_fact4;
-	}
-
-	nn_dim_t dimWT4 =
-	{
-		.count  = dim->depth,
-		.width  = 2,
-		.height = 2,
-		.depth  = dim->depth,
-	};
-
-	nn_convLayer_t* convT4;
-	convT4 = nn_convLayer_new(arch, dim, &dimWT4, 2,
-	                          NN_CONV_LAYER_FLAG_TRANSPOSE |
-	                          NN_CONV_LAYER_FLAG_PAD_SAME  |
-	                          NN_CONV_LAYER_FLAG_XAVIER);
-	if(convT4 == NULL)
-	{
-		goto fail_convT4;
-	}
-	dim = nn_layer_dimY(&convT4->base);
-
-	nn_dim_t dimW5 =
+	nn_dim_t dimWO =
 	{
 		.count  = 1,
 		.width  = 3,
@@ -491,23 +361,23 @@ int main(int argc, char** argv)
 		.depth  = dim->depth,
 	};
 
-	nn_convLayer_t* conv5;
-	conv5 = nn_convLayer_new(arch, dim, &dimW5, 1,
+	nn_convLayer_t* convO;
+	convO = nn_convLayer_new(arch, dim, &dimWO, 1,
 	                         NN_CONV_LAYER_FLAG_PAD_SAME |
 	                         NN_CONV_LAYER_FLAG_XAVIER);
-	if(conv5 == NULL)
+	if(convO == NULL)
 	{
-		goto fail_conv5;
+		goto fail_convO;
 	}
-	dim = nn_layer_dimY(&conv5->base);
+	dim = nn_layer_dimY(&convO->base);
 
-	nn_factLayer_t* fact5;
-	fact5 = nn_factLayer_new(arch, dim,
+	nn_factLayer_t* factO;
+	factO = nn_factLayer_new(arch, dim,
 	                         nn_factLayer_logistic,
 	                         nn_factLayer_dlogistic);
-	if(fact5 == NULL)
+	if(factO == NULL)
 	{
-		goto fail_fact5;
+		goto fail_factO;
 	}
 
 	nn_loss_t* loss;
@@ -523,28 +393,14 @@ int main(int argc, char** argv)
 		goto fail_Y;
 	}
 
-	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn0)      == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv1)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn1)      == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact1)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) pool1)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv2)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) skip2)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn2)      == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact2)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) pool2)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv3)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn3)      == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact3)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT3)   == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv4)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) skip4)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) bn4)      == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact4)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) convT4)   == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) conv5)    == 0) ||
-	   (nn_arch_attachLayer(arch, (nn_layer_t*) fact5)    == 0) ||
-	   (nn_arch_attachLoss(arch,  (nn_loss_t*)  loss) == 0))
+	if((nn_arch_attachLayer(arch, (nn_layer_t*) bn0)   == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) enc1)  == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) enc2)  == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) dec3)  == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) dec4)  == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) convO) == 0) ||
+	   (nn_arch_attachLayer(arch, (nn_layer_t*) factO) == 0) ||
+	   (nn_arch_attachLoss(arch,  (nn_loss_t*)  loss)  == 0))
 	{
 		goto fail_attach;
 	}
@@ -595,6 +451,7 @@ int main(int argc, char** argv)
 			}
 
 			// add noise to X
+			// mnist_noise causes skip layers to perform poorly
 			mnist_noise(&rng, bs, X, Y);
 
 			// export training images
@@ -663,42 +520,18 @@ int main(int argc, char** argv)
 				ret &= nn_arch_export(arch, stream);
 				ret &= jsmn_stream_key(stream, "%s", "bn0");
 				ret &= nn_batchNormLayer_export(bn0, stream);
-				ret &= jsmn_stream_key(stream, "%s", "conv1");
-				ret &= nn_convLayer_export(conv1, stream);
-				ret &= jsmn_stream_key(stream, "%s", "bn1");
-				ret &= nn_batchNormLayer_export(bn1, stream);
-				ret &= jsmn_stream_key(stream, "%s", "fact1");
-				ret &= nn_factLayer_export(fact1, stream);
-				ret &= jsmn_stream_key(stream, "%s", "pool1");
-				ret &= nn_poolingLayer_export(pool1, stream);
-				ret &= jsmn_stream_key(stream, "%s", "conv2");
-				ret &= nn_convLayer_export(conv2, stream);
-				ret &= jsmn_stream_key(stream, "%s", "bn2");
-				ret &= nn_batchNormLayer_export(bn2, stream);
-				ret &= jsmn_stream_key(stream, "%s", "fact2");
-				ret &= nn_factLayer_export(fact2, stream);
-				ret &= jsmn_stream_key(stream, "%s", "pool2");
-				ret &= nn_poolingLayer_export(pool2, stream);
-				ret &= jsmn_stream_key(stream, "%s", "conv3");
-				ret &= nn_convLayer_export(conv3, stream);
-				ret &= jsmn_stream_key(stream, "%s", "bn3");
-				ret &= nn_batchNormLayer_export(bn3, stream);
-				ret &= jsmn_stream_key(stream, "%s", "fact3");
-				ret &= nn_factLayer_export(fact3, stream);
-				ret &= jsmn_stream_key(stream, "%s", "convT3");
-				ret &= nn_convLayer_export(convT3, stream);
-				ret &= jsmn_stream_key(stream, "%s", "conv4");
-				ret &= nn_convLayer_export(conv4, stream);
-				ret &= jsmn_stream_key(stream, "%s", "bn4");
-				ret &= nn_batchNormLayer_export(bn4, stream);
-				ret &= jsmn_stream_key(stream, "%s", "fact4");
-				ret &= nn_factLayer_export(fact4, stream);
-				ret &= jsmn_stream_key(stream, "%s", "convT4");
-				ret &= nn_convLayer_export(convT4, stream);
-				ret &= jsmn_stream_key(stream, "%s", "conv5");
-				ret &= nn_convLayer_export(conv5, stream);
-				ret &= jsmn_stream_key(stream, "%s", "fact5");
-				ret &= nn_factLayer_export(fact5, stream);
+				ret &= jsmn_stream_key(stream, "%s", "enc1");
+				ret &= nn_coderLayer_export(enc1, stream);
+				ret &= jsmn_stream_key(stream, "%s", "enc2");
+				ret &= nn_coderLayer_export(enc2, stream);
+				ret &= jsmn_stream_key(stream, "%s", "dec3");
+				ret &= nn_coderLayer_export(dec3, stream);
+				ret &= jsmn_stream_key(stream, "%s", "dec4");
+				ret &= nn_coderLayer_export(dec4, stream);
+				ret &= jsmn_stream_key(stream, "%s", "convO");
+				ret &= nn_convLayer_export(convO, stream);
+				ret &= jsmn_stream_key(stream, "%s", "factO");
+				ret &= nn_factLayer_export(factO, stream);
 				ret &= jsmn_stream_key(stream, "%s", "loss");
 				ret &= nn_loss_export(loss, stream);
 				ret &= jsmn_stream_end(stream);
@@ -720,26 +553,12 @@ int main(int argc, char** argv)
 	texgz_tex_delete(&tex);
 	nn_loss_delete(&loss);
 	nn_tensor_delete(&Y);
-	nn_factLayer_delete(&fact5);
-	nn_convLayer_delete(&conv5);
-	nn_convLayer_delete(&convT4);
-	nn_factLayer_delete(&fact4);
-	nn_batchNormLayer_delete(&bn4);
-	nn_skipLayer_delete(&skip4);
-	nn_convLayer_delete(&conv4);
-	nn_convLayer_delete(&convT3);
-	nn_factLayer_delete(&fact3);
-	nn_batchNormLayer_delete(&bn3);
-	nn_convLayer_delete(&conv3);
-	nn_poolingLayer_delete(&pool2);
-	nn_factLayer_delete(&fact2);
-	nn_batchNormLayer_delete(&bn2);
-	nn_skipLayer_delete(&skip2);
-	nn_convLayer_delete(&conv2);
-	nn_poolingLayer_delete(&pool1);
-	nn_factLayer_delete(&fact1);
-	nn_batchNormLayer_delete(&bn1);
-	nn_convLayer_delete(&conv1);
+	nn_factLayer_delete(&factO);
+	nn_convLayer_delete(&convO);
+	nn_coderLayer_delete(&dec4);
+	nn_coderLayer_delete(&dec3);
+	nn_coderLayer_delete(&enc2);
+	nn_coderLayer_delete(&enc1);
 	nn_batchNormLayer_delete(&bn0);
 	nn_tensor_delete(&X);
 	nn_arch_delete(&arch);
@@ -757,46 +576,18 @@ int main(int argc, char** argv)
 	fail_Y:
 		nn_loss_delete(&loss);
 	fail_loss:
-		nn_factLayer_delete(&fact5);
-	fail_fact5:
-		nn_convLayer_delete(&conv5);
-	fail_conv5:
-		nn_convLayer_delete(&convT4);
-	fail_convT4:
-		nn_factLayer_delete(&fact4);
-	fail_fact4:
-		nn_batchNormLayer_delete(&bn4);
-	fail_bn4:
-		nn_skipLayer_delete(&skip4);
-	fail_skip4:
-		nn_convLayer_delete(&conv4);
-	fail_conv4:
-		nn_convLayer_delete(&convT3);
-	fail_convT3:
-		nn_factLayer_delete(&fact3);
-	fail_fact3:
-		nn_batchNormLayer_delete(&bn3);
-	fail_bn3:
-		nn_convLayer_delete(&conv3);
-	fail_conv3:
-		nn_poolingLayer_delete(&pool2);
-	fail_pool2:
-		nn_factLayer_delete(&fact2);
-	fail_fact2:
-		nn_batchNormLayer_delete(&bn2);
-	fail_bn2:
-		nn_skipLayer_delete(&skip2);
-	fail_skip2:
-		nn_convLayer_delete(&conv2);
-	fail_conv2:
-		nn_poolingLayer_delete(&pool1);
-	fail_pool1:
-		nn_factLayer_delete(&fact1);
-	fail_fact1:
-		nn_batchNormLayer_delete(&bn1);
-	fail_bn1:
-		nn_convLayer_delete(&conv1);
-	fail_conv1:
+		nn_factLayer_delete(&factO);
+	fail_factO:
+		nn_convLayer_delete(&convO);
+	fail_convO:
+		nn_coderLayer_delete(&dec4);
+	fail_dec4:
+		nn_coderLayer_delete(&dec3);
+	fail_dec3:
+		nn_coderLayer_delete(&enc2);
+	fail_enc2:
+		nn_coderLayer_delete(&enc1);
+	fail_enc1:
 		nn_batchNormLayer_delete(&bn0);
 	fail_bn0:
 		nn_tensor_delete(&X);
