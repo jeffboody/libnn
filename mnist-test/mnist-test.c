@@ -21,6 +21,7 @@
  *
  */
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -571,6 +572,9 @@ int main(int argc, char** argv)
 	uint32_t n;
 	uint32_t bs;
 	char     fname[256];
+	float    sum_loss = 0.0f;
+	float    min_loss = FLT_MAX;
+	float    max_loss = 0.0f;
 	cc_rngNormal_t rng;
 	cc_rngNormal_init(&rng, 0.5f, 0.5f);
 	for(epoch = 0; epoch < 20; ++epoch)
@@ -611,12 +615,31 @@ int main(int argc, char** argv)
 				mnist_savepng(fname, tex, Y, 0);
 			}
 
-			// plot loss
+			// update loss
 			float l = nn_arch_loss(arch);
-			if((step % 50) == 0)
+			sum_loss += l;
+			if(l < min_loss)
 			{
-				fprintf(fplot, "%u %f\n", step, l);
+				min_loss = l;
+			}
+			if(l > max_loss)
+			{
+				max_loss = l;
+			}
+
+			// plot loss
+			uint32_t plot_interval = 10;
+			if((step%plot_interval) == (plot_interval - 1))
+			{
+				float avg_loss = sum_loss/((float) plot_interval);
+				fprintf(fplot, "%u %u %f %f %f\n",
+				        epoch, step, avg_loss, min_loss, max_loss);
 				fflush(fplot);
+
+				// reset loss
+				sum_loss = 0.0f;
+				min_loss = FLT_MAX;
+				max_loss = 0.0f;
 			}
 
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
