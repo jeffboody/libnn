@@ -234,11 +234,12 @@ int main(int argc, char** argv)
 
 	nn_archInfo_t arch_info =
 	{
-		.learning_rate  = 0.001f,
+		.learning_rate  = 0.01f,
 		.momentum_decay = 0.5f,
 		.batch_momentum = 0.99f,
 		.l2_lambda      = 0.01f,
-		.clip_norm      = 0.0f,
+		.clip_max       = 10.0f,
+		.clip_momentum  = 0.99f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(0, &arch_info);

@@ -59,6 +59,10 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* VW; // dim(fc,fh,fw,xd)
 	nn_tensor_t* VB; // dim(fc,1,1,1)
 
+	// gradient clipping
+	float norm_dl_dw_ra;
+	float norm_dl_db_ra;
+
 	// forward gradients
 	// dY_dB; // 1
 	// dY_dX; // W : dim(fc,fh,fw,xd)

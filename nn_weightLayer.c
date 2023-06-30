@@ -104,50 +104,86 @@ nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
 	ASSERT(_gcw);
 	ASSERT(_gcb);
 
-	nn_arch_t*   arch      = self->base.arch;
-	nn_tensor_t* W         = self->W;
-	nn_tensor_t* dL_dW     = self->dL_dW;
-	nn_tensor_t* dL_dB     = self->dL_dB;
-	nn_dim_t*    dimW      = nn_tensor_dim(W);
-	uint32_t     nc        = dimW->count;
-	uint32_t     xd        = dimW->depth;
-	float        s         = 1.0f/((float) bs);
-	float        clip_norm = arch->clip_norm;
-	float        norm_gw   = 0.0f;
-	float        norm_gb   = 0.0f;
+	nn_arch_t*   arch       = self->base.arch;
+	nn_tensor_t* W          = self->W;
+	nn_tensor_t* B          = self->B;
+	nn_tensor_t* dL_dW      = self->dL_dW;
+	nn_tensor_t* dL_dB      = self->dL_dB;
+	nn_dim_t*    dimW       = nn_tensor_dim(W);
+	uint32_t     nc         = dimW->count;
+	uint32_t     xd         = dimW->depth;
+	float        s          = 1.0f/((float) bs);
+	float        clip_max   = arch->clip_max;
+	float        clip_mu    = arch->clip_momentum;
+	float        norm_w     = 0.0f;
+	float        norm_b     = 0.0f;
+	float        norm_dl_dw = 0.0f;
+	float        norm_dl_db = 0.0f;
 
+	// compute norms
+	float    w;
+	float    b;
 	float    dl_dw;
 	float    dl_db;
 	uint32_t n;
 	uint32_t k;
 	for(n = 0; n < nc; ++n)
 	{
-		// weights gradient
 		for(k = 0; k < xd; ++k)
 		{
-			dl_dw    = s*nn_tensor_get(dL_dW, n, 0, 0, k);
-			norm_gw += dl_dw*dl_dw;
+			w           = nn_tensor_get(W, n, 0, 0, k);
+			dl_dw       = s*nn_tensor_get(dL_dW, n, 0, 0, k);
+			norm_w     += w*w;
+			norm_dl_dw += dl_dw*dl_dw;
 		}
 
 		// bias gradient
 		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			dl_db    = s*nn_tensor_get(dL_dB, n, 0, 0, 0);
-			norm_gb += dl_db*dl_db;
+			b           = nn_tensor_get(B, n, 0, 0, 0);
+			dl_db       = s*nn_tensor_get(dL_dB, n, 0, 0, 0);
+			norm_b     += b*b;
+			norm_dl_db += dl_db*dl_db;
+		}
+	}
+	norm_w     = sqrtf(norm_w);
+	norm_b     = sqrtf(norm_b);
+	norm_dl_dw = sqrtf(norm_dl_dw);
+	norm_dl_db = sqrtf(norm_dl_db);
+
+	// compute running averages
+	self->norm_dl_dw_ra = clip_mu*self->norm_dl_dw_ra +
+	                      (1.0f - clip_mu)*norm_dl_dw;
+	self->norm_dl_db_ra = clip_mu*self->norm_dl_db_ra +
+	                      (1.0f - clip_mu)*norm_dl_db;
+
+	// clamp norm
+	if(clip_max > 0.0f)
+	{
+		if(self->norm_dl_dw_ra > clip_max)
+		{
+			self->norm_dl_dw_ra = clip_max;
+		}
+		if(self->norm_dl_db_ra > clip_max)
+		{
+			self->norm_dl_db_ra = clip_max;
 		}
 	}
 
-	norm_gw = sqrtf(norm_gw);
-	if(norm_gw > clip_norm)
+	// apply gradient clipping
+	if(norm_dl_dw > self->norm_dl_dw_ra)
 	{
-		*_gcw = clip_norm/norm_gw;
+		*_gcw = self->norm_dl_dw_ra/norm_dl_dw;
+	}
+	if(norm_dl_db > self->norm_dl_db_ra)
+	{
+		*_gcb = self->norm_dl_db_ra/norm_dl_db;
 	}
 
-	norm_gb = sqrtf(norm_gb);
-	if(norm_gb > clip_norm)
-	{
-		*_gcb = clip_norm/norm_gb;
-	}
+	LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
+	     norm_w, norm_b,
+	     norm_dl_dw, self->norm_dl_dw_ra,
+	     norm_dl_db, self->norm_dl_db_ra);
 }
 
 static nn_tensor_t*
@@ -160,19 +196,20 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
 	nn_arch_t*        arch = base->arch;
 
-	nn_tensor_t* W         = self->W;
-	nn_tensor_t* B         = self->B;
-	nn_tensor_t* VW        = self->VW;
-	nn_tensor_t* VB        = self->VB;
-	nn_tensor_t* dY_dX     = W;
-	nn_tensor_t* dY_dW     = self->X;
-	nn_dim_t*    dimW      = nn_tensor_dim(W);
-	uint32_t     nc        = dimW->count;
-	uint32_t     xd        = dimW->depth;
-	float        lr        = arch->learning_rate;
-	float        mu        = arch->momentum_decay;
-	float        lambda    = arch->l2_lambda;
-	float        clip_norm = arch->clip_norm;
+	nn_tensor_t* W        = self->W;
+	nn_tensor_t* B        = self->B;
+	nn_tensor_t* VW       = self->VW;
+	nn_tensor_t* VB       = self->VB;
+	nn_tensor_t* dY_dX    = W;
+	nn_tensor_t* dY_dW    = self->X;
+	nn_dim_t*    dimW     = nn_tensor_dim(W);
+	uint32_t     nc       = dimW->count;
+	uint32_t     xd       = dimW->depth;
+	float        lr       = arch->learning_rate;
+	float        mu       = arch->momentum_decay;
+	float        lambda   = arch->l2_lambda;
+	float        clip_max = arch->clip_max;
+	float        clip_mu  = arch->clip_momentum;
 
 	// clear backprop gradients
 	nn_tensor_t* dL_dW = self->dL_dW;
@@ -221,7 +258,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// optionally compute gradient clipping
 	float gcw = 1.0f;
 	float gcb = 1.0f;
-	if(clip_norm > 0.0f)
+	if((clip_max > 0.0f) || (clip_mu > 0.0f))
 	{
 		nn_weightLayer_gradientClipping(self, bs, &gcw, &gcb);
 	}
@@ -377,7 +414,9 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	self->flags = flags;
+	self->flags         = flags;
+	self->norm_dl_dw_ra = 1.0f;
+	self->norm_dl_db_ra = 1.0f;
 
 	self->W = nn_tensor_new(dimW);
 	if(self->W == NULL)
@@ -488,13 +527,15 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX  = NULL;
-	jsmn_val_t* val_dimW  = NULL;
-	jsmn_val_t* val_flags = NULL;
-	jsmn_val_t* val_W     = NULL;
-	jsmn_val_t* val_B     = NULL;
-	jsmn_val_t* val_VW    = NULL;
-	jsmn_val_t* val_VB    = NULL;
+	jsmn_val_t* val_dimX          = NULL;
+	jsmn_val_t* val_dimW          = NULL;
+	jsmn_val_t* val_flags         = NULL;
+	jsmn_val_t* val_W             = NULL;
+	jsmn_val_t* val_B             = NULL;
+	jsmn_val_t* val_VW            = NULL;
+	jsmn_val_t* val_VB            = NULL;
+	jsmn_val_t* val_norm_dl_dw_ra = NULL;
+	jsmn_val_t* val_norm_dl_db_ra = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -507,6 +548,14 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			if(strcmp(kv->key, "flags") == 0)
 			{
 				val_flags = kv->val;
+			}
+			else if(strcmp(kv->key, "norm_dl_dw_ra") == 0)
+			{
+				val_norm_dl_dw_ra = kv->val;
+			}
+			else if(strcmp(kv->key, "norm_dl_db_ra") == 0)
+			{
+				val_norm_dl_db_ra = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -541,13 +590,15 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX  == NULL) ||
-	   (val_dimW  == NULL) ||
-	   (val_flags == NULL) ||
-	   (val_W     == NULL) ||
-	   (val_B     == NULL) ||
-	   (val_VW    == NULL) ||
-	   (val_VB    == NULL))
+	if((val_dimX          == NULL) ||
+	   (val_dimW          == NULL) ||
+	   (val_flags         == NULL) ||
+	   (val_W             == NULL) ||
+	   (val_B             == NULL) ||
+	   (val_VW            == NULL) ||
+	   (val_VB            == NULL) ||
+	   (val_norm_dl_dw_ra == NULL) ||
+	   (val_norm_dl_db_ra == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -569,6 +620,9 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	{
 		return NULL;
 	}
+
+	self->norm_dl_dw_ra = strtof(val_norm_dl_dw_ra->data, NULL);
+	self->norm_dl_db_ra = strtof(val_norm_dl_db_ra->data, NULL);
 
 	// load tensors
 	if((nn_tensor_load(self->W,  val_W)  == 0) ||
@@ -613,6 +667,10 @@ int nn_weightLayer_export(nn_weightLayer_t* self,
 	ret &= nn_tensor_store(self->VW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
 	ret &= nn_tensor_store(self->VB, stream);
+	ret &= jsmn_stream_key(stream, "%s", "norm_dl_dw_ra");
+	ret &= jsmn_stream_float(stream, self->norm_dl_dw_ra);
+	ret &= jsmn_stream_key(stream, "%s", "norm_dl_db_ra");
+	ret &= jsmn_stream_float(stream, self->norm_dl_db_ra);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

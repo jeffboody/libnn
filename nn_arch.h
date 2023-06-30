@@ -38,7 +38,8 @@ typedef struct nn_archInfo_s
 	float momentum_decay;
 	float batch_momentum;
 	float l2_lambda;
-	float clip_norm;
+	float clip_max;
+	float clip_momentum;
 } nn_archInfo_t;
 
 typedef struct nn_arch_s
@@ -48,7 +49,8 @@ typedef struct nn_arch_s
 	float momentum_decay;
 	float batch_momentum;
 	float l2_lambda;
-	float clip_norm;
+	float clip_max;
+	float clip_momentum;
 
 	// neural network (references)
 	cc_list_t* layers;
