@@ -357,8 +357,9 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		self->op_mode = NN_CODER_OP_MODE_POOLMAX;
 	}
 
-	if((self->op_mode == NN_CODER_OP_MODE_UPSCALE) ||
-	   (self->op_mode == NN_CODER_OP_MODE_DOWNSCALE))
+	if(val_conv &&
+	   ((self->op_mode == NN_CODER_OP_MODE_UPSCALE) ||
+	    (self->op_mode == NN_CODER_OP_MODE_DOWNSCALE)))
 	{
 		self->conv = nn_convLayer_import(arch, val_conv);
 		if(self->conv == NULL)
@@ -366,8 +367,9 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			goto fail_op;
 		}
 	}
-	else if((self->op_mode == NN_CODER_OP_MODE_POOLAVG) ||
-	        (self->op_mode == NN_CODER_OP_MODE_POOLMAX))
+	else if(val_pool &&
+	        ((self->op_mode == NN_CODER_OP_MODE_POOLAVG) ||
+	         (self->op_mode == NN_CODER_OP_MODE_POOLMAX)))
 	{
 		self->pool = nn_poolingLayer_import(arch, val_pool);
 		if(self->pool == NULL)
@@ -1177,10 +1179,10 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	nn_layerInfo_t info =
 	{
 		.arch            = arch,
-		.forward_pass_fn = nn_coderOpLayer_forwardPassFn,
-		.backprop_fn     = nn_coderOpLayer_backpropFn,
-		.dimX_fn         = nn_coderOpLayer_dimXFn,
-		.dimY_fn         = nn_coderOpLayer_dimYFn,
+		.forward_pass_fn = nn_coderLayer_forwardPassFn,
+		.backprop_fn     = nn_coderLayer_backpropFn,
+		.dimX_fn         = nn_coderLayer_dimXFn,
+		.dimY_fn         = nn_coderLayer_dimYFn,
 	};
 
 	nn_coderLayer_t*  self;
@@ -1261,6 +1263,7 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	if(val_op)
 	{
 		self->op = nn_coderOpLayer_import(arch, val_op);
+		if(self->op == NULL)
 		{
 			goto fail_op;
 		}
