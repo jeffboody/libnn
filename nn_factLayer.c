@@ -242,7 +242,7 @@ float nn_factLayer_dtanh(float x)
 
 const char* nn_factLayer_string(nn_factLayer_fn fact_fn)
 {
-	ASSERT(fact_fn)
+	ASSERT(fact_fn);
 
 	if(fact_fn == nn_factLayer_linear)
 	{

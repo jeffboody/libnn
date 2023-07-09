@@ -188,7 +188,7 @@ nn_loss_bce(nn_loss_t* self, uint32_t bs,
 
 const char* nn_loss_string(nn_loss_fn loss_fn)
 {
-	ASSERT(loss_fn)
+	ASSERT(loss_fn);
 
 	if(loss_fn == nn_loss_mse)
 	{

@@ -155,7 +155,7 @@ static nn_coderOpLayer_t*
 nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
                     int op_mode)
 {
-	ASSERT(self);
+	ASSERT(arch);
 	ASSERT(dimX);
 
 	nn_layerInfo_t info =
