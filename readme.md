@@ -833,29 +833,11 @@ The advantages of skip connections are.
 * Recover spatial information lost during downsampling
 * Stabilize training and convergence
 
-The order of the skip connection should be as follows.
-
-* Convolution
-* Skip Fork
-* Batch Normalization
-* Activation Function
-* Convolution
-* Batch Normalization
-* Activation Function
-* Convolution
-* Skip Add
-
-Conceptually, the signal and residual should have the same
-bias and be scaled proportionally when added which is not
-possible when the skip is placed after the batch
-normalization layer.
+See the Autoencoder section for more details.
 
 References
 
 * [Intuitive Explanation of Skip Connections in Deep Learning](https://theaisummer.com/skip-connections/)
-* [Normalization is dead, long live normalization!](https://iclr-blog-track.github.io/2022/03/25/unnormalized-resnets/)
-* [It Is Necessary to Combine Batch Normalization and Skip Connections](https://towardsdatascience.com/its-necessary-to-combine-batch-norm-and-skip-connections-e92210ca04da)
-* [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf)
 
 Gradient Clipping
 -----------------
@@ -995,6 +977,72 @@ backpropagation algorithm for the convolution layer.
 References
 
 * [What is Transposed Convolutional Layer?](https://towardsdatascience.com/what-is-transposed-convolutional-layer-40e5e6e31c11)
+
+Autoencoders
+------------
+
+Autoencoder neural networks are designed to output the
+same values as their input and typically make use of a
+bottleneck in the hidden layers. The bottleneck layer is
+useful to prevent the neural network from simply passing the
+input values directly to the output. This form of neural
+network has many potential uses such as noise removal,
+upscaling, and compression.
+
+The NN library includes a coder layer which is designed to
+help implement autoencoder neural networks more easily while
+adhering to the restrictions described below.
+
+Autoencoder neural networks often times make use of skip
+connections and residual neural networks. However, the order
+of layers in a residual neural network is important for the
+network to function correctly. As described in the Identity
+Mappings paper the skip connections for residual networks
+should be placed after the convolution layer but before the
+Batch Normalization layer.
+
+* Convolution
+* Skip Fork
+* Batch Normalization
+* Activation Function
+* Convolution
+* Batch Normalization
+* Activation Function
+* Convolution
+* Skip Add
+
+Some autoencoder neural networks avoid using batch
+normalization altogether due to the increased computation,
+memory requirements and increased loss (due to incorrect
+layer order). Batch normalization is also known to provide a
+greater benefit to earlier layers in the neural network. To
+facilitate these designs the coder layer allows for multiple
+convolution layers to follow a single batch normalization
+layer.
+
+As described in the Batch Normalization section, the bias of
+the convolutional layer is also disabled when followed by a
+batch normalization layer.
+
+The bottleneck layer is typically implemented by
+a series of encoder layers followed by a series of decoder
+layers. The encoder layers include a pooling or downscaling
+operation while the decoder layers include an upscaling
+operation. This operation may also be applied automatically
+by the coder layer.
+
+See the Skip Connections section for more details.
+
+References
+
+* [Normalization is dead, long live normalization!](https://iclr-blog-track.github.io/2022/03/25/unnormalized-resnets/)
+* [It Is Necessary to Combine Batch Normalization and Skip Connections](https://towardsdatascience.com/its-necessary-to-combine-batch-norm-and-skip-connections-e92210ca04da)
+* [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf)
+* [Deep Residual Learning for Image Recognition](https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
+* [Machine Learning Super-Resolution](https://artoriuz.github.io/blog/super_resolution.html)
+* [Accurate Image Super-Resolution Using Very Deep Convolutional Networks](https://arxiv.org/pdf/1511.04587v2.pdf)
+* [Super-Resolution of Multispectral Satellite Images Using Convolutional Neural Networks](https://arxiv.org/pdf/2002.00580.pdf)
+* [Image Restoration Using Very Deep Convolutional Encoder-Decoder Networks with Symmetric Skip Connections](https://arxiv.org/pdf/1603.09056.pdf)
 
 License
 =======
