@@ -364,7 +364,6 @@ int main(int argc, char** argv)
 
 	nn_convLayer_t* convO;
 	convO = nn_convLayer_new(arch, dim, &dimWO, 1,
-	                         NN_CONV_LAYER_FLAG_PAD_SAME |
 	                         NN_CONV_LAYER_FLAG_XAVIER);
 	if(convO == NULL)
 	{

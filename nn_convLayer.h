@@ -26,12 +26,10 @@
 
 #include "nn_layer.h"
 
-// XAVIER and VALID are default
+// XAVIER is default
 #define NN_CONV_LAYER_FLAG_XAVIER       0x0001
 #define NN_CONV_LAYER_FLAG_HE           0x0002
 #define NN_CONV_LAYER_FLAG_DISABLE_BIAS 0x0010
-#define NN_CONV_LAYER_FLAG_PAD_VALID    0x0100
-#define NN_CONV_LAYER_FLAG_PAD_SAME     0x0200
 #define NN_CONV_LAYER_FLAG_TRANSPOSE    0x1000
 
 typedef struct nn_convLayer_s
@@ -44,12 +42,13 @@ typedef struct nn_convLayer_s
 
 	// weights, bias, output
 	// s  = stride
+	// always use same padding
 	// Standard
-	//   yh = ((xh - fh)/s + 1) (valid) or xh/s (same)
-	//   yw = ((xw - fw)/s + 1) (valid) or xw/s (same)
+	//   yh = xh/s
+	//   yw = xw/s
 	// Transpose
-	//   yh = s*(xh - 1) + fh (valid) or s*xh (same)
-	//   yw = s*(xw - 1) + fw (valid) or s*xw (same)
+	//   yh = s*xh
+	//   yw = s*xw
 	nn_tensor_t* X; // dim(bs,xh,xw,xd) (reference)
 	nn_tensor_t* W; // dim(fc,fh,fw,xd)
 	nn_tensor_t* B; // dim(fc,1,1,1)

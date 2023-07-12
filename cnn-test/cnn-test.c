@@ -76,23 +76,37 @@ fillXY(uint32_t m,
 	};
 	float s;
 	float y;
-	uint32_t ii;
-	uint32_t jj;
+	uint32_t fi;
+	uint32_t fj;
 	uint32_t fh = 3;
 	uint32_t fw = 3;
 	uint32_t yh = dimY->height;
 	uint32_t yw = dimY->width;;
+	int      ii;
+	int      jj;
 	for(i = 0; i < yh; ++i)
 	{
 		for(j = 0; j < yw; ++j)
 		{
 			y = 0.0f;
-			for(ii = 0; ii < fh; ++ii)
+			for(fi = 0; fi < fh; ++fi)
 			{
-				for(jj = 0; jj < fw; ++jj)
+				ii = i + fi - fh/2;
+				if((ii < 0) || (ii >= xh))
 				{
-					s  = sobel[ii*fw + jj];
-					x  = nn_tensor_get(X, m, i + ii, j + jj, k);
+					continue;
+				}
+
+				for(fj = 0; fj < fw; ++fj)
+				{
+					jj = j + fj - fw/2;
+					if((jj < 0) || (jj >= xw))
+					{
+						continue;
+					}
+
+					s = sobel[fi*fw + fj];
+					x = nn_tensor_get(X, m, ii, jj, k);
 
 					// add noise
 					x += cc_rngNormal_rand1F(rng2);

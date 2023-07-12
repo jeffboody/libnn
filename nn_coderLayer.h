@@ -61,7 +61,7 @@ typedef struct nn_coderLayer_s
 	nn_layer_t base;
 
 	// main layer
-	// same, disable_bias, he, relu
+	// disable_bias, he, relu
 	// W : dim(fc,3,3,xd)
 	// Y : dim(bs,xh,xw,fc)
 	//

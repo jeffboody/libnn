@@ -49,12 +49,12 @@ typedef struct nn_coderOpLayer_s
 	union
 	{
 		// upscale layer
-		// transpose, same, xavier, stride=2
+		// transpose, xavier, stride=2
 		// W : dim(xd,2,2,xd)
 		// Y : dim(bs,2*xh,2*xw,xd)
 		//
 		// downscale layer
-		// same, xavier, stride=2
+		// xavier, stride=2
 		// W : dim(xd,3,3,xd)
 		// Y : dim(bs,xh/2,xw/2,xd)
 		nn_convLayer_t* conv;
@@ -191,7 +191,6 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 		self->conv = nn_convLayer_new(arch, dimX, &dimW, 2,
 		                              NN_CONV_LAYER_FLAG_TRANSPOSE |
-		                              NN_CONV_LAYER_FLAG_PAD_SAME  |
 		                              NN_CONV_LAYER_FLAG_XAVIER);
 		if(self->conv == NULL)
 		{
@@ -209,7 +208,6 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		};
 
 		self->conv = nn_convLayer_new(arch, dimX, &dimW, 2,
-		                              NN_CONV_LAYER_FLAG_PAD_SAME  |
 		                              NN_CONV_LAYER_FLAG_XAVIER);
 		if(self->conv == NULL)
 		{
@@ -443,7 +441,7 @@ typedef struct nn_coderRepeaterLayer_s
 	nn_layer_t base;
 
 	// repeater layer
-	// same, he, relu
+	// he, relu
 	// xd : fc
 	// W  : dim(xd,3,3,xd)
 	// Y  : dim(bs,xh,xw,xd)
@@ -551,7 +549,6 @@ nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	};
 
 	self->conv = nn_convLayer_new(arch, dim, &dimW, 1,
-	                              NN_CONV_LAYER_FLAG_PAD_SAME |
 	                              NN_CONV_LAYER_FLAG_HE);
 	if(self->conv == NULL)
 	{
@@ -1004,7 +1001,6 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 
 	self->conv = nn_convLayer_new(info->arch, dim, &dimW, 1,
 	                              NN_CONV_LAYER_FLAG_DISABLE_BIAS |
-	                              NN_CONV_LAYER_FLAG_PAD_SAME     |
 	                              NN_CONV_LAYER_FLAG_HE);
 	if(self->conv == NULL)
 	{
