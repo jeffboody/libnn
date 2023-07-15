@@ -1,0 +1,124 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) buffer sb01
+{
+	nn_dim_t dimW;
+	float    W[];
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	nn_dim_t dim_dL_dW;
+	float    dL_dW[];
+};
+
+layout(std430, set=1, binding=4) buffer sb14
+{
+	nn_dim_t dimVW;
+	float    VW[];
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	float arch_learning_rate;
+	float arch_momentum_decay;
+	float arch_batch_momentum;
+	float arch_l2_lambda;
+	float arch_clip_max;
+	float arch_clip_momentum;
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=2, binding=3) readonly buffer sb23
+{
+	float gc_gcw;
+	float gc_gcb;
+	float gc_norm_dl_dw_ra;
+	float gc_norm_dl_db_ra;
+};
+
+float getW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return W[n*sn + i*sy + j*sx + k];
+}
+
+void addW(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	W[n*sn + i*sy + j*sx + k] += v;
+}
+
+float get_dL_dW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dW.height*dim_dL_dW.width*dim_dL_dW.depth;
+	uint sy = dim_dL_dW.width*dim_dL_dW.depth;
+	uint sx = dim_dL_dW.depth;
+	return dL_dW[n*sn + i*sy + j*sx + k];
+}
+
+float getVW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimVW.height*dimVW.width*dimVW.depth;
+	uint sy = dimVW.width*dimVW.depth;
+	uint sx = dimVW.depth;
+	return VW[n*sn + i*sy + j*sx + k];
+}
+
+void setVW(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimVW.height*dimVW.width*dimVW.depth;
+	uint sy = dimVW.width*dimVW.depth;
+	uint sx = dimVW.depth;
+	VW[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
+	uint  n      = gl_GlobalInvocationID.x;
+	uint  nc     = dimW.count;
+	uint  xd     = dimW.depth;
+	float lr     = arch_learning_rate;
+	float mu     = arch_momentum_decay;
+	float lambda = arch_l2_lambda;
+	float s      = 1.0/(float(param_bs));
+
+	if(n >= nc)
+	{
+		return;
+	}
+
+	uint k;
+	for(k = 0; k < xd; ++k)
+	{
+		float dl_dw = s*get_dL_dW(n, 0, 0, k);
+		float w     = getW(n, 0, 0, k);
+
+		// Nesterov Momentum Update and L2 Regularization
+		float v0  = getVW(n, 0, 0, k);
+		float v1  = mu*v0 - lr*(gc_gcw*dl_dw + 2.0*lambda*w);
+		setVW(n, 0, 0, k, v1);
+		addW(n, 0, 0, k, -mu*v0 + (1.0 + mu)*v1);
+	}
+}

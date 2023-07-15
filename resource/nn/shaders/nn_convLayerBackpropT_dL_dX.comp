@@ -1,0 +1,151 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	nn_dim_t dimW;
+	float    W[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	// dL_dY : dim(bs,yh,yw,fc)
+	nn_dim_t dim_dL_dY;
+	float    dL_dY[];
+};
+
+layout(std430, set=1, binding=3) buffer sb13
+{
+	// dL_dX : dim(bs,xh,xw,xd)
+	nn_dim_t dim_dL_dX;
+	float    dL_dX[];
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=2, binding=2) readonly buffer sb22
+{
+	uint idx_f;
+	uint idx_fi;
+	uint idx_fj;
+	uint idx_k;
+};
+
+float get_dY_dX(uint n, uint i, uint j, uint k)
+{
+	// dY_dX is W
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return W[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
+	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
+	uint sx = dim_dL_dY.depth;
+	return dL_dY[n*sn + i*sy + j*sx + k];
+}
+
+void add_dL_dX(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dim_dL_dX.height*dim_dL_dX.width*dim_dL_dX.depth;
+	uint sy = dim_dL_dX.width*dim_dL_dX.depth;
+	uint sx = dim_dL_dX.depth;
+	dL_dX[n*sn + i*sy + j*sx + k] += v;
+}
+
+uint umod(uint x, uint y)
+{
+	return uint(mod(int(x), int(y)));
+}
+
+void backpropT_dL_dX(uint m, uint i, uint j, uint k)
+{
+	uint fc = dimW.count;
+	uint fh = dimW.height;
+	uint fw = dimW.width;
+	uint xh = dim_dL_dX.height;
+	uint xw = dim_dL_dX.width;
+	uint yh = dim_dL_dY.height;
+	uint yw = dim_dL_dY.width;
+	uint fi = idx_fi;
+	uint fj = idx_fj;
+
+	// virtual size
+	uint vh = yh + 2*(fh/2);
+	uint vw = yw + 2*(fw/2);
+
+	// strided size
+	uint sh = xh + (xh - 1)*(param_stride - 1);
+	uint sw = xw + (xw - 1)*(param_stride - 1);
+
+	// strided offset
+	uint oi = (vh - sh)/2;
+	uint oj = (vw - sw)/2;
+
+	int ii = int(i) + int(fi) - int(oi);
+	if((ii < 0) || (ii >= sh) ||
+	   (umod(ii, param_stride) > 0))
+	{
+		return;
+	}
+	ii = ii/int(param_stride);
+
+	int jj = int(j) + int(fj) - int(oj);
+	if((jj < 0) || (jj >= sw) ||
+	   (umod(jj, param_stride) > 0))
+	{
+		return;
+	}
+	jj = jj/int(param_stride);
+
+	float dy_dx;
+	float dl_dy;
+	float dl_dx = 0.0;
+	uint  f;
+	for(f = 0; f < fc; ++f)
+	{
+		dl_dy  = get_dL_dY(m, i, j, f);
+		dy_dx  = get_dY_dX(f, fi, fj, k);
+		dl_dx += dl_dy*dy_dx;
+	}
+
+	add_dL_dX(m, ii, jj, k, dl_dx);
+}
+
+void main()
+{
+	// dispatch required for each fi,fj
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint i  = gl_GlobalInvocationID.y;
+	uint j  = gl_GlobalInvocationID.z;
+	uint xd = dimW.depth;
+
+	if((i >= dim_dL_dY.height) || (j >= dim_dL_dY.width))
+	{
+		return;
+	}
+
+	uint k;
+	for(k = 0; k < xd; ++k)
+	{
+		backpropT_dL_dX(m, i, j, k);
+	}
+}

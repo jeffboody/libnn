@@ -81,7 +81,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 	int      jj;
 	for(fi = 0; fi < fh; ++fi)
 	{
-		ii = s*i + fi - fh/2;
+		ii = ((int) s*i) + ((int) fi) - ((int) fh/2);
 		if((ii < 0) || (ii >= xh))
 		{
 			continue;
@@ -89,7 +89,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 
 		for(fj = 0; fj < fw; ++fj)
 		{
-			jj = s*j + fj - fw/2;
+			jj = ((int) s*j) + ((int) fj) - ((int) fw/2);
 			if((jj < 0) || (jj >= xw))
 			{
 				continue;
@@ -284,7 +284,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	int      jj;
 	for(fi = 0; fi < fh; ++fi)
 	{
-		ii = s*i + fi - fh/2;
+		ii = ((int) s*i) + ((int) fi) - ((int) fh/2);
 		if((ii < 0) || (ii >= xh))
 		{
 			continue;
@@ -292,7 +292,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 
 		for(fj = 0; fj < fw; ++fj)
 		{
-			jj = s*j + fj - fw/2;
+			jj = ((int) s*j) + ((int) fj) - ((int) fw/2);
 			if((jj < 0) || (jj >= xw))
 			{
 				continue;
@@ -421,8 +421,8 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
 
 			// Nesterov Momentum Update
-			v0    = nn_tensor_get(VB, f, 0, 0, 0);
-			v1    = mu*v0 - lr*gcb*dl_db;
+			v0 = nn_tensor_get(VB, f, 0, 0, 0);
+			v1 = mu*v0 - lr*gcb*dl_db;
 			nn_tensor_set(VB, f, 0, 0, 0, v1);
 			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
 		}
@@ -483,7 +483,7 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 	for(fi = 0; fi < fh; ++fi)
 	{
 		// input index ii
-		ii = i + fi - oi;
+		ii = ((int) i) + ((int) fi) - ((int) oi);
 		if((ii < 0) || (ii >= sh) || (ii%s))
 		{
 			continue;
@@ -493,7 +493,7 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 		for(fj = 0; fj < fw; ++fj)
 		{
 			// input index jj
-			jj = j + fj - oj;
+			jj = ((int) j) + ((int) fj) - ((int) oj);
 			if((jj < 0) || (jj >= sw) || (jj%s))
 			{
 				continue;
@@ -596,7 +596,7 @@ nn_convLayer_backpropT(nn_convLayer_t* self,
 	for(fi = 0; fi < fh; ++fi)
 	{
 		// input index ii
-		ii = i + fi - oi;
+		ii = ((int) i) + ((int) fi) - ((int) oi);
 		if((ii < 0) || (ii >= sh) || (ii%s))
 		{
 			continue;
@@ -606,7 +606,7 @@ nn_convLayer_backpropT(nn_convLayer_t* self,
 		for(fj = 0; fj < fw; ++fj)
 		{
 			// input index jj
-			jj = j + fj - oj;
+			jj = ((int) j) + ((int) fj) - ((int) oj);
 			if((jj < 0) || (jj >= sw) || (jj%s))
 			{
 				continue;
@@ -736,8 +736,8 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
 
 			// Nesterov Momentum Update
-			v0    = nn_tensor_get(VB, f, 0, 0, 0);
-			v1    = mu*v0 - lr*gcb*dl_db;
+			v0 = nn_tensor_get(VB, f, 0, 0, 0);
+			v1 = mu*v0 - lr*gcb*dl_db;
 			nn_tensor_set(VB, f, 0, 0, 0, v1);
 			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
 		}

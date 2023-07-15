@@ -1,0 +1,86 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb04
+{
+	nn_dim_t dim_dY_dX;
+	float    dY_dX[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	nn_dim_t dim_dL_dY;
+	float    dL_dY[];
+};
+
+layout(std430, set=1, binding=3) buffer sb13
+{
+	nn_dim_t dim_dL_dX;
+	float    dL_dX[];
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+float get_dY_dX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dY_dX.height*dim_dY_dX.width*dim_dY_dX.depth;
+	uint sy = dim_dY_dX.width*dim_dY_dX.depth;
+	uint sx = dim_dY_dX.depth;
+	return dY_dX[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
+	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
+	uint sx = dim_dL_dY.depth;
+	return dL_dY[n*sn + i*sy + j*sx + k];
+}
+
+void set_dL_dX(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dim_dL_dX.height*dim_dL_dX.width*dim_dL_dX.depth;
+	uint sy = dim_dL_dX.width*dim_dL_dX.depth;
+	uint sx = dim_dL_dX.depth;
+	dL_dX[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint ii = gl_GlobalInvocationID.y;
+	uint jj = gl_GlobalInvocationID.z;
+	uint i  = ii/param_stride;
+	uint j  = jj/param_stride;
+	uint xh = dim_dY_dX.height;
+	uint xw = dim_dY_dX.width;
+	uint xd = dim_dY_dX.depth;
+
+	if((ii >= xh) || (jj >= xw))
+	{
+		return;
+	}
+
+	uint k;
+	for(k = 0; k < xd; ++k)
+	{
+		float dl_dy = get_dL_dY(m, i, j, k);
+		float dy_dx = get_dY_dX(m, ii, jj, k);
+		set_dL_dX(m, ii, jj, k, dl_dy*dy_dx);
+	}
+}

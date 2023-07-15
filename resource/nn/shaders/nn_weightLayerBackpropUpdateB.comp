@@ -1,0 +1,118 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=2) buffer sb02
+{
+	nn_dim_t dimB;
+	float    B[];
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dim_dL_dB;
+	float    dL_dB[];
+};
+
+layout(std430, set=1, binding=5) buffer sb15
+{
+	nn_dim_t dimVB;
+	float    VB[];
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	float arch_learning_rate;
+	float arch_momentum_decay;
+	float arch_batch_momentum;
+	float arch_l2_lambda;
+	float arch_clip_max;
+	float arch_clip_momentum;
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=2, binding=3) readonly buffer sb23
+{
+	float gc_gcw;
+	float gc_gcb;
+	float gc_norm_dl_dw_ra;
+	float gc_norm_dl_db_ra;
+};
+
+float getB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimB.height*dimB.width*dimB.depth;
+	uint sy = dimB.width*dimB.depth;
+	uint sx = dimB.depth;
+	return B[n*sn + i*sy + j*sx + k];
+}
+
+void addB(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimB.height*dimB.width*dimB.depth;
+	uint sy = dimB.width*dimB.depth;
+	uint sx = dimB.depth;
+	B[n*sn + i*sy + j*sx + k] += v;
+}
+
+float get_dL_dB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
+	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
+	uint sx = dim_dL_dB.depth;
+	return dL_dB[n*sn + i*sy + j*sx + k];
+}
+
+float getVB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimVB.height*dimVB.width*dimVB.depth;
+	uint sy = dimVB.width*dimVB.depth;
+	uint sx = dimVB.depth;
+	return VB[n*sn + i*sy + j*sx + k];
+}
+
+void setVB(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimVB.height*dimVB.width*dimVB.depth;
+	uint sy = dimVB.width*dimVB.depth;
+	uint sx = dimVB.depth;
+	VB[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// RAW hazzard handled by weightLayerBpUpW
+	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
+	uint  nc = dimB.count;
+	uint  n  = gl_GlobalInvocationID.x;
+	float lr = arch_learning_rate;
+	float mu = arch_momentum_decay;
+	float s  = 1.0/(float(param_bs));
+
+	if(n >= nc)
+	{
+		return;
+	}
+
+	float dl_db = s*get_dL_dB(n, 0, 0, 0);
+
+	// Nesterov Momentum Update
+	float v0  = getVB(n, 0, 0, 0);
+	float v1  = mu*v0 - lr*gc_gcb*dl_db;
+	setVB(n, 0, 0, 0, v1);
+	addB(n, 0, 0, 0, -mu*v0 + (1.0 + mu)*v1);
+}

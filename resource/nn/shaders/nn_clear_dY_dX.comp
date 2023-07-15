@@ -1,0 +1,41 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=4) buffer sb04
+{
+	nn_dim_t dim_dY_dX;
+	float    dY_dX[];
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+void main()
+{
+	// dispatch(NONE, bs*xh*xw*xd, 1, 1, 64, 1, 1)
+	uint i   = gl_GlobalInvocationID.x;
+	uint xh  = dim_dY_dX.height;
+	uint xw  = dim_dY_dX.width;
+	uint xd  = dim_dY_dX.depth;
+	uint max = param_bs*xh*xw*xd;
+
+	if(i >= max)
+	{
+		return;
+	}
+
+	dY_dX[i] = 0.0;
+}
