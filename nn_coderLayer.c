@@ -216,7 +216,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 	else if(op_mode == NN_CODER_OP_MODE_POOLAVG)
 	{
-		self->pool = nn_poolingLayer_new(arch, dimX, 2, 2,
+		self->pool = nn_poolingLayer_new(arch, dimX, 2,
 		                                 NN_POOLING_LAYER_MODE_AVERAGE);
 		if(self->pool == NULL)
 		{
@@ -225,7 +225,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 	else if(op_mode == NN_CODER_OP_MODE_POOLMAX)
 	{
-		self->pool = nn_poolingLayer_new(arch, dimX, 2, 2,
+		self->pool = nn_poolingLayer_new(arch, dimX, 2,
 		                                 NN_POOLING_LAYER_MODE_MAX);
 		if(self->pool == NULL)
 		{

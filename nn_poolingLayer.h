@@ -33,14 +33,13 @@ typedef struct nn_poolingLayer_s
 {
 	nn_layer_t base;
 
-	uint32_t h;
-	uint32_t w;
+	uint32_t stride;
 
 	int mode;
 
 	// output
-	// yh = xh/h
-	// yw = xw/w
+	// yh = xh/stride
+	// yw = xw/stride
 	//           X; // dim(bs,xh,xw,xd)
 	nn_tensor_t* Y; // dim(bs,yh,yw,xd)
 
@@ -54,8 +53,7 @@ typedef struct nn_poolingLayer_s
 
 nn_poolingLayer_t* nn_poolingLayer_new(nn_arch_t* arch,
                                        nn_dim_t* dimX,
-                                       uint32_t h,
-                                       uint32_t w,
+                                       uint32_t stride,
                                        int mode);
 nn_poolingLayer_t* nn_poolingLayer_import(nn_arch_t* arch,
                                           jsmn_val_t* val);

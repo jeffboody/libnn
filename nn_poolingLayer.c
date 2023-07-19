@@ -50,51 +50,52 @@ nn_poolingLayer_max(nn_poolingLayer_t* self,
 	nn_tensor_t* dY_dX = self->dY_dX;
 	nn_dim_t*    dimX  = nn_tensor_dim(X);
 
+	// compute range
+	uint32_t stride = self->stride;
+	uint32_t xh     = dimX->height;
+	uint32_t xw     = dimX->width;
+	uint32_t ii0    = stride*i;
+	uint32_t jj0    = stride*j;
+	uint32_t ii1    = ii0 + stride;
+	uint32_t jj1    = jj0 + stride;
+	if(ii1 > xh)
+	{
+		ii1 = xh;
+	}
+
+	if(jj1 > xw)
+	{
+		jj1 = xw;
+	}
+
 	// initialize max value
 	float    x;
-	float    xmax = nn_tensor_get(X, m, i, j, k);
-	uint32_t imax = i;
-	uint32_t jmax = j;
-
-	// compute range
-	uint32_t h  = self->h;
-	uint32_t w  = self->w;
-	uint32_t xh = dimX->height;
-	uint32_t xw = dimX->width;
-	uint32_t i1 = i + h;
-	uint32_t j1 = j + w;
-	if(i1 > xh)
-	{
-		i1 = xh;
-	}
-
-	if(j1 > xw)
-	{
-		j1 = xw;
-	}
+	float    xmax  = nn_tensor_get(X, m, ii0, jj0, k);
+	uint32_t iimax = ii0;
+	uint32_t jjmax = jj0;
 
 	// find max value in tile
 	uint32_t ii;
 	uint32_t jj;
-	for(ii = i; ii < i1; ++ii)
+	for(ii = ii0; ii < ii1; ++ii)
 	{
-		for(jj = j; jj < j1; ++jj)
+		for(jj = jj0; jj < jj1; ++jj)
 		{
 			x = nn_tensor_get(X, m, ii, jj, k);
 			if(x > xmax)
 			{
-				xmax = x;
-				imax = ii;
-				jmax = jj;
+				xmax  = x;
+				iimax = ii;
+				jjmax = jj;
 			}
 		}
 	}
 
 	// output
-	nn_tensor_set(Y, m, i/h, j/w, k, xmax);
+	nn_tensor_set(Y, m, i, j, k, xmax);
 
 	// forward gradients
-	nn_tensor_set(dY_dX, m, imax, jmax, k, 1.0f);
+	nn_tensor_set(dY_dX, m, iimax, jjmax, k, 1.0f);
 }
 
 static void
@@ -111,34 +112,35 @@ nn_poolingLayer_avg(nn_poolingLayer_t* self,
 	nn_dim_t*    dimX  = nn_tensor_dim(X);
 
 	// compute range
-	uint32_t h  = self->h;
-	uint32_t w  = self->w;
-	uint32_t xh = dimX->height;
-	uint32_t xw = dimX->width;
-	uint32_t i1 = i + h;
-	uint32_t j1 = j + w;
-	if(i1 > xh)
+	uint32_t stride = self->stride;
+	uint32_t xh     = dimX->height;
+	uint32_t xw     = dimX->width;
+	uint32_t ii0    = stride*i;
+	uint32_t jj0    = stride*j;
+	uint32_t ii1    = ii0 + stride;
+	uint32_t jj1    = jj0 + stride;
+	if(ii1 > xh)
 	{
-		i1 = xh;
+		ii1 = xh;
 	}
 
-	if(j1 > xw)
+	if(jj1 > xw)
 	{
-		j1 = xw;
+		jj1 = xw;
 	}
 
 	// initalize average
-	float di  = (float) (i1 - i);
-	float dj  = (float) (j1 - j);
+	float di  = (float) (ii1 - ii0);
+	float dj  = (float) (jj1 - jj0);
 	float s   = 1.0f/(di*dj);
 	float avg = 0.0f;
 
 	// compute average
 	uint32_t ii;
 	uint32_t jj;
-	for(ii = i; ii < i1; ++ii)
+	for(ii = ii0; ii < ii1; ++ii)
 	{
-		for(jj = j; jj < j1; ++jj)
+		for(jj = jj0; jj < jj1; ++jj)
 		{
 			// update sum
 			avg += nn_tensor_get(X, m, ii, jj, k);
@@ -150,7 +152,7 @@ nn_poolingLayer_avg(nn_poolingLayer_t* self,
 	avg *= s;
 
 	// output
-	nn_tensor_set(Y, m, i/h, j/w, k, avg);
+	nn_tensor_set(Y, m, i, j, k, avg);
 }
 
 static nn_tensor_t*
@@ -162,14 +164,13 @@ nn_poolingLayer_forwardPassMaxFn(nn_layer_t* base, int mode,
 
 	nn_poolingLayer_t* self = (nn_poolingLayer_t*) base;
 
-	nn_tensor_t* Y     = self->Y;
-	nn_tensor_t* dY_dX = self->dY_dX;
-	nn_dim_t*    dimX  = nn_tensor_dim(X);
-	uint32_t     xh    = dimX->height;
-	uint32_t     xw    = dimX->width;
-	uint32_t     xd    = dimX->depth;
-	uint32_t     h     = self->h;
-	uint32_t     w     = self->w;
+	nn_tensor_t* Y      = self->Y;
+	nn_tensor_t* dY_dX  = self->dY_dX;
+	uint32_t     stride = self->stride;
+	nn_dim_t*    dimY   = nn_tensor_dim(Y);
+	uint32_t     yh     = dimY->height;
+	uint32_t     yw     = dimY->width;
+	uint32_t     xd     = dimY->depth;
 
 	// clear forward gradients
 	nn_tensor_clear(dY_dX);
@@ -181,9 +182,9 @@ nn_poolingLayer_forwardPassMaxFn(nn_layer_t* base, int mode,
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < xh; i += h)
+		for(i = 0; i < yh; i += stride)
 		{
-			for(j = 0; j < xw; j += w)
+			for(j = 0; j < yw; j += stride)
 			{
 				for(k = 0; k < xd; ++k)
 				{
@@ -205,13 +206,12 @@ nn_poolingLayer_forwardPassAvgFn(nn_layer_t* base, int mode,
 
 	nn_poolingLayer_t* self = (nn_poolingLayer_t*) base;
 
-	nn_tensor_t* Y     = self->Y;
-	nn_dim_t*    dimX  = nn_tensor_dim(X);
-	uint32_t     xh    = dimX->height;
-	uint32_t     xw    = dimX->width;
-	uint32_t     xd    = dimX->depth;
-	uint32_t     h     = self->h;
-	uint32_t     w     = self->w;
+	nn_tensor_t* Y      = self->Y;
+	uint32_t     stride = self->stride;
+	nn_dim_t*    dimY   = nn_tensor_dim(Y);
+	uint32_t     yh     = dimY->height;
+	uint32_t     yw     = dimY->width;
+	uint32_t     xd     = dimY->depth;
 
 	// output and forward gradients
 	uint32_t m;
@@ -220,9 +220,9 @@ nn_poolingLayer_forwardPassAvgFn(nn_layer_t* base, int mode,
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < xh; i += h)
+		for(i = 0; i < yh; i += stride)
 		{
-			for(j = 0; j < xw; j += w)
+			for(j = 0; j < yw; j += stride)
 			{
 				for(k = 0; k < xd; ++k)
 				{
@@ -237,42 +237,45 @@ nn_poolingLayer_forwardPassAvgFn(nn_layer_t* base, int mode,
 
 static nn_tensor_t*
 nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
-                        nn_tensor_t* dL_dY)
+                           nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,xd)
 
 	nn_poolingLayer_t* self = (nn_poolingLayer_t*) base;
 
-	nn_tensor_t* dY_dX = self->dY_dX;
-	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_dim_t*    dimX  = nn_tensor_dim(dL_dX);
-	uint32_t     xh    = dimX->height;
-	uint32_t     xw    = dimX->width;
-	uint32_t     xd    = dimX->depth;
-	uint32_t     h     = self->h;
-	uint32_t     w     = self->w;
+	nn_tensor_t* dY_dX  = self->dY_dX;
+	nn_tensor_t* dL_dX  = self->dL_dX;
+	uint32_t     stride = self->stride;
+	nn_dim_t*    dimX   = nn_tensor_dim(dL_dX);
+	uint32_t     xh     = dimX->height;
+	uint32_t     xw     = dimX->width;
+	uint32_t     xd     = dimX->depth;
 
 	// backpropagate loss
 	float    dy_dx;
 	float    dl_dx;
 	float    dl_dy;
 	uint32_t m;
+	uint32_t ii;
+	uint32_t jj;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < xh; ++i)
+		for(ii = 0; ii < xh; ++ii)
 		{
-			for(j = 0; j < xw; ++j)
+			i = ii/stride;
+			for(jj = 0; jj < xw; ++jj)
 			{
+				j = jj/stride;
 				for(k = 0; k < xd; ++k)
 				{
-					dl_dy = nn_tensor_get(dL_dY, m, i/h, j/w, k);
-					dy_dx = nn_tensor_get(dY_dX, m, i, j, k);
+					dl_dy = nn_tensor_get(dL_dY, m, i, j, k);
+					dy_dx = nn_tensor_get(dY_dX, m, ii, jj, k);
 					dl_dx = dl_dy*dy_dx;
-					nn_tensor_set(dL_dX, m, i, j, k, dl_dx);
+					nn_tensor_set(dL_dX, m, ii, jj, k, dl_dx);
 				}
 			}
 		}
@@ -305,10 +308,8 @@ nn_poolingLayer_dimYFn(nn_layer_t* base)
 ***********************************************************/
 
 nn_poolingLayer_t*
-nn_poolingLayer_new(nn_arch_t* arch,
-                    nn_dim_t* dimX,
-                    uint32_t h, uint32_t w,
-                    int mode)
+nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                    uint32_t stride, int mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -335,15 +336,14 @@ nn_poolingLayer_new(nn_arch_t* arch,
 		return NULL;
 	}
 
-	self->h    = h;
-	self->w    = w;
-	self->mode = mode;
+	self->stride = stride;
+	self->mode   = mode;
 
 	nn_dim_t dimY =
 	{
 		.count  = dimX->count,
-		.height = dimX->height/h,
-		.width  = dimX->width/w,
+		.height = dimX->height/stride,
+		.width  = dimX->width/stride,
 		.depth  = dimX->depth,
 	};
 
@@ -390,10 +390,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX = NULL;
-	jsmn_val_t* val_h    = NULL;
-	jsmn_val_t* val_w    = NULL;
-	jsmn_val_t* val_mode = NULL;
+	jsmn_val_t* val_dimX   = NULL;
+	jsmn_val_t* val_stride = NULL;
+	jsmn_val_t* val_mode   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -410,13 +409,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		}
 		else if(kv->val->type == JSMN_TYPE_PRIMITIVE)
 		{
-			if(strcmp(kv->key, "h") == 0)
+			if(strcmp(kv->key, "stride") == 0)
 			{
-				val_h = kv->val;
-			}
-			else if(strcmp(kv->key, "w") == 0)
-			{
-				val_w = kv->val;
+				val_stride = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_STRING)
@@ -431,10 +426,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX  == NULL) ||
-	   (val_h     == NULL) ||
-	   (val_w     == NULL) ||
-	   (val_mode  == NULL))
+	if((val_dimX   == NULL) ||
+	   (val_stride == NULL) ||
+	   (val_mode   == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -446,8 +440,8 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	uint32_t h = (uint32_t) strtol(val_h->data, NULL, 0);
-	uint32_t w = (uint32_t) strtol(val_w->data, NULL, 0);
+	uint32_t stride;
+	stride = (uint32_t) strtol(val_stride->data, NULL, 0);
 
 	int mode = NN_POOLING_LAYER_MODE_MAX;
 	if(strcmp(val_mode->data, "average") == 0)
@@ -455,7 +449,7 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		mode = NN_POOLING_LAYER_MODE_AVERAGE;
 	}
 
-	return nn_poolingLayer_new(arch, &dimX, h, w, mode);
+	return nn_poolingLayer_new(arch, &dimX, stride, mode);
 }
 
 int nn_poolingLayer_export(nn_poolingLayer_t* self,
@@ -470,10 +464,8 @@ int nn_poolingLayer_export(nn_poolingLayer_t* self,
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "h");
-	ret &= jsmn_stream_int(stream, (int) self->h);
-	ret &= jsmn_stream_key(stream, "%s", "w");
-	ret &= jsmn_stream_int(stream, (int) self->w);
+	ret &= jsmn_stream_key(stream, "%s", "stride");
+	ret &= jsmn_stream_int(stream, (int) self->stride);
 	ret &= jsmn_stream_key(stream, "%s", "mode");
 	if(self->mode == NN_POOLING_LAYER_MODE_AVERAGE)
 	{
