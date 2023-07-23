@@ -116,7 +116,7 @@ f = [f1,f2] and the parameters W = [W11,W12,W21,W22]. Each
 parameter variable may represent an array with zero or more
 elements.
 
-![Neural Network Example](nn.jpg?raw=true "Neural Network Example")
+![Neural Network Example](docs/nn.jpg?raw=true "Neural Network Example")
 
 Forward Pass
 ------------
@@ -193,7 +193,7 @@ repeating the following steps for each training pattern.
 The following computation graph shows the backpropagation
 algorithm using our example from earlier.
 
-![Neural Network Backpropagation](nn-backprop.jpg?raw=true "Neural Network Backpropagation")
+![Neural Network Backpropagation](docs/nn-backprop.jpg?raw=true "Neural Network Backpropagation")
 
 References
 
@@ -267,7 +267,7 @@ The following computation graph shows the perceptron which
 can be visualized as a compound node consisting of a
 weighted sum and a separate activation function.
 
-![Perceptron](nn-perceptron.jpg?raw=true "Perceptron")
+![Perceptron](docs/nn-perceptron.jpg?raw=true "Perceptron")
 
 The following computation graph shows the backpropagation
 algorithm for the perceptron node. Note that the activation
@@ -276,7 +276,7 @@ update step may be skipped. The perceptron node
 implementation may also choose to combine the compound node
 into a single node by simply substituting equations.
 
-![Perceptron Backpropagation](nn-perceptron-backprop.jpg?raw=true "Perceptron Backpropagation")
+![Perceptron Backpropagation](docs/nn-perceptron-backprop.jpg?raw=true "Perceptron Backpropagation")
 
 To gain a better understanding of how the perceptron works
 it's useful to compare the perceptron function with the
@@ -543,13 +543,13 @@ backpropagation.
 The following computation graph shows the batch
 normalization algorithm.
 
-![BN Overview](nn-batch-norm-overview.jpg?raw=true "BN Overview")
+![BN Overview](docs/nn-batch-norm-overview.jpg?raw=true "BN Overview")
 
 The backpropagation equations derived by the original BN
 paper are reportedly 3x slower than these derived by Kevin
 Zakka's blog post.
 
-![BN Backpropagation](nn-batch-norm-backprop.jpg?raw=true "BN Backpropagation")
+![BN Backpropagation](docs/nn-batch-norm-backprop.jpg?raw=true "BN Backpropagation")
 
 As per the original algorithm, the per-channel/per-filter
 mean and variance are also calculated during training from
@@ -972,7 +972,7 @@ Convolutional Neural Networks (CNN)
 The following computation graphs shows the derivation of the
 backpropagation algorithm for the convolution layer.
 
-![Convolution (Valid Padding)](nn-conv-valid.jpg?raw=true "Convolution (Valid Padding)")
+![Convolution (Valid Padding)](docs/nn-conv-valid.jpg?raw=true "Convolution (Valid Padding)")
 
 References
 
