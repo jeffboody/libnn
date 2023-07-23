@@ -32,9 +32,16 @@ glslangValidator -V nn_weightLayerForwardPass.comp  -o nn_weightLayerForwardPass
 glslangValidator -V nn_weightLayerBackpropGradientClipping.comp  -o nn_weightLayerBackpropGradientClipping_comp.spv
 glslangValidator -V nn_weightLayerBackpropUpdateW.comp  -o nn_weightLayerBackpropUpdateW_comp.spv
 glslangValidator -V nn_weightLayerBackpropUpdateB.comp  -o nn_weightLayerBackpropUpdateB_comp.spv
-glslangValidator -V nn_weightLayerBackprop_dL_dX.comp  -o nn_weightLayerBackprop_dL_dX.spv
-glslangValidator -V nn_weightLayerBackprop_dL_dW.comp  -o nn_weightLayerBackprop_dL_dW.spv
-glslangValidator -V nn_weightLayerBackprop_dL_dB.comp  -o nn_weightLayerBackprop_dL_dB.spv
+glslangValidator -V nn_weightLayerBackprop_dL_dX.comp  -o nn_weightLayerBackprop_dL_dX_comp.spv
+glslangValidator -V nn_weightLayerBackprop_dL_dW.comp  -o nn_weightLayerBackprop_dL_dW_comp.spv
+glslangValidator -V nn_weightLayerBackprop_dL_dB.comp  -o nn_weightLayerBackprop_dL_dB_comp.spv
+glslangValidator -V nn_batchNormLayerForwardPassXmean.comp  -o nn_batchNormLayerForwardPassXmean_comp.spv
+glslangValidator -V nn_batchNormLayerForwardPassXvar.comp  -o nn_batchNormLayerForwardPassXvar_comp.spv
+glslangValidator -V nn_batchNormLayerForwardPassXhat.comp  -o nn_batchNormLayerForwardPassXhat_comp.spv
+glslangValidator -V nn_batchNormLayerForwardPassY.comp  -o nn_batchNormLayerForwardPassY_comp.spv
+glslangValidator -V nn_batchNormLayerBackprop_dL_dX.comp  -o nn_batchNormLayerBackprop_dL_dX_comp.spv
+glslangValidator -V nn_batchNormLayerBackprop_dL_dXhat.comp  -o nn_batchNormLayerBackprop_dL_dXhat_comp.spv
+glslangValidator -V nn_batchNormLayerBackpropSum.comp  -o nn_batchNormLayerBackpropSum_comp.spv
 cd ../..
 
 # shaders
@@ -71,7 +78,14 @@ bfs $1 blobSet nn/shaders/nn_weightLayerForwardPass_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayerBackpropGradientClipping_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayerBackpropUpdateW_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayerBackpropUpdateB_comp.spv
-bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dX.spv
-bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dW.spv
-bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dB.spv
+bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dX_comp.spv
+bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dW_comp.spv
+bfs $1 blobSet nn/shaders/nn_weightLayerBackprop_dL_dB_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerForwardPassXmean_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerForwardPassXvar_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerForwardPassXhat_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerForwardPassY_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerBackprop_dL_dX_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerBackprop_dL_dXhat_comp.spv
+bfs $1 blobSet nn/shaders/nn_batchNormLayerBackpropSum_comp.spv
 rm nn/shaders/*.spv

@@ -100,7 +100,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 			// update running mean
 			xmean_ra = nn_tensor_get(Xmean_ra, 0, 0, 0, k);
-			xmean_ra = momentum*xmean_ra + (1 - momentum)*xmean_mb;
+			xmean_ra = momentum*xmean_ra + (1.0f - momentum)*xmean_mb;
 			nn_tensor_set(Xmean_ra, 0, 0, 0, k, xmean_ra);
 		}
 
@@ -130,7 +130,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 			// update running variance
 			xvar_ra = nn_tensor_get(Xvar_ra, 0, 0, 0, k);
-			xvar_ra = momentum*xvar_ra + (1 - momentum)*xvar_mb;
+			xvar_ra = momentum*xvar_ra + (1.0f - momentum)*xvar_mb;
 			nn_tensor_set(Xvar_ra, 0, 0, 0, k, xvar_ra);
 		}
 	}

@@ -143,3 +143,42 @@ Convolution Layer Transpose
 * convLayerBpGc
 * convLayerBpUpW
 * convLayerBpUpB
+
+Batch Normalization
+-------------------
+
+Forward Pass
+
+* sb00: X
+* sb01: Y
+* sb02: Xmean
+* sb03: Xvar
+
+Forward Pass and Backprop
+
+* sb10: arch
+* sb11: param
+* sb12: idx
+* sb13: Xhat
+* sb14: G
+* sb15: B
+* sb16: Xvar_mb
+
+Forward Pass (Training Only)
+
+* sb20: Xmean_mb
+* sb21: Xmean_ra
+* sb22: Xvar_ra
+
+Backprop
+
+* sb30: dL_dXhat
+* sb31: dL_dY
+* sb32: Bsum
+* sb33: Csum
+
+Backpropagation Dispatch Order
+
+* batchNormLayerBp_dL_dXhat
+* batchNormLayerBpSum
+* batchNormLayerBp_dL_dX
