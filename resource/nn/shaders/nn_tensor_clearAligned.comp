@@ -1,0 +1,18 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+layout(std430, set=0, binding=1) writeonly buffer sb01
+{
+	float X[];
+};
+
+void main()
+{
+	// hazzard depends on use case
+	// size must be aligned to 64 elements
+	// dispatch(hazzard, xn*xh*xw*xd, 1, 1, 64, 1, 1)
+	uint i = gl_GlobalInvocationID.x;
+
+	X[i] = 0.0;
+}

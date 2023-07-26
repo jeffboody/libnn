@@ -1,6 +1,19 @@
 Neural Network Compute Shader Notes
 ===================================
 
+Tensor
+------
+
+Functions
+
+* nn_tensor_clear
+* nn_tensor_clearAligned
+
+Uniforms
+
+* sb00: dimX
+* sb01: X
+
 Input, Weights and Output
 -------------------------
 
@@ -14,8 +27,6 @@ Input, Weights and Output
 	                      +----+----+----+----+----+----+
 	                      |sb00|sb01|sb02|sb03|sb04|sb05|
 	+---------------------+----+----+----+----+----+----+
-	| clear_dY_dX         |    |    |    |    |  * |    |
-	| clear_dL_dX         |    |    |    |    |    |    |
 	| convLayerFp         |  * |  * |  * |  * |    |    |
 	| convLayerFpT        |  * |  * |  * |  * |    |    |
 	| convLayerBp_dL_dX   |    |  * |    |    |    |    |
@@ -56,8 +67,6 @@ Gradients and Velocity
 	                      +----+----+----+----+----+----+----+----+
 	                      |sb10|sb11|sb12|sb13|sb14|sb15|sb16|sb17|
 	+---------------------+----+----+----+----+----+----+----+----+
-	| clear_dY_dX         |    |    |    |    |    |    |    |    |
-	| clear_dL_dX         |    |    |    |  * |    |    |    |    |
 	| convLayerFp         |    |    |    |    |    |    |    |    |
 	| convLayerFpT        |    |    |    |    |    |    |    |    |
 	| convLayerBp_dL_dX   |  * |    |    |  * |    |    |    |    |
@@ -94,8 +103,6 @@ Architecture, Parameters, Indices and Gradient Clipping
 	                      +----+----+----+----+
 	                      |sb20|sb21|sb22|sb23|
 	+---------------------+----+----+----+----+
-	| clear_dY_dX         |    |  * |    |    |
-	| clear_dL_dX         |    |  * |    |    |
 	| convLayerFp         |    |  * |    |    |
 	| convLayerFpT        |    |  * |    |    |
 	| convLayerBp_dL_dX   |    |  * |  * |    |
@@ -126,7 +133,7 @@ Backpropagation Dispatch Order
 
 Convolution Layer
 
-* clear_dL_dX
+* nn_tensor_clear(hazzard=NONE, dL_dX)
 * convLayerBp_dL_dX
 * convLayerBp_dL_dW
 * convLayerBp_dL_dB
@@ -136,7 +143,7 @@ Convolution Layer
 
 Convolution Layer Transpose
 
-* clear_dL_dX
+* nn_tensor_clear(hazzard=NONE, dL_dX)
 * convLayerBpT_dL_dX
 * convLayerBpT_dL_dW
 * convLayerBp_dL_dB
