@@ -446,7 +446,7 @@ int main(int argc, char** argv)
 					break;
 				}
 
-				nn_tensor_blit(Xt, Y, n + m, m);
+				nn_tensor_blit(Xt, Y, 1, n + m, m);
 				++bs;
 			}
 

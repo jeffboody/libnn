@@ -459,27 +459,33 @@ nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
 
 int nn_tensor_blit(nn_tensor_t* src,
                    nn_tensor_t* dst,
-                   uint32_t srcn, uint32_t dstn)
+                   uint32_t count,
+                   uint32_t src_offset,
+                   uint32_t dst_offset)
 {
 	ASSERT(src);
 	ASSERT(dst);
 
-	float* src_data   = nn_tensor_data(src, srcn);
-	float* dst_data   = nn_tensor_data(dst, dstn);
+	float* src_data   = nn_tensor_data(src, src_offset);
+	float* dst_data   = nn_tensor_data(dst, dst_offset);
 	size_t src_stride = nn_tensor_stride(src);
 	size_t dst_stride = nn_tensor_stride(dst);
 
-	if((src_data == NULL) || (dst_data == NULL) ||
-	   (src_stride != dst_stride))
+	if((count == 0)                          ||
+	   (src_stride != dst_stride)            ||
+	   (src_offset + count > src->dim.count) ||
+	   (dst_offset + count > dst->dim.count) ||
+	   (src_data == NULL) || (dst_data == NULL))
 	{
-		LOGE("invalid data=%p:%p, stride=%u:%u",
+		LOGE("invalid count=%u, offset=%u:%u, data=%p:%p, stride=%u:%u",
+		     count, src_offset, dst_offset,
 		     src_data, dst_data,
 		     (uint32_t) src_stride,
 		     (uint32_t) dst_stride);
 		return 0;
 	}
 
-	memcpy(dst_data, src_data, dst_stride);
+	memcpy(dst_data, src_data, count*dst_stride);
 
 	return 1;
 }

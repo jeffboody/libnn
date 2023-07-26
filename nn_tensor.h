@@ -71,6 +71,8 @@ float        nn_tensor_avg(nn_tensor_t* self,
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
 int          nn_tensor_blit(nn_tensor_t* src,
                             nn_tensor_t* dst,
-                            uint32_t srcn, uint32_t dstn);
+                            uint32_t count,
+                            uint32_t src_offset,
+                            uint32_t dst_offset);
 
 #endif

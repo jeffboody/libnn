@@ -359,5 +359,5 @@ int nn_arch_predict(nn_arch_t* self,
 		iter = cc_list_next(iter);
 	}
 
-	return nn_tensor_blit(Yi, Y, 0, 0);
+	return nn_tensor_blit(Yi, Y, 1, 0, 0);
 }
