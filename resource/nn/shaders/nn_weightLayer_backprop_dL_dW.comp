@@ -1,0 +1,118 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	float X[];
+};
+
+layout(std430, set=3, binding=0) readonly buffer sb30
+{
+	uint idx_f;
+	uint idx_fi;
+	uint idx_fj;
+	uint idx_k;
+};
+
+layout(std430, set=3, binding=2) readonly buffer sb32
+{
+	nn_dim_t dim_dL_dY;
+};
+
+layout(std430, set=3, binding=3) readonly buffer sb33
+{
+	float dL_dY[];
+};
+
+layout(std430, set=3, binding=4) readonly buffer sb34
+{
+	nn_dim_t dim_dL_dW;
+};
+
+layout(std430, set=3, binding=35) writeonly buffer sb35
+{
+	float dL_dW[];
+};
+
+float get_dY_dW(uint n, uint i, uint j, uint k)
+{
+	// X is dY_dW
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
+	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
+	uint sx = dim_dL_dY.depth;
+	return dL_dY[n*sn + i*sy + j*sx + k];
+}
+
+void set_dL_dW(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dim_dL_dW.height*dim_dL_dW.width*dim_dL_dW.depth;
+	uint sy = dim_dL_dW.width*dim_dL_dW.depth;
+	uint sx = dim_dL_dW.depth;
+	dL_dW[n*sn + i*sy + j*sx + k] = v;
+}
+
+uint umod(uint x, uint y)
+{
+	return uint(mod(int(x), int(y)));
+}
+
+void main()
+{
+	// RAW hazzard handled by convLayerBP_dL_dX
+	// dispatch(NONE, nc*xd, 1, 1, 64, 1, 1)
+	uint i  = gl_GlobalInvocationID.x;
+	uint nc = dim_dL_dW.count;
+	uint xd = dim_dL_dW.depth;
+	uint n  = i/xd;
+	uint k  = umod(i, xd);
+
+	if(n >= nc)
+	{
+		return;
+	}
+
+	// initialize dl_dw
+	float dl_dw = 0.0;
+
+	// compute dl_dw
+	uint  m;
+	float dl_dy;
+	float dy_dw;
+	for(m = 0; m < param_bs; ++m)
+	{
+		dl_dy = get_dL_dY(m, 0, 0, n);
+		dy_dw = get_dY_dW(m, 0, 0, k);
+		dl_dw += dl_dy*dy_dw;
+	}
+
+	set_dL_dW(n, 0, 0, k, dl_dw);
+}

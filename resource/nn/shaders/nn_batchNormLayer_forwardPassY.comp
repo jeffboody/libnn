@@ -1,0 +1,111 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	nn_dim_t dimXhat;
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	float Xhat[];
+};
+
+layout(std430, set=1, binding=3) readonly buffer sb13
+{
+	nn_dim_t dimG;
+};
+
+layout(std430, set=1, binding=4) readonly buffer sb14
+{
+	float G[];
+};
+
+layout(std430, set=1, binding=5) readonly buffer sb15
+{
+	nn_dim_t dimB;
+};
+
+layout(std430, set=1, binding=6) readonly buffer sb16
+{
+	float B[];
+};
+
+layout(std430, set=2, binding=2) readonly buffer sb22
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=2, binding=3) writeonly buffer sb23
+{
+	float Y[];
+};
+
+float getXhat(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimXhat.height*dimXhat.width*dimXhat.depth;
+	uint sy = dimXhat.width*dimXhat.depth;
+	uint sx = dimXhat.depth;
+	return Xhat[n*sn + i*sy + j*sx + k];
+}
+
+float getG(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimG.height*dimG.width*dimG.depth;
+	uint sy = dimG.width*dimG.depth;
+	uint sx = dimG.depth;
+	return G[n*sn + i*sy + j*sx + k];
+}
+
+float getB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimB.height*dimB.width*dimB.depth;
+	uint sy = dimB.width*dimB.depth;
+	uint sx = dimB.depth;
+	return B[n*sn + i*sy + j*sx + k];
+}
+
+void setY(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	Y[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint i  = gl_GlobalInvocationID.y;
+	uint j  = gl_GlobalInvocationID.z;
+	uint xd = dimXhat.depth;
+
+	if((i >= dimXhat.height) || (j >= dimXhat.width))
+	{
+		return;
+	}
+
+	uint  k;
+	float gamma;
+	float beta;
+	float xhat;
+	float y;
+	for(k = 0; k < xd; ++k)
+	{
+		gamma = getG(0, 0, 0, k);
+		beta  = getB(0, 0, 0, k);
+		xhat  = getXhat(m, i, j, k);
+		y     = gamma*xhat + beta;
+		setY(m, i, j, k, y);
+	}
+}

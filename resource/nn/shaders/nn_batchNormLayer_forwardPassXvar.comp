@@ -1,0 +1,179 @@
+#version 450
+
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
+
+shared float xvar_mb_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	float arch_learning_rate;
+	float arch_momentum_decay;
+	float arch_batch_momentum;
+	float arch_l2_lambda;
+	float arch_clip_max;
+	float arch_clip_momentum;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	uint idx_f;
+	uint idx_fi;
+	uint idx_fj;
+	uint idx_k;
+};
+
+layout(std430, set=1, binding=7) readonly buffer sb17
+{
+	nn_dim_t dimXvar_mb;
+};
+
+layout(std430, set=1, binding=8) writeonly buffer sb18
+{
+	float Xvar_mb[];
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	float X[];
+};
+
+layout(std430, set=2, binding=8) readonly buffer sb28
+{
+	nn_dim_t dimXmean_mb;
+};
+
+layout(std430, set=2, binding=9) readonly buffer sb29
+{
+	float Xmean_mb[];
+};
+
+layout(std430, set=2, binding=12) readonly buffer sb212
+{
+	nn_dim_t dimXvar_ra;
+};
+
+layout(std430, set=2, binding=13) buffer sb213
+{
+	float Xvar_ra[];
+};
+
+void set_Xvar_mb(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimXvar_mb.height*dimXvar_mb.width*dimXvar_mb.depth;
+	uint sy = dimXvar_mb.width*dimXvar_mb.depth;
+	uint sx = dimXvar_mb.depth;
+	Xvar_mb[n*sn + i*sy + j*sx + k] = v;
+}
+
+float getX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
+}
+
+float get_Xmean_mb(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimXmean_mb.height*dimXmean_mb.width*dimXmean_mb.depth;
+	uint sy = dimXmean_mb.width*dimXmean_mb.depth;
+	uint sx = dimXmean_mb.depth;
+	return Xmean_mb[n*sn + i*sy + j*sx + k];
+}
+
+float get_Xvar_ra(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimXvar_ra.height*dimXvar_ra.width*dimXvar_ra.depth;
+	uint sy = dimXvar_ra.width*dimXvar_ra.depth;
+	uint sx = dimXvar_ra.depth;
+	return Xvar_ra[n*sn + i*sy + j*sx + k];
+}
+
+void set_Xvar_ra(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimXvar_ra.height*dimXvar_ra.width*dimXvar_ra.depth;
+	uint sy = dimXvar_ra.width*dimXvar_ra.depth;
+	uint sx = dimXvar_ra.depth;
+	Xvar_ra[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dispatch required for each k
+	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+	uint p   = gl_GlobalInvocationID.x;
+	uint q   = gl_GlobalInvocationID.y;
+	uint xh  = dimX.height;
+	uint xw  = dimX.width;
+	uint xd  = dimX.depth;
+	uint idx = 8*p + q;
+	uint k   = idx_k;
+
+	// initialize xvar_mb_work
+	xvar_mb_work[idx] = 0.0;
+
+	// compute xvar_mb_work
+	uint m;
+	uint i;
+	uint j;
+	float dx;
+	float xmean_mb = get_Xmean_mb(0, 0, 0, k);
+	for(m = 0; m < param_bs; ++m)
+	{
+		for(i = p; i < xh; i += 8)
+		{
+			for(j = q; j < xw; j += 8)
+			{
+				dx = getX(m, i, j, k) - xmean_mb;
+
+				xvar_mb_work[idx] += dx*dx;
+			}
+		}
+	}
+
+	// synchronize work
+	memoryBarrierShared();
+	barrier();
+
+	// compute xvar_mb and xvar_ra
+	if(idx == 0)
+	{
+		float xvar_mb = 0.0;
+
+		uint  n;
+		float M = float(param_bs)*float(xh)*float(xw);
+		for(n = 0; n < 64; ++n)
+		{
+			xvar_mb += xvar_mb_work[n];
+		}
+		xvar_mb /= M;
+		set_Xvar_mb(0, 0, 0, k, xvar_mb);
+
+		// update running mean
+		float xvar_ra;
+		xvar_ra = get_Xvar_ra(0, 0, 0, k);
+		xvar_ra = arch_batch_momentum*xvar_ra +
+		           (1.0 - arch_batch_momentum)*xvar_mb;
+		set_Xvar_ra(0, 0, 0, k, xvar_ra);
+	}
+}

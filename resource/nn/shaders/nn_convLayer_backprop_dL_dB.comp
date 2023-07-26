@@ -1,0 +1,113 @@
+#version 450
+
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
+
+shared float dl_db_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=3, binding=0) readonly buffer sb30
+{
+	uint idx_f;
+	uint idx_fi;
+	uint idx_fj;
+	uint idx_k;
+};
+
+layout(std430, set=3, binding=2) readonly buffer sb32
+{
+	nn_dim_t dim_dL_dY;
+};
+
+layout(std430, set=3, binding=3) readonly buffer sb33
+{
+	float dL_dY[];
+};
+
+layout(std430, set=3, binding=6) readonly buffer sb36
+{
+	nn_dim_t dim_dL_dB;
+};
+
+layout(std430, set=3, binding=7) writeonly buffer sb37
+{
+	float dL_dB[];
+};
+
+float get_dL_dY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
+	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
+	uint sx = dim_dL_dY.depth;
+	return dL_dY[n*sn + i*sy + j*sx + k];
+}
+
+void set_dL_dB(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
+	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
+	uint sx = dim_dL_dB.depth;
+	dL_dB[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dispatch required for each f
+	// RAW hazzard handled by convLayerBp_dL_dX
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	uint q   = gl_GlobalInvocationID.x;
+	uint p   = gl_GlobalInvocationID.y;
+	uint yh  = dim_dL_dY.height;
+	uint yw  = dim_dL_dY.width;
+	uint idx = 8*p + q;
+	uint f   = idx_f;
+
+	// initialize dl_db_work
+	dl_db_work[idx] = 0.0;
+
+	// compute dl_db_work
+	uint m;
+	uint i;
+	uint j;
+	float dy_db = 1.0;
+	for(m = 0; m < param_bs; ++m)
+	{
+		for(i = p; i < yh; i += 8)
+		{
+			for(j = q; j < yw; j += 8)
+			{
+				dl_db_work[idx] += get_dL_dY(m, i, j, f)*dy_db;
+			}
+		}
+	}
+
+	// synchronize work
+	memoryBarrierShared();
+	barrier();
+
+	// compute dl_db
+	if(idx == 0)
+	{
+		float dl_db = 0.0;
+
+		uint n;
+		for(n = 0; n < 64; ++n)
+		{
+			dl_db += dl_db_work[n];
+		}
+		set_dL_dB(f, 0, 0, 0, dl_db);
+	}
+}

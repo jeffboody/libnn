@@ -1,0 +1,164 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	float X[];
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=1, binding=3) readonly buffer sb13
+{
+	float W[];
+};
+
+layout(std430, set=1, binding=4) readonly buffer sb14
+{
+	nn_dim_t dimB;
+};
+
+layout(std430, set=1, binding=5) readonly buffer sb15
+{
+	float B[];
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=2, binding=1) writeonly buffer sb21
+{
+	float Y[];
+};
+
+float getX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
+}
+
+float getW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return W[n*sn + i*sy + j*sx + k];
+}
+
+float getB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimB.height*dimB.width*dimB.depth;
+	uint sy = dimB.width*dimB.depth;
+	uint sx = dimB.depth;
+	return B[n*sn + i*sy + j*sx + k];
+}
+
+void setY(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	Y[n*sn + i*sy + j*sx + k] = v;
+}
+
+void forwardPass(uint m, uint i, uint j, uint f)
+{
+	// initialize y
+	float y;
+	if(param_disable_bias > 0)
+	{
+		y = 0.0;
+	}
+	else
+	{
+		y = getB(f, 0, 0, 0);
+	}
+
+	uint fh = dimW.height;
+	uint fw = dimW.width;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
+	uint xd = dimX.depth;
+
+	// compute weighted sum
+	uint  fi;
+	uint  fj;
+	uint  k;
+	int   ii;
+	int   jj;
+	float w;
+	float x;
+	for(fi = 0; fi < fh; ++fi)
+	{
+		ii = int(param_stride*i + fi) - int(fh/2);
+		if((ii < 0) || (ii >= xh))
+		{
+			continue;
+		}
+
+		for(fj = 0; fj < fj; ++fj)
+		{
+			jj = int(param_stride*j + fj) - int(fw/2);
+			if((jj < 0) || (jj >= xw))
+			{
+				continue;
+			}
+
+			for(k = 0; k < xd; ++k)
+			{
+				w  = getW(f, fi, fj, k);
+				x  = getX(m, ii, jj, k);
+				y += w*x;
+			}
+		}
+	}
+	setY(m, i, j, f, y);
+}
+
+void main()
+{
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint i  = gl_GlobalInvocationID.y;
+	uint j  = gl_GlobalInvocationID.z;
+	uint fc = dimW.count;
+
+	if((i >= dimY.height) || (j >= dimY.width))
+	{
+		return;
+	}
+
+	uint f;
+	for(f = 0; f < fc; ++f)
+	{
+		forwardPass(m, i, j, f);
+	}
+}

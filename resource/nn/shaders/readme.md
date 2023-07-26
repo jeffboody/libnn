@@ -1,191 +1,203 @@
 Neural Network Compute Shader Notes
 ===================================
 
+Batch Normalization Layer
+-------------------------
+
+Global Uniforms
+
+* sb00: arch
+* sb01: param
+
+Shared Uniforms
+
+* sb10: idx
+* sb11: dimXhat
+* sb12: Xhat
+* sb13: dimG
+* sb14: G
+* sb15: dimB
+* sb16: B
+* sb17: dimXvar_mb
+* sb18: Xvar_mb
+
+Forward Pass Uniforms
+
+* sb20:  dimX
+* sb21:  X
+* sb22:  dimY
+* sb23:  Y
+* sb24:  dimXmean
+* sb25:  Xmean
+* sb26:  dimXvar
+* sb27:  Xvar
+* sb28:  dimXmean_mb
+* sb29:  Xmean_mb
+* sb210: dimXmean_ra
+* sb211: Xmean_ra
+* sb212: dimXvar_ra
+* sb213: Xvar_ra
+
+Backprop Uniforms
+
+* sb30: dim_dL_dXhat
+* sb31: dL_dXhat
+* sb32: dim_dL_dY
+* sb33: dL_dY
+* sb34: dimBsum
+* sb35: Bsum
+* sb36: dimCsum
+* sb37: Csum
+
+Backprop Dispatch Order
+
+* nn_batchNormLayer_backprop_dL_dXhat
+* nn_batchNormLayer_backpropSum
+* nn_batchNormLayer_backprop_dL_dX
+
+Convolution Layer
+-----------------
+
+Global Uniforms
+
+* sb00: arch
+* sb01: param
+
+Shared Uniforms
+
+* sb10: dimX
+* sb11: X
+* sb12: dimW
+* sb13: W
+* sb14: dimB
+* sb15: B
+
+Forward Pass Uniforms
+
+* sb20: dimY
+* sb21: Y
+
+Backprop Uniforms
+
+* sb30:  idx
+* sb31:  gc
+* sb32:  dim_dL_dY
+* sb33:  dL_dY
+* sb34:  dim_dL_dW
+* sb35:  dL_dW
+* sb36:  dim_dL_dB
+* sb37:  dL_dB
+* sb38:  dim_dL_dX
+* sb39:  dL_dX
+* sb310: dimVW
+* sb311: VW
+* sb312: dimVB
+* sb313: VB
+
+Backprop Dispatch Order
+
+* nn_tensor_clear(hazzard=NONE, dL_dX)
+* nn_convLayer_backprop_dL_dX
+* nn_convLayer_backprop_dL_dW
+* nn_convLayer_backprop_dL_dB
+* nn_convLayer_backpropGc
+* nn_convLayer_backpropUpW
+* nn_convLayer_backpropUpB
+
+Backprop Dispatch Order (Transpose)
+
+* nn_tensor_clear(hazzard=NONE, dL_dX)
+* nn_convLayer_backpropT_dL_dX
+* nn_convLayer_backpropT_dL_dW
+* nn_convLayer_backprop_dL_dB
+* nn_convLayer_backpropGc
+* nn_convLayer_backpropUpW
+* nn_convLayer_backpropUpB
+
+Fact Layer
+----------
+
+Shared Uniforms
+
+* sb10: dimX
+* sb11: X
+
+Forward Pass Uniforms
+
+* sb20: dimY
+* sb21: Y
+
+Backprop Uniforms
+
+* sb30: dim_dL_dY
+* sb31: dL_dY
+
+Skip Layer
+----------
+
+Forward Pass Uniforms
+
+* sb00: dimX/dimX1
+* sb01: X/X1
+* sb02: dimY
+* sb03: Y
+* sb04: dimX2
+* sb05: X2
+
+Backprop Uniforms
+
+* sb10: dim_dL_dY
+* sb11: dL_dY
+* sb12: dim_dL_dX/dim_dL_dX1
+* sb13: dL_dX/dL_dX1
+* sb14: dim_dL_dX2
+* sb15: dL_dX2
+* sb16: dim_dL_dY2
+* sb17: dL_dY2
+
+Weight Layer
+------------
+
+Global Uniforms
+
+* sb00: arch
+* sb01: param
+
+Shared Uniforms
+
+* sb10: dimX
+* sb11: X
+* sb12: dimW
+* sb13: W
+* sb14: dimB
+* sb15: B
+
+Forward Pass Uniforms
+
+* sb20: dimY
+* sb21: Y
+
+Backprop Uniforms
+
+* sb30:  idx
+* sb31:  gc
+* sb32:  dim_dL_dY
+* sb33:  dL_dY
+* sb34:  dim_dL_dW
+* sb35:  dL_dW
+* sb36:  dim_dL_dB
+* sb37:  dL_dB
+* sb38:  dim_dL_dX
+* sb39:  dL_dX
+* sb310: dimVW
+* sb311: VW
+* sb312: dimVB
+* sb313: VB
+
 Tensor
 ------
-
-Functions
-
-* nn_tensor_clear
-* nn_tensor_clearAligned
 
 Uniforms
 
 * sb00: dimX
 * sb01: X
-
-Input, Weights and Output
--------------------------
-
-* sb00: X/X1
-* sb01: W
-* sb02: B
-* sb03: Y
-* sb04: dY_dX
-* sb05: X2
-
-	                      +----+----+----+----+----+----+
-	                      |sb00|sb01|sb02|sb03|sb04|sb05|
-	+---------------------+----+----+----+----+----+----+
-	| convLayerFp         |  * |  * |  * |  * |    |    |
-	| convLayerFpT        |  * |  * |  * |  * |    |    |
-	| convLayerBp_dL_dX   |    |  * |    |    |    |    |
-	| convLayerBp_dL_dW   |    |    |    |    |    |    |
-	| convLayerBp_dL_dB   |    |    |    |    |    |    |
-	| convLayerBpT_dL_dX  |    |  * |    |    |    |    |
-	| convLayerBpT_dL_dW  |    |    |    |    |    |    |
-	| convLayerBpGc       |    |  * |  * |    |    |    |
-	| convLayerBpUpW      |    |  * |    |    |    |    |
-	| convLayerBpUpB      |    |    |  * |    |    |    |
-	| factLayerFp*        |  * |  * |    |  * |    |    |
-	| factLayerBp*        |  * |  * |    |    |    |    |
-	| skipLayerFpAdd      |  * |    |    |  * |    |  * |
-	| skipLayerFpCat      |  * |    |    |  * |    |  * |
-	| skipLayerBpCat      |    |    |    |    |    |    |
-	| skipLayerBpFork     |    |    |    |    |    |    |
-	| weightLayerFp       |  * |  * |  * |  * |    |    |
-	| weightLayerBp_dL_dX |    |  * |    |    |    |    |
-	| weightLayerBp_dL_dW |  * |    |    |    |    |    |
-	| weightLayerBp_dL_dB |    |    |    |    |    |    |
-	| weightLayerBpGc     |    |  * |  * |    |    |    |
-	| weightLayerBpUpW    |    |  * |    |    |    |    |
-	| weightLayerBpUpB    |    |    |  * |    |    |    |
-	+---------------------+----+----+----+----+----+----+
-
-Gradients and Velocity
-----------------------
-
-* sb10: dL_dY
-* sb11: dL_dW
-* sb12: dL_dB
-* sb13: dL_dX/dL_dX1
-* sb14: VW
-* sb15: VB
-* sb16: dL_dX2
-* sb17: dL_dY2
-
-	                      +----+----+----+----+----+----+----+----+
-	                      |sb10|sb11|sb12|sb13|sb14|sb15|sb16|sb17|
-	+---------------------+----+----+----+----+----+----+----+----+
-	| convLayerFp         |    |    |    |    |    |    |    |    |
-	| convLayerFpT        |    |    |    |    |    |    |    |    |
-	| convLayerBp_dL_dX   |  * |    |    |  * |    |    |    |    |
-	| convLayerBp_dL_dW   |  * |  * |    |  * |    |    |    |    |
-	| convLayerBp_dL_dB   |  * |    |  * |    |    |    |    |    |
-	| convLayerBpT_dL_dX  |  * |    |    |  * |    |    |    |    |
-	| convLayerBpT_dL_dW  |  * |  * |    |  * |    |    |    |    |
-	| convLayerBpGc       |    |  * |  * |    |    |    |    |    |
-	| convLayerBpUpW      |    |  * |    |    |  * |    |    |    |
-	| convLayerBpUpB      |    |    |  * |    |    |  * |    |    |
-	| factLayerFp*        |    |    |    |    |    |    |    |    |
-	| factLayerBp*        |  * |    |    |    |    |    |    |    |
-	| skipLayerFpAdd      |    |    |    |    |    |    |    |    |
-	| skipLayerFpCat      |    |    |    |    |    |    |    |    |
-	| skipLayerBpCat      |  * |    |    |  * |    |    |  * |    |
-	| skipLayerBpFork     |  * |    |    |    |    |    |    |  * |
-	| weightLayerFp       |    |    |    |    |    |    |    |    |
-	| weightLayerBp_dL_dX |  * |    |    |  * |    |    |    |    |
-	| weightLayerBp_dL_dW |  * |  * |    |  * |    |    |    |    |
-	| weightLayerBp_dL_dB |  * |    |  * |    |    |    |    |    |
-	| weightLayerBpGc     |    |  * |  * |    |    |    |    |    |
-	| weightLayerBpUpW    |    |  * |    |    |  * |    |    |    |
-	| weightLayerBpUpB    |    |    |  * |    |    |  * |    |    |
-	+---------------------+----+----+----+----+----+----+----+----+
-
-Architecture, Parameters, Indices and Gradient Clipping
--------------------------------------------------------
-
-* sb20: arch
-* sb21: param
-* sb22: idx
-* sb23: gc
-
-	                      +----+----+----+----+
-	                      |sb20|sb21|sb22|sb23|
-	+---------------------+----+----+----+----+
-	| convLayerFp         |    |  * |    |    |
-	| convLayerFpT        |    |  * |    |    |
-	| convLayerBp_dL_dX   |    |  * |  * |    |
-	| convLayerBp_dL_dW   |    |  * |  * |    |
-	| convLayerBp_dL_dB   |    |  * |  * |    |
-	| convLayerBpT_dL_dX  |    |  * |  * |    |
-	| convLayerBpT_dL_dW  |    |  * |  * |    |
-	| convLayerBpGc       |  * |  * |    |  * |
-	| convLayerBpUpW      |  * |  * |    |  * |
-	| convLayerBpUpB      |  * |  * |    |  * |
-	| factLayerFp*        |    |    |    |    |
-	| factLayerBp*        |    |    |    |    |
-	| skipLayerFpAdd      |    |    |    |    |
-	| skipLayerFpCat      |    |    |    |    |
-	| skipLayerBpCat      |    |    |    |    |
-	| skipLayerBpFork     |    |    |    |    |
-	| weightLayerFp       |    |  * |    |    |
-	| weightLayerBp_dL_dX |    |  * |  * |    |
-	| weightLayerBp_dL_dW |    |  * |  * |    |
-	| weightLayerBp_dL_dB |    |  * |  * |    |
-	| weightLayerBpGc     |  * |  * |    |  * |
-	| weightLayerBpUpW    |  * |  * |    |  * |
-	| weightLayerBpUpB    |  * |  * |    |  * |
-	+---------------------+----+----+----+----+
-
-Backpropagation Dispatch Order
-------------------------------
-
-Convolution Layer
-
-* nn_tensor_clear(hazzard=NONE, dL_dX)
-* convLayerBp_dL_dX
-* convLayerBp_dL_dW
-* convLayerBp_dL_dB
-* convLayerBpGc
-* convLayerBpUpW
-* convLayerBpUpB
-
-Convolution Layer Transpose
-
-* nn_tensor_clear(hazzard=NONE, dL_dX)
-* convLayerBpT_dL_dX
-* convLayerBpT_dL_dW
-* convLayerBp_dL_dB
-* convLayerBpGc
-* convLayerBpUpW
-* convLayerBpUpB
-
-Batch Normalization
--------------------
-
-Forward Pass
-
-* sb00: X
-* sb01: Y
-* sb02: Xmean
-* sb03: Xvar
-
-Forward Pass and Backprop
-
-* sb10: arch
-* sb11: param
-* sb12: idx
-* sb13: Xhat
-* sb14: G
-* sb15: B
-* sb16: Xvar_mb
-
-Forward Pass (Training Only)
-
-* sb20: Xmean_mb
-* sb21: Xmean_ra
-* sb22: Xvar_ra
-
-Backprop
-
-* sb30: dL_dXhat
-* sb31: dL_dY
-* sb32: Bsum
-* sb33: Csum
-
-Backpropagation Dispatch Order
-
-* batchNormLayerBp_dL_dXhat
-* batchNormLayerBpSum
-* batchNormLayerBp_dL_dX

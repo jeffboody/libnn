@@ -1,0 +1,232 @@
+#version 450
+
+layout (local_size_x=4, local_size_y=4, local_size_z=4) in;
+
+shared float norm_w_work[64];
+shared float norm_dl_dw_work[64];
+shared float norm_b_work[64];
+shared float norm_dl_db_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	float arch_learning_rate;
+	float arch_momentum_decay;
+	float arch_batch_momentum;
+	float arch_l2_lambda;
+	float arch_clip_max;
+	float arch_clip_momentum;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=1, binding=3) readonly buffer sb13
+{
+	float W[];
+};
+
+layout(std430, set=1, binding=4) readonly buffer sb14
+{
+	nn_dim_t dimB;
+};
+
+layout(std430, set=1, binding=5) readonly buffer sb15
+{
+	float B[];
+};
+
+layout(std430, set=3, binding=1) buffer sb31
+{
+	float gc_gcw;
+	float gc_gcb;
+	float gc_norm_dl_dw_ra;
+	float gc_norm_dl_db_ra;
+};
+
+layout(std430, set=3, binding=4) readonly buffer sb34
+{
+	nn_dim_t dim_dL_dW;
+};
+
+layout(std430, set=3, binding=5) readonly buffer sb35
+{
+	float dL_dW[];
+};
+
+layout(std430, set=3, binding=6) readonly buffer sb36
+{
+	nn_dim_t dim_dL_dB;
+};
+
+layout(std430, set=3, binding=7) readonly buffer sb37
+{
+	float dL_dB[];
+};
+
+float getW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return W[n*sn + i*sy + j*sx + k];
+}
+
+float getB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimB.height*dimB.width*dimB.depth;
+	uint sy = dimB.width*dimB.depth;
+	uint sx = dimB.depth;
+	return B[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dW.height*dim_dL_dW.width*dim_dL_dW.depth;
+	uint sy = dim_dL_dW.width*dim_dL_dW.depth;
+	uint sx = dim_dL_dW.depth;
+	return dL_dW[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dB(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
+	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
+	uint sx = dim_dL_dB.depth;
+	return dL_dB[n*sn + i*sy + j*sx + k];
+}
+
+uint umod(uint x, uint y)
+{
+	return uint(mod(int(x), int(y)));
+}
+
+void main()
+{
+	// dispatch(RAW, 1, 1, 1, 4 4, 4)
+	uint  q   = gl_GlobalInvocationID.x;
+	uint  p   = gl_GlobalInvocationID.y;
+	uint  r   = gl_GlobalInvocationID.z;
+	uint  fc  = dimW.count;
+	uint  fh  = dimW.height;
+	uint  fw  = dimW.width;
+	uint  xd  = dimW.depth;
+	uint  idx = 16*p + 4*q + r;
+	float s   = 1.0/(float(param_bs));
+
+	// initialize shared memory
+	norm_w_work[idx]     = 0.0;
+	norm_dl_dw_work[idx] = 0.0;
+	norm_b_work[idx]     = 0.0;
+	norm_dl_db_work[idx] = 0.0;
+
+	// compute norm_w_work, norm_dl_dw_work,
+	// norm_b_work and norm_dl_db_work
+	uint  f;
+	uint  fi;
+	uint  fj;
+	uint  k;
+	uint  n;
+	float w;
+	float b;
+	float dl_dw;
+	float dl_db;
+	for(f = p; f < fc; f += 4)
+	{
+		// weights gradient
+		for(fi = q; fi < fh; fi += 4)
+		{
+			for(n = r; n < fw*xd; n += 4)
+			{
+				fj                    = n/4;
+				k                     = umod(n, 4);
+				w                     = getW(f, fi, fj, k);
+				dl_dw                 = s*get_dL_dW(f, fi, fj, k);
+				norm_w_work[idx]     += w*w;
+				norm_dl_dw_work[idx] += dl_dw*dl_dw;
+			}
+		}
+
+		// bias gradient
+		if(param_disable_bias == 0)
+		{
+			b                     = getB(f, 0, 0, 0);
+			dl_db                 = s*get_dL_dB(f, 0, 0, 0);
+			norm_b_work[idx]     += b*b;
+			norm_dl_db_work[idx] += dl_db*dl_db;
+		}
+	}
+
+	// synchronize work
+	memoryBarrierShared();
+	barrier();
+
+	// compute norm_w, norm_dl_dw, norm_b and norm_dl_db
+	// finish gradient clipping
+	if(idx == 0)
+	{
+		// sum work
+		float norm_w     = 0.0;
+		float norm_b     = 0.0;
+		float norm_dl_dw = 0.0;
+		float norm_dl_db = 0.0;
+		for(n = 0; n < 64; ++n)
+		{
+			norm_w     += norm_w_work[n];
+			norm_b     += norm_b_work[n];
+			norm_dl_dw += norm_dl_dw_work[n];
+			norm_dl_db += norm_dl_db_work[n];
+		}
+
+		// compute norms
+		norm_w     = sqrt(norm_w);
+		norm_b     = sqrt(norm_b);
+		norm_dl_dw = sqrt(norm_dl_dw);
+		norm_dl_db = sqrt(norm_dl_db);
+
+		// compute running averages
+		gc_norm_dl_dw_ra = arch_clip_momentum*gc_norm_dl_dw_ra +
+		                   (1.0 - arch_clip_momentum)*norm_dl_dw;
+		gc_norm_dl_db_ra = arch_clip_momentum*gc_norm_dl_db_ra +
+		                   (1.0 - arch_clip_momentum)*norm_dl_db;
+
+		// clamp norm
+		if(arch_clip_max > 0.0)
+		{
+			if(gc_norm_dl_dw_ra > arch_clip_max)
+			{
+				gc_norm_dl_dw_ra = arch_clip_max;
+			}
+			if(gc_norm_dl_db_ra > arch_clip_max)
+			{
+				gc_norm_dl_db_ra = arch_clip_max;
+			}
+		}
+
+		// apply gradient clipping
+		if(norm_dl_dw > gc_norm_dl_dw_ra)
+		{
+			gc_gcw = gc_norm_dl_dw_ra/norm_dl_dw;
+		}
+		if(norm_dl_db > gc_norm_dl_db_ra)
+		{
+			gc_gcb = gc_norm_dl_db_ra/norm_dl_db;
+		}
+	}
+}
