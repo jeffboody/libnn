@@ -155,9 +155,9 @@ nn_loss_bce(nn_loss_t* self, uint32_t bs,
 	float    y;
 	float    yt;
 	float    dl_dy;
-	float    M    = (float) (bs*yh*yw*yd);
-	float    loss = 0.0f;
-	float    eps  = FLT_EPSILON;
+	float    M       = (float) (bs*yh*yw*yd);
+	float    loss    = 0.0f;
+	float    epsilon = FLT_EPSILON;
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
@@ -171,11 +171,11 @@ nn_loss_bce(nn_loss_t* self, uint32_t bs,
 				for(k = 0; k < yd; ++k)
 				{
 					y     = nn_tensor_get(Y, m, i, j, k);
-					y     = cc_clamp(y, eps, 1.0f - eps);
+					y     = cc_clamp(y, epsilon, 1.0f - epsilon);
 					yt    = nn_tensor_get(Yt, m, i, j, k);
-					dl_dy = -(y - yt)/(logf(10.0f)*(y - 1.0f)*y + eps);
-					loss += -(yt*log10f(y + eps) +
-					          (1.0f - yt)*log10f(1.0f - y + eps));
+					dl_dy = -(y - yt)/(logf(10.0f)*(y - 1.0f)*y + epsilon);
+					loss += -(yt*log10f(y + epsilon) +
+					          (1.0f - yt)*log10f(1.0f - y + epsilon));
 					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
 				}
 			}
