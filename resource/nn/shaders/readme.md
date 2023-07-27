@@ -194,6 +194,29 @@ Backprop Uniforms
 * sb312: dimVB
 * sb313: VB
 
+Loss
+----
+
+Global Uniforms
+
+* sb00: arch
+* sb01: param
+
+Uniforms
+
+* sb10: dimY
+* sb11: Y
+* sb12: dimYt
+* sb13: Yt
+* sb14: dim_dL_dY
+* sb15: dL_dY
+* sb16: loss_loss
+
+Backprop Dispatch Order
+
+* nn_loss_dL_dY_TYPE
+* nn_loss_TYPE
+
 Tensor
 ------
 

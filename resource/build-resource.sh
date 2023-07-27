@@ -42,6 +42,12 @@ glslangValidator -V nn_weightLayer_backpropUpdateB.comp -o nn_weightLayer_backpr
 glslangValidator -V nn_weightLayer_backprop_dL_dX.comp -o nn_weightLayer_backprop_dL_dX_comp.spv
 glslangValidator -V nn_weightLayer_backprop_dL_dW.comp -o nn_weightLayer_backprop_dL_dW_comp.spv
 glslangValidator -V nn_weightLayer_backprop_dL_dB.comp -o nn_weightLayer_backprop_dL_dB_comp.spv
+glslangValidator -V nn_loss_dL_dY_mse.comp -o nn_loss_dL_dY_mse_comp.spv
+glslangValidator -V nn_loss_dL_dY_mae.comp -o nn_loss_dL_dY_mae_comp.spv
+glslangValidator -V nn_loss_dL_dY_bce.comp -o nn_loss_dL_dY_bce_comp.spv
+glslangValidator -V nn_loss_mse.comp -o nn_loss_mse_comp.spv
+glslangValidator -V nn_loss_mae.comp -o nn_loss_mae_comp.spv
+glslangValidator -V nn_loss_bce.comp -o nn_loss_bce_comp.spv
 cd ../..
 
 # shaders
@@ -88,4 +94,10 @@ bfs $1 blobSet nn/shaders/nn_weightLayer_backpropUpdateB_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backprop_dL_dX_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backprop_dL_dW_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backprop_dL_dB_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_dL_dY_mse_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_dL_dY_mae_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_dL_dY_bce_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_mse_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_mae_comp.spv
+bfs $1 blobSet nn/shaders/nn_loss_bce_comp.spv
 rm nn/shaders/*.spv

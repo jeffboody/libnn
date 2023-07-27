@@ -1,0 +1,127 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+shared float loss_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_bs;
+	uint param_stride;
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb10
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	float Y[];
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dimYt;
+};
+
+layout(std430, set=1, binding=3) readonly buffer sb13
+{
+	float Yt[];
+};
+
+layout(std430, set=1, binding=6) writeonly buffer sb16
+{
+	float loss_loss;
+};
+
+float getY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	return Y[n*sn + i*sy + j*sx + k];
+}
+
+float getYt(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimYt.height*dimYt.width*dimYt.depth;
+	uint sy = dimYt.width*dimYt.depth;
+	uint sx = dimYt.depth;
+	return Yt[n*sn + i*sy + j*sx + k];
+}
+
+float log10(float x)
+{
+	return log(x)/log(10.0);
+}
+
+float loss_bce(uint m, uint i, uint j, uint k)
+{
+	float epsilon = 0.00001;
+
+	float y  = getY(m, i, j, k);
+	float yt = getYt(m, i, j, k);
+	return -(yt*log10(y + epsilon) +
+	         (1.0 - yt)*log10(1.0 - y + epsilon));
+}
+
+void main()
+{
+	// RAW hazzard handled by nn_loss_dL_dY_bce
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	uint p   = gl_GlobalInvocationID.x;
+	uint q   = gl_GlobalInvocationID.y;
+	uint yh  = dimY.height;
+	uint yw  = dimY.width;
+	uint yd  = dimY.depth;
+	uint idx = 8*p + q;
+
+	loss_work[idx] = 0.0;
+
+	// compute working loss
+	uint m;
+	uint i;
+	uint j;
+	uint k;
+	for(m = 0; m < param_bs; ++m)
+	{
+		for(i = p; i < yh; i += 8)
+		{
+			for(j = q; j < yw; j += 8)
+			{
+				for(k = 0; k < yd; ++k)
+				{
+					loss_work[idx] += loss_bce(m, i, j, k);
+				}
+			}
+		}
+	}
+
+	// synchronize work
+	memoryBarrierShared();
+	barrier();
+
+	// compute final loss
+	if(idx == 0)
+	{
+		float loss = 0.0;
+
+		uint n;
+		for(n = 0; n < 64; ++n)
+		{
+			loss += loss_work[n];
+		}
+
+		loss_loss = loss;
+	}
+}
