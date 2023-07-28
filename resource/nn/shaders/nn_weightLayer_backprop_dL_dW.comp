@@ -10,47 +10,43 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	float X[];
 };
 
-layout(std430, set=3, binding=0) readonly buffer sb30
-{
-	uint idx_f;
-	uint idx_fi;
-	uint idx_fj;
-	uint idx_k;
-};
-
-layout(std430, set=3, binding=2) readonly buffer sb32
+layout(std430, set=2, binding=1) readonly buffer sb21
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=3, binding=3) readonly buffer sb33
+layout(std430, set=2, binding=2) readonly buffer sb22
 {
 	float dL_dY[];
 };
 
-layout(std430, set=3, binding=4) readonly buffer sb34
+layout(std430, set=2, binding=3) readonly buffer sb23
 {
 	nn_dim_t dim_dL_dW;
 };
 
-layout(std430, set=3, binding=35) writeonly buffer sb35
+layout(std430, set=2, binding=4) writeonly buffer sb24
 {
 	float dL_dW[];
 };
@@ -87,7 +83,8 @@ uint umod(uint x, uint y)
 
 void main()
 {
-	// RAW hazzard handled by convLayerBP_dL_dX
+	// RAW hazzard handled by
+	// nn_weightLayer_backprop_dL_dX
 	// dispatch(NONE, nc*xd, 1, 1, 64, 1, 1)
 	uint i  = gl_GlobalInvocationID.x;
 	uint nc = dim_dL_dW.count;
@@ -107,7 +104,7 @@ void main()
 	uint  m;
 	float dl_dy;
 	float dy_dw;
-	for(m = 0; m < param_bs; ++m)
+	for(m = 0; m < state_bs; ++m)
 	{
 		dl_dy = get_dL_dY(m, 0, 0, n);
 		dy_dw = get_dY_dW(m, 0, 0, k);

@@ -12,47 +12,46 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_bs;
 	uint param_stride;
 	uint param_disable_bias;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	float X[];
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	nn_dim_t dimW;
 };
 
-layout(std430, set=1, binding=3) readonly buffer sb13
+layout(std430, set=0, binding=5) readonly buffer sb05
 {
 	float W[];
 };
 
-layout(std430, set=1, binding=4) readonly buffer sb14
+layout(std430, set=0, binding=6) readonly buffer sb06
 {
 	nn_dim_t dimB;
 };
 
-layout(std430, set=1, binding=5) readonly buffer sb15
+layout(std430, set=0, binding=7) readonly buffer sb07
 {
 	float B[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
+layout(std430, set=1, binding=0) readonly buffer sb10
 {
 	nn_dim_t dimY;
 };
 
-layout(std430, set=2, binding=1) writeonly buffer sb21
+layout(std430, set=1, binding=1) writeonly buffer sb11
 {
 	float Y[];
 };

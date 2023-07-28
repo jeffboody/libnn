@@ -28,6 +28,10 @@
 #include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn.h"
 
+#ifdef NN_USE_COMPUTE
+#include "../libvkk/vkk.h"
+#endif
+
 typedef nn_tensor_t* (*nn_loss_fn)
                      (nn_loss_t* base, uint32_t bs,
                       nn_tensor_t* Y, nn_tensor_t* Yt);
@@ -55,6 +59,11 @@ typedef struct nn_loss_s
 
 	// backprop gradients
 	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
+
+	#ifdef NN_USE_COMPUTE
+	vkk_uniformSet_t* us0;
+	vkk_buffer_t*     sb07_loss;
+	#endif
 } nn_loss_t;
 
 nn_loss_t*   nn_loss_new(nn_arch_t* arch,

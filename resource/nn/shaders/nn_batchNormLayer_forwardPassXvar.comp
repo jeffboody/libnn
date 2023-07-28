@@ -14,67 +14,58 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	float arch_learning_rate;
-	float arch_momentum_decay;
-	float arch_batch_momentum;
-	float arch_l2_lambda;
-	float arch_clip_max;
-	float arch_clip_momentum;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
-};
-
-layout(std430, set=1, binding=0) readonly buffer sb10
-{
-	uint idx_f;
-	uint idx_fi;
-	uint idx_fj;
-	uint idx_k;
-};
-
-layout(std430, set=1, binding=7) readonly buffer sb17
+layout(std430, set=0, binding=8) readonly buffer sb08
 {
 	nn_dim_t dimXvar_mb;
 };
 
-layout(std430, set=1, binding=8) writeonly buffer sb18
+layout(std430, set=0, binding=9) writeonly buffer sb09
 {
 	float Xvar_mb[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
+layout(std430, set=1, binding=0) readonly buffer sb10
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=1, binding=1) readonly buffer sb11
 {
 	float X[];
 };
 
-layout(std430, set=2, binding=8) readonly buffer sb28
+layout(std430, set=1, binding=8) readonly buffer sb18
 {
 	nn_dim_t dimXmean_mb;
 };
 
-layout(std430, set=2, binding=9) readonly buffer sb29
+layout(std430, set=1, binding=9) readonly buffer sb19
 {
 	float Xmean_mb[];
 };
 
-layout(std430, set=2, binding=12) readonly buffer sb212
+layout(std430, set=1, binding=12) readonly buffer sb112
 {
 	nn_dim_t dimXvar_ra;
 };
 
-layout(std430, set=2, binding=13) buffer sb213
+layout(std430, set=1, binding=13) buffer sb113
 {
 	float Xvar_ra[];
+};
+
+layout(std430, set=3, binding=0) readonly buffer sb30
+{
+	uint idx_k;
 };
 
 void set_Xvar_mb(uint n, uint i, uint j, uint k, float v)
@@ -125,7 +116,6 @@ void main()
 	uint q   = gl_GlobalInvocationID.y;
 	uint xh  = dimX.height;
 	uint xw  = dimX.width;
-	uint xd  = dimX.depth;
 	uint idx = 8*p + q;
 	uint k   = idx_k;
 
@@ -138,7 +128,7 @@ void main()
 	uint j;
 	float dx;
 	float xmean_mb = get_Xmean_mb(0, 0, 0, k);
-	for(m = 0; m < param_bs; ++m)
+	for(m = 0; m < state_bs; ++m)
 	{
 		for(i = p; i < xh; i += 8)
 		{
@@ -161,7 +151,7 @@ void main()
 		float xvar_mb = 0.0;
 
 		uint  n;
-		float M = float(param_bs)*float(xh)*float(xw);
+		float M = float(state_bs)*float(xh)*float(xw);
 		for(n = 0; n < 64; ++n)
 		{
 			xvar_mb += xvar_mb_work[n];
@@ -172,8 +162,8 @@ void main()
 		// update running mean
 		float xvar_ra;
 		xvar_ra = get_Xvar_ra(0, 0, 0, k);
-		xvar_ra = arch_batch_momentum*xvar_ra +
-		           (1.0 - arch_batch_momentum)*xvar_mb;
+		xvar_ra = state_batch_momentum*xvar_ra +
+		           (1.0 - state_batch_momentum)*xvar_mb;
 		set_Xvar_ra(0, 0, 0, k, xvar_ra);
 	}
 }

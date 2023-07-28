@@ -378,7 +378,8 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 
 	nn_dim_copy(dimX1, &self->dimX);
 
-	self->Y = nn_tensor_new(dimX1);
+	self->Y = nn_tensor_new(arch, dimX1,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
@@ -454,19 +455,22 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 		.depth  = dimX1->depth + dimX2->depth,
 	};
 
-	self->Y = nn_tensor_new(&dimY);
+	self->Y = nn_tensor_new(arch, &dimY,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->dL_dX1 = nn_tensor_new(dimX1);
+	self->dL_dX1 = nn_tensor_new(arch, dimX1,
+	                             NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX1 == NULL)
 	{
 		goto fail_dL_dX1;
 	}
 
-	self->dL_dX2 = nn_tensor_new(dimX2);
+	self->dL_dX2 = nn_tensor_new(arch, dimX2,
+	                             NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX2 == NULL)
 	{
 		goto fail_dL_dX2;

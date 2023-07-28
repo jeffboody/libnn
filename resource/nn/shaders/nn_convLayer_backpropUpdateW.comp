@@ -12,32 +12,26 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	float arch_learning_rate;
-	float arch_momentum_decay;
-	float arch_batch_momentum;
-	float arch_l2_lambda;
-	float arch_clip_max;
-	float arch_clip_momentum;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
-};
-
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	nn_dim_t dimW;
 };
 
-layout(std430, set=1, binding=3) buffer sb13
+layout(std430, set=0, binding=5) buffer sb05
 {
 	float W[];
 };
 
-layout(std430, set=3, binding=1) readonly buffer sb31
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	float gc_gcw;
 	float gc_gcb;
@@ -45,22 +39,22 @@ layout(std430, set=3, binding=1) readonly buffer sb31
 	float gc_norm_dl_db_ra;
 };
 
-layout(std430, set=3, binding=4) readonly buffer sb34
+layout(std430, set=2, binding=3) readonly buffer sb23
 {
 	nn_dim_t dim_dL_dW;
 };
 
-layout(std430, set=3, binding=5) readonly buffer sb35
+layout(std430, set=2, binding=4) readonly buffer sb24
 {
 	float dL_dW[];
 };
 
-layout(std430, set=3, binding=10) readonly buffer sb310
+layout(std430, set=2, binding=9) readonly buffer sb29
 {
 	nn_dim_t dimVW;
 };
 
-layout(std430, set=3, binding=11) buffer sb311
+layout(std430, set=2, binding=10) buffer sb210
 {
 	float VW[];
 };
@@ -115,10 +109,10 @@ void main()
 	uint  fh     = dimW.height;
 	uint  fw     = dimW.width;
 	uint  xd     = dimW.depth;
-	float lr     = arch_learning_rate;
-	float mu     = arch_momentum_decay;
-	float lambda = arch_l2_lambda;
-	float s      = 1.0/(float(param_bs));
+	float lr     = state_learning_rate;
+	float mu     = state_momentum_decay;
+	float lambda = state_l2_lambda;
+	float s      = 1.0/(float(state_bs));
 
 	if((f >= fc) || (fi >= fh) || (fj >= fw))
 	{

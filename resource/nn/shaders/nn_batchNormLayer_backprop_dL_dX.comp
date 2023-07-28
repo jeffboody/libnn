@@ -10,69 +10,73 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	nn_dim_t dimXhat;
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	float Xhat[];
 };
 
-layout(std430, set=1, binding=7) readonly buffer sb17
+layout(std430, set=0, binding=8) readonly buffer sb08
 {
 	nn_dim_t dimXvar_mb;
 };
 
-layout(std430, set=1, binding=8) readonly buffer sb18
+layout(std430, set=0, binding=9) readonly buffer sb09
 {
 	float Xvar_mb[];
 };
 
-layout(std430, set=3, binding=0) readonly buffer sb30
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	nn_dim_t dim_dL_dXhat;
 };
 
-layout(std430, set=3, binding=1) readonly buffer sb31
+layout(std430, set=2, binding=1) readonly buffer sb21
 {
 	float dL_dXhat[];
 };
 
-layout(std430, set=3, binding=2) readonly buffer sb32
+layout(std430, set=2, binding=2) readonly buffer sb22
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=3, binding=3) buffer sb33
+layout(std430, set=2, binding=3) buffer sb23
 {
 	float dL_dY[];
 };
 
-layout(std430, set=3, binding=4) readonly buffer sb34
+layout(std430, set=2, binding=4) readonly buffer sb24
 {
 	nn_dim_t dimBsum;
 };
 
-layout(std430, set=3, binding=5) readonly buffer sb35
+layout(std430, set=2, binding=5) readonly buffer sb25
 {
 	float Bsum[];
 };
 
-layout(std430, set=3, binding=6) readonly buffer sb36
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	nn_dim_t dimCsum;
 };
 
-layout(std430, set=3, binding=7) readonly buffer sb37
+layout(std430, set=2, binding=7) readonly buffer sb27
 {
 	float Csum[];
 };
@@ -161,7 +165,7 @@ void main()
 	float d;
 	float dl_dx;
 	float epsilon = 0.00001;
-	float M       = float(param_bs)*float(xh)*float(xw);
+	float M       = float(state_bs)*float(xh)*float(xw);
 	for(k = 0; k < xd; ++k)
 	{
 		xhat     = getXhat(m, i, j, k);

@@ -12,36 +12,40 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=0, binding=1) readonly buffer sb01
 {
 	nn_dim_t dimY;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	float Y[];
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	nn_dim_t dimYt;
 };
 
-layout(std430, set=1, binding=3) readonly buffer sb13
+layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	float Yt[];
 };
 
-layout(std430, set=1, binding=6) writeonly buffer sb16
+layout(std430, set=0, binding=7) writeonly buffer sb07
 {
-	float loss_loss;
+	float loss;
 };
 
 float getY(uint n, uint i, uint j, uint k)
@@ -93,7 +97,7 @@ void main()
 	uint i;
 	uint j;
 	uint k;
-	for(m = 0; m < param_bs; ++m)
+	for(m = 0; m < state_bs; ++m)
 	{
 		for(i = p; i < yh; i += 8)
 		{
@@ -114,14 +118,14 @@ void main()
 	// compute final loss
 	if(idx == 0)
 	{
-		float loss = 0.0;
+		float sum = 0.0;
 
 		uint n;
 		for(n = 0; n < 64; ++n)
 		{
-			loss += loss_work[n];
+			sum += loss_work[n];
 		}
 
-		loss_loss = loss;
+		loss = sum;
 	}
 }

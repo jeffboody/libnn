@@ -104,21 +104,22 @@ nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
 	ASSERT(_gcw);
 	ASSERT(_gcb);
 
-	nn_arch_t*   arch       = self->base.arch;
-	nn_tensor_t* W          = self->W;
-	nn_tensor_t* B          = self->B;
-	nn_tensor_t* dL_dW      = self->dL_dW;
-	nn_tensor_t* dL_dB      = self->dL_dB;
-	nn_dim_t*    dimW       = nn_tensor_dim(W);
-	uint32_t     nc         = dimW->count;
-	uint32_t     xd         = dimW->depth;
-	float        s          = 1.0f/((float) bs);
-	float        clip_max   = arch->clip_max;
-	float        clip_mu    = arch->clip_momentum;
-	float        norm_w     = 0.0f;
-	float        norm_b     = 0.0f;
-	float        norm_dl_dw = 0.0f;
-	float        norm_dl_db = 0.0f;
+	nn_arch_t*      arch       = self->base.arch;
+	nn_archState_t* state      = &arch->state;
+	nn_tensor_t*    W          = self->W;
+	nn_tensor_t*    B          = self->B;
+	nn_tensor_t*    dL_dW      = self->dL_dW;
+	nn_tensor_t*    dL_dB      = self->dL_dB;
+	nn_dim_t*       dimW       = nn_tensor_dim(W);
+	uint32_t        nc         = dimW->count;
+	uint32_t        xd         = dimW->depth;
+	float           s          = 1.0f/((float) bs);
+	float           clip_max   = state->clip_max;
+	float           clip_mu    = state->clip_momentum;
+	float           norm_w     = 0.0f;
+	float           norm_b     = 0.0f;
+	float           norm_dl_dw = 0.0f;
+	float           norm_dl_db = 0.0f;
 
 	// compute norms
 	float    w;
@@ -193,8 +194,9 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,1,1,nc)
 
-	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
-	nn_arch_t*        arch = base->arch;
+	nn_weightLayer_t* self  = (nn_weightLayer_t*) base;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* W        = self->W;
 	nn_tensor_t* B        = self->B;
@@ -205,11 +207,11 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_dim_t*    dimW     = nn_tensor_dim(W);
 	uint32_t     nc       = dimW->count;
 	uint32_t     xd       = dimW->depth;
-	float        lr       = arch->learning_rate;
-	float        mu       = arch->momentum_decay;
-	float        lambda   = arch->l2_lambda;
-	float        clip_max = arch->clip_max;
-	float        clip_mu  = arch->clip_momentum;
+	float        lr       = state->learning_rate;
+	float        mu       = state->momentum_decay;
+	float        lambda   = state->l2_lambda;
+	float        clip_max = state->clip_max;
+	float        clip_mu  = state->clip_momentum;
 
 	// clear backprop gradients
 	nn_tensor_t* dL_dW = self->dL_dW;
@@ -418,7 +420,8 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	self->norm_dl_dw_ra = 1.0f;
 	self->norm_dl_db_ra = 1.0f;
 
-	self->W = nn_tensor_new(dimW);
+	self->W = nn_tensor_new(arch, dimW,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->W == NULL)
 	{
 		goto fail_W;
@@ -441,7 +444,8 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.width  = 1,
 		.depth  = 1,
 	};
-	self->B = nn_tensor_new(&dimB);
+	self->B = nn_tensor_new(arch, &dimB,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
 	{
 		goto fail_B;
@@ -456,37 +460,43 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.depth  = nc,
 	};
 
-	self->Y = nn_tensor_new(&dimY);
+	self->Y = nn_tensor_new(arch, &dimY,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->VW = nn_tensor_new(dimW);
+	self->VW = nn_tensor_new(arch, dimW,
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VW == NULL)
 	{
 		goto fail_VW;
 	}
 
-	self->VB = nn_tensor_new(&dimB);
+	self->VB = nn_tensor_new(arch, &dimB,
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VB == NULL)
 	{
 		goto fail_VB;
 	}
 
-	self->dL_dW = nn_tensor_new(dimW);
+	self->dL_dW = nn_tensor_new(arch, dimW,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dW == NULL)
 	{
 		goto fail_dL_dW;
 	}
 
-	self->dL_dB = nn_tensor_new(&dimB);
+	self->dL_dB = nn_tensor_new(arch, &dimB,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dB == NULL)
 	{
 		goto fail_dL_dB;
 	}
 
-	self->dL_dX = nn_tensor_new(dimX);
+	self->dL_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;

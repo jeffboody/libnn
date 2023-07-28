@@ -48,6 +48,224 @@ const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 * private                                                  *
 ***********************************************************/
 
+#ifdef NN_USE_COMPUTE
+
+static nn_tensor_t*
+nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
+                           uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_factLayer_t* self = (nn_factLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+	nn_tensor_t*    Y    = self->Y;
+	nn_dim_t*       dimX = nn_tensor_dim(X);
+
+	vkk_computePipeline_t* cp;
+	if(self->fact_fn == nn_factLayer_linear)
+	{
+		cp = arch->cp_fact_forwardPassLinear;
+	}
+	else if(self->fact_fn == nn_factLayer_logistic)
+	{
+		cp = arch->cp_fact_forwardPassLogistic;
+	}
+	else if(self->fact_fn == nn_factLayer_ReLU)
+	{
+		cp = arch->cp_fact_forwardPassReLU;
+	}
+	else if(self->fact_fn == nn_factLayer_PReLU)
+	{
+		cp = arch->cp_fact_forwardPassPReLU;
+	}
+	else if(self->fact_fn == nn_factLayer_tanh)
+	{
+		cp = arch->cp_fact_forwardPassTanh;
+	}
+	else
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	// sb00: dimX
+	// sb01: X
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
+		},
+	};
+
+	// sb10: dimY
+	// sb11: Y
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 2, ua0_array);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	                                 2, ua1_array);
+	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	// reference for backprop
+	self->X = X;
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+                        nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY);
+
+	nn_factLayer_t* self = (nn_factLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+	nn_dim_t*       dimX = nn_tensor_dim(self->X);
+
+	vkk_computePipeline_t* cp;
+	if(self->fact_fn == nn_factLayer_linear)
+	{
+		cp = arch->cp_fact_backpropLinear;
+	}
+	else if(self->fact_fn == nn_factLayer_logistic)
+	{
+		cp = arch->cp_fact_backpropLogistic;
+	}
+	else if(self->fact_fn == nn_factLayer_ReLU)
+	{
+		cp = arch->cp_fact_backpropReLU;
+	}
+	else if(self->fact_fn == nn_factLayer_PReLU)
+	{
+		cp = arch->cp_fact_backpropPReLU;
+	}
+	else if(self->fact_fn == nn_factLayer_tanh)
+	{
+		cp = arch->cp_fact_backpropTanh;
+	}
+	else
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	vkk_uniformAttachment_t ua2_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+		self->us2,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	                                 2, ua2_array);
+	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	// dL_dY replaced by dL_dX
+	return dL_dY;
+}
+
+static int nn_factLayer_newCompute(nn_factLayer_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->base.arch;
+
+	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
+	                               arch->usf0_fact);
+	if(self->us0 == NULL)
+	{
+		return 0;
+	}
+
+	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
+	                               arch->usf1_fact);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
+	                               arch->usf2_fact);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	// success
+	return 1;
+
+	// failure
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	return 0;
+}
+
+static void
+nn_factLayer_deleteCompute(nn_factLayer_t* self)
+{
+	ASSERT(self);
+
+	vkk_uniformSet_delete(&self->us2);
+	vkk_uniformSet_delete(&self->us1);
+	vkk_uniformSet_delete(&self->us0);
+}
+
+#else // NN_USE_COMPUTE not defined
+
 static nn_tensor_t*
 nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
                            uint32_t bs, nn_tensor_t* X)
@@ -141,6 +359,18 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// dL_dY replaced by dL_dX
 	return dL_dY;
 }
+
+static int nn_factLayer_newCompute(nn_factLayer_t* self)
+{
+	return 1;
+}
+
+static void
+nn_factLayer_deleteCompute(nn_factLayer_t* self)
+{
+}
+
+#endif
 
 static nn_dim_t*
 nn_factLayer_dimXFn(nn_layer_t* base)
@@ -369,19 +599,27 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	self->Y = nn_tensor_new(dimX);
+	self->fact_fn  = fact_fn;
+	self->dfact_fn = dfact_fn;
+
+	self->Y = nn_tensor_new(arch, dimX,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->fact_fn  = fact_fn;
-	self->dfact_fn = dfact_fn;
+	if(nn_factLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
+	}
 
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
@@ -498,6 +736,7 @@ void nn_factLayer_delete(nn_factLayer_t** _self)
 	nn_factLayer_t* self = *_self;
 	if(self)
 	{
+		nn_factLayer_deleteCompute(self);
 		nn_tensor_delete(&self->Y);
 		nn_layer_delete((nn_layer_t**) _self);
 	}

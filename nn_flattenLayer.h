@@ -35,8 +35,9 @@ typedef struct nn_flattenLayer_s
 	nn_dim_t dimX; // dim(bs,xh,xw,xd)
 
 	// output
-	// dim  is flattened
-	// data is a reference to X
+	// dim is flattened
+	// data and sb_data are references to X
+	// sb_dim is owned by flattenLayer
 	nn_tensor_t Y; // dim(bs,1,1,xh*xw*xd)
 } nn_flattenLayer_t;
 

@@ -28,6 +28,10 @@
 #include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "nn_layer.h"
 
+#ifdef NN_USE_COMPUTE
+#include "../libvkk/vkk.h"
+#endif
+
 typedef float (*nn_factLayer_fn)(float x);
 
 // activation functions
@@ -66,6 +70,12 @@ typedef struct nn_factLayer_s
 	// activation functions
 	nn_factLayer_fn fact_fn;
 	nn_factLayer_fn dfact_fn;
+
+	#ifdef NN_USE_COMPUTE
+	vkk_uniformSet_t* us0;
+	vkk_uniformSet_t* us1;
+	vkk_uniformSet_t* us2;
+	#endif
 } nn_factLayer_t;
 
 nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,

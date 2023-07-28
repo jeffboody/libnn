@@ -17,42 +17,36 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	float arch_learning_rate;
-	float arch_momentum_decay;
-	float arch_batch_momentum;
-	float arch_l2_lambda;
-	float arch_clip_max;
-	float arch_clip_momentum;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
-};
-
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	nn_dim_t dimW;
 };
 
-layout(std430, set=1, binding=3) readonly buffer sb13
+layout(std430, set=0, binding=5) readonly buffer sb05
 {
 	float W[];
 };
 
-layout(std430, set=1, binding=4) readonly buffer sb14
+layout(std430, set=0, binding=6) readonly buffer sb06
 {
 	nn_dim_t dimB;
 };
 
-layout(std430, set=1, binding=5) readonly buffer sb15
+layout(std430, set=0, binding=7) readonly buffer sb07
 {
 	float B[];
 };
 
-layout(std430, set=3, binding=1) buffer sb31
+layout(std430, set=2, binding=0) buffer sb20
 {
 	float gc_gcw;
 	float gc_gcb;
@@ -60,22 +54,22 @@ layout(std430, set=3, binding=1) buffer sb31
 	float gc_norm_dl_db_ra;
 };
 
-layout(std430, set=3, binding=4) readonly buffer sb34
+layout(std430, set=2, binding=3) readonly buffer sb23
 {
 	nn_dim_t dim_dL_dW;
 };
 
-layout(std430, set=3, binding=5) readonly buffer sb35
+layout(std430, set=2, binding=4) readonly buffer sb24
 {
 	float dL_dW[];
 };
 
-layout(std430, set=3, binding=6) readonly buffer sb36
+layout(std430, set=2, binding=5) readonly buffer sb25
 {
 	nn_dim_t dim_dL_dB;
 };
 
-layout(std430, set=3, binding=7) readonly buffer sb37
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	float dL_dB[];
 };
@@ -128,7 +122,7 @@ void main()
 	uint  fw  = dimW.width;
 	uint  xd  = dimW.depth;
 	uint  idx = 16*p + 4*q + r;
-	float s   = 1.0/(float(param_bs));
+	float s   = 1.0/(float(state_bs));
 
 	// initialize shared memory
 	norm_w_work[idx]     = 0.0;
@@ -162,15 +156,6 @@ void main()
 				norm_dl_dw_work[idx] += dl_dw*dl_dw;
 			}
 		}
-
-		// bias gradient
-		if(param_disable_bias == 0)
-		{
-			b                     = getB(f, 0, 0, 0);
-			dl_db                 = s*get_dL_dB(f, 0, 0, 0);
-			norm_b_work[idx]     += b*b;
-			norm_dl_db_work[idx] += dl_db*dl_db;
-		}
 	}
 
 	// synchronize work
@@ -201,21 +186,21 @@ void main()
 		norm_dl_db = sqrt(norm_dl_db);
 
 		// compute running averages
-		gc_norm_dl_dw_ra = arch_clip_momentum*gc_norm_dl_dw_ra +
-		                   (1.0 - arch_clip_momentum)*norm_dl_dw;
-		gc_norm_dl_db_ra = arch_clip_momentum*gc_norm_dl_db_ra +
-		                   (1.0 - arch_clip_momentum)*norm_dl_db;
+		gc_norm_dl_dw_ra = state_clip_momentum*gc_norm_dl_dw_ra +
+		                   (1.0 - state_clip_momentum)*norm_dl_dw;
+		gc_norm_dl_db_ra = state_clip_momentum*gc_norm_dl_db_ra +
+		                   (1.0 - state_clip_momentum)*norm_dl_db;
 
 		// clamp norm
-		if(arch_clip_max > 0.0)
+		if(state_clip_max > 0.0)
 		{
-			if(gc_norm_dl_dw_ra > arch_clip_max)
+			if(gc_norm_dl_dw_ra > state_clip_max)
 			{
-				gc_norm_dl_dw_ra = arch_clip_max;
+				gc_norm_dl_dw_ra = state_clip_max;
 			}
-			if(gc_norm_dl_db_ra > arch_clip_max)
+			if(gc_norm_dl_db_ra > state_clip_max)
 			{
-				gc_norm_dl_db_ra = arch_clip_max;
+				gc_norm_dl_db_ra = state_clip_max;
 			}
 		}
 

@@ -31,26 +31,27 @@
 #include "../libcc/cc_list.h"
 #include "nn.h"
 
-typedef struct nn_archInfo_s
+#ifdef NN_USE_COMPUTE
+#include "../libvkk/vkk.h"
+#else
+// dummy type for vkk_engine_t
+typedef int vkk_engine_t;
+#endif
+
+typedef struct nn_archState_s
 {
-	// hyperparameters
-	float learning_rate;
-	float momentum_decay;
-	float batch_momentum;
-	float l2_lambda;
-	float clip_max;
-	float clip_momentum;
-} nn_archInfo_t;
+	uint32_t bs;
+	float    learning_rate;
+	float    momentum_decay;
+	float    batch_momentum;
+	float    l2_lambda;
+	float    clip_max;
+	float    clip_momentum;
+} nn_archState_t;
 
 typedef struct nn_arch_s
 {
-	// hyperparameters
-	float learning_rate;
-	float momentum_decay;
-	float batch_momentum;
-	float l2_lambda;
-	float clip_max;
-	float clip_momentum;
+	nn_archState_t state;
 
 	// neural network (references)
 	cc_list_t* layers;
@@ -59,11 +60,105 @@ typedef struct nn_arch_s
 	// random number generators
 	cc_rngUniform_t rng_uniform;
 	cc_rngNormal_t  rng_normal;
+
+	#ifdef NN_USE_COMPUTE
+	vkk_engine_t* engine;
+
+	vkk_compute_t* compute;
+
+	vkk_uniformSetFactory_t* usf0_batchNorm;
+	vkk_uniformSetFactory_t* usf1_batchNorm;
+	vkk_uniformSetFactory_t* usf2_batchNorm;
+	vkk_uniformSetFactory_t* usf3_batchNorm;
+	vkk_uniformSetFactory_t* usf0_conv;
+	vkk_uniformSetFactory_t* usf1_conv;
+	vkk_uniformSetFactory_t* usf2_conv;
+	vkk_uniformSetFactory_t* usf3_conv;
+	vkk_uniformSetFactory_t* usf0_fact;
+	vkk_uniformSetFactory_t* usf1_fact;
+	vkk_uniformSetFactory_t* usf2_fact;
+	vkk_uniformSetFactory_t* usf0_pooling;
+	vkk_uniformSetFactory_t* usf1_pooling;
+	vkk_uniformSetFactory_t* usf2_pooling;
+	vkk_uniformSetFactory_t* usf0_skip;
+	vkk_uniformSetFactory_t* usf1_skip;
+	vkk_uniformSetFactory_t* usf0_weight;
+	vkk_uniformSetFactory_t* usf1_weight;
+	vkk_uniformSetFactory_t* usf2_weight;
+	vkk_uniformSetFactory_t* usf0_loss;
+	vkk_uniformSetFactory_t* usf0_tensor;
+
+	vkk_pipelineLayout_t* pl_batchNorm;
+	vkk_pipelineLayout_t* pl_conv;
+	vkk_pipelineLayout_t* pl_fact;
+	vkk_pipelineLayout_t* pl_pooling;
+	vkk_pipelineLayout_t* pl_skip;
+	vkk_pipelineLayout_t* pl_weight;
+	vkk_pipelineLayout_t* pl_loss;
+	vkk_pipelineLayout_t* pl_tensor;
+
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXmean;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXvar;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXhat;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassY;
+	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dX;
+	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dXhat;
+	vkk_computePipeline_t* cp_batchNorm_backpropSum;
+	vkk_computePipeline_t* cp_conv_forwardPass;
+	vkk_computePipeline_t* cp_conv_forwardPassT;
+	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
+	vkk_computePipeline_t* cp_conv_backprop_dL_dW;
+	vkk_computePipeline_t* cp_conv_backprop_dL_dB;
+	vkk_computePipeline_t* cp_conv_backpropT_dL_dX;
+	vkk_computePipeline_t* cp_conv_backpropT_dL_dW;
+	vkk_computePipeline_t* cp_conv_backpropGradientClipping;
+	vkk_computePipeline_t* cp_conv_backpropUpdateW;
+	vkk_computePipeline_t* cp_conv_backpropUpdateB;
+	vkk_computePipeline_t* cp_fact_forwardPassLinear;
+	vkk_computePipeline_t* cp_fact_forwardPassLogistic;
+	vkk_computePipeline_t* cp_fact_forwardPassReLU;
+	vkk_computePipeline_t* cp_fact_forwardPassPReLU;
+	vkk_computePipeline_t* cp_fact_forwardPassTanh;
+	vkk_computePipeline_t* cp_fact_backpropLinear;
+	vkk_computePipeline_t* cp_fact_backpropLogistic;
+	vkk_computePipeline_t* cp_fact_backpropReLU;
+	vkk_computePipeline_t* cp_fact_backpropPReLU;
+	vkk_computePipeline_t* cp_fact_backpropTanh;
+	vkk_computePipeline_t* cp_pooling_forwardPassAvg;
+	vkk_computePipeline_t* cp_pooling_forwardPassMax;
+	vkk_computePipeline_t* cp_pooling_backprop;
+	vkk_computePipeline_t* cp_skip_forwardPassAdd;
+	vkk_computePipeline_t* cp_skip_forwardPassCat;
+	vkk_computePipeline_t* cp_skip_backpropCat;
+	vkk_computePipeline_t* cp_skip_backpropFork;
+	vkk_computePipeline_t* cp_weight_forwardPass;
+	vkk_computePipeline_t* cp_weight_backpropGradientClipping;
+	vkk_computePipeline_t* cp_weight_backpropUpdateW;
+	vkk_computePipeline_t* cp_weight_backpropUpdateB;
+	vkk_computePipeline_t* cp_weight_backprop_dL_dX;
+	vkk_computePipeline_t* cp_weight_backprop_dL_dW;
+	vkk_computePipeline_t* cp_weight_backprop_dL_dB;
+	vkk_computePipeline_t* cp_loss_dL_dY_mse;
+	vkk_computePipeline_t* cp_loss_dL_dY_mae;
+	vkk_computePipeline_t* cp_loss_dL_dY_bce;
+	vkk_computePipeline_t* cp_loss_mse;
+	vkk_computePipeline_t* cp_loss_mae;
+	vkk_computePipeline_t* cp_loss_bce;
+	vkk_computePipeline_t* cp_tensor_clear;
+	vkk_computePipeline_t* cp_tensor_clearAligned;
+
+	vkk_buffer_t* sb00_state;
+
+	nn_tensor_t* X;
+	nn_tensor_t* Yt;
+	#endif
 } nn_arch_t;
 
-nn_arch_t* nn_arch_new(size_t base_size,
-                       nn_archInfo_t* info);
-nn_arch_t* nn_arch_import(size_t base_size,
+nn_arch_t* nn_arch_new(vkk_engine_t* engine,
+                       size_t base_size,
+                       nn_archState_t* state);
+nn_arch_t* nn_arch_import(vkk_engine_t* engine,
+                          size_t base_size,
                           jsmn_val_t* val);
 int        nn_arch_export(nn_arch_t* self,
                           jsmn_stream_t* stream);

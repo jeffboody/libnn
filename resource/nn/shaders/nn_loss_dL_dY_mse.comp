@@ -12,37 +12,30 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
-};
-
-layout(std430, set=1, binding=0) readonly buffer sb10
-{
 	nn_dim_t dimY;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	float Y[];
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	nn_dim_t dimYt;
 };
 
-layout(std430, set=1, binding=3) readonly buffer sb13
+layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	float Yt[];
 };
 
-layout(std430, set=1, binding=4) readonly buffer sb14
+layout(std430, set=0, binding=5) readonly buffer sb05
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=1, binding=5) writeonly buffer sb15
+layout(std430, set=0, binding=6) writeonly buffer sb06
 {
 	float dL_dY[];
 };

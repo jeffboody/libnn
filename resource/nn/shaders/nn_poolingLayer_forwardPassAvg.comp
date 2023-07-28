@@ -10,38 +10,40 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	nn_dim_t dimX;
-	float    X[];
+	uint param_stride;
 };
 
-layout(std430, set=0, binding=3) buffer sb03
-{
-	nn_dim_t dimY;
-	float    Y[];
-};
-
-layout(std430, set=0, binding=4) buffer sb04
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	nn_dim_t dim_dY_dX;
-	float    dY_dX[];
 };
 
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=0, binding=3) writeonly buffer sb03
 {
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
+	float dY_dX[];
 };
 
-float getX(uint n, uint i, uint j, uint k)
+layout(std430, set=1, binding=0) readonly buffer sb10
 {
-	uint sn = dimX.height*dimX.width*dimX.depth;
-	uint sy = dimX.width*dimX.depth;
-	uint sx = dimX.depth;
-	return X[n*sn + i*sy + j*sx + k];
-}
+	nn_dim_t dimX;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb11
+{
+	float X[];
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=1, binding=3) writeonly buffer sb13
+{
+	float Y[];
+};
 
 void set_dY_dX(uint n, uint i, uint j, uint k, float v)
 {
@@ -49,6 +51,14 @@ void set_dY_dX(uint n, uint i, uint j, uint k, float v)
 	uint sy = dim_dY_dX.width*dim_dY_dX.depth;
 	uint sx = dim_dY_dX.depth;
 	dY_dX[n*sn + i*sy + j*sx + k] = v;
+}
+
+float getX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
 }
 
 void setY(uint n, uint i, uint j, uint k, float v)

@@ -12,21 +12,61 @@ struct nn_dim_t
 	uint depth;
 };
 
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
+};
+
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_bs;
 	uint param_stride;
 	uint param_disable_bias;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=3) readonly buffer sb03
 {
 	float X[];
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	nn_dim_t dim_dL_dY;
+};
+
+layout(std430, set=2, binding=2) readonly buffer sb22
+{
+	float dL_dY[];
+};
+
+layout(std430, set=2, binding=3) readonly buffer sb23
+{
+	nn_dim_t dim_dL_dW;
+};
+
+layout(std430, set=2, binding=4) writeonly buffer sb24
+{
+	float dL_dW[];
+};
+
+layout(std430, set=2, binding=7) readonly buffer sb27
+{
+	nn_dim_t dim_dL_dX;
+};
+
+layout(std430, set=2, binding=8) readonly buffer sb28
+{
+	float dL_dX[];
 };
 
 layout(std430, set=3, binding=0) readonly buffer sb30
@@ -35,36 +75,6 @@ layout(std430, set=3, binding=0) readonly buffer sb30
 	uint idx_fi;
 	uint idx_fj;
 	uint idx_k;
-};
-
-layout(std430, set=3, binding=2) readonly buffer sb32
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=3, binding=3) readonly buffer sb33
-{
-	float dL_dY[];
-};
-
-layout(std430, set=3, binding=4) readonly buffer sb34
-{
-	nn_dim_t dim_dL_dW;
-};
-
-layout(std430, set=3, binding=5) writeonly buffer sb35
-{
-	float dL_dW[];
-};
-
-layout(std430, set=3, binding=8) readonly buffer sb38
-{
-	nn_dim_t dim_dL_dX;
-};
-
-layout(std430, set=3, binding=9) readonly buffer sb39
-{
-	float dL_dX[];
 };
 
 float get_dY_dW(uint n, uint i, uint j, uint k)
@@ -100,7 +110,8 @@ uint umod(uint x, uint y)
 void main()
 {
 	// dispatch required for each f,fi,fj,k
-	// RAW hazzard handled by convLayerBpT_dL_dX
+	// RAW hazzard handled by
+	// nn_convLayer_backpropT_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;
@@ -139,7 +150,7 @@ void main()
 	int  jj;
 	float dl_dy;
 	float dy_dw;
-	for(m = 0; m < param_bs; ++m)
+	for(m = 0; m < state_bs; ++m)
 	{
 		for(i = p; i < yh; i += 8)
 		{

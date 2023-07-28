@@ -18,6 +18,9 @@ OBJECTS = $(SOURCE:.c=.o)
 HFILES  = $(CLASSES:%=%.h)
 OPT     = -O2 -Wall
 CFLAGS  = $(OPT)
+ifeq ($(NN_USE_COMPUTE),1)
+	CFLAGS += -DNN_USE_COMPUTE
+endif
 LDFLAGS = -lm
 AR      = ar
 

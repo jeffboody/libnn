@@ -37,6 +37,239 @@
 * private                                                  *
 ***********************************************************/
 
+#ifdef NN_USE_COMPUTE
+
+static nn_tensor_t*
+nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
+                              uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_poolingLayer_t* self  = (nn_poolingLayer_t*) base;
+	nn_arch_t*         arch  = base->arch;
+	nn_tensor_t*       Y     = self->Y;
+	nn_tensor_t*       dY_dX = self->dY_dX;
+	nn_dim_t*          dimY  = nn_tensor_dim(Y);
+
+	vkk_computePipeline_t* cp;
+	if(self->mode == NN_POOLING_LAYER_MODE_AVERAGE)
+	{
+		cp = arch->cp_pooling_forwardPassAvg;
+	}
+	else if(self->mode == NN_POOLING_LAYER_MODE_MAX)
+	{
+		cp = arch->cp_pooling_forwardPassMax;
+	}
+	else
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	// sb00: state
+	// sb01: param (stride)
+	// sb02: dim_dY_dX
+	// sb03: dY_dX
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb00_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb01_param,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dY_dX->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dY_dX->sb_data,
+		},
+	};
+
+	// sb10: dimX
+	// sb11: X
+	// sb12: dimY
+	// sb13: Y
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 4, ua0_array);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	                                 4, ua1_array);
+	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimY->height, dimY->width,
+	                     1, 8, 8);
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+                           nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,yh,yw,xd)
+
+	nn_poolingLayer_t* self  = (nn_poolingLayer_t*) base;
+	nn_arch_t*         arch  = base->arch;
+	nn_tensor_t*       dL_dX = self->dL_dX;
+	nn_dim_t*          dimX  = nn_tensor_dim(dL_dX);
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	// sb22: dim_dL_dX
+	// sb23: dL_dX
+	vkk_uniformAttachment_t ua2_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+		self->us2,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_pooling_backprop);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	                                 4, ua2_array);
+	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	return dL_dX;
+}
+
+static int
+nn_poolingLayer_newCompute(nn_poolingLayer_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->base.arch;
+
+	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
+	                               arch->usf0_pooling);
+	if(self->us0 == NULL)
+	{
+		return 0;
+	}
+
+	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
+	                               arch->usf1_pooling);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
+	                               arch->usf2_pooling);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	self->sb01_param = vkk_buffer_new(arch->engine,
+	                                  VKK_UPDATE_MODE_STATIC,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(float),
+	                                  &self->stride);
+	if(self->sb01_param == NULL)
+	{
+		goto fail_sb01_param;
+	}
+
+	// success
+	return 1;
+
+	// failure
+	fail_sb01_param:
+		vkk_uniformSet_delete(&self->us2);
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	return 0;
+}
+
+static void
+nn_poolingLayer_deleteCompute(nn_poolingLayer_t* self)
+{
+	ASSERT(self);
+
+	vkk_buffer_delete(&self->sb01_param);
+	vkk_uniformSet_delete(&self->us2);
+	vkk_uniformSet_delete(&self->us1);
+	vkk_uniformSet_delete(&self->us0);
+}
+
+#else // NN_USE_COMPUTE not defined
+
+typedef void (*nn_poolingLayer_fn)(nn_poolingLayer_t* self,
+                                   nn_tensor_t* X,
+                                   uint32_t m, uint32_t i,
+                                   uint32_t j, uint32_t k);
+
 static void
 nn_poolingLayer_max(nn_poolingLayer_t* self,
                     nn_tensor_t* X,
@@ -156,8 +389,8 @@ nn_poolingLayer_avg(nn_poolingLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_poolingLayer_forwardPassMaxFn(nn_layer_t* base, int mode,
-                                 uint32_t bs, nn_tensor_t* X)
+nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
+                              uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -172,47 +405,15 @@ nn_poolingLayer_forwardPassMaxFn(nn_layer_t* base, int mode,
 	uint32_t     yw     = dimY->width;
 	uint32_t     xd     = dimY->depth;
 
-	// clear forward gradients
-	nn_tensor_clear(dY_dX);
-
-	// output and forward gradients
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(m = 0; m < bs; ++m)
+	nn_poolingLayer_fn fn = nn_poolingLayer_avg;
+	if(self->mode == NN_POOLING_LAYER_MODE_MAX)
 	{
-		for(i = 0; i < yh; i += stride)
-		{
-			for(j = 0; j < yw; j += stride)
-			{
-				for(k = 0; k < xd; ++k)
-				{
-					nn_poolingLayer_max(self, X, m, i, j, k);
-				}
-			}
-		}
+		// clear forward gradients
+		nn_tensor_clear(dY_dX);
+
+		fn = nn_poolingLayer_max;
 	}
 
-	return Y;
-}
-
-static nn_tensor_t*
-nn_poolingLayer_forwardPassAvgFn(nn_layer_t* base, int mode,
-                                 uint32_t bs, nn_tensor_t* X)
-{
-	ASSERT(base);
-	ASSERT(X);
-
-	nn_poolingLayer_t* self = (nn_poolingLayer_t*) base;
-
-	nn_tensor_t* Y      = self->Y;
-	uint32_t     stride = self->stride;
-	nn_dim_t*    dimY   = nn_tensor_dim(Y);
-	uint32_t     yh     = dimY->height;
-	uint32_t     yw     = dimY->width;
-	uint32_t     xd     = dimY->depth;
-
 	// output and forward gradients
 	uint32_t m;
 	uint32_t i;
@@ -226,7 +427,7 @@ nn_poolingLayer_forwardPassAvgFn(nn_layer_t* base, int mode,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					nn_poolingLayer_avg(self, X, m, i, j, k);
+					(*fn)(self, X, m, i, j, k);
 				}
 			}
 		}
@@ -283,6 +484,19 @@ nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	return dL_dX;
 }
 
+static int
+nn_poolingLayer_newCompute(nn_poolingLayer_t* self)
+{
+	return 1;
+}
+
+static void
+nn_poolingLayer_deleteCompute(nn_poolingLayer_t* self)
+{
+}
+
+#endif
+
 static nn_dim_t*
 nn_poolingLayer_dimXFn(nn_layer_t* base)
 {
@@ -317,16 +531,11 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	nn_layerInfo_t info =
 	{
 		.arch            = arch,
-		.forward_pass_fn = nn_poolingLayer_forwardPassMaxFn,
+		.forward_pass_fn = nn_poolingLayer_forwardPassFn,
 		.backprop_fn     = nn_poolingLayer_backpropFn,
 		.dimX_fn         = nn_poolingLayer_dimXFn,
 		.dimY_fn         = nn_poolingLayer_dimYFn,
 	};
-
-	if(mode == NN_POOLING_LAYER_MODE_AVERAGE)
-	{
-		info.forward_pass_fn = nn_poolingLayer_forwardPassAvgFn;
-	}
 
 	nn_poolingLayer_t* self;
 	self = (nn_poolingLayer_t*)
@@ -347,28 +556,38 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.depth  = dimX->depth,
 	};
 
-	self->Y = nn_tensor_new(&dimY);
+	self->Y = nn_tensor_new(arch, &dimY,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->dY_dX = nn_tensor_new(dimX);
+	self->dY_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dY_dX == NULL)
 	{
 		goto fail_dY_dX;
 	}
 
-	self->dL_dX = nn_tensor_new(dimX);
+	self->dL_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;
+	}
+
+	if(nn_poolingLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
 	}
 
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dY_dX);
 	fail_dY_dX:
@@ -487,6 +706,7 @@ void nn_poolingLayer_delete(nn_poolingLayer_t** _self)
 	nn_poolingLayer_t* self = *_self;
 	if(self)
 	{
+		nn_poolingLayer_deleteCompute(self);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dY_dX);
 		nn_tensor_delete(&self->Y);

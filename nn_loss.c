@@ -39,6 +39,68 @@ const char* NN_LOSS_STRING_MAE = "mae";
 const char* NN_LOSS_STRING_BCE = "bce";
 
 /***********************************************************
+* private                                                  *
+***********************************************************/
+
+#ifdef NN_USE_COMPUTE
+
+static int nn_loss_newCompute(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->arch;
+
+	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
+	                               arch->usf0_loss);
+	if(self->us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(arch->compute);
+
+	float loss = 0.0f;
+	self->sb07_loss = vkk_buffer_new(arch->engine, um,
+	                                 VKK_BUFFER_USAGE_STORAGE,
+	                                 sizeof(float), &loss);
+	if(self->sb07_loss == NULL)
+	{
+		goto fail_sb07_loss;
+	}
+
+	// success
+	return 1;
+
+	// failure
+	fail_sb07_loss:
+		vkk_uniformSet_delete(&self->us0);
+	return 0;
+}
+
+static void nn_loss_deleteCompute(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	vkk_buffer_delete(&self->sb07_loss);
+	vkk_uniformSet_delete(&self->us0);
+}
+
+#else // NN_USE_COMPUTE not defined
+
+static int nn_loss_newCompute(nn_loss_t* self)
+{
+	return 1;
+}
+
+static void nn_loss_deleteCompute(nn_loss_t* self)
+{
+}
+
+#endif
+
+
+/***********************************************************
 * public - loss functions                                  *
 ***********************************************************/
 
@@ -251,16 +313,24 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	self->arch    = arch;
 	self->loss_fn = loss_fn;
 
-	self->dL_dY = nn_tensor_new(dimY);
+	self->dL_dY = nn_tensor_new(arch, dimY,
+	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dY == NULL)
 	{
 		goto fail_dL_dY;
+	}
+
+	if(nn_loss_newCompute(self) == 0)
+	{
+		goto fail_compute;
 	}
 
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->dL_dY);
 	fail_dL_dY:
 		FREE(self);
 	return NULL;
@@ -362,11 +432,124 @@ void nn_loss_delete(nn_loss_t** _self)
 	nn_loss_t* self = *_self;
 	if(self)
 	{
+		nn_loss_deleteCompute(self);
 		nn_tensor_delete(&self->dL_dY);
 		FREE(self);
 		*_self = self;
 	}
 }
+
+#ifdef NN_USE_COMPUTE
+
+nn_tensor_t*
+nn_loss_loss(nn_loss_t* self, uint32_t bs,
+             nn_tensor_t* Y, nn_tensor_t* Yt)
+{
+	ASSERT(self);
+	ASSERT(Y);
+	ASSERT(Yt);
+
+	nn_arch_t*   arch  = self->arch;
+	nn_tensor_t* dL_dY = self->dL_dY;
+	nn_dim_t*    dimY  = nn_tensor_dim(Y);
+
+	vkk_computePipeline_t* cp;
+	vkk_computePipeline_t* cp_dL_dY;
+	if(self->loss_fn == nn_loss_mse)
+	{
+		cp       = arch->cp_loss_mse;
+		cp_dL_dY = arch->cp_loss_dL_dY_mse;
+	}
+	else if(self->loss_fn == nn_loss_mae)
+	{
+		cp       = arch->cp_loss_mae;
+		cp_dL_dY = arch->cp_loss_dL_dY_mae;
+	}
+	else if(self->loss_fn == nn_loss_bce)
+	{
+		cp       = arch->cp_loss_bce;
+		cp_dL_dY = arch->cp_loss_dL_dY_bce;
+	}
+	else
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	// sb00: state
+	// sb01: dimY
+	// sb02: Y
+	// sb03: dimYt
+	// sb04: Yt
+	// sb05: dim_dL_dY
+	// sb06: dL_dY
+	// sb07: loss
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb00_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Yt->sb_dim,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Yt->sb_data,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb07_loss,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute, cp_dL_dY);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 8, ua0_array);
+	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimY->height, dimY->width,
+	                     1, 8, 8);
+	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+	                     1, 1, 1, 8, 8, 1);
+
+	// loss is read by nn_arch_endCompute
+
+	return dL_dY;
+}
+
+#else // NN_USE_COMPUTE not defined
 
 nn_tensor_t*
 nn_loss_loss(nn_loss_t* self, uint32_t bs,
@@ -379,6 +562,8 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	nn_loss_fn loss_fn = self->loss_fn;
 	return (*loss_fn)(self, bs, Y, Yt);
 }
+
+#endif
 
 nn_dim_t* nn_loss_dimY(nn_loss_t* self)
 {

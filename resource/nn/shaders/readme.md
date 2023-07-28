@@ -4,133 +4,164 @@ Neural Network Compute Shader Notes
 Batch Normalization Layer
 -------------------------
 
-Global Uniforms
-
-* sb00: arch
-* sb01: param
-
 Shared Uniforms
 
-* sb10: idx
-* sb11: dimXhat
-* sb12: Xhat
-* sb13: dimG
-* sb14: G
-* sb15: dimB
-* sb16: B
-* sb17: dimXvar_mb
-* sb18: Xvar_mb
+* sb00: state
+* sb01: param
+* sb02: dimXhat
+* sb03: Xhat
+* sb04: dimG
+* sb05: G
+* sb06: dimB
+* sb07: B
+* sb08: dimXvar_mb
+* sb09: Xvar_mb
 
 Forward Pass Uniforms
 
-* sb20:  dimX
-* sb21:  X
-* sb22:  dimY
-* sb23:  Y
-* sb24:  dimXmean
-* sb25:  Xmean
-* sb26:  dimXvar
-* sb27:  Xvar
-* sb28:  dimXmean_mb
-* sb29:  Xmean_mb
-* sb210: dimXmean_ra
-* sb211: Xmean_ra
-* sb212: dimXvar_ra
-* sb213: Xvar_ra
+* sb10:  dimX
+* sb11:  X
+* sb12:  dimY
+* sb13:  Y
+* sb14:  dimXmean
+* sb15:  Xmean
+* sb16:  dimXvar
+* sb17:  Xvar
+* sb18:  dimXmean_mb
+* sb19:  Xmean_mb
+* sb110: dimXmean_ra
+* sb111: Xmean_ra
+* sb112: dimXvar_ra
+* sb113: Xvar_ra
 
 Backprop Uniforms
 
-* sb30: dim_dL_dXhat
-* sb31: dL_dXhat
-* sb32: dim_dL_dY
-* sb33: dL_dY
-* sb34: dimBsum
-* sb35: Bsum
-* sb36: dimCsum
-* sb37: Csum
+* sb20: dim_dL_dXhat
+* sb21: dL_dXhat
+* sb22: dim_dL_dY
+* sb23: dL_dY
+* sb24: dimBsum
+* sb25: Bsum
+* sb26: dimCsum
+* sb27: Csum
+
+Dispatch Uniforms
+
+* sb30: idx (k)
+
+Forward Pass Dispatch Order
+
+* nn_batchNormLayer_forwardPassXmean (training, for each k)
+* nn_batchNormLayer_forwardPassXvar  (training, for each k)
+* nn_batchNormLayer_forwardPassXhat
+* nn_batchNormLayer_forwardPassY
 
 Backprop Dispatch Order
 
 * nn_batchNormLayer_backprop_dL_dXhat
-* nn_batchNormLayer_backpropSum
+* nn_batchNormLayer_backpropSum (for each k)
 * nn_batchNormLayer_backprop_dL_dX
 
 Convolution Layer
 -----------------
 
-Global Uniforms
-
-* sb00: arch
-* sb01: param
-
 Shared Uniforms
 
-* sb10: dimX
-* sb11: X
-* sb12: dimW
-* sb13: W
-* sb14: dimB
-* sb15: B
+* sb00: state
+* sb01: param
+* sb02: dimX
+* sb03: X
+* sb04: dimW
+* sb05: W
+* sb06: dimB
+* sb07: B
 
 Forward Pass Uniforms
 
-* sb20: dimY
-* sb21: Y
+* sb10: dimY
+* sb11: Y
 
 Backprop Uniforms
 
-* sb30:  idx
-* sb31:  gc
-* sb32:  dim_dL_dY
-* sb33:  dL_dY
-* sb34:  dim_dL_dW
-* sb35:  dL_dW
-* sb36:  dim_dL_dB
-* sb37:  dL_dB
-* sb38:  dim_dL_dX
-* sb39:  dL_dX
-* sb310: dimVW
-* sb311: VW
-* sb312: dimVB
-* sb313: VB
+* sb20:  gc
+* sb21:  dim_dL_dY
+* sb22:  dL_dY
+* sb23:  dim_dL_dW
+* sb24:  dL_dW
+* sb25:  dim_dL_dB
+* sb26:  dL_dB
+* sb27:  dim_dL_dX
+* sb28:  dL_dX
+* sb29:  dimVW
+* sb210: VW
+* sb211: dimVB
+* sb212: VB
+
+Dispatch Uniforms
+
+* sb30: idx (f,fi,fj,k)
 
 Backprop Dispatch Order
 
 * nn_tensor_clear(hazzard=NONE, dL_dX)
-* nn_convLayer_backprop_dL_dX
-* nn_convLayer_backprop_dL_dW
-* nn_convLayer_backprop_dL_dB
-* nn_convLayer_backpropGc
-* nn_convLayer_backpropUpW
-* nn_convLayer_backpropUpB
+* nn_convLayer_backprop_dL_dX (for each fi,fj)
+* nn_convLayer_backprop_dL_dW (for each f,fi,fj,k)
+* nn_convLayer_backprop_dL_dB (for each f)
+* nn_convLayer_backpropGradientClipping
+* nn_convLayer_backpropUpdateW
+* nn_convLayer_backpropUpdateB
 
 Backprop Dispatch Order (Transpose)
 
 * nn_tensor_clear(hazzard=NONE, dL_dX)
-* nn_convLayer_backpropT_dL_dX
-* nn_convLayer_backpropT_dL_dW
-* nn_convLayer_backprop_dL_dB
-* nn_convLayer_backpropGc
-* nn_convLayer_backpropUpW
-* nn_convLayer_backpropUpB
+* nn_convLayer_backpropT_dL_dX (for each fi,fj)
+* nn_convLayer_backpropT_dL_dW (for each f,fi,fj,k)
+* nn_convLayer_backprop_dL_dB  (for each f)
+* nn_convLayer_backpropGradientClipping
+* nn_convLayer_backpropUpdateW
+* nn_convLayer_backpropUpdateB
 
 Fact Layer
 ----------
 
 Shared Uniforms
 
-* sb10: dimX
-* sb11: X
+* sb00: dimX
+* sb01: X
 
 Forward Pass Uniforms
 
-* sb20: dimY
-* sb21: Y
+* sb10: dimY
+* sb11: Y
 
 Backprop Uniforms
 
-* sb30: dim_dL_dY
-* sb31: dL_dY
+* sb20: dim_dL_dY
+* sb21: dL_dY
+
+Pooling Layer
+-------------
+
+Shared Uniforms
+
+* sb00: state
+* sb01: param (stride)
+* sb02: dim_dY_dX
+* sb03: dY_dX
+
+Forward Pass Uniforms
+
+* sb10: dimX
+* sb11: X
+* sb12: dimY
+* sb13: Y
+
+Backprop Uniforms
+
+* sb20: dim_dL_dY
+* sb21: dL_dY
+* sb22: dim_dL_dX
+* sb23: dL_dX
 
 Skip Layer
 ----------
@@ -158,59 +189,60 @@ Backprop Uniforms
 Weight Layer
 ------------
 
-Global Uniforms
-
-* sb00: arch
-* sb01: param
-
 Shared Uniforms
 
-* sb10: dimX
-* sb11: X
-* sb12: dimW
-* sb13: W
-* sb14: dimB
-* sb15: B
+* sb00: state
+* sb01: param
+* sb02: dimX
+* sb03: X
+* sb04: dimW
+* sb05: W
+* sb06: dimB
+* sb07: B
 
 Forward Pass Uniforms
 
-* sb20: dimY
-* sb21: Y
+* sb10: dimY
+* sb11: Y
 
 Backprop Uniforms
 
-* sb30:  idx
-* sb31:  gc
-* sb32:  dim_dL_dY
-* sb33:  dL_dY
-* sb34:  dim_dL_dW
-* sb35:  dL_dW
-* sb36:  dim_dL_dB
-* sb37:  dL_dB
-* sb38:  dim_dL_dX
-* sb39:  dL_dX
-* sb310: dimVW
-* sb311: VW
-* sb312: dimVB
-* sb313: VB
+* sb20:  gc
+* sb21:  dim_dL_dY
+* sb22:  dL_dY
+* sb23:  dim_dL_dW
+* sb24:  dL_dW
+* sb25:  dim_dL_dB
+* sb26:  dL_dB
+* sb27:  dim_dL_dX
+* sb28:  dL_dX
+* sb29:  dimVW
+* sb210: VW
+* sb211: dimVB
+* sb212: VB
+
+Backprop Dispatch Order
+
+* nn_weightLayer_backprop_dL_dX
+* nn_weightLayer_backprop_dL_dW
+* nn_weightLayer_backprop_dL_dB
+* nn_weightLayer_backpropGradientClipping
+* nn_weightLayer_backpropUpdateW
+* nn_weightLayer_backpropUpdateB
 
 Loss
 ----
 
-Global Uniforms
-
-* sb00: arch
-* sb01: param
-
 Uniforms
 
-* sb10: dimY
-* sb11: Y
-* sb12: dimYt
-* sb13: Yt
-* sb14: dim_dL_dY
-* sb15: dL_dY
-* sb16: loss_loss
+* sb00: state
+* sb01: dimY
+* sb02: Y
+* sb03: dimYt
+* sb04: Yt
+* sb05: dim_dL_dY
+* sb06: dL_dY
+* sb07: loss
 
 Backprop Dispatch Order
 

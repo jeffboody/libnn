@@ -12,32 +12,26 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
-	float arch_learning_rate;
-	float arch_momentum_decay;
-	float arch_batch_momentum;
-	float arch_l2_lambda;
-	float arch_clip_max;
-	float arch_clip_momentum;
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max;
+	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_bs;
-	uint param_stride;
-	uint param_disable_bias;
-};
-
-layout(std430, set=1, binding=4) readonly buffer sb14
+layout(std430, set=0, binding=6) readonly buffer sb06
 {
 	nn_dim_t dimB;
 };
 
-layout(std430, set=1, binding=5) buffer sb15
+layout(std430, set=0, binding=7) buffer sb07
 {
 	float B[];
 };
 
-layout(std430, set=3, binding=1) readonly buffer sb31
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	float gc_gcw;
 	float gc_gcb;
@@ -45,22 +39,22 @@ layout(std430, set=3, binding=1) readonly buffer sb31
 	float gc_norm_dl_db_ra;
 };
 
-layout(std430, set=3, binding=6) readonly buffer sb36
+layout(std430, set=2, binding=5) readonly buffer sb25
 {
 	nn_dim_t dim_dL_dB;
 };
 
-layout(std430, set=3, binding=7) readonly buffer sb37
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	float dL_dB[];
 };
 
-layout(std430, set=3, binding=12) readonly buffer sb312
+layout(std430, set=2, binding=11) readonly buffer sb211
 {
 	nn_dim_t dimVB;
 };
 
-layout(std430, set=3, binding=13) buffer sb313
+layout(std430, set=2, binding=12) buffer sb212
 {
 	float VB[];
 };
@@ -107,13 +101,14 @@ void setVB(uint n, uint i, uint j, uint k, float v)
 
 void main()
 {
-	// RAW hazzard handled by weightLayerBpUpW
+	// RAW hazzard handled by
+	// nn_weightLayer_backpropUpdateW
 	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
 	uint  nc = dimB.count;
 	uint  n  = gl_GlobalInvocationID.x;
-	float lr = arch_learning_rate;
-	float mu = arch_momentum_decay;
-	float s  = 1.0/(float(param_bs));
+	float lr = state_learning_rate;
+	float mu = state_momentum_decay;
+	float s  = 1.0/(float(state_bs));
 
 	if(n >= nc)
 	{

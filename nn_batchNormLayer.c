@@ -45,8 +45,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
-	nn_arch_t*           arch = base->arch;
+	nn_batchNormLayer_t* self  = (nn_batchNormLayer_t*) base;
+	nn_arch_t*           arch  = base->arch;
+	nn_archState_t*      state = &arch->state;
 
 	nn_tensor_t* G        = self->G;
 	nn_tensor_t* B        = self->B;
@@ -79,7 +80,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 		// update running mean
 		float xmean_ra;
 		float xmean_mb;
-		float momentum = arch->batch_momentum;
+		float momentum = state->batch_momentum;
 		float M = (float) (bs*xh*xw);
 		for(k = 0; k < xd; ++k)
 		{
@@ -232,8 +233,9 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
-	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
-	nn_arch_t*           arch = base->arch;
+	nn_batchNormLayer_t* self  = (nn_batchNormLayer_t*) base;
+	nn_arch_t*           arch  = base->arch;
+	nn_archState_t*      state = &arch->state;
 
 	nn_tensor_t* G        = self->G;
 	nn_tensor_t* B        = self->B;
@@ -241,7 +243,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_tensor_t* Xvar_mb  = self->Xvar_mb;
 	nn_tensor_t* dL_dXhat = self->dL_dXhat;
 	nn_dim_t*    dim      = nn_tensor_dim(dL_dY);
-	float        lr       = arch->learning_rate;
+	float        lr       = state->learning_rate;
 	uint32_t     xh       = dim->height;
 	uint32_t     xw       = dim->width;
 	uint32_t     xd       = dim->depth;
@@ -376,7 +378,8 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		return NULL;
 	}
 
-	self->G = nn_tensor_new(&dim_111d);
+	self->G = nn_tensor_new(arch, &dim_111d,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->G == NULL)
 	{
 		goto fail_G;
@@ -389,49 +392,57 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		nn_tensor_set(self->G, 0, 0, 0, k, 1.0f);
 	}
 
-	self->B = nn_tensor_new(&dim_111d);
+	self->B = nn_tensor_new(arch, &dim_111d,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
 	{
 		goto fail_B;
 	}
 
-	self->Xhat = nn_tensor_new(dimX);
+	self->Xhat = nn_tensor_new(arch, dimX,
+	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Xhat == NULL)
 	{
 		goto fail_Xhat;
 	}
 
-	self->Y = nn_tensor_new(dimX);
+	self->Y = nn_tensor_new(arch, dimX,
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
 		goto fail_Y;
 	}
 
-	self->Xmean_mb = nn_tensor_new(&dim_111d);
+	self->Xmean_mb = nn_tensor_new(arch, &dim_111d,
+	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_mb == NULL)
 	{
 		goto fail_Xmean_mb;
 	}
 
-	self->Xvar_mb = nn_tensor_new(&dim_111d);
+	self->Xvar_mb = nn_tensor_new(arch, &dim_111d,
+	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_mb == NULL)
 	{
 		goto fail_Xvar_mb;
 	}
 
-	self->Xmean_ra = nn_tensor_new(&dim_111d);
+	self->Xmean_ra = nn_tensor_new(arch, &dim_111d,
+	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_ra == NULL)
 	{
 		goto fail_Xmean_ra;
 	}
 
-	self->Xvar_ra = nn_tensor_new(&dim_111d);
+	self->Xvar_ra = nn_tensor_new(arch, &dim_111d,
+	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_ra == NULL)
 	{
 		goto fail_Xvar_ra;
 	}
 
-	self->dL_dXhat = nn_tensor_new(dimX);
+	self->dL_dXhat = nn_tensor_new(arch, dimX,
+	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dXhat == NULL)
 	{
 		goto fail_dL_dXhat;

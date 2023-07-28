@@ -54,7 +54,11 @@ nn_flattenLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 	Y->data = X->data;
 
-	return &self->Y;
+	#ifdef NN_USE_COMPUTE
+	Y->sb_data = X->sb_data;
+	#endif
+
+	return Y;
 }
 
 static nn_tensor_t*
@@ -87,6 +91,57 @@ nn_flattenLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(&self->Y);
 }
 
+#ifdef NN_USE_COMPUTE
+
+static int
+nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
+                           nn_dim_t* dimY)
+{
+	ASSERT(self);
+
+	nn_arch_t*   arch = self->base.arch;
+	nn_tensor_t* Y    = &self->Y;
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(arch->compute);
+
+	Y->sb_dim = vkk_buffer_new(arch->engine, um,
+	                           VKK_BUFFER_USAGE_STORAGE,
+	                           sizeof(nn_dim_t),
+	                           dimY);
+	if(Y->sb_dim == NULL)
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+static void
+nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
+{
+	ASSERT(self);
+
+	nn_tensor_t* Y = &self->Y;
+	vkk_buffer_delete(&Y->sb_dim);
+}
+
+#else // NN_USE_COMPUTE not defined
+
+static int
+nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
+                           nn_dim_t* dimY)
+{
+	return 1;
+}
+
+static void
+nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
+{
+}
+
+#endif
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -116,14 +171,27 @@ nn_flattenLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 
 	nn_dim_copy(dimX, &self->dimX);
 
-	nn_dim_t* dimY = nn_tensor_dim(&self->Y);
-	dimY->count    = dimX->count;
-	dimY->height   = 1;
-	dimY->width    = 1;
-	dimY->depth    = dimX->height*dimX->width*dimX->depth;
+	nn_tensor_t* Y;
+	nn_dim_t*    dimY;
+	Y            = &self->Y;
+	dimY         = nn_tensor_dim(Y);
+	dimY->count  = dimX->count;
+	dimY->height = 1;
+	dimY->width  = 1;
+	dimY->depth  = dimX->height*dimX->width*dimX->depth;
+
+	if(nn_flattenLayer_newCompute(self, dimY) == 0)
+	{
+		goto fail_compute;
+	}
 
 	// success
 	return self;
+
+	// failure
+	fail_compute:
+		nn_layer_delete((nn_layer_t**) &self);
+	return NULL;
 }
 
 nn_flattenLayer_t*
@@ -197,6 +265,7 @@ void nn_flattenLayer_delete(nn_flattenLayer_t** _self)
 	nn_flattenLayer_t* self = *_self;
 	if(self)
 	{
+		nn_flattenLayer_deleteCompute(self);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
 }

@@ -35,13 +35,1115 @@
 #define NN_ARCH_THREADS 4
 
 /***********************************************************
+* private                                                  *
+***********************************************************/
+
+#ifdef NN_USE_COMPUTE
+
+static void nn_arch_deleteCompute(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	nn_tensor_delete(&self->Yt);
+	nn_tensor_delete(&self->X);
+	vkk_buffer_delete(&self->sb00_state);
+	vkk_computePipeline_delete(&self->cp_tensor_clearAligned);
+	vkk_computePipeline_delete(&self->cp_tensor_clear);
+	vkk_computePipeline_delete(&self->cp_loss_bce);
+	vkk_computePipeline_delete(&self->cp_loss_mae);
+	vkk_computePipeline_delete(&self->cp_loss_mse);
+	vkk_computePipeline_delete(&self->cp_loss_dL_dY_bce);
+	vkk_computePipeline_delete(&self->cp_loss_dL_dY_mae);
+	vkk_computePipeline_delete(&self->cp_loss_dL_dY_mse);
+	vkk_computePipeline_delete(&self->cp_weight_backprop_dL_dB);
+	vkk_computePipeline_delete(&self->cp_weight_backprop_dL_dW);
+	vkk_computePipeline_delete(&self->cp_weight_backprop_dL_dX);
+	vkk_computePipeline_delete(&self->cp_weight_backpropUpdateB);
+	vkk_computePipeline_delete(&self->cp_weight_backpropUpdateW);
+	vkk_computePipeline_delete(&self->cp_weight_backpropGradientClipping);
+	vkk_computePipeline_delete(&self->cp_weight_forwardPass);
+	vkk_computePipeline_delete(&self->cp_skip_backpropFork);
+	vkk_computePipeline_delete(&self->cp_skip_backpropCat);
+	vkk_computePipeline_delete(&self->cp_skip_forwardPassCat);
+	vkk_computePipeline_delete(&self->cp_skip_forwardPassAdd);
+	vkk_computePipeline_delete(&self->cp_pooling_backprop);
+	vkk_computePipeline_delete(&self->cp_pooling_forwardPassMax);
+	vkk_computePipeline_delete(&self->cp_pooling_forwardPassAvg);
+	vkk_computePipeline_delete(&self->cp_fact_backpropTanh);
+	vkk_computePipeline_delete(&self->cp_fact_backpropPReLU);
+	vkk_computePipeline_delete(&self->cp_fact_backpropReLU);
+	vkk_computePipeline_delete(&self->cp_fact_backpropLogistic);
+	vkk_computePipeline_delete(&self->cp_fact_backpropLinear);
+	vkk_computePipeline_delete(&self->cp_fact_forwardPassTanh);
+	vkk_computePipeline_delete(&self->cp_fact_forwardPassPReLU);
+	vkk_computePipeline_delete(&self->cp_fact_forwardPassReLU);
+	vkk_computePipeline_delete(&self->cp_fact_forwardPassLogistic);
+	vkk_computePipeline_delete(&self->cp_fact_forwardPassLinear);
+	vkk_computePipeline_delete(&self->cp_conv_backpropUpdateB);
+	vkk_computePipeline_delete(&self->cp_conv_backpropUpdateW);
+	vkk_computePipeline_delete(&self->cp_conv_backpropGradientClipping);
+	vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW);
+	vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dX);
+	vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dB);
+	vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW);
+	vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dX);
+	vkk_computePipeline_delete(&self->cp_conv_forwardPassT);
+	vkk_computePipeline_delete(&self->cp_conv_forwardPass);
+	vkk_computePipeline_delete(&self->cp_batchNorm_backpropSum);
+	vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dXhat);
+	vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dX);
+	vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassY);
+	vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXhat);
+	vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvar);
+	vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmean);
+	vkk_pipelineLayout_delete(&self->pl_tensor);
+	vkk_pipelineLayout_delete(&self->pl_loss);
+	vkk_pipelineLayout_delete(&self->pl_weight);
+	vkk_pipelineLayout_delete(&self->pl_skip);
+	vkk_pipelineLayout_delete(&self->pl_pooling);
+	vkk_pipelineLayout_delete(&self->pl_fact);
+	vkk_pipelineLayout_delete(&self->pl_conv);
+	vkk_pipelineLayout_delete(&self->pl_batchNorm);
+	vkk_uniformSetFactory_delete(&self->usf0_tensor);
+	vkk_uniformSetFactory_delete(&self->usf0_loss);
+	vkk_uniformSetFactory_delete(&self->usf2_weight);
+	vkk_uniformSetFactory_delete(&self->usf1_weight);
+	vkk_uniformSetFactory_delete(&self->usf0_weight);
+	vkk_uniformSetFactory_delete(&self->usf1_skip);
+	vkk_uniformSetFactory_delete(&self->usf0_skip);
+	vkk_uniformSetFactory_delete(&self->usf2_pooling);
+	vkk_uniformSetFactory_delete(&self->usf1_pooling);
+	vkk_uniformSetFactory_delete(&self->usf0_pooling);
+	vkk_uniformSetFactory_delete(&self->usf2_fact);
+	vkk_uniformSetFactory_delete(&self->usf1_fact);
+	vkk_uniformSetFactory_delete(&self->usf0_fact);
+	vkk_uniformSetFactory_delete(&self->usf3_conv);
+	vkk_uniformSetFactory_delete(&self->usf2_conv);
+	vkk_uniformSetFactory_delete(&self->usf1_conv);
+	vkk_uniformSetFactory_delete(&self->usf0_conv);
+	vkk_uniformSetFactory_delete(&self->usf3_batchNorm);
+	vkk_uniformSetFactory_delete(&self->usf2_batchNorm);
+	vkk_uniformSetFactory_delete(&self->usf1_batchNorm);
+	vkk_uniformSetFactory_delete(&self->usf0_batchNorm);
+	vkk_compute_delete(&self->compute);
+}
+
+static void
+nn_arch_initUbArray(vkk_uniformBinding_t* ub_array,
+                    uint32_t count)
+{
+	ASSERT(ub_array);
+
+	uint32_t i;
+	for(i = 0; i < count; ++i)
+	{
+		ub_array[i].binding = i;
+		ub_array[i].type    = VKK_UNIFORM_TYPE_STORAGE_REF;
+		ub_array[i].stage   = VKK_STAGE_COMPUTE;
+	}
+}
+
+static int
+nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
+{
+	ASSERT(self);
+	ASSERT(engine);
+
+	// call nn_arch_deleteCompute to handle errors
+
+	self->compute = vkk_compute_new(engine);
+	if(self->compute == NULL)
+	{
+		return 0;
+	}
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(self->compute);
+
+	// all ub_arrays will contain storage buffer references
+	// but each usf may have a different count
+	// see readme.md for more details
+	vkk_uniformBinding_t ub_array[20] = { 0 };
+	nn_arch_initUbArray(ub_array, 20);
+
+	// sb00: state
+	// ...
+	// sb09: Xvar_mb
+	self->usf0_batchNorm = vkk_uniformSetFactory_new(engine, um,
+	                                                 10, ub_array);
+
+	// sb10:  dimX
+	// ...
+	// sb113: Xvar_ra
+	self->usf1_batchNorm = vkk_uniformSetFactory_new(engine, um,
+	                                                 14, ub_array);
+
+	// sb20: dim_dL_dXhat
+	// ...
+	// sb27: Csum
+	self->usf2_batchNorm = vkk_uniformSetFactory_new(engine, um,
+	                                                 8, ub_array);
+
+	// sb30: idx
+	self->usf3_batchNorm = vkk_uniformSetFactory_new(engine, um,
+	                                                 1, ub_array);
+
+	// sb00: state
+	// ...
+	// sb07: B
+	self->usf0_conv = vkk_uniformSetFactory_new(engine, um,
+	                                            8, ub_array);
+
+	// sb10: dimY
+	// sb11: Y
+	self->usf1_conv = vkk_uniformSetFactory_new(engine, um,
+	                                            2, ub_array);
+
+	// sb20:  gc
+	// sb21:  dim_dL_dY
+	// sb22:  dL_dY
+	// sb23:  dim_dL_dW
+	// sb24:  dL_dW
+	// sb25:  dim_dL_dB
+	// sb26:  dL_dB
+	// sb27:  dim_dL_dX
+	// sb28:  dL_dX
+	// sb29:  dimVW
+	// sb210: VW
+	// sb211: dimVB
+	// sb212: VB
+	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
+	                                            13, ub_array);
+
+	// sb30:  idx
+	self->usf3_conv = vkk_uniformSetFactory_new(engine, um,
+	                                            1, ub_array);
+
+	// sb00: dimX
+	// sb01: X
+	self->usf0_fact = vkk_uniformSetFactory_new(engine, um,
+	                                            2, ub_array);
+
+	// sb10: dimY
+	// sb11: Y
+	self->usf1_fact = vkk_uniformSetFactory_new(engine, um,
+	                                            2, ub_array);
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	self->usf2_fact = vkk_uniformSetFactory_new(engine, um,
+	                                            2, ub_array);
+
+	// sb00: state
+	// ...
+	// sb03: dY_dX
+	self->usf0_pooling = vkk_uniformSetFactory_new(engine, um,
+	                                               4, ub_array);
+
+	// sb10: dimX
+	// ...
+	// sb13: Y
+	self->usf1_pooling = vkk_uniformSetFactory_new(engine, um,
+	                                               4, ub_array);
+
+	// sb20: dim_dL_dY
+	// ...
+	// sb23: dL_dX
+	self->usf2_pooling = vkk_uniformSetFactory_new(engine, um,
+	                                               4, ub_array);
+
+	// sb00: dimX/dimX1
+	// ...
+	// sb05: X2
+	self->usf0_skip = vkk_uniformSetFactory_new(engine, um,
+	                                            6, ub_array);
+
+	// sb10: dim_dL_dY
+	// ...
+	// sb17: dL_dY2
+	self->usf1_skip = vkk_uniformSetFactory_new(engine, um,
+	                                            8, ub_array);
+
+	// sb00: state
+	// ...
+	// sb07: B
+	self->usf0_weight = vkk_uniformSetFactory_new(engine, um,
+	                                              8, ub_array);
+
+	// sb10: dimY
+	// sb11: Y
+	self->usf1_weight = vkk_uniformSetFactory_new(engine, um,
+	                                              2, ub_array);
+
+	// sb20:  gc
+	// ...
+	// sb212: VB
+	self->usf2_weight = vkk_uniformSetFactory_new(engine, um,
+	                                              13, ub_array);
+
+	// sb00: state
+	// sb01: dimY
+	// sb02: Y
+	// sb03: dimYt
+	// sb04: Yt
+	// sb05: dim_dL_dY
+	// sb06: dL_dY
+	// sb07: loss
+	self->usf0_loss = vkk_uniformSetFactory_new(engine, um,
+	                                            8, ub_array);
+
+	// sb00: dimX
+	// sb01: X
+	self->usf0_tensor = vkk_uniformSetFactory_new(engine, um,
+	                                              2, ub_array);
+
+	if((self->usf0_batchNorm == NULL) ||
+	   (self->usf1_batchNorm == NULL) ||
+	   (self->usf2_batchNorm == NULL) ||
+	   (self->usf3_batchNorm == NULL) ||
+	   (self->usf0_conv      == NULL) ||
+	   (self->usf1_conv      == NULL) ||
+	   (self->usf2_conv      == NULL) ||
+	   (self->usf3_conv      == NULL) ||
+	   (self->usf0_fact      == NULL) ||
+	   (self->usf1_fact      == NULL) ||
+	   (self->usf2_fact      == NULL) ||
+	   (self->usf0_pooling   == NULL) ||
+	   (self->usf1_pooling   == NULL) ||
+	   (self->usf2_pooling   == NULL) ||
+	   (self->usf0_skip      == NULL) ||
+	   (self->usf1_skip      == NULL) ||
+	   (self->usf0_weight    == NULL) ||
+	   (self->usf1_weight    == NULL) ||
+	   (self->usf2_weight    == NULL) ||
+	   (self->usf0_loss      == NULL) ||
+	   (self->usf0_tensor    == NULL))
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
+	vkk_uniformSetFactory_t* usf_array_batchNorm[] =
+	{
+		self->usf0_batchNorm,
+		self->usf1_batchNorm,
+		self->usf2_batchNorm,
+		self->usf3_batchNorm,
+	};
+	self->pl_batchNorm = vkk_pipelineLayout_new(engine, 4,
+	                                            usf_array_batchNorm);
+
+	vkk_uniformSetFactory_t* usf_array_conv[] =
+	{
+		self->usf0_conv,
+		self->usf1_conv,
+		self->usf2_conv,
+		self->usf3_conv,
+	};
+	self->pl_conv = vkk_pipelineLayout_new(engine, 4,
+	                                       usf_array_conv);
+
+	vkk_uniformSetFactory_t* usf_array_fact[] =
+	{
+		self->usf0_fact,
+		self->usf1_fact,
+		self->usf2_fact,
+	};
+	self->pl_fact = vkk_pipelineLayout_new(engine, 3,
+	                                       usf_array_fact);
+
+	vkk_uniformSetFactory_t* usf_array_pooling[] =
+	{
+		self->usf0_pooling,
+		self->usf1_pooling,
+		self->usf2_pooling,
+	};
+	self->pl_pooling = vkk_pipelineLayout_new(engine, 3,
+	                                          usf_array_pooling);
+
+	vkk_uniformSetFactory_t* usf_array_skip[] =
+	{
+		self->usf0_skip,
+		self->usf1_skip,
+	};
+	self->pl_skip = vkk_pipelineLayout_new(engine, 2,
+	                                       usf_array_skip);
+
+	vkk_uniformSetFactory_t* usf_array_weight[] =
+	{
+		self->usf0_weight,
+		self->usf1_weight,
+		self->usf2_weight,
+	};
+	self->pl_weight = vkk_pipelineLayout_new(engine, 3,
+	                                         usf_array_weight);
+
+	vkk_uniformSetFactory_t* usf_array_loss[] =
+	{
+		self->usf0_loss,
+	};
+	self->pl_loss = vkk_pipelineLayout_new(engine, 1,
+	                                       usf_array_loss);
+
+	vkk_uniformSetFactory_t* usf_array_tensor[] =
+	{
+		self->usf0_tensor,
+	};
+	self->pl_tensor = vkk_pipelineLayout_new(engine, 1,
+	                                         usf_array_tensor);
+
+	if((self->pl_batchNorm == NULL) ||
+	   (self->pl_conv      == NULL) ||
+	   (self->pl_fact      == NULL) ||
+	   (self->pl_pooling   == NULL) ||
+	   (self->pl_skip      == NULL) ||
+	   (self->pl_weight    == NULL) ||
+	   (self->pl_loss      == NULL) ||
+	   (self->pl_tensor    == NULL))
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXmean =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXmean_comp.spv",
+	};
+
+	self->cp_batchNorm_forwardPassXmean =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_forwardPassXmean);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXvar =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXvar_comp.spv",
+	};
+
+	self->cp_batchNorm_forwardPassXvar =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_forwardPassXvar);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXhat =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXhat_comp.spv",
+	};
+
+	self->cp_batchNorm_forwardPassXhat =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_forwardPassXhat);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassY =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassY_comp.spv",
+	};
+
+	self->cp_batchNorm_forwardPassY =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_forwardPassY);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_backprop_dL_dX =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_backprop_dL_dX_comp.spv",
+	};
+
+	self->cp_batchNorm_backprop_dL_dX =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_backprop_dL_dX);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_backprop_dL_dXhat =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_backprop_dL_dXhat_comp.spv",
+	};
+
+	self->cp_batchNorm_backprop_dL_dXhat =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_backprop_dL_dXhat);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_backpropSum =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_backpropSum_comp.spv",
+	};
+
+	self->cp_batchNorm_backpropSum =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_backpropSum);
+
+	vkk_computePipelineInfo_t cpi_conv_forwardPass =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_forwardPass_comp.spv",
+	};
+
+	self->cp_conv_forwardPass =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_forwardPass);
+
+	vkk_computePipelineInfo_t cpi_conv_forwardPassT =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_forwardPassT_comp.spv",
+	};
+
+	self->cp_conv_forwardPassT =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_forwardPassT);
+
+	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dX =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dX_comp.spv",
+	};
+
+	self->cp_conv_backprop_dL_dX =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backprop_dL_dX);
+
+	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dW =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dW_comp.spv",
+	};
+
+	self->cp_conv_backprop_dL_dW =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backprop_dL_dW);
+
+	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dB =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dB_comp.spv",
+	};
+
+	self->cp_conv_backprop_dL_dB =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backprop_dL_dB);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dX =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dX_comp.spv",
+	};
+
+	self->cp_conv_backpropT_dL_dX =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropT_dL_dX);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dW =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dW_comp.spv",
+	};
+
+	self->cp_conv_backpropT_dL_dW =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropT_dL_dW);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropGradientClipping =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backpropGradientClipping_comp.spv",
+	};
+
+	self->cp_conv_backpropGradientClipping =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropGradientClipping);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropUpdateW =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backpropUpdateW_comp.spv",
+	};
+
+	self->cp_conv_backpropUpdateW =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropUpdateW);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropUpdateB =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv,
+		.cs      = "nn/shaders/nn_convLayer_backpropUpdateB_comp.spv",
+	};
+
+	self->cp_conv_backpropUpdateB =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropUpdateB);
+
+	vkk_computePipelineInfo_t cpi_fact_forwardPassLinear =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassLinear_comp.spv",
+	};
+
+	self->cp_fact_forwardPassLinear =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassLinear);
+
+	vkk_computePipelineInfo_t cpi_fact_forwardPassLogistic =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassLogistic_comp.spv",
+	};
+
+	self->cp_fact_forwardPassLogistic =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassLogistic);
+
+	vkk_computePipelineInfo_t cpi_fact_forwardPassReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassReLU_comp.spv",
+	};
+
+	self->cp_fact_forwardPassReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassReLU);
+
+	vkk_computePipelineInfo_t cpi_fact_forwardPassPReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassPReLU_comp.spv",
+	};
+
+	self->cp_fact_forwardPassPReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassPReLU);
+
+	vkk_computePipelineInfo_t cpi_fact_forwardPassTanh =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassTanh_comp.spv",
+	};
+
+	self->cp_fact_forwardPassTanh =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassTanh);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropLinear =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropLinear_comp.spv",
+	};
+
+	self->cp_fact_backpropLinear =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropLinear);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropLogistic =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropLogistic_comp.spv",
+	};
+
+	self->cp_fact_backpropLogistic =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropLogistic);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropReLU_comp.spv",
+	};
+
+	self->cp_fact_backpropReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropReLU);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropPReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropPReLU_comp.spv",
+	};
+
+	self->cp_fact_backpropPReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropPReLU);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropTanh =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropTanh_comp.spv",
+	};
+
+	self->cp_fact_backpropTanh =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropTanh);
+
+	vkk_computePipelineInfo_t cpi_pooling_forwardPassAvg =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_pooling,
+		.cs      = "nn/shaders/nn_poolingLayer_forwardPassAvg_comp.spv",
+	};
+
+	self->cp_pooling_forwardPassAvg =
+		vkk_computePipeline_new(engine,
+		                        &cpi_pooling_forwardPassAvg);
+
+	vkk_computePipelineInfo_t cpi_pooling_forwardPassMax =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_pooling,
+		.cs      = "nn/shaders/nn_poolingLayer_forwardPassMax_comp.spv",
+	};
+
+	self->cp_pooling_forwardPassMax =
+		vkk_computePipeline_new(engine,
+		                        &cpi_pooling_forwardPassMax);
+
+	vkk_computePipelineInfo_t cpi_pooling_backprop =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_pooling,
+		.cs      = "nn/shaders/nn_poolingLayer_backprop_comp.spv",
+	};
+
+	self->cp_pooling_backprop =
+		vkk_computePipeline_new(engine,
+		                        &cpi_pooling_backprop);
+
+	vkk_computePipelineInfo_t cpi_skip_forwardPassAdd =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_skip,
+		.cs      = "nn/shaders/nn_skipLayer_forwardPassAdd_comp.spv",
+	};
+
+	self->cp_skip_forwardPassAdd =
+		vkk_computePipeline_new(engine,
+		                        &cpi_skip_forwardPassAdd);
+
+	vkk_computePipelineInfo_t cpi_skip_forwardPassCat =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_skip,
+		.cs      = "nn/shaders/nn_skipLayer_forwardPassCat_comp.spv",
+	};
+
+	self->cp_skip_forwardPassCat =
+		vkk_computePipeline_new(engine,
+		                        &cpi_skip_forwardPassCat);
+
+	vkk_computePipelineInfo_t cpi_skip_backpropCat =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_skip,
+		.cs      = "nn/shaders/nn_skipLayer_backpropCat_comp.spv",
+	};
+
+	self->cp_skip_backpropCat =
+		vkk_computePipeline_new(engine,
+		                        &cpi_skip_backpropCat);
+
+	vkk_computePipelineInfo_t cpi_skip_backpropFork =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_skip,
+		.cs      = "nn/shaders/nn_skipLayer_backpropFork_comp.spv",
+	};
+
+	self->cp_skip_backpropFork =
+		vkk_computePipeline_new(engine,
+		                        &cpi_skip_backpropFork);
+
+	vkk_computePipelineInfo_t cpi_weight_forwardPass =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_forwardPass_comp.spv",
+	};
+
+	self->cp_weight_forwardPass =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_forwardPass);
+
+	vkk_computePipelineInfo_t cpi_weight_backpropGradientClipping =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backpropGradientClipping_comp.spv",
+	};
+
+	self->cp_weight_backpropGradientClipping =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backpropGradientClipping);
+
+	vkk_computePipelineInfo_t cpi_weight_backpropUpdateW =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backpropUpdateW_comp.spv",
+	};
+
+	self->cp_weight_backpropUpdateW =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backpropUpdateW);
+
+	vkk_computePipelineInfo_t cpi_weight_backpropUpdateB =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backpropUpdateB_comp.spv",
+	};
+
+	self->cp_weight_backpropUpdateB =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backpropUpdateB);
+
+	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dX =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dX_comp.spv",
+	};
+
+	self->cp_weight_backprop_dL_dX =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backprop_dL_dX);
+
+	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dW =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dW_comp.spv",
+	};
+
+	self->cp_weight_backprop_dL_dW =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backprop_dL_dW);
+
+	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dB =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_weight,
+		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dB_comp.spv",
+	};
+
+	self->cp_weight_backprop_dL_dB =
+		vkk_computePipeline_new(engine,
+		                        &cpi_weight_backprop_dL_dB);
+
+	vkk_computePipelineInfo_t cpi_loss_dL_dY_mse =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_dL_dY_mse_comp.spv",
+	};
+
+	self->cp_loss_dL_dY_mse =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_dL_dY_mse);
+
+	vkk_computePipelineInfo_t cpi_loss_dL_dY_mae =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_dL_dY_mae_comp.spv",
+	};
+
+	self->cp_loss_dL_dY_mae =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_dL_dY_mae);
+
+	vkk_computePipelineInfo_t cpi_loss_dL_dY_bce =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_dL_dY_bce_comp.spv",
+	};
+
+	self->cp_loss_dL_dY_bce =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_dL_dY_bce);
+
+	vkk_computePipelineInfo_t cpi_loss_mse =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_mse_comp.spv",
+	};
+
+	self->cp_loss_mse =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_mse);
+
+	vkk_computePipelineInfo_t cpi_loss_mae =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_mae_comp.spv",
+	};
+
+	self->cp_loss_mae =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_mae);
+
+	vkk_computePipelineInfo_t cpi_loss_bce =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_loss,
+		.cs      = "nn/shaders/nn_loss_bce_comp.spv",
+	};
+
+	self->cp_loss_bce =
+		vkk_computePipeline_new(engine,
+		                        &cpi_loss_bce);
+
+	vkk_computePipelineInfo_t cpi_tensor_clear =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor,
+		.cs      = "nn/shaders/nn_tensor_clear_comp.spv",
+	};
+
+	self->cp_tensor_clear =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_clear);
+
+	vkk_computePipelineInfo_t cpi_tensor_clearAligned =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor,
+		.cs      = "nn/shaders/nn_tensor_clearAligned_comp.spv",
+	};
+
+	self->cp_tensor_clearAligned =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_clearAligned);
+
+	if((self->cp_batchNorm_forwardPassXmean      == NULL) ||
+	   (self->cp_batchNorm_forwardPassXvar       == NULL) ||
+	   (self->cp_batchNorm_forwardPassXhat       == NULL) ||
+	   (self->cp_batchNorm_forwardPassY          == NULL) ||
+	   (self->cp_batchNorm_backprop_dL_dX        == NULL) ||
+	   (self->cp_batchNorm_backprop_dL_dXhat     == NULL) ||
+	   (self->cp_batchNorm_backpropSum           == NULL) ||
+	   (self->cp_conv_forwardPass                == NULL) ||
+	   (self->cp_conv_forwardPassT               == NULL) ||
+	   (self->cp_conv_backprop_dL_dX             == NULL) ||
+	   (self->cp_conv_backprop_dL_dW             == NULL) ||
+	   (self->cp_conv_backprop_dL_dB             == NULL) ||
+	   (self->cp_conv_backpropT_dL_dX            == NULL) ||
+	   (self->cp_conv_backpropT_dL_dW            == NULL) ||
+	   (self->cp_conv_backpropGradientClipping   == NULL) ||
+	   (self->cp_conv_backpropUpdateW            == NULL) ||
+	   (self->cp_conv_backpropUpdateB            == NULL) ||
+	   (self->cp_fact_forwardPassLinear          == NULL) ||
+	   (self->cp_fact_forwardPassLogistic        == NULL) ||
+	   (self->cp_fact_forwardPassReLU            == NULL) ||
+	   (self->cp_fact_forwardPassPReLU           == NULL) ||
+	   (self->cp_fact_forwardPassTanh            == NULL) ||
+	   (self->cp_fact_backpropLinear             == NULL) ||
+	   (self->cp_fact_backpropLogistic           == NULL) ||
+	   (self->cp_fact_backpropReLU               == NULL) ||
+	   (self->cp_fact_backpropPReLU              == NULL) ||
+	   (self->cp_fact_backpropTanh               == NULL) ||
+	   (self->cp_pooling_forwardPassAvg          == NULL) ||
+	   (self->cp_pooling_forwardPassMax          == NULL) ||
+	   (self->cp_pooling_backprop                == NULL) ||
+	   (self->cp_skip_forwardPassAdd             == NULL) ||
+	   (self->cp_skip_forwardPassCat             == NULL) ||
+	   (self->cp_skip_backpropCat                == NULL) ||
+	   (self->cp_skip_backpropFork               == NULL) ||
+	   (self->cp_weight_forwardPass              == NULL) ||
+	   (self->cp_weight_backpropGradientClipping == NULL) ||
+	   (self->cp_weight_backpropUpdateW          == NULL) ||
+	   (self->cp_weight_backpropUpdateB          == NULL) ||
+	   (self->cp_weight_backprop_dL_dX           == NULL) ||
+	   (self->cp_weight_backprop_dL_dW           == NULL) ||
+	   (self->cp_weight_backprop_dL_dB           == NULL) ||
+	   (self->cp_loss_dL_dY_mse                  == NULL) ||
+	   (self->cp_loss_dL_dY_mae                  == NULL) ||
+	   (self->cp_loss_dL_dY_bce                  == NULL) ||
+	   (self->cp_loss_mse                        == NULL) ||
+	   (self->cp_loss_mae                        == NULL) ||
+	   (self->cp_loss_bce                        == NULL) ||
+	   (self->cp_tensor_clear                    == NULL) ||
+	   (self->cp_tensor_clearAligned             == NULL))
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
+	self->sb00_state = vkk_buffer_new(engine, um,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_archState_t),
+	                                  NULL);
+	if(self->sb00_state == NULL)
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
+	self->engine = engine;
+
+	return 1;
+}
+
+static int
+nn_arch_beginCompute(nn_arch_t* self,
+                     uint32_t bs,
+                     nn_tensor_t* X,
+                     nn_tensor_t* Yt)
+{
+	// Yt may be NULL
+	ASSERT(self);
+	ASSERT(X);
+
+	// resize X
+	if(self->X)
+	{
+		if(nn_dim_equals(nn_tensor_dim(self->X),
+		                 nn_tensor_dim(X)) == 0)
+		{
+			nn_tensor_delete(&self->X);
+		}
+	}
+
+	// resize Yt
+	if(Yt && self->Yt)
+	{
+		if(nn_dim_equals(nn_tensor_dim(self->Yt),
+		                 nn_tensor_dim(Yt)) == 0)
+		{
+			nn_tensor_delete(&self->Yt);
+		}
+	}
+
+	// allocate X on demand
+	if(self->X == NULL)
+	{
+		self->X = nn_tensor_new(self, nn_tensor_dim(X),
+		                        NN_TENSOR_MODE_COMPUTE);
+		if(self->X == NULL)
+		{
+			return 0;
+		}
+	}
+
+	// allocate Yt on demand
+	if(Yt && (self->Yt == NULL))
+	{
+		self->Yt = nn_tensor_new(self, nn_tensor_dim(Yt),
+		                         NN_TENSOR_MODE_COMPUTE);
+		if(self->Yt == NULL)
+		{
+			return 0;
+		}
+	}
+
+	if(vkk_compute_begin(self->compute) == 0)
+	{
+		return 0;
+	}
+
+	if(nn_tensor_blit(X, self->X, bs, 0, 0) == 0)
+	{
+		goto fail_blit;
+	}
+
+	if(Yt && (nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0))
+	{
+		goto fail_blit;
+	}
+
+	// update global state
+	self->state.bs = bs;
+	vkk_compute_writeBuffer(self->compute,
+	                        self->sb00_state,
+	                        sizeof(nn_archState_t),
+	                        0, &self->state);
+
+	// success
+	return 1;
+
+	// failure
+	fail_blit:
+		vkk_compute_end(self->compute);
+	return 0;
+}
+
+static void nn_arch_endCompute(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	vkk_compute_end(self->compute);
+
+	nn_loss_t* loss = self->loss;
+	vkk_compute_readBuffer(self->compute, loss->sb07_loss,
+	                       sizeof(float), 0, &loss->loss);
+}
+
+#else // NN_USE_COMPUTE not defined
+
+static int
+nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
+{
+	return 1;
+}
+
+static void nn_arch_deleteCompute(nn_arch_t* self)
+{
+}
+
+static int
+nn_arch_beginCompute(nn_arch_t* self,
+                     uint32_t bs,
+                     nn_tensor_t* X,
+                     nn_tensor_t* Yt)
+{
+	return 1;
+}
+
+static void nn_arch_endCompute(nn_arch_t* self)
+{
+}
+
+#endif
+
+/***********************************************************
 * public                                                   *
 ***********************************************************/
 
-nn_arch_t* nn_arch_new(size_t base_size,
-                       nn_archInfo_t* info)
+nn_arch_t* nn_arch_new(vkk_engine_t* engine,
+                       size_t base_size,
+                       nn_archState_t* state)
 {
-	ASSERT(info);
+	// engine may be null
+	ASSERT(state);
 
 	if(base_size == 0)
 	{
@@ -56,12 +1158,7 @@ nn_arch_t* nn_arch_new(size_t base_size,
 		return NULL;
 	}
 
-	self->learning_rate  = info->learning_rate;
-	self->momentum_decay = info->momentum_decay;
-	self->batch_momentum = info->batch_momentum;
-	self->l2_lambda      = info->l2_lambda;
-	self->clip_max       = info->clip_max;
-	self->clip_momentum  = info->clip_momentum;
+	memcpy(&self->state, state, sizeof(nn_archState_t));
 
 	self->layers = cc_list_new();
 	if(self->layers == NULL)
@@ -72,18 +1169,27 @@ nn_arch_t* nn_arch_new(size_t base_size,
 	cc_rngUniform_init(&self->rng_uniform);
 	cc_rngNormal_init(&self->rng_normal, 0.0, 1.0);
 
+	if(nn_arch_newCompute(self, engine) == 0)
+	{
+		goto fail_compute;
+	}
+
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		cc_list_delete(&self->layers);
 	fail_layers:
 		FREE(self);
 	return NULL;
 }
 
 nn_arch_t*
-nn_arch_import(size_t base_size, jsmn_val_t* val)
+nn_arch_import(vkk_engine_t* engine,
+               size_t base_size, jsmn_val_t* val)
 {
+	// engine may be null
 	ASSERT(val);
 
 	if(val->type != JSMN_TYPE_OBJECT)
@@ -92,6 +1198,7 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 		return NULL;
 	}
 
+	// bs not required
 	jsmn_val_t* val_learning_rate  = NULL;
 	jsmn_val_t* val_momentum_decay = NULL;
 	jsmn_val_t* val_batch_momentum = NULL;
@@ -148,7 +1255,7 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 		return NULL;
 	}
 
-	nn_archInfo_t info =
+	nn_archState_t state =
 	{
 		.learning_rate  = strtof(val_learning_rate->data,  NULL),
 		.momentum_decay = strtof(val_momentum_decay->data, NULL),
@@ -158,7 +1265,7 @@ nn_arch_import(size_t base_size, jsmn_val_t* val)
 		.clip_momentum  = strtof(val_clip_momentum->data,  NULL),
 	};
 
-	return nn_arch_new(base_size, &info);
+	return nn_arch_new(engine, base_size, &state);
 }
 
 int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
@@ -166,20 +1273,23 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	ASSERT(self);
 	ASSERT(stream);
 
+	nn_archState_t* state = &self->state;
+
+	// bs not required
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "learning_rate");
-	ret &= jsmn_stream_float(stream, self->learning_rate);
+	ret &= jsmn_stream_float(stream, state->learning_rate);
 	ret &= jsmn_stream_key(stream, "%s", "momentum_decay");
-	ret &= jsmn_stream_float(stream, self->momentum_decay);
+	ret &= jsmn_stream_float(stream, state->momentum_decay);
 	ret &= jsmn_stream_key(stream, "%s", "batch_momentum");
-	ret &= jsmn_stream_float(stream, self->batch_momentum);
+	ret &= jsmn_stream_float(stream, state->batch_momentum);
 	ret &= jsmn_stream_key(stream, "%s", "l2_lambda");
-	ret &= jsmn_stream_float(stream, self->l2_lambda);
+	ret &= jsmn_stream_float(stream, state->l2_lambda);
 	ret &= jsmn_stream_key(stream, "%s", "clip_max");
-	ret &= jsmn_stream_float(stream, self->clip_max);
+	ret &= jsmn_stream_float(stream, state->clip_max);
 	ret &= jsmn_stream_key(stream, "%s", "clip_momentum");
-	ret &= jsmn_stream_float(stream, self->clip_momentum);
+	ret &= jsmn_stream_float(stream, state->clip_momentum);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
@@ -192,6 +1302,7 @@ void nn_arch_delete(nn_arch_t** _self)
 	nn_arch_t* self = *_self;
 	if(self)
 	{
+		nn_arch_deleteCompute(self);
 		cc_list_discard(self->layers);
 		cc_list_delete(&self->layers);
 		FREE(self);
@@ -275,20 +1386,30 @@ int nn_arch_train(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Yt);
 
+	if(nn_arch_beginCompute(self, bs, X, Yt) == 0)
+	{
+		return 0;
+	}
+
+	// replace X and Yt with compute tensors
+	#ifdef NN_USE_COMPUTE
+	X  = self->X;
+	Yt = self->Yt;
+	#endif
+
 	// perform forward pass for each batch
-	nn_tensor_t*   Yi = X;
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)
 	{
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		Yi = nn_layer_forwardPass(layer,
-		                          NN_LAYER_MODE_TRAIN,
-		                          bs, Yi);
-		if(Yi == NULL)
+		X = nn_layer_forwardPass(layer,
+		                         NN_LAYER_MODE_TRAIN,
+		                         bs, X);
+		if(X == NULL)
 		{
-			return 0;
+			goto fail_forwardPass;
 		}
 
 		iter = cc_list_next(iter);
@@ -300,10 +1421,10 @@ int nn_arch_train(nn_arch_t* self,
 		nn_loss_fn loss_fn;
 		loss_fn = self->loss->loss_fn;
 
-		dL_dY = (*loss_fn)(self->loss, bs, Yi, Yt);
+		dL_dY = (*loss_fn)(self->loss, bs, X, Yt);
 		if(dL_dY == NULL)
 		{
-			return 0;
+			goto fail_loss;
 		}
 	}
 
@@ -317,13 +1438,23 @@ int nn_arch_train(nn_arch_t* self,
 		dL_dY = nn_layer_backprop(layer, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
-			return 0;
+			goto fail_backprop;
 		}
 
 		iter = cc_list_prev(iter);
 	}
 
+	nn_arch_endCompute(self);
+
+	// success
 	return 1;
+
+	// failure
+	fail_backprop:
+	fail_loss:
+	fail_forwardPass:
+		nn_arch_endCompute(self);
+	return 0;
 }
 
 float nn_arch_loss(nn_arch_t* self)
@@ -341,23 +1472,40 @@ int nn_arch_predict(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Y);
 
-	nn_tensor_t*   Yi   = X;
+	if(nn_arch_beginCompute(self, 1, X, NULL) == 0)
+	{
+		return 0;
+	}
+
+	// replace X with compute tensor
+	#ifdef NN_USE_COMPUTE
+	X = self->X;
+	#endif
+
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)
 	{
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		Yi = nn_layer_forwardPass(layer,
-		                          NN_LAYER_MODE_PREDICT,
-		                          1, Yi);
-		if(Yi == NULL)
+		X = nn_layer_forwardPass(layer,
+		                         NN_LAYER_MODE_PREDICT,
+		                         1, X);
+		if(X == NULL)
 		{
-			return 0;
+			goto fail_forwardPass;
 		}
 
 		iter = cc_list_next(iter);
 	}
 
-	return nn_tensor_blit(Yi, Y, 1, 0, 0);
+	nn_arch_endCompute(self);
+
+	// success
+	return nn_tensor_blit(X, Y, 1, 0, 0);
+
+	// failure
+	fail_forwardPass:
+		nn_arch_endCompute(self);
+	return 0;
 }
