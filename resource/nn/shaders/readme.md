@@ -103,6 +103,8 @@ Dispatch Uniforms
 
 Backprop Dispatch Order
 
+* nn_tensor_clear(hazzard=NONE, dL_dW)
+* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
 * nn_tensor_clear(hazzard=NONE, dL_dX)
 * nn_convLayer_backprop_dL_dX (for each fi,fj)
 * nn_convLayer_backprop_dL_dW (for each f,fi,fj,k)
@@ -113,6 +115,8 @@ Backprop Dispatch Order
 
 Backprop Dispatch Order (Transpose)
 
+* nn_tensor_clear(hazzard=NONE, dL_dW)
+* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
 * nn_tensor_clear(hazzard=NONE, dL_dX)
 * nn_convLayer_backpropT_dL_dX (for each fi,fj)
 * nn_convLayer_backpropT_dL_dW (for each f,fi,fj,k)
@@ -192,7 +196,7 @@ Weight Layer
 Shared Uniforms
 
 * sb00: state
-* sb01: param
+* sb01: param (disable_bias)
 * sb02: dimX
 * sb03: X
 * sb04: dimW
@@ -223,6 +227,9 @@ Backprop Uniforms
 
 Backprop Dispatch Order
 
+* nn_tensor_clear(hazzard=NONE, dL_dW)
+* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
+* nn_tensor_clear(hazzard=NONE, dL_dX)
 * nn_weightLayer_backprop_dL_dX
 * nn_weightLayer_backprop_dL_dW
 * nn_weightLayer_backprop_dL_dB

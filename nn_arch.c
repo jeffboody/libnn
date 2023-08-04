@@ -46,7 +46,8 @@ static void nn_arch_deleteCompute(nn_arch_t* self)
 
 	nn_tensor_delete(&self->Yt);
 	nn_tensor_delete(&self->X);
-	vkk_buffer_delete(&self->sb00_state);
+	nn_tensor_delete(&self->Null);
+	vkk_buffer_delete(&self->sb_state);
 	vkk_computePipeline_delete(&self->cp_tensor_clearAligned);
 	vkk_computePipeline_delete(&self->cp_tensor_clear);
 	vkk_computePipeline_delete(&self->cp_loss_bce);
@@ -998,11 +999,26 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 		return 0;
 	}
 
-	self->sb00_state = vkk_buffer_new(engine, um,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(nn_archState_t),
-	                                  NULL);
-	if(self->sb00_state == NULL)
+	self->sb_state = vkk_buffer_new(engine, um,
+	                                VKK_BUFFER_USAGE_STORAGE,
+	                                sizeof(nn_archState_t),
+	                                NULL);
+	if(self->sb_state == NULL)
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
+	nn_dim_t dimNull =
+	{
+		.count  = 1,
+		.height = 1,
+		.width  = 1,
+		.depth  = 1,
+	};
+	self->Null = nn_tensor_new(self, &dimNull,
+	                           NN_TENSOR_MODE_COMPUTE);
+	if(self->Null == NULL)
 	{
 		nn_arch_deleteCompute(self);
 		return 0;
@@ -1083,7 +1099,7 @@ nn_arch_beginCompute(nn_arch_t* self,
 	// update global state
 	self->state.bs = bs;
 	vkk_compute_writeBuffer(self->compute,
-	                        self->sb00_state,
+	                        self->sb_state,
 	                        sizeof(nn_archState_t),
 	                        0, &self->state);
 

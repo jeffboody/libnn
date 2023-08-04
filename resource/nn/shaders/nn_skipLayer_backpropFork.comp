@@ -36,6 +36,7 @@ void add_dL_dY_dY2(uint n, uint i, uint j, uint k)
 	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
 	uint sx = dim_dL_dY.depth;
 
+	// dL_dY replaced by dL_dY1 + dL_dY2
 	uint idx = n*sn + i*sy + j*sx + k;
 	dL_dY[idx] += dL_dY2[idx];
 }

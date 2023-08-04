@@ -23,7 +23,6 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_stride;
 	uint param_disable_bias;
 };
 

@@ -52,6 +52,392 @@ nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int mode,
 }
 
 static nn_tensor_t*
+nn_skipLayer_backpropAddFn(nn_layer_t* base, uint32_t bs,
+                           nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+
+	self->dL_dX2 = dL_dY; // reference
+
+	return dL_dY;
+}
+
+#ifdef NN_USE_COMPUTE
+
+static nn_tensor_t*
+nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
+                              uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+
+	if((self->skip == NULL) || (self->skip->Y == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_tensor_t* X1   = X;
+	nn_tensor_t* X2   = self->skip->Y;
+	nn_tensor_t* Y    = self->Y;
+	nn_dim_t*    dimX = &self->dimX;
+
+	// sb00: dimX/dimX1
+	// sb01: X/X1
+	// sb02: dimY
+	// sb03: Y
+	// sb04: dimX2
+	// sb05: X2
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_skip_forwardPassAdd);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 6, ua0_array);
+	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int mode,
+                              uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+
+	if((self->skip == NULL) || (self->skip->Y == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_tensor_t* X1   = X;
+	nn_tensor_t* X2   = self->skip->Y;
+	nn_tensor_t* Y    = self->Y;
+	nn_dim_t*    dimX = nn_tensor_dim(X);
+
+	// sb00: dimX/dimX1
+	// sb01: X/X1
+	// sb02: dimY
+	// sb03: Y
+	// sb04: dimX2
+	// sb05: X2
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_skip_forwardPassCat);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 6, ua0_array);
+	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
+                            nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+
+	if((self->skip == NULL) || (self->skip->dL_dX2 == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_tensor_t* Null   = arch->Null;
+	nn_tensor_t* dL_dY2 = self->skip->dL_dX2;
+	nn_dim_t*    dimX   = &self->dimX;
+
+	// sb10: dim_dL_dY
+	// sb11: dL_dY
+	// sb12: dim_dL_dX/dim_dL_dX1
+	// sb13: dL_dX/dL_dX1
+	// sb14: dim_dL_dX2/dim_dL_dY2
+	// sb15: dL_dX2/dL_dY2
+	// sb16: dim_dL_dY2
+	// sb17: dL_dY2
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY2->sb_dim,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY2->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us1,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_skip_backpropFork);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	                                 8, ua1_array);
+	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	// dL_dY replaced by dL_dY1 + dL_dY2
+	return dL_dY;
+}
+
+static nn_tensor_t*
+nn_skipLayer_backpropCatFn(nn_layer_t* base, uint32_t bs,
+                           nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,xh,xw,x1d + x2d)
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch = base->arch;
+
+	nn_tensor_t* Null   = arch->Null;
+	nn_tensor_t* dL_dX1 = self->dL_dX1;
+	nn_tensor_t* dL_dX2 = self->dL_dX2;
+	nn_dim_t*    dimX   = &self->dimX;
+
+	// sb10: dim_dL_dY
+	// sb11: dL_dY
+	// sb12: dim_dL_dX/dim_dL_dX1
+	// sb13: dL_dX/dL_dX1
+	// sb14: dim_dL_dX2/dim_dL_dY2
+	// sb15: dL_dX2/dL_dY2
+	// sb16: dim_dL_dY2
+	// sb17: dL_dY2
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX1->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX1->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX2->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX2->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us1,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_skip_backpropCat);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	                                 8, ua1_array);
+	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs, dimX->height, dimX->width,
+	                     1, 8, 8);
+
+	return dL_dX1;
+}
+
+static int nn_skipLayer_newCompute(nn_skipLayer_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->base.arch;
+
+	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
+	                               arch->usf0_skip);
+	if(self->us0 == NULL)
+	{
+		return 0;
+	}
+
+	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
+	                               arch->usf1_skip);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	// success
+	return 1;
+
+	// failure
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	return 0;
+}
+
+static void
+nn_skipLayer_deleteCompute(nn_skipLayer_t* self)
+{
+	ASSERT(self);
+
+	vkk_uniformSet_delete(&self->us1);
+	vkk_uniformSet_delete(&self->us0);
+}
+
+#else // NN_USE_COMPUTE not defined
+
+static nn_tensor_t*
 nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
                               uint32_t bs, nn_tensor_t* X)
 {
@@ -204,20 +590,6 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropAddFn(nn_layer_t* base, uint32_t bs,
-                           nn_tensor_t* dL_dY)
-{
-	ASSERT(base);
-	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
-
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-
-	self->dL_dX2 = dL_dY; // reference
-
-	return dL_dY;
-}
-
-static nn_tensor_t*
 nn_skipLayer_backpropCatFn(nn_layer_t* base, uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
@@ -264,6 +636,18 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, uint32_t bs,
 
 	return dL_dX1;
 }
+
+static int nn_skipLayer_newCompute(nn_skipLayer_t* self)
+{
+	return 1;
+}
+
+static void
+nn_skipLayer_deleteCompute(nn_skipLayer_t* self)
+{
+}
+
+#endif
 
 static nn_dim_t*
 nn_skipLayer_dimXFn(nn_layer_t* base)
@@ -325,7 +709,18 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 
 	// Y is set by forwardPassForkFn
 
+	if(nn_skipLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
+	}
+
+	// success
 	return self;
+
+	// failure
+	fail_compute:
+		nn_layer_delete((nn_layer_t**) &self);
+	return NULL;
 }
 
 nn_skipLayer_t*
@@ -390,10 +785,17 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	// connect skip
 	skip_fork->skip = self;
 
+	if(nn_skipLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
+	}
+
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
 	return NULL;
@@ -479,10 +881,17 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	// connect skip
 	skip_fork->skip = self;
 
+	if(nn_skipLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
+	}
+
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->dL_dX2);
 	fail_dL_dX2:
 		nn_tensor_delete(&self->dL_dX1);
 	fail_dL_dX1:
@@ -603,6 +1012,8 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 	nn_skipLayer_t* self = *_self;
 	if(self)
 	{
+		nn_skipLayer_deleteCompute(self);
+
 		if(self->mode == NN_SKIP_LAYER_MODE_CAT)
 		{
 			nn_tensor_delete(&self->dL_dX2);

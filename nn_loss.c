@@ -489,7 +489,7 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb00_state,
+			.buffer  = arch->sb_state,
 		},
 		{
 			.binding = 1,

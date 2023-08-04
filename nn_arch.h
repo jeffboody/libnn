@@ -147,8 +147,9 @@ typedef struct nn_arch_s
 	vkk_computePipeline_t* cp_tensor_clear;
 	vkk_computePipeline_t* cp_tensor_clearAligned;
 
-	vkk_buffer_t* sb00_state;
+	vkk_buffer_t* sb_state;
 
+	nn_tensor_t* Null;
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
 	#endif

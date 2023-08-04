@@ -661,7 +661,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	float        lr       = state->learning_rate;
 	float        mu       = state->momentum_decay;
 	float        lambda   = state->l2_lambda;
-	float        clip_max = state->clip_momentum;
+	float        clip_max = state->clip_max;
 	float        clip_mu  = state->clip_momentum;
 
 	// clear backprop gradients

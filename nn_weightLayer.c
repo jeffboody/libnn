@@ -39,6 +39,537 @@
 * private                                                  *
 ***********************************************************/
 
+#ifdef NN_USE_COMPUTE
+
+typedef struct
+{
+	uint32_t disable_bias;
+} nn_weightLayerParam_t;
+
+typedef struct
+{
+	float gcw;
+	float gcb;
+	float norm_dl_dw_ra;
+	float norm_dl_db_ra;
+} nn_weightLayerGc_t;
+
+static nn_tensor_t*
+nn_weightLayer_forwardPassFn(nn_layer_t* base, int mode,
+                             uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
+	nn_arch_t*        arch = base->arch;
+
+	nn_tensor_t* W    = self->W;
+	nn_tensor_t* B    = self->B;
+	nn_tensor_t* Y    = self->Y;
+	nn_dim_t*    dimW = nn_tensor_dim(W);
+	float        nc   = dimW->count;
+
+	// sb00: state
+	// sb01: param (disable_bias)
+	// sb02: dimX
+	// sb03: X
+	// sb04: dimW
+	// sb05: W
+	// sb06: dimB
+	// sb07: B
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb01_param,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = W->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = W->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = B->sb_dim,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = B->sb_data,
+		},
+	};
+
+	// sb10: dimY
+	// sb11: Y
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+	};
+
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_forwardPass);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	                                 8, ua0_array);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	                                 2, ua1_array);
+	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs*nc, 1, 1, 64, 1, 1);
+
+	// store reference
+	self->X = X;
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+                          nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,1,1,nc)
+
+	nn_weightLayer_t* self  = (nn_weightLayer_t*) base;
+	nn_arch_t*        arch  = base->arch;
+
+	nn_tensor_t* VW        = self->VW;
+	nn_tensor_t* VB        = self->VB;
+	nn_tensor_t* dL_dW     = self->dL_dW;
+	nn_tensor_t* dL_dB     = self->dL_dB;
+	nn_tensor_t* dL_dX     = self->dL_dX;
+	nn_dim_t*    dim_dL_dW = nn_tensor_dim(dL_dW);
+	nn_dim_t*    dim_dL_dB = nn_tensor_dim(dL_dB);
+	nn_dim_t*    dim_dL_dX = nn_tensor_dim(dL_dX);
+	uint32_t     xd        = dim_dL_dX->depth;
+	uint32_t     nc        = dim_dL_dW->count;
+
+	// sb00: dimX
+	// sb01: X
+	vkk_uniformAttachment_t ua0_clear_dL_dW_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dW->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dW->sb_data,
+		},
+	};
+
+	// clear dL_dW
+	int      aligned = 0;
+	uint32_t count;
+	count = dim_dL_dW->count*dim_dL_dW->height*
+	        dim_dL_dW->width*dim_dL_dW->depth;
+	if(count%64 == 0)
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_tensor_clearAligned);
+		aligned = 1;
+	}
+	else
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_tensor_clear);
+		aligned = 0;
+	}
+	vkk_compute_updateUniformSetRefs(arch->compute,
+	                                 self->us0_clear_dL_dW,
+	                                 2, ua0_clear_dL_dW_array);
+	vkk_compute_bindUniformSets(arch->compute, 1,
+	                            &self->us0_clear_dL_dW);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+	                     count, 1, 1, 64, 1, 1);
+
+	// clear dL_dB
+	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
+	{
+		// sb00: dimX
+		// sb01: X
+		vkk_uniformAttachment_t ua0_clear_dL_dB_array[] =
+		{
+			{
+				.binding = 0,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = dL_dB->sb_dim,
+			},
+			{
+				.binding = 1,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = dL_dB->sb_data,
+			},
+		};
+
+		count = dim_dL_dB->count*dim_dL_dB->height*
+		        dim_dL_dB->width*dim_dL_dB->depth;
+		if(count%64 == 0)
+		{
+			if(aligned == 0)
+			{
+				vkk_compute_bindComputePipeline(arch->compute,
+				                                arch->cp_tensor_clearAligned);
+				aligned = 1;
+			}
+		}
+		else
+		{
+			if(aligned)
+			{
+				vkk_compute_bindComputePipeline(arch->compute,
+				                                arch->cp_tensor_clear);
+				aligned = 0;
+			}
+		}
+		vkk_compute_updateUniformSetRefs(arch->compute,
+		                                 self->us0_clear_dL_dB,
+		                                 2, ua0_clear_dL_dB_array);
+		vkk_compute_bindUniformSets(arch->compute, 1,
+		                            &self->us0_clear_dL_dB);
+		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+		                     count, 1, 1, 64, 1, 1);
+	}
+
+	// sb00: dimX
+	// sb01: X
+	vkk_uniformAttachment_t ua0_clear_dL_dX_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_data,
+		},
+	};
+
+	// clear dL_dX
+	count = dim_dL_dX->count*dim_dL_dX->height*
+	        dim_dL_dX->width*dim_dL_dX->depth;
+	if(count%64 == 0)
+	{
+		if(aligned == 0)
+		{
+			vkk_compute_bindComputePipeline(arch->compute,
+			                                arch->cp_tensor_clearAligned);
+			aligned = 1;
+		}
+	}
+	else
+	{
+		if(aligned)
+		{
+			vkk_compute_bindComputePipeline(arch->compute,
+			                                arch->cp_tensor_clear);
+			aligned = 0;
+		}
+	}
+	vkk_compute_updateUniformSetRefs(arch->compute,
+	                                 self->us0_clear_dL_dX,
+	                                 2, ua0_clear_dL_dX_array);
+	vkk_compute_bindUniformSets(arch->compute, 1,
+	                            &self->us0_clear_dL_dX);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+	                     count, 1, 1, 64, 1, 1);
+
+	// sb20:  gc
+	// sb21:  dim_dL_dY
+	// sb22:  dL_dY
+	// sb23:  dim_dL_dW
+	// sb24:  dL_dW
+	// sb25:  dim_dL_dB
+	// sb26:  dL_dB
+	// sb27:  dim_dL_dX
+	// sb28:  dL_dX
+	// sb29:  dimVW
+	// sb210: VW
+	// sb211: dimVB
+	// sb212: VB
+	vkk_uniformAttachment_t ua2_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb20_gc,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dW->sb_dim,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dW->sb_data,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dB->sb_dim,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dB->sb_data,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_dim,
+		},
+		{
+			.binding = 8,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX->sb_data,
+		},
+		{
+			.binding = 9,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VW->sb_dim,
+		},
+		{
+			.binding = 10,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VW->sb_data,
+		},
+		{
+			.binding = 11,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VB->sb_dim,
+		},
+		{
+			.binding = 12,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VB->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+		self->us2,
+	};
+
+	// compute dL_dX
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_backprop_dL_dX);
+	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	                                 13, ua2_array);
+	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     bs*xd, 1, 1, 64, 1, 1);
+
+	// compute dL_dW
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_backprop_dL_dW);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+	                     nc*xd, 1, 1, 64, 1, 1);
+
+	// compute dL_dB
+	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_weight_backprop_dL_dB);
+		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+		                     nc, 1, 1, 64, 1, 1);
+	}
+
+	// compute gradient clipping
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_backpropGradientClipping);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     1, 1, 1, 8, 8, 1);
+
+	// update W
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_backpropUpdateW);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     nc, 1, 1, 64, 1, 1);
+
+	// update B
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                arch->cp_weight_backpropUpdateB);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
+	                     nc, 1, 1, 64, 1, 1);
+
+	return dL_dX;
+}
+
+static int
+nn_weightLayer_newCompute(nn_weightLayer_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->base.arch;
+
+	self->us0_clear_dL_dW = vkk_uniformSet_new(arch->engine,
+	                                           0, 0, NULL,
+	                                           arch->usf0_tensor);
+	if(self->us0_clear_dL_dW == NULL)
+	{
+		return 0;
+	}
+
+	self->us0_clear_dL_dB = vkk_uniformSet_new(arch->engine,
+	                                           0, 0, NULL,
+	                                           arch->usf0_tensor);
+	if(self->us0_clear_dL_dB == NULL)
+	{
+		goto fail_us0_clear_dL_dB;
+	}
+
+	self->us0_clear_dL_dX = vkk_uniformSet_new(arch->engine,
+	                                           0, 0, NULL,
+	                                           arch->usf0_tensor);
+	if(self->us0_clear_dL_dX == NULL)
+	{
+		goto fail_us0_clear_dL_dX;
+	}
+
+	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
+	                               arch->usf0_weight);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
+	                               arch->usf1_weight);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
+	                               arch->usf2_weight);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	nn_weightLayerParam_t param =
+	{
+		.disable_bias = (self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
+	};
+	self->sb01_param = vkk_buffer_new(arch->engine,
+	                                  VKK_UPDATE_MODE_STATIC,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_weightLayerParam_t),
+	                                  &param);
+	if(self->sb01_param)
+	{
+		goto fail_sb01_param;
+	}
+
+	nn_weightLayerGc_t gc =
+	{
+		.gcw           = 0.0f,
+		.gcb           = 0.0f,
+		.norm_dl_dw_ra = 0.0f,
+		.norm_dl_db_ra = 0.0f,
+	};
+	self->sb20_gc = vkk_buffer_new(arch->engine,
+	                               VKK_UPDATE_MODE_STATIC,
+	                               VKK_BUFFER_USAGE_STORAGE,
+	                               sizeof(nn_weightLayerGc_t),
+	                               &gc);
+	if(self->sb20_gc)
+	{
+		goto fail_sb20_gc;
+	}
+
+	// success
+	return 1;
+
+	// failure
+	fail_sb20_gc:
+		vkk_buffer_delete(&self->sb01_param);
+	fail_sb01_param:
+		vkk_uniformSet_delete(&self->us2);
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		vkk_uniformSet_delete(&self->us0_clear_dL_dX);
+	fail_us0_clear_dL_dX:
+		vkk_uniformSet_delete(&self->us0_clear_dL_dB);
+	fail_us0_clear_dL_dB:
+		vkk_uniformSet_delete(&self->us0_clear_dL_dW);
+	return 0;
+}
+
+static void
+nn_weightLayer_deleteCompute(nn_weightLayer_t* self)
+{
+	ASSERT(self);
+
+	vkk_buffer_delete(&self->sb20_gc);
+	vkk_buffer_delete(&self->sb01_param);
+	vkk_uniformSet_delete(&self->us2);
+	vkk_uniformSet_delete(&self->us1);
+	vkk_uniformSet_delete(&self->us0);
+	vkk_uniformSet_delete(&self->us0_clear_dL_dX);
+	vkk_uniformSet_delete(&self->us0_clear_dL_dB);
+	vkk_uniformSet_delete(&self->us0_clear_dL_dW);
+}
+
+#else // NN_USE_COMPUTE not defined
+
 static nn_tensor_t*
 nn_weightLayer_forwardPassFn(nn_layer_t* base, int mode,
                              uint32_t bs, nn_tensor_t* X)
@@ -303,6 +834,19 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	return dL_dX;
 }
 
+static int
+nn_weightLayer_newCompute(nn_weightLayer_t* self)
+{
+	return 1;
+}
+
+static void
+nn_weightLayer_deleteCompute(nn_weightLayer_t* self)
+{
+}
+
+#endif
+
 static nn_dim_t*
 nn_weightLayer_dimXFn(nn_layer_t* base)
 {
@@ -502,10 +1046,17 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dX;
 	}
 
+	if(nn_weightLayer_newCompute(self) == 0)
+	{
+		goto fail_compute;
+	}
+
 	// success
 	return self;
 
 	// failure
+	fail_compute:
+		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dL_dB);
 	fail_dL_dB:
@@ -693,6 +1244,7 @@ void nn_weightLayer_delete(nn_weightLayer_t** _self)
 	nn_weightLayer_t* self = *_self;
 	if(self)
 	{
+		nn_weightLayer_deleteCompute(self);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);

@@ -76,7 +76,7 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb00_state,
+			.buffer  = arch->sb_state,
 		},
 		{
 			.binding = 1,
