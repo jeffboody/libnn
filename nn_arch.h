@@ -32,6 +32,7 @@
 #include "nn.h"
 
 #ifdef NN_USE_COMPUTE
+#include "../libcc/cc_map.h"
 #include "../libvkk/vkk.h"
 #else
 // dummy type for vkk_engine_t
@@ -152,6 +153,8 @@ typedef struct nn_arch_s
 	nn_tensor_t* Null;
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
+
+	cc_map_t* map_convIdx;
 	#endif
 } nn_arch_t;
 

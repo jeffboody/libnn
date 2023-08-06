@@ -26,6 +26,10 @@
 
 #include "nn_layer.h"
 
+#ifdef NN_USE_COMPUTE
+#include "../libvkk/vkk.h"
+#endif
+
 // XAVIER is default
 #define NN_WEIGHT_LAYER_FLAG_XAVIER       0x0001
 #define NN_WEIGHT_LAYER_FLAG_HE           0x0002

@@ -68,7 +68,7 @@ Convolution Layer
 Shared Uniforms
 
 * sb00: state
-* sb01: param
+* sb01: param (disable_bias and stride)
 * sb02: dimX
 * sb03: X
 * sb04: dimW

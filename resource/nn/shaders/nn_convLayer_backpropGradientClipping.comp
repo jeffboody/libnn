@@ -113,7 +113,7 @@ uint umod(uint x, uint y)
 
 void main()
 {
-	// dispatch(RAW, 1, 1, 1, 4 4, 4)
+	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
 	uint  q   = gl_GlobalInvocationID.x;
 	uint  p   = gl_GlobalInvocationID.y;
 	uint  r   = gl_GlobalInvocationID.z;
