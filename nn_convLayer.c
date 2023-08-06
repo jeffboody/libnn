@@ -1815,83 +1815,6 @@ nn_convLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(self->Y);
 }
 
-static void
-nn_convLayer_initXavierWeights(nn_convLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t* arch = self->base.arch;
-
-	nn_dim_t* dimW = nn_tensor_dim(self->W);
-	uint32_t  fc   = dimW->count;
-	uint32_t  fh   = dimW->height;
-	uint32_t  fw   = dimW->width;
-	uint32_t  xd   = dimW->depth;
-	uint32_t  hwd  = fh*fw*xd;
-	float     min  = -1.0/sqrt((double) hwd);
-	float     max  = 1.0/sqrt((double) hwd);
-
-	float    w;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < fc; ++n)
-	{
-		for(i = 0; i < fh; ++i)
-		{
-			for(j = 0; j < fw; ++j)
-			{
-				for(k = 0; k < xd; ++k)
-				{
-					w = cc_rngUniform_rand2F(&arch->rng_uniform,
-					                         min, max);
-					nn_tensor_set(self->W, n, i, j, k, w);
-				}
-			}
-		}
-	}
-}
-
-static void
-nn_convLayer_initHeWeights(nn_convLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t* arch = self->base.arch;
-
-	nn_dim_t* dimW = nn_tensor_dim(self->W);
-	uint32_t  fc   = dimW->count;
-	uint32_t  fh   = dimW->height;
-	uint32_t  fw   = dimW->width;
-	uint32_t  xd   = dimW->depth;
-	uint32_t  hwd  = fh*fw*xd;
-
-	double mu    = 0.0;
-	double sigma = sqrt(2.0/((double) hwd));
-	cc_rngNormal_reset(&arch->rng_normal, mu, sigma);
-
-	float    w;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < fc; ++n)
-	{
-		for(i = 0; i < fh; ++i)
-		{
-			for(j = 0; j < fw; ++j)
-			{
-				for(k = 0; k < xd; ++k)
-				{
-					w = cc_rngNormal_rand1F(&arch->rng_normal);
-					nn_tensor_set(self->W, n, i, j, k, w);
-				}
-			}
-		}
-	}
-}
-
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -1952,20 +1875,23 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	self->norm_dl_dw_ra = 1.0f;
 	self->norm_dl_db_ra = 1.0f;
 
-	self->W = nn_tensor_new(arch, dimW,
-	                        NN_TENSOR_MODE_COMPUTE);
-	if(self->W == NULL)
-	{
-		goto fail_W;
-	}
-
+	// XAVIER is default
 	if(flags & NN_CONV_LAYER_FLAG_HE)
 	{
-		nn_convLayer_initHeWeights(self);
+		self->W = nn_tensor_new(arch, dimW,
+		                        NN_TENSOR_INIT_HE,
+		                        NN_TENSOR_MODE_COMPUTE);
 	}
 	else
 	{
-		nn_convLayer_initXavierWeights(self);
+		self->W = nn_tensor_new(arch, dimW,
+		                        NN_TENSOR_INIT_XAVIER,
+		                        NN_TENSOR_MODE_COMPUTE);
+	}
+
+	if(self->W == NULL)
+	{
+		goto fail_W;
 	}
 
 	nn_dim_t dimB =
@@ -1977,6 +1903,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	};
 
 	self->B = nn_tensor_new(arch, &dimB,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
 	{
@@ -2005,6 +1932,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	};
 
 	self->Y = nn_tensor_new(arch, &dimY,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
@@ -2012,6 +1940,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->VW = nn_tensor_new(arch, dimW,
+	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VW == NULL)
 	{
@@ -2019,6 +1948,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->VB = nn_tensor_new(arch, &dimB,
+	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VB == NULL)
 	{
@@ -2026,6 +1956,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->dL_dW = nn_tensor_new(arch, dimW,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dW == NULL)
 	{
@@ -2033,6 +1964,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->dL_dB = nn_tensor_new(arch, &dimB,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dB == NULL)
 	{
@@ -2040,6 +1972,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->dL_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)
 	{

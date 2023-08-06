@@ -32,6 +32,10 @@
 #include "../libvkk/vkk.h"
 #endif
 
+#define NN_TENSOR_INIT_ZERO    0
+#define NN_TENSOR_INIT_XAVIER  1
+#define NN_TENSOR_INIT_HE      2
+
 #define NN_TENSOR_MODE_IO      0
 #define NN_TENSOR_MODE_COMPUTE 1
 
@@ -52,7 +56,7 @@ typedef struct nn_tensor_s
 
 nn_tensor_t* nn_tensor_new(nn_arch_t* arch,
                            nn_dim_t* dim,
-                           int mode);
+                           int init, int mode);
 void         nn_tensor_delete(nn_tensor_t** _self);
 void         nn_tensor_print(nn_tensor_t* self,
                              const char* name);

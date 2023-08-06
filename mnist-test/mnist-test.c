@@ -64,8 +64,10 @@ static int mnist_readU32(FILE* f, uint32_t* _data)
 	return 1;
 }
 
-static nn_tensor_t* mnist_load(void)
+static nn_tensor_t* mnist_load(nn_arch_t* arch)
 {
+	ASSERT(arch);
+
 	FILE* f = fopen("data/train-images-idx3-ubyte", "r");
 	if(f == NULL)
 	{
@@ -111,7 +113,10 @@ static nn_tensor_t* mnist_load(void)
 		goto fail_read;
 	}
 
-	nn_tensor_t* T = nn_tensor_new(&dim);
+	nn_tensor_t* T;
+	T = nn_tensor_new(arch, &dim,
+	                  NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_IO);
 	if(T == NULL)
 	{
 		goto fail_T;
@@ -226,13 +231,7 @@ mnist_savepng(const char* fname, texgz_tex_t* tex,
 
 int main(int argc, char** argv)
 {
-	nn_tensor_t* Xt = mnist_load();
-	if(Xt == NULL)
-	{
-		return EXIT_FAILURE;
-	}
-
-	nn_archInfo_t arch_info =
+	nn_archState_t arch_state =
 	{
 		.learning_rate  = 0.01f,
 		.momentum_decay = 0.5f,
@@ -242,10 +241,16 @@ int main(int argc, char** argv)
 		.clip_momentum  = 0.99f,
 	};
 
-	nn_arch_t* arch = nn_arch_new(0, &arch_info);
+	nn_arch_t* arch = nn_arch_new(NULL, 0, &arch_state);
 	if(arch == NULL)
 	{
-		goto fail_arch;
+		return EXIT_FAILURE;
+	}
+
+	nn_tensor_t* Xt = mnist_load(arch);
+	if(Xt == NULL)
+	{
+		goto fail_Xt;
 	}
 
 	uint32_t  fc     = 32;
@@ -259,7 +264,10 @@ int main(int argc, char** argv)
 		.depth  = 1,
 	};
 
-	nn_tensor_t* X = nn_tensor_new(&dimX);
+	nn_tensor_t* X;
+	X = nn_tensor_new(arch, &dimX,
+	                  NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_IO);
 	if(X == NULL)
 	{
 		goto fail_X;
@@ -387,7 +395,10 @@ int main(int argc, char** argv)
 		goto fail_loss;
 	}
 
-	nn_tensor_t* Y = nn_tensor_new(dim);
+	nn_tensor_t* Y;
+	Y = nn_tensor_new(arch, dim,
+	                  NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_IO);
 	if(Y == NULL)
 	{
 		goto fail_Y;
@@ -592,8 +603,8 @@ int main(int argc, char** argv)
 	fail_bn0:
 		nn_tensor_delete(&X);
 	fail_X:
-		nn_arch_delete(&arch);
-	fail_arch:
 		nn_tensor_delete(&Xt);
+	fail_Xt:
+		nn_arch_delete(&arch);
 	return EXIT_FAILURE;
 }

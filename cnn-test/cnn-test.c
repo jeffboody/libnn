@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 {
 	uint32_t bs = 16;
 
-	nn_archInfo_t arch_info =
+	nn_archState_t arch_state =
 	{
 		.learning_rate  = 0.000001f,
 		.momentum_decay = 0.5f,
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
 		.l2_lambda      = 0.0001f,
 	};
 
-	nn_arch_t* arch = nn_arch_new(0, &arch_info);
+	nn_arch_t* arch = nn_arch_new(NULL, 0, &arch_state);
 	if(arch == NULL)
 	{
 		return EXIT_FAILURE;
@@ -158,7 +158,10 @@ int main(int argc, char** argv)
 		.depth  = 1,
 	};
 
-	nn_tensor_t* X = nn_tensor_new(&dimX);
+	nn_tensor_t* X;
+	X = nn_tensor_new(arch, &dimX,
+	                  NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_IO);
 	if(X == NULL)
 	{
 		goto fail_X;
@@ -190,7 +193,10 @@ int main(int argc, char** argv)
 	}
 	dim = nn_layer_dimY(&conv->base);
 
-	nn_tensor_t* Y = nn_tensor_new(dim);
+	nn_tensor_t* Y;
+	Y = nn_tensor_new(arch, dim,
+	                  NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_IO);
 	if(Y == NULL)
 	{
 		goto fail_Y;

@@ -314,6 +314,7 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	self->loss_fn = loss_fn;
 
 	self->dL_dY = nn_tensor_new(arch, dimY,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dY == NULL)
 	{

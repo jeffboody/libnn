@@ -557,6 +557,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	};
 
 	self->Y = nn_tensor_new(arch, &dimY,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
@@ -564,6 +565,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->dY_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dY_dX == NULL)
 	{
@@ -571,6 +573,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 
 	self->dL_dX = nn_tensor_new(arch, dimX,
+	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)
 	{

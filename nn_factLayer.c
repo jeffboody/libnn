@@ -603,6 +603,7 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	self->dfact_fn = dfact_fn;
 
 	self->Y = nn_tensor_new(arch, dimX,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{

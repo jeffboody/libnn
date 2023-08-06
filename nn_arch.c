@@ -1047,6 +1047,7 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 		.depth  = 1,
 	};
 	self->Null = nn_tensor_new(self, &dimNull,
+	                           NN_TENSOR_INIT_ZERO,
 	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Null == NULL)
 	{
@@ -1100,6 +1101,7 @@ nn_arch_beginCompute(nn_arch_t* self,
 	if(self->X == NULL)
 	{
 		self->X = nn_tensor_new(self, nn_tensor_dim(X),
+		                        NN_TENSOR_INIT_ZERO,
 		                        NN_TENSOR_MODE_COMPUTE);
 		if(self->X == NULL)
 		{
@@ -1111,6 +1113,7 @@ nn_arch_beginCompute(nn_arch_t* self,
 	if(Yt && (self->Yt == NULL))
 	{
 		self->Yt = nn_tensor_new(self, nn_tensor_dim(Yt),
+		                         NN_TENSOR_INIT_ZERO,
 		                         NN_TENSOR_MODE_COMPUTE);
 		if(self->Yt == NULL)
 		{

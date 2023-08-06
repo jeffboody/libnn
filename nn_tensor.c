@@ -93,6 +93,7 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		tmp = nn_tensor_new(self->arch, dim,
+		                    NN_TENSOR_INIT_ZERO,
 		                    NN_TENSOR_MODE_IO);
 		if(tmp == NULL)
 		{
@@ -153,12 +154,90 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 	#endif
 }
 
+static void
+nn_tensor_initXavierWeights(nn_tensor_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->arch;
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+	uint32_t  fc  = dim->count;
+	uint32_t  fh  = dim->height;
+	uint32_t  fw  = dim->width;
+	uint32_t  xd  = dim->depth;
+	uint32_t  hwd = fh*fw*xd;
+	float     min = -1.0/sqrt((double) hwd);
+	float     max = 1.0/sqrt((double) hwd);
+
+	float    w;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < fc; ++n)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					w = cc_rngUniform_rand2F(&arch->rng_uniform,
+					                         min, max);
+					nn_tensor_set(self, n, i, j, k, w);
+				}
+			}
+		}
+	}
+}
+
+static void
+nn_tensor_initHeWeights(nn_tensor_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->arch;
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+	uint32_t  fc  = dim->count;
+	uint32_t  fh  = dim->height;
+	uint32_t  fw  = dim->width;
+	uint32_t  xd  = dim->depth;
+	uint32_t  hwd = fh*fw*xd;
+
+	double mu    = 0.0;
+	double sigma = sqrt(2.0/((double) hwd));
+	cc_rngNormal_reset(&arch->rng_normal, mu, sigma);
+
+	float    w;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	for(n = 0; n < fc; ++n)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					w = cc_rngNormal_rand1F(&arch->rng_normal);
+					nn_tensor_set(self, n, i, j, k, w);
+				}
+			}
+		}
+	}
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
 
 nn_tensor_t*
-nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim, int mode)
+nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
+              int init, int mode)
 {
 	ASSERT(arch);
 	ASSERT(dim);
@@ -184,24 +263,35 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim, int mode)
 
 	if(mode == NN_TENSOR_MODE_COMPUTE)
 	{
+		nn_tensor_t* tmp;
+		tmp = nn_tensor_new(arch, dim, init, NN_TENSOR_MODE_IO);
+		if(tmp == NULL)
+		{
+			goto fail_data;
+		}
+
 		self->sb_dim = vkk_buffer_new(arch->engine, um,
 		                              VKK_BUFFER_USAGE_STORAGE,
 		                              sizeof(nn_dim_t),
 		                              dim);
 		if(self->sb_dim == NULL)
 		{
+			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
 
 		self->sb_data = vkk_buffer_new(arch->engine, um,
 		                               VKK_BUFFER_USAGE_STORAGE,
 		                               nn_dim_sizeof(dim),
-		                               NULL);
+		                               tmp->data);
 		if(self->sb_data == NULL)
 		{
 			vkk_buffer_delete(&self->sb_dim);
+			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
+
+		nn_tensor_delete(&tmp);
 	}
 	else
 	#endif
@@ -212,6 +302,15 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim, int mode)
 		{
 			LOGE("CALLOC failed");
 			goto fail_data;
+		}
+
+		if(init == NN_TENSOR_INIT_XAVIER)
+		{
+			nn_tensor_initXavierWeights(self);
+		}
+		else if(init == NN_TENSOR_INIT_HE)
+		{
+			nn_tensor_initHeWeights(self);
 		}
 	}
 
@@ -340,6 +439,7 @@ int nn_tensor_store(nn_tensor_t* self,
 	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		tmp = nn_tensor_new(self->arch, dim,
+		                    NN_TENSOR_INIT_ZERO,
 		                    NN_TENSOR_MODE_IO);
 		if(tmp == NULL)
 		{

@@ -379,6 +379,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->G = nn_tensor_new(arch, &dim_111d,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->G == NULL)
 	{
@@ -393,6 +394,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->B = nn_tensor_new(arch, &dim_111d,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
 	{
@@ -400,6 +402,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Xhat = nn_tensor_new(arch, dimX,
+	                           NN_TENSOR_INIT_ZERO,
 	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Xhat == NULL)
 	{
@@ -407,6 +410,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Y = nn_tensor_new(arch, dimX,
+	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
 	{
@@ -414,6 +418,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Xmean_mb = nn_tensor_new(arch, &dim_111d,
+	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_mb == NULL)
 	{
@@ -421,6 +426,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Xvar_mb = nn_tensor_new(arch, &dim_111d,
+	                              NN_TENSOR_INIT_ZERO,
 	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_mb == NULL)
 	{
@@ -428,6 +434,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Xmean_ra = nn_tensor_new(arch, &dim_111d,
+	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_ra == NULL)
 	{
@@ -435,6 +442,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->Xvar_ra = nn_tensor_new(arch, &dim_111d,
+	                              NN_TENSOR_INIT_ZERO,
 	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_ra == NULL)
 	{
@@ -442,6 +450,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	}
 
 	self->dL_dXhat = nn_tensor_new(arch, dimX,
+	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dXhat == NULL)
 	{
