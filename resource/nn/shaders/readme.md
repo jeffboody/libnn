@@ -7,15 +7,14 @@ Batch Normalization Layer
 Shared Uniforms
 
 * sb00: state
-* sb01: param
-* sb02: dimXhat
-* sb03: Xhat
-* sb04: dimG
-* sb05: G
-* sb06: dimB
-* sb07: B
-* sb08: dimXvar_mb
-* sb09: Xvar_mb
+* sb01: dimXhat
+* sb02: Xhat
+* sb03: dimG
+* sb04: G
+* sb05: dimB
+* sb06: B
+* sb07: dimXvar_mb
+* sb08: Xvar_mb
 
 Forward Pass Uniforms
 

@@ -21,22 +21,22 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=2) readonly buffer sb02
+layout(std430, set=0, binding=1) readonly buffer sb01
 {
 	nn_dim_t dimXhat;
 };
 
-layout(std430, set=0, binding=3) readonly buffer sb03
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	float Xhat[];
 };
 
-layout(std430, set=0, binding=8) readonly buffer sb08
+layout(std430, set=0, binding=7) readonly buffer sb07
 {
 	nn_dim_t dimXvar_mb;
 };
 
-layout(std430, set=0, binding=9) readonly buffer sb09
+layout(std430, set=0, binding=8) readonly buffer sb08
 {
 	float Xvar_mb[];
 };

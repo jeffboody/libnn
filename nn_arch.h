@@ -154,6 +154,7 @@ typedef struct nn_arch_s
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
 
+	cc_map_t* map_batchNormIdx;
 	cc_map_t* map_convIdx;
 	#endif
 } nn_arch_t;

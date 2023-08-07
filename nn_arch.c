@@ -42,6 +42,17 @@
 
 typedef struct
 {
+	uint32_t k;
+} nn_batchNormIdxKey_t;
+
+typedef struct
+{
+	vkk_buffer_t*     sb30;
+	vkk_uniformSet_t* us3;
+} nn_batchNormIdxData_t;
+
+typedef struct
+{
 	uint32_t f;
 	uint32_t fi;
 	uint32_t fj;
@@ -59,6 +70,21 @@ static void nn_arch_deleteCompute(nn_arch_t* self)
 	ASSERT(self);
 
 	cc_mapIter_t* miter;
+	if(self->map_batchNormIdx)
+	{
+		miter = cc_map_head(self->map_batchNormIdx);
+		while(miter)
+		{
+			nn_batchNormIdxData_t* data;
+			data = (nn_batchNormIdxData_t*)
+			       cc_map_remove(self->map_batchNormIdx, &miter);
+			vkk_uniformSet_delete(&data->us3);
+			vkk_buffer_delete(&data->sb30);
+			FREE(data);
+		}
+		cc_map_delete(&self->map_batchNormIdx);
+	}
+
 	if(self->map_convIdx)
 	{
 		miter = cc_map_head(self->map_convIdx);
@@ -199,9 +225,9 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 
 	// sb00: state
 	// ...
-	// sb09: Xvar_mb
+	// sb08: Xvar_mb
 	self->usf0_batchNorm = vkk_uniformSetFactory_new(engine, um,
-	                                                 10, ub_array);
+	                                                 9, ub_array);
 
 	// sb10:  dimX
 	// ...
@@ -1055,6 +1081,13 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 		return 0;
 	}
 
+	self->map_batchNormIdx = cc_map_new();
+	if(self->map_batchNormIdx == NULL)
+	{
+		nn_arch_deleteCompute(self);
+		return 0;
+	}
+
 	self->map_convIdx = cc_map_new();
 	if(self->map_convIdx == NULL)
 	{
@@ -1195,6 +1228,86 @@ static void nn_arch_endCompute(nn_arch_t* self)
 ***********************************************************/
 
 #ifdef NN_USE_COMPUTE
+
+vkk_uniformSet_t*
+nn_arch_getBatchNormIdx(nn_arch_t* self, uint32_t k)
+{
+	ASSERT(self);
+
+	nn_batchNormIdxData_t* data;
+
+	nn_batchNormIdxKey_t key =
+	{
+		.k = k,
+	};
+
+	// find an existing idx
+	cc_mapIter_t* miter;
+	miter = cc_map_findp(self->map_batchNormIdx,
+	                     sizeof(nn_batchNormIdxKey_t),
+	                     &key);
+	if(miter)
+	{
+		data = (nn_batchNormIdxData_t*) cc_map_val(miter);
+		return data->us3;
+	}
+
+	data = (nn_batchNormIdxData_t*)
+	       CALLOC(1, sizeof(nn_batchNormIdxData_t));
+	if(data == NULL)
+	{
+		LOGE("CALLOC failed");
+		return NULL;
+	}
+
+	data->sb30 = vkk_buffer_new(self->engine,
+	                            VKK_UPDATE_MODE_STATIC,
+	                            VKK_BUFFER_USAGE_STORAGE,
+	                            sizeof(nn_batchNormIdxKey_t),
+	                            &key);
+	if(data->sb30 == NULL)
+	{
+		goto fail_sb30;
+	}
+
+	data->us3 = vkk_uniformSet_new(self->engine, 3, 0, NULL,
+	                               self->usf3_batchNorm);
+	if(data->us3 == NULL)
+	{
+		goto fail_us3;
+	}
+
+	if(cc_map_addp(self->map_batchNormIdx,
+	               data, sizeof(nn_batchNormIdxKey_t),
+	               &key) == NULL)
+	{
+		goto fail_add;
+	}
+
+	vkk_uniformAttachment_t ua3_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = data->sb30,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(self->compute, data->us3,
+	                                 1, ua3_array);
+
+	// success
+	return data->us3;
+
+	// failure
+	fail_add:
+		vkk_uniformSet_delete(&data->us3);
+	fail_us3:
+		vkk_buffer_delete(&data->sb30);
+	fail_sb30:
+		FREE(data);
+	return NULL;
+}
 
 vkk_uniformSet_t*
 nn_arch_getConvIdx(nn_arch_t* self,
