@@ -39,6 +39,11 @@
 
 #ifdef NN_USE_COMPUTE
 
+typedef struct
+{
+	uint32_t stride;
+} nn_poolingLayerParam_t;
+
 static nn_tensor_t*
 nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
                               uint32_t bs, nn_tensor_t* X)
@@ -129,6 +134,8 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 		self->us1,
 	};
 
+	// nn_poolingLayer_forwardPass
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute, cp);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 4, ua0_array);
@@ -189,6 +196,8 @@ nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		self->us2,
 	};
 
+	// nn_poolingLayer_backprop
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_pooling_backprop);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
@@ -229,11 +238,15 @@ nn_poolingLayer_newCompute(nn_poolingLayer_t* self)
 		goto fail_us2;
 	}
 
+	nn_poolingLayerParam_t param =
+	{
+		.stride = self->stride,
+	};
 	self->sb01_param = vkk_buffer_new(arch->engine,
 	                                  VKK_UPDATE_MODE_STATIC,
 	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(float),
-	                                  &self->stride);
+	                                  sizeof(nn_poolingLayerParam_t),
+	                                  &param);
 	if(self->sb01_param == NULL)
 	{
 		goto fail_sb01_param;
@@ -409,7 +422,7 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 	if(self->mode == NN_POOLING_LAYER_MODE_MAX)
 	{
 		// clear forward gradients
-		nn_tensor_clear(dY_dX);
+		nn_tensor_clear(dY_dX, NN_TENSOR_HAZZARD_NONE);
 
 		fn = nn_poolingLayer_max;
 	}

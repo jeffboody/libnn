@@ -133,6 +133,8 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
 		self->us0,
 	};
 
+	// nn_skipLayer_forwardPassAdd
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_skip_forwardPassAdd);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
@@ -211,6 +213,8 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int mode,
 		self->us0,
 	};
 
+	// nn_skipLayer_forwardPassCat
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_skip_forwardPassCat);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
@@ -300,6 +304,8 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
 		self->us1,
 	};
 
+	// nn_skipLayer_backpropFork
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_skip_backpropFork);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
@@ -385,6 +391,8 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, uint32_t bs,
 		self->us1,
 	};
 
+	// nn_skipLayer_backpropCat
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_skip_backpropCat);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,

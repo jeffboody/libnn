@@ -65,9 +65,11 @@ void main()
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
 	uint xd = dimX.depth;
 
-	if((i >= dimX.height) || (j >= dimX.width))
+	if((i >= xh) || (j >= xw))
 	{
 		return;
 	}

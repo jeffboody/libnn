@@ -270,12 +270,22 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 			goto fail_data;
 		}
 
+		self->us0_clear = vkk_uniformSet_new(arch->engine,
+		                                     0, 0, NULL,
+		                                     arch->usf0_tensor);
+		if(self->us0_clear == NULL)
+		{
+			nn_tensor_delete(&tmp);
+			goto fail_data;
+		}
+
 		self->sb_dim = vkk_buffer_new(arch->engine, um,
 		                              VKK_BUFFER_USAGE_STORAGE,
 		                              sizeof(nn_dim_t),
 		                              dim);
 		if(self->sb_dim == NULL)
 		{
+			vkk_uniformSet_delete(&self->us0_clear);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -287,6 +297,7 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 		if(self->sb_data == NULL)
 		{
 			vkk_buffer_delete(&self->sb_dim);
+			vkk_uniformSet_delete(&self->us0_clear);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -333,6 +344,7 @@ void nn_tensor_delete(nn_tensor_t** _self)
 		#ifdef NN_USE_COMPUTE
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
+		vkk_uniformSet_delete(&self->us0_clear);
 		#endif
 		FREE(self->data);
 		FREE(self);
@@ -492,20 +504,69 @@ int nn_tensor_store(nn_tensor_t* self,
 	#endif
 }
 
-void nn_tensor_clear(nn_tensor_t* self)
+void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 {
 	ASSERT(self);
 
 	nn_dim_t* dim = &self->dim;
 
+	uint32_t count;
+	count = dim->count*dim->height*
+	        dim->width*dim->depth;
+
+	#ifdef NN_USE_COMPUTE
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
-		return;
-	}
+		nn_arch_t* arch = self->arch;
 
-	memset(self->data, 0, dim->count*dim->height*dim->width*
-	                      dim->depth*sizeof(float));
+		// compute tensors may only be cleared while computing
+		if(arch->computing == 0)
+		{
+			LOGE("invalid");
+			return;
+		}
+
+		// sb00: dimX
+		// sb01: X
+		vkk_uniformAttachment_t ua0_array[] =
+		{
+			{
+				.binding = 0,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = self->sb_dim,
+			},
+			{
+				.binding = 1,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = self->sb_data,
+			},
+		};
+
+		// dispatch(NONE, xn*xh*xw*xd, 1, 1, 64, 1, 1)
+		if(count%64 == 0)
+		{
+			vkk_compute_bindComputePipeline(arch->compute,
+			                                arch->cp_tensor_clearAligned);
+		}
+		else
+		{
+			vkk_compute_bindComputePipeline(arch->compute,
+			                                arch->cp_tensor_clear);
+		}
+		vkk_compute_updateUniformSetRefs(arch->compute,
+		                                 self->us0_clear,
+		                                 2, ua0_array);
+		vkk_compute_bindUniformSets(arch->compute, 1,
+		                            &self->us0_clear);
+		vkk_compute_dispatch(arch->compute,
+		                     (vkk_hazzard_e) hazzard,
+		                     count, 1, 1, 64, 1, 1);
+	}
+	else
+	#endif
+	{
+		memset(self->data, 0, count*sizeof(float));
+	}
 }
 
 float nn_tensor_get(nn_tensor_t* self,

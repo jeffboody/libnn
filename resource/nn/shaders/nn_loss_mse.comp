@@ -74,8 +74,7 @@ float loss_mse(uint m, uint i, uint j, uint k)
 
 void main()
 {
-	// RAW hazzard handled by nn_loss_dL_dY_mse
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint p   = gl_GlobalInvocationID.x;
 	uint q   = gl_GlobalInvocationID.y;
 	uint yh  = dimY.height;

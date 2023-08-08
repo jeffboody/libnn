@@ -78,9 +78,6 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 
 	#ifdef NN_USE_COMPUTE
-	vkk_uniformSet_t* us0_clear_dL_dW;
-	vkk_uniformSet_t* us0_clear_dL_dB;
-	vkk_uniformSet_t* us0_clear_dL_dX;
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;

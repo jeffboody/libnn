@@ -67,6 +67,8 @@ typedef struct nn_arch_s
 
 	vkk_compute_t* compute;
 
+	int computing;
+
 	vkk_uniformSetFactory_t* usf0_batchNorm;
 	vkk_uniformSetFactory_t* usf1_batchNorm;
 	vkk_uniformSetFactory_t* usf2_batchNorm;

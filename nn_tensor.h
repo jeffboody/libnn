@@ -39,6 +39,10 @@
 #define NN_TENSOR_MODE_IO      0
 #define NN_TENSOR_MODE_COMPUTE 1
 
+// definitions must match vkk_hazzard_e
+#define NN_TENSOR_HAZZARD_NONE  0
+#define NN_TENSOR_HAZZARD_WAR   1
+
 typedef struct nn_tensor_s
 {
 	nn_arch_t* arch;
@@ -49,8 +53,9 @@ typedef struct nn_tensor_s
 	float*   data;
 
 	#ifdef NN_USE_COMPUTE
-	vkk_buffer_t* sb_dim;
-	vkk_buffer_t* sb_data;
+	vkk_uniformSet_t* us0_clear;
+	vkk_buffer_t*     sb_dim;
+	vkk_buffer_t*     sb_data;
 	#endif
 } nn_tensor_t;
 
@@ -64,7 +69,8 @@ int          nn_tensor_load(nn_tensor_t* self,
                             jsmn_val_t* val);
 int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
-void         nn_tensor_clear(nn_tensor_t* self);
+void         nn_tensor_clear(nn_tensor_t* self,
+                             int hazzard);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k);

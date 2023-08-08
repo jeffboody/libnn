@@ -59,8 +59,7 @@ void set_dL_dB(uint n, uint i, uint j, uint k, float v)
 
 void main()
 {
-	// RAW hazzard handled by
-	// nn_weightLayer_backprop_dL_dX
+	// RAW hazzard handled by nn_weightLayer_backprop_dL_dX
 	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
 	uint n  = gl_GlobalInvocationID.x;
 	uint nc = dim_dL_dB.count;

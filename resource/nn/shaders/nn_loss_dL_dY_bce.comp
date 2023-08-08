@@ -81,13 +81,16 @@ void dL_dY_bce(uint m, uint i, uint j, uint k)
 
 void main()
 {
-	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	// RAW hazzard handled by nn_loss_bce
+	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
+	uint yh = dimY.height;
+	uint yw = dimY.width;
 	uint yd = dimY.depth;
 
-	if((i >= dimY.height) || (j >= dimY.width))
+	if((i >= yh) || (j >= yw))
 	{
 		return;
 	}

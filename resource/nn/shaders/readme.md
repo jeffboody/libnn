@@ -252,8 +252,8 @@ Uniforms
 
 Backprop Dispatch Order
 
-* nn_loss_dL_dY_TYPE
 * nn_loss_TYPE
+* nn_loss_dL_dY_TYPE
 
 Tensor
 ------

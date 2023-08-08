@@ -135,10 +135,10 @@ void main()
 	float b;
 	float dl_dw;
 	float dl_db;
-	for(n = p; n < nc; n += 4)
+	for(n = p; n < nc; n += 8)
 	{
 		// weights gradient
-		for(k = q; k < xd; k += 4)
+		for(k = q; k < xd; k += 8)
 		{
 			w                     = getW(n, 0, 0, k);
 			dl_dw                 = s*get_dL_dW(n, 0, 0, k);

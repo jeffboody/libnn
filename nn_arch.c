@@ -257,17 +257,7 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 	                                            2, ub_array);
 
 	// sb20:  gc
-	// sb21:  dim_dL_dY
-	// sb22:  dL_dY
-	// sb23:  dim_dL_dW
-	// sb24:  dL_dW
-	// sb25:  dim_dL_dB
-	// sb26:  dL_dB
-	// sb27:  dim_dL_dX
-	// sb28:  dL_dX
-	// sb29:  dimVW
-	// sb210: VW
-	// sb211: dimVB
+	// ...
 	// sb212: VB
 	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
 	                                            13, ub_array);
@@ -339,12 +329,7 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 	                                              13, ub_array);
 
 	// sb00: state
-	// sb01: dimY
-	// sb02: Y
-	// sb03: dimYt
-	// sb04: Yt
-	// sb05: dim_dL_dY
-	// sb06: dL_dY
+	// ...
 	// sb07: loss
 	self->usf0_loss = vkk_uniformSetFactory_new(engine, um,
 	                                            8, ub_array);
@@ -1176,6 +1161,8 @@ nn_arch_beginCompute(nn_arch_t* self,
 	                        sizeof(nn_archState_t),
 	                        0, &self->state);
 
+	self->computing = 1;
+
 	// success
 	return 1;
 
@@ -1188,6 +1175,8 @@ nn_arch_beginCompute(nn_arch_t* self,
 static void nn_arch_endCompute(nn_arch_t* self)
 {
 	ASSERT(self);
+
+	self->computing = 0;
 
 	vkk_compute_end(self->compute);
 

@@ -166,9 +166,11 @@ void main()
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
+	uint yh = dimY.height;
+	uint yw = dimY.width;
 	uint fc = dimW.count;
 
-	if((i >= dimY.height) || (j >= dimY.width))
+	if((i >= yh) || (j >= yw))
 	{
 		return;
 	}

@@ -534,16 +534,22 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 		self->us0,
 	};
 
+	// nn_loss
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
+	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	                     1, 1, 1, 8, 8, 1);
+
+	// nn_loss_dL_dY
+	// RAW hazzard handled by nn_loss
+	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute, cp_dL_dY);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 8, ua0_array);
 	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
 	                     bs, dimY->height, dimY->width,
 	                     1, 8, 8);
-	vkk_compute_bindComputePipeline(arch->compute, cp);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     1, 1, 1, 8, 8, 1);
 
 	// loss is read by nn_arch_endCompute
 

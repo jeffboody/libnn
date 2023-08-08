@@ -153,6 +153,8 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int mode,
 		self->us1,
 	};
 
+	// nn_convLayer_forwardPass
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_forwardPass);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
@@ -180,153 +182,25 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
 	nn_arch_t*      arch = base->arch;
 
-	nn_tensor_t* VW        = self->VW;
-	nn_tensor_t* VB        = self->VB;
-	nn_tensor_t* dL_dW     = self->dL_dW;
-	nn_tensor_t* dL_dB     = self->dL_dB;
-	nn_tensor_t* dL_dX     = self->dL_dX;
-	nn_dim_t*    dim_dL_dW = nn_tensor_dim(dL_dW);
-	nn_dim_t*    dim_dL_dB = nn_tensor_dim(dL_dB);
-	nn_dim_t*    dim_dL_dX = nn_tensor_dim(dL_dX);
-	nn_dim_t*    dimY      = nn_tensor_dim(dL_dY);
-	uint32_t     fc        = dim_dL_dW->count;
-	uint32_t     fh        = dim_dL_dW->height;
-	uint32_t     fw        = dim_dL_dW->width;
-	uint32_t     xd        = dim_dL_dW->depth;
+	nn_tensor_t* VW   = self->VW;
+	nn_tensor_t* VB   = self->VB;
+	nn_dim_t*    dimW = nn_tensor_dim(self->W);
+	nn_dim_t*    dimY = nn_tensor_dim(dL_dY);
+	uint32_t     fc   = dimW->count;
+	uint32_t     fh   = dimW->height;
+	uint32_t     fw   = dimW->width;
+	uint32_t     xd   = dimW->depth;
 
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_clear_dL_dW_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
-		},
-	};
-
-	// clear dL_dW
-	int      aligned = 0;
-	uint32_t count;
-	count = dim_dL_dW->count*dim_dL_dW->height*
-	        dim_dL_dW->width*dim_dL_dW->depth;
-	if(count%64 == 0)
-	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_tensor_clearAligned);
-		aligned = 1;
-	}
-	else
-	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_tensor_clear);
-		aligned = 0;
-	}
-	vkk_compute_updateUniformSetRefs(arch->compute,
-	                                 self->us0_clear_dL_dW,
-	                                 2, ua0_clear_dL_dW_array);
-	vkk_compute_bindUniformSets(arch->compute, 1,
-	                            &self->us0_clear_dL_dW);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     count, 1, 1, 64, 1, 1);
-
-	// clear dL_dB
+	// clear backprop gradients
+	nn_tensor_t* dL_dW = self->dL_dW;
+	nn_tensor_t* dL_dB = self->dL_dB;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		// sb00: dimX
-		// sb01: X
-		vkk_uniformAttachment_t ua0_clear_dL_dB_array[] =
-		{
-			{
-				.binding = 0,
-				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-				.buffer  = dL_dB->sb_dim,
-			},
-			{
-				.binding = 1,
-				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-				.buffer  = dL_dB->sb_data,
-			},
-		};
-
-		count = dim_dL_dB->count*dim_dL_dB->height*
-		        dim_dL_dB->width*dim_dL_dB->depth;
-		if(count%64 == 0)
-		{
-			if(aligned == 0)
-			{
-				vkk_compute_bindComputePipeline(arch->compute,
-				                                arch->cp_tensor_clearAligned);
-				aligned = 1;
-			}
-		}
-		else
-		{
-			if(aligned)
-			{
-				vkk_compute_bindComputePipeline(arch->compute,
-				                                arch->cp_tensor_clear);
-				aligned = 0;
-			}
-		}
-		vkk_compute_updateUniformSetRefs(arch->compute,
-		                                 self->us0_clear_dL_dB,
-		                                 2, ua0_clear_dL_dB_array);
-		vkk_compute_bindUniformSets(arch->compute, 1,
-		                            &self->us0_clear_dL_dB);
-		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-		                     count, 1, 1, 64, 1, 1);
+		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
 	}
-
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_clear_dL_dX_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
-		},
-	};
-
-	// clear dL_dX
-	count = dim_dL_dX->count*dim_dL_dX->height*
-	        dim_dL_dX->width*dim_dL_dX->depth;
-	if(count%64 == 0)
-	{
-		if(aligned == 0)
-		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clearAligned);
-			aligned = 1;
-		}
-	}
-	else
-	{
-		if(aligned)
-		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clear);
-			aligned = 0;
-		}
-	}
-	vkk_compute_updateUniformSetRefs(arch->compute,
-	                                 self->us0_clear_dL_dX,
-	                                 2, ua0_clear_dL_dX_array);
-	vkk_compute_bindUniformSets(arch->compute, 1,
-	                            &self->us0_clear_dL_dX);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     count, 1, 1, 64, 1, 1);
+	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
 	// sb20:  gc
 	// sb21:  dim_dL_dY
@@ -417,7 +291,9 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		self->us2,
 	};
 
-	// compute dL_dX
+	// nn_convLayer_backprop_dL_dX
+	// dispatch required for each fi,fj
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint fi;
 	uint fj;
 	vkk_uniformSet_t* us3;
@@ -442,7 +318,10 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute dL_dW
+	// nn_convLayer_backprop_dL_dW
+	// dispatch required for each f,fi,fj,k
+	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
 	vkk_compute_bindComputePipeline(arch->compute,
@@ -468,7 +347,10 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute dL_dB
+	// nn_convLayer_backprop_dL_dB
+	// dispatch required for each f
+	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		vkk_compute_bindComputePipeline(arch->compute,
@@ -486,19 +368,23 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute gradient clipping
+	// nn_convLayer_backpropGradientClipping
+	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropGradientClipping);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
 	                     1, 1, 1, 4, 4, 4);
 
-	// update W
+	// nn_convLayer_backpropUpdateW
+	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropUpdateW);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
 	                     fc, fh, fw, 4, 4, 4);
 
-	// update B
+	// nn_convLayer_backpropUpdateB
+	// RAW hazzard handled by nn_convLayer_backpropUpdateW
+	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropUpdateB);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
@@ -596,6 +482,8 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int mode,
 		self->us1,
 	};
 
+	// nn_convLayer_forwardPassT
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_forwardPassT);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
@@ -623,153 +511,25 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
 	nn_arch_t*      arch = base->arch;
 
-	nn_tensor_t* VW        = self->VW;
-	nn_tensor_t* VB        = self->VB;
-	nn_tensor_t* dL_dW     = self->dL_dW;
-	nn_tensor_t* dL_dB     = self->dL_dB;
-	nn_tensor_t* dL_dX     = self->dL_dX;
-	nn_dim_t*    dim_dL_dW = nn_tensor_dim(dL_dW);
-	nn_dim_t*    dim_dL_dB = nn_tensor_dim(dL_dB);
-	nn_dim_t*    dim_dL_dX = nn_tensor_dim(dL_dX);
-	nn_dim_t*    dimY      = nn_tensor_dim(dL_dY);
-	uint32_t     fc        = dim_dL_dW->count;
-	uint32_t     fh        = dim_dL_dW->height;
-	uint32_t     fw        = dim_dL_dW->width;
-	uint32_t     xd        = dim_dL_dW->depth;
+	nn_tensor_t* VW   = self->VW;
+	nn_tensor_t* VB   = self->VB;
+	nn_dim_t*    dimW = nn_tensor_dim(self->W);
+	nn_dim_t*    dimY = nn_tensor_dim(dL_dY);
+	uint32_t     fc   = dimW->count;
+	uint32_t     fh   = dimW->height;
+	uint32_t     fw   = dimW->width;
+	uint32_t     xd   = dimW->depth;
 
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_clear_dL_dW_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
-		},
-	};
-
-	// clear dL_dW
-	int      aligned = 0;
-	uint32_t count;
-	count = dim_dL_dW->count*dim_dL_dW->height*
-	        dim_dL_dW->width*dim_dL_dW->depth;
-	if(count%64 == 0)
-	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_tensor_clearAligned);
-		aligned = 1;
-	}
-	else
-	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_tensor_clear);
-		aligned = 0;
-	}
-	vkk_compute_updateUniformSetRefs(arch->compute,
-	                                 self->us0_clear_dL_dW,
-	                                 2, ua0_clear_dL_dW_array);
-	vkk_compute_bindUniformSets(arch->compute, 1,
-	                            &self->us0_clear_dL_dW);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     count, 1, 1, 64, 1, 1);
-
-	// clear dL_dB
+	// clear backprop gradients
+	nn_tensor_t* dL_dW = self->dL_dW;
+	nn_tensor_t* dL_dB = self->dL_dB;
+	nn_tensor_t* dL_dX = self->dL_dX;
+	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		// sb00: dimX
-		// sb01: X
-		vkk_uniformAttachment_t ua0_clear_dL_dB_array[] =
-		{
-			{
-				.binding = 0,
-				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-				.buffer  = dL_dB->sb_dim,
-			},
-			{
-				.binding = 1,
-				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-				.buffer  = dL_dB->sb_data,
-			},
-		};
-
-		count = dim_dL_dB->count*dim_dL_dB->height*
-		        dim_dL_dB->width*dim_dL_dB->depth;
-		if(count%64 == 0)
-		{
-			if(aligned == 0)
-			{
-				vkk_compute_bindComputePipeline(arch->compute,
-				                                arch->cp_tensor_clearAligned);
-				aligned = 1;
-			}
-		}
-		else
-		{
-			if(aligned)
-			{
-				vkk_compute_bindComputePipeline(arch->compute,
-				                                arch->cp_tensor_clear);
-				aligned = 0;
-			}
-		}
-		vkk_compute_updateUniformSetRefs(arch->compute,
-		                                 self->us0_clear_dL_dB,
-		                                 2, ua0_clear_dL_dB_array);
-		vkk_compute_bindUniformSets(arch->compute, 1,
-		                            &self->us0_clear_dL_dB);
-		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-		                     count, 1, 1, 64, 1, 1);
+		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
 	}
-
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_clear_dL_dX_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
-		},
-	};
-
-	// clear dL_dX
-	count = dim_dL_dX->count*dim_dL_dX->height*
-	        dim_dL_dX->width*dim_dL_dX->depth;
-	if(count%64 == 0)
-	{
-		if(aligned == 0)
-		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clearAligned);
-			aligned = 1;
-		}
-	}
-	else
-	{
-		if(aligned)
-		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clear);
-			aligned = 0;
-		}
-	}
-	vkk_compute_updateUniformSetRefs(arch->compute,
-	                                 self->us0_clear_dL_dX,
-	                                 2, ua0_clear_dL_dX_array);
-	vkk_compute_bindUniformSets(arch->compute, 1,
-	                            &self->us0_clear_dL_dX);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     count, 1, 1, 64, 1, 1);
+	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
 	// sb20:  gc
 	// sb21:  dim_dL_dY
@@ -860,7 +620,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		self->us2,
 	};
 
-	// compute dL_dX
+	// nn_convLayer_backpropT_dL_dX
+	// dispatch required for each fi,fj
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint fi;
 	uint fj;
 	vkk_uniformSet_t* us3;
@@ -885,7 +647,10 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute dL_dW
+	// nn_convLayer_backpropT_dL_dW
+	// dispatch required for each f,fi,fj,k
+	// RAW hazzard handled by nn_convLayer_backpropT_dL_dX
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
 	vkk_compute_bindComputePipeline(arch->compute,
@@ -911,7 +676,10 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute dL_dB
+	// nn_convLayer_backprop_dL_dB
+	// dispatch required for each f
+	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		vkk_compute_bindComputePipeline(arch->compute,
@@ -929,19 +697,23 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// compute gradient clipping
+	// nn_convLayer_backpropGradientClipping
+	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropGradientClipping);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
 	                     1, 1, 1, 4, 4, 4);
 
-	// update W
+	// nn_convLayer_backpropUpdateW
+	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropUpdateW);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
 	                     fc, fh, fw, 4, 4, 4);
 
-	// update B
+	// nn_convLayer_backpropUpdateB
+	// RAW hazzard handled by nn_convLayer_backpropUpdateW
+	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
 	vkk_compute_bindComputePipeline(arch->compute,
 	                                arch->cp_conv_backpropUpdateB);
 	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
@@ -957,35 +729,11 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 
 	nn_arch_t* arch = self->base.arch;
 
-	self->us0_clear_dL_dW = vkk_uniformSet_new(arch->engine,
-	                                           0, 0, NULL,
-	                                           arch->usf0_tensor);
-	if(self->us0_clear_dL_dW == NULL)
-	{
-		return 0;
-	}
-
-	self->us0_clear_dL_dB = vkk_uniformSet_new(arch->engine,
-	                                           0, 0, NULL,
-	                                           arch->usf0_tensor);
-	if(self->us0_clear_dL_dB == NULL)
-	{
-		goto fail_us0_clear_dL_dB;
-	}
-
-	self->us0_clear_dL_dX = vkk_uniformSet_new(arch->engine,
-	                                           0, 0, NULL,
-	                                           arch->usf0_tensor);
-	if(self->us0_clear_dL_dX == NULL)
-	{
-		goto fail_us0_clear_dL_dX;
-	}
-
 	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
 	                               arch->usf0_conv);
 	if(self->us0 == NULL)
 	{
-		goto fail_us0;
+		return 0;
 	}
 
 	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
@@ -1046,12 +794,6 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 		vkk_uniformSet_delete(&self->us1);
 	fail_us1:
 		vkk_uniformSet_delete(&self->us0);
-	fail_us0:
-		vkk_uniformSet_delete(&self->us0_clear_dL_dX);
-	fail_us0_clear_dL_dX:
-		vkk_uniformSet_delete(&self->us0_clear_dL_dB);
-	fail_us0_clear_dL_dB:
-		vkk_uniformSet_delete(&self->us0_clear_dL_dW);
 	return 0;
 }
 
@@ -1065,9 +807,6 @@ nn_convLayer_deleteCompute(nn_convLayer_t* self)
 	vkk_uniformSet_delete(&self->us2);
 	vkk_uniformSet_delete(&self->us1);
 	vkk_uniformSet_delete(&self->us0);
-	vkk_uniformSet_delete(&self->us0_clear_dL_dX);
-	vkk_uniformSet_delete(&self->us0_clear_dL_dB);
-	vkk_uniformSet_delete(&self->us0_clear_dL_dW);
 }
 
 #else // NN_USE_COMPUTE not undefined
@@ -1385,12 +1124,12 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_tensor_clear(dL_dW);
+	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_clear(dL_dB);
+		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
 	}
-	nn_tensor_clear(dL_dX);
+	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
 	// sum gradients and backpropagate loss
 	uint32_t m;
@@ -1701,12 +1440,12 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_tensor_clear(dL_dW);
+	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_clear(dL_dB);
+		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
 	}
-	nn_tensor_clear(dL_dX);
+	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
 	// sum gradients and backpropagate loss
 	uint32_t m;

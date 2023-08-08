@@ -150,7 +150,7 @@ void main()
 	uint xw = dimXhat.width;
 	uint xd = dimXhat.depth;
 
-	if((i >= dimXhat.height) || (j >= dimXhat.width))
+	if((i >= xh) || (j >= xw))
 	{
 		return;
 	}

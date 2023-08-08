@@ -127,6 +127,8 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 		self->us1,
 	};
 
+	// nn_factLayer_forwardPass
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute, cp);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 2, ua0_array);
@@ -204,6 +206,8 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		self->us2,
 	};
 
+	// nn_factLayer_backprop
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_compute_bindComputePipeline(arch->compute, cp);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 2, ua2_array);
