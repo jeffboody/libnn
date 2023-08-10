@@ -4,7 +4,7 @@
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 
-TARGET   = cnn-test
+TARGET   = mnist-test
 CLASSES  =
 SOURCE   = $(TARGET).c $(CLASSES:%=%.c)
 OBJECTS  = $(TARGET).o $(CLASSES:%=%.o)
@@ -17,15 +17,15 @@ CFLAGS   = \
 ifeq ($(NN_USE_COMPUTE),1)
 	CFLAGS += -DNN_USE_COMPUTE
 endif
-LDFLAGS  = -Llibnn -lnn -Llibvkk -lvkk -Ljsmn/wrapper -ljsmn -Llibbfs -lbfs -Llibcc -lcc -Llibsqlite3 -lsqlite3 -L$(VULKAN_SDK)/lib -lvulkan -L/usr/lib `sdl2-config --libs` -ldl -lpthread -lm
+LDFLAGS  = -Llibnn -lnn -Llibvkk -lvkk -Ljsmn/wrapper -ljsmn -Llibbfs -lbfs -Ltexgz -ltexgz -Llibcc -lcc -Llibsqlite3 -lsqlite3 -L$(VULKAN_SDK)/lib -lvulkan -L/usr/lib `sdl2-config --libs` -ldl -lpthread -lz -lm
 CCC      = gcc
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS) jsmn libbfs libcc libnn libsqlite3 libvkk
+$(TARGET): $(OBJECTS) jsmn libbfs libcc libnn libsqlite3 libvkk texgz
 	$(CCC) $(OPT) $(OBJECTS) -o $@ $(LDFLAGS)
 
-.PHONY: jsmn libbfs libcc libnn libsqlite3 libvkk
+.PHONY: jsmn libbfs libcc libnn libsqlite3 libvkk texgz
 
 jsmn:
 	$(MAKE) -C jsmn/wrapper
@@ -45,6 +45,9 @@ libsqlite3:
 libvkk:
 	$(MAKE) -C libvkk
 
+texgz:
+	$(MAKE) -C texgz
+
 clean:
 	rm -f $(OBJECTS) *~ \#*\# $(TARGET)
 	$(MAKE) -C jsmn/wrapper clean
@@ -53,6 +56,7 @@ clean:
 	$(MAKE) -C libnn clean
 	$(MAKE) -C libsqlite3 clean
 	$(MAKE) -C libvkk clean
-	rm jsmn libbfs libcc libnn libsqlite3 libvkk pcg-c-basic
+	$(MAKE) -C texgz clean
+	rm jsmn libbfs libcc libnn libsqlite3 libvkk pcg-c-basic texgz
 
 $(OBJECTS): $(HFILES)

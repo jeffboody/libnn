@@ -760,7 +760,7 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_convLayerParam_t),
 	                                  &param);
-	if(self->sb01_param)
+	if(self->sb01_param == NULL)
 	{
 		goto fail_sb01_param;
 	}
@@ -777,7 +777,7 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 	                               VKK_BUFFER_USAGE_STORAGE,
 	                               sizeof(nn_convLayerGc_t),
 	                               &gc);
-	if(self->sb20_gc)
+	if(self->sb20_gc == NULL)
 	{
 		goto fail_sb20_gc;
 	}
@@ -853,7 +853,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 	int      jj;
 	for(fi = 0; fi < fh; ++fi)
 	{
-		ii = ((int) s*i) + ((int) fi) - ((int) fh/2);
+		ii = ((int) (s*i + fi)) - ((int) (fh/2));
 		if((ii < 0) || (ii >= xh))
 		{
 			continue;
@@ -861,7 +861,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 
 		for(fj = 0; fj < fw; ++fj)
 		{
-			jj = ((int) s*j) + ((int) fj) - ((int) fw/2);
+			jj = ((int) (s*j + fj)) - ((int) (fw/2));
 			if((jj < 0) || (jj >= xw))
 			{
 				continue;
@@ -1057,7 +1057,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	int      jj;
 	for(fi = 0; fi < fh; ++fi)
 	{
-		ii = ((int) s*i) + ((int) fi) - ((int) fh/2);
+		ii = ((int) (s*i + fi)) - ((int) (fh/2));
 		if((ii < 0) || (ii >= xh))
 		{
 			continue;
@@ -1065,7 +1065,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 
 		for(fj = 0; fj < fw; ++fj)
 		{
-			jj = ((int) s*j) + ((int) fj) - ((int) fw/2);
+			jj = ((int) (s*j + fj)) - ((int) (fw/2));
 			if((jj < 0) || (jj >= xw))
 			{
 				continue;
@@ -1257,7 +1257,7 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 	for(fi = 0; fi < fh; ++fi)
 	{
 		// input index ii
-		ii = ((int) i) + ((int) fi) - ((int) oi);
+		ii = ((int) (i + fi)) - ((int) oi);
 		if((ii < 0) || (ii >= sh) || (ii%s))
 		{
 			continue;
@@ -1267,7 +1267,7 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 		for(fj = 0; fj < fw; ++fj)
 		{
 			// input index jj
-			jj = ((int) j) + ((int) fj) - ((int) oj);
+			jj = ((int) (j + fj)) - ((int) oj);
 			if((jj < 0) || (jj >= sw) || (jj%s))
 			{
 				continue;
@@ -1370,7 +1370,7 @@ nn_convLayer_backpropT(nn_convLayer_t* self,
 	for(fi = 0; fi < fh; ++fi)
 	{
 		// input index ii
-		ii = ((int) i) + ((int) fi) - ((int) oi);
+		ii = ((int) (i + fi)) - ((int) oi);
 		if((ii < 0) || (ii >= sh) || (ii%s))
 		{
 			continue;
@@ -1380,7 +1380,7 @@ nn_convLayer_backpropT(nn_convLayer_t* self,
 		for(fj = 0; fj < fw; ++fj)
 		{
 			// input index jj
-			jj = ((int) j) + ((int) fj) - ((int) oj);
+			jj = ((int) (j + fj)) - ((int) oj);
 			if((jj < 0) || (jj >= sw) || (jj%s))
 			{
 				continue;

@@ -880,11 +880,25 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		goto fail_G;
 	}
 
+	nn_tensor_t* tmpG;
+	tmpG = nn_tensor_new(arch, &dim_111d,
+	                     NN_TENSOR_INIT_ZERO,
+	                     NN_TENSOR_MODE_IO);
+	if(tmpG == NULL)
+	{
+		goto fail_tmpG;
+	}
+
 	// initialize G to 1.0f
 	uint32_t k;
 	for(k = 0; k < xd; ++k)
 	{
-		nn_tensor_set(self->G, 0, 0, 0, k, 1.0f);
+		nn_tensor_set(tmpG, 0, 0, 0, k, 1.0f);
+	}
+
+	if(nn_tensor_blit(tmpG, self->G, 1, 0, 0) == 0)
+	{
+		goto fail_blitG;
 	}
 
 	self->B = nn_tensor_new(arch, &dim_111d,
@@ -956,6 +970,8 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		goto fail_compute;
 	}
 
+	nn_tensor_delete(&tmpG);
+
 	// success
 	return self;
 
@@ -977,6 +993,9 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	fail_Xhat:
 		nn_tensor_delete(&self->B);
 	fail_B:
+	fail_blitG:
+		nn_tensor_delete(&tmpG);
+	fail_tmpG:
 		nn_tensor_delete(&self->G);
 	fail_G:
 		nn_layer_delete((nn_layer_t**) &self);

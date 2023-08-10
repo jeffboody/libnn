@@ -12,8 +12,8 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_stride;
 	uint param_disable_bias;
+	uint param_stride;
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb02
@@ -123,7 +123,7 @@ void forwardPass(uint m, uint i, uint j, uint f)
 			continue;
 		}
 
-		for(fj = 0; fj < fj; ++fj)
+		for(fj = 0; fj < fw; ++fj)
 		{
 			jj = int(param_stride*j + fj) - int(fw/2);
 			if((jj < 0) || (jj >= xw))

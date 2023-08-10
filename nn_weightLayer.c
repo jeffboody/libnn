@@ -369,7 +369,7 @@ nn_weightLayer_newCompute(nn_weightLayer_t* self)
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_weightLayerParam_t),
 	                                  &param);
-	if(self->sb01_param)
+	if(self->sb01_param == NULL)
 	{
 		goto fail_sb01_param;
 	}
@@ -386,7 +386,7 @@ nn_weightLayer_newCompute(nn_weightLayer_t* self)
 	                               VKK_BUFFER_USAGE_STORAGE,
 	                               sizeof(nn_weightLayerGc_t),
 	                               &gc);
-	if(self->sb20_gc)
+	if(self->sb20_gc == NULL)
 	{
 		goto fail_sb20_gc;
 	}

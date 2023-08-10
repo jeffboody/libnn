@@ -33,6 +33,7 @@
 #include "libnn/nn_dim.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_tensor.h"
+#include "libvkk/vkk_platform.h"
 
 /***********************************************************
 * private                                                  *
@@ -129,11 +130,14 @@ fillXY(uint32_t m,
 }
 
 /***********************************************************
-* public                                                   *
+* callbacks                                                *
 ***********************************************************/
 
-int main(int argc, char** argv)
+static int
+cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 {
+	ASSERT(engine);
+
 	uint32_t bs = 16;
 
 	nn_archState_t arch_state =
@@ -144,7 +148,7 @@ int main(int argc, char** argv)
 		.l2_lambda      = 0.0001f,
 	};
 
-	nn_arch_t* arch = nn_arch_new(NULL, 0, &arch_state);
+	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);
 	if(arch == NULL)
 	{
 		return EXIT_FAILURE;
@@ -237,20 +241,36 @@ int main(int argc, char** argv)
 
 		nn_arch_train(arch, bs, X, Y);
 
-		// if(idx%10 == 0)
+		if(idx%10 == 0)
 		{
 			LOGI("train-%u, loss=%f",
 			     idx, nn_arch_loss(arch));
-			// nn_tensor_print(X, "X");
-			// nn_tensor_print(Y, "Y");
-			nn_tensor_print(bn->G, "G");
-			nn_tensor_print(bn->B, "B");
-			nn_tensor_print(bn->Xmean_mb, "Xmean_mb");
-			nn_tensor_print(bn->Xmean_ra, "Xmean_ra");
-			nn_tensor_print(bn->Xvar_mb, "Xvar_mb");
-			nn_tensor_print(bn->Xvar_ra, "Xvar_ra");
-			nn_tensor_print(conv->W, "W");
-			nn_tensor_print(conv->B, "B");
+			#if 0
+			nn_tensor_print(X, "X");
+			nn_tensor_print(Y, "Y");
+			nn_tensor_print(bn->G, "bn->G");
+			nn_tensor_print(bn->B, "bn->B");
+			nn_tensor_print(bn->Xhat, "bn->Xhat");
+			nn_tensor_print(bn->Y, "bn->Y");
+			nn_tensor_print(bn->Xmean_mb, "bn->Xmean_mb");
+			nn_tensor_print(bn->Xmean_ra, "bn->Xmean_ra");
+			nn_tensor_print(bn->Xvar_mb, "bn->Xvar_mb");
+			nn_tensor_print(bn->Xvar_ra, "bn->Xvar_ra");
+			nn_tensor_print(bn->dL_dXhat, "bn->dL_dXhat");
+			#ifdef NN_USE_COMPUTE
+			nn_tensor_print(bn->Bsum, "bn->Bsum");
+			nn_tensor_print(bn->Csum, "bn->Csum");
+			#endif
+			nn_tensor_print(conv->W, "conv->W");
+			nn_tensor_print(conv->B, "conv->B");
+			nn_tensor_print(conv->Y, "conv->Y");
+			nn_tensor_print(conv->VW, "conv->VW");
+			nn_tensor_print(conv->VB, "conv->VB");
+			nn_tensor_print(conv->dL_dW, "conv->dL_dW");
+			nn_tensor_print(conv->dL_dB, "conv->dL_dB");
+			nn_tensor_print(conv->dL_dX, "conv->dL_dX");
+			nn_tensor_print(loss->dL_dY, "loss->dL_dY");
+			#endif
 		}
 	}
 
@@ -279,3 +299,16 @@ int main(int argc, char** argv)
 		nn_arch_delete(&arch);
 	return EXIT_FAILURE;
 }
+
+vkk_platformInfo_t VKK_PLATFORM_INFO =
+{
+	.app_name    = "CNN-Test",
+	.app_version =
+	{
+		.major = 1,
+		.minor = 0,
+		.patch = 0,
+	},
+	.app_dir = "CNNTest",
+	.onMain  = cnn_test_onMain,
+};

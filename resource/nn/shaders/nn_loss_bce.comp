@@ -1,6 +1,6 @@
 #version 450
 
-layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
 
 shared float loss_work[64];
 
@@ -118,6 +118,7 @@ void main()
 	if(idx == 0)
 	{
 		float sum = 0.0;
+		float M   = float(state_bs*yh*yw*yd);
 
 		uint n;
 		for(n = 0; n < 64; ++n)
@@ -125,6 +126,6 @@ void main()
 			sum += loss_work[n];
 		}
 
-		loss = sum;
+		loss = sum/M;
 	}
 }

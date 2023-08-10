@@ -34,9 +34,6 @@
 #ifdef NN_USE_COMPUTE
 #include "../libcc/cc_map.h"
 #include "../libvkk/vkk.h"
-#else
-// dummy type for vkk_engine_t
-typedef int vkk_engine_t;
 #endif
 
 typedef struct nn_archState_s
@@ -161,10 +158,10 @@ typedef struct nn_arch_s
 	#endif
 } nn_arch_t;
 
-nn_arch_t* nn_arch_new(vkk_engine_t* engine,
+nn_arch_t* nn_arch_new(void* _engine,
                        size_t base_size,
                        nn_archState_t* state);
-nn_arch_t* nn_arch_import(vkk_engine_t* engine,
+nn_arch_t* nn_arch_import(void* _engine,
                           size_t base_size,
                           jsmn_val_t* val);
 int        nn_arch_export(nn_arch_t* self,

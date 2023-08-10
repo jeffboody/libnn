@@ -37,6 +37,7 @@
 #include "libnn/nn_loss.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
+#include "libvkk/vkk_platform.h"
 #include "texgz/texgz_png.h"
 
 /***********************************************************
@@ -226,11 +227,14 @@ mnist_savepng(const char* fname, texgz_tex_t* tex,
 }
 
 /***********************************************************
-* public                                                   *
+* callbacks                                                *
 ***********************************************************/
 
-int main(int argc, char** argv)
+static int
+mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 {
+	ASSERT(engine);
+
 	nn_archState_t arch_state =
 	{
 		.learning_rate  = 0.01f,
@@ -241,7 +245,7 @@ int main(int argc, char** argv)
 		.clip_momentum  = 0.99f,
 	};
 
-	nn_arch_t* arch = nn_arch_new(NULL, 0, &arch_state);
+	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);
 	if(arch == NULL)
 	{
 		return EXIT_FAILURE;
@@ -608,3 +612,16 @@ int main(int argc, char** argv)
 		nn_arch_delete(&arch);
 	return EXIT_FAILURE;
 }
+
+vkk_platformInfo_t VKK_PLATFORM_INFO =
+{
+	.app_name    = "MNIST-Test",
+	.app_version =
+	{
+		.major = 1,
+		.minor = 0,
+		.patch = 0,
+	},
+	.app_dir = "MNISTTest",
+	.onMain  = mnist_test_onMain,
+};

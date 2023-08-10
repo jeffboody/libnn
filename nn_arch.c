@@ -32,6 +32,10 @@
 #include "nn_loss.h"
 #include "nn_tensor.h"
 
+#ifdef NN_USE_COMPUTE
+#include "../libvkk/vkk.h"
+#endif
+
 #define NN_ARCH_THREADS 4
 
 /***********************************************************
@@ -201,12 +205,16 @@ nn_arch_initUbArray(vkk_uniformBinding_t* ub_array,
 }
 
 static int
-nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
+nn_arch_newCompute(nn_arch_t* self, void* _engine)
 {
 	ASSERT(self);
-	ASSERT(engine);
+	ASSERT(_engine);
 
 	// call nn_arch_deleteCompute to handle errors
+
+	vkk_engine_t* engine = (vkk_engine_t*) _engine;
+
+	self->engine = engine;
 
 	self->compute = vkk_compute_new(engine);
 	if(self->compute == NULL)
@@ -1080,8 +1088,6 @@ nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
 		return 0;
 	}
 
-	self->engine = engine;
-
 	return 1;
 }
 
@@ -1188,7 +1194,7 @@ static void nn_arch_endCompute(nn_arch_t* self)
 #else // NN_USE_COMPUTE not defined
 
 static int
-nn_arch_newCompute(nn_arch_t* self, vkk_engine_t* engine)
+nn_arch_newCompute(nn_arch_t* self, void* _engine)
 {
 	return 1;
 }
@@ -1389,11 +1395,11 @@ nn_arch_getConvIdx(nn_arch_t* self,
 * public                                                   *
 ***********************************************************/
 
-nn_arch_t* nn_arch_new(vkk_engine_t* engine,
+nn_arch_t* nn_arch_new(void* _engine,
                        size_t base_size,
                        nn_archState_t* state)
 {
-	// engine may be null
+	// _engine may be null
 	ASSERT(state);
 
 	if(base_size == 0)
@@ -1420,7 +1426,7 @@ nn_arch_t* nn_arch_new(vkk_engine_t* engine,
 	cc_rngUniform_init(&self->rng_uniform);
 	cc_rngNormal_init(&self->rng_normal, 0.0, 1.0);
 
-	if(nn_arch_newCompute(self, engine) == 0)
+	if(nn_arch_newCompute(self, _engine) == 0)
 	{
 		goto fail_compute;
 	}
@@ -1437,10 +1443,10 @@ nn_arch_t* nn_arch_new(vkk_engine_t* engine,
 }
 
 nn_arch_t*
-nn_arch_import(vkk_engine_t* engine,
+nn_arch_import(void* _engine,
                size_t base_size, jsmn_val_t* val)
 {
-	// engine may be null
+	// _engine may be null
 	ASSERT(val);
 
 	if(val->type != JSMN_TYPE_OBJECT)
@@ -1516,7 +1522,7 @@ nn_arch_import(vkk_engine_t* engine,
 		.clip_momentum  = strtof(val_clip_momentum->data,  NULL),
 	};
 
-	return nn_arch_new(engine, base_size, &state);
+	return nn_arch_new(_engine, base_size, &state);
 }
 
 int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
@@ -1669,10 +1675,7 @@ int nn_arch_train(nn_arch_t* self,
 	// backpropagate loss
 	nn_tensor_t* dL_dY = NULL;
 	{
-		nn_loss_fn loss_fn;
-		loss_fn = self->loss->loss_fn;
-
-		dL_dY = (*loss_fn)(self->loss, bs, X, Yt);
+		dL_dY = nn_loss_loss(self->loss, bs, X, Yt);
 		if(dL_dY == NULL)
 		{
 			goto fail_loss;

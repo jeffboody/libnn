@@ -108,7 +108,7 @@ void backpropT_dL_dX(uint m, uint i, uint j, uint k)
 	uint oi = (vh - sh)/2;
 	uint oj = (vw - sw)/2;
 
-	int ii = int(i) + int(fi) - int(oi);
+	int ii = int(i + fi) - int(oi);
 	if((ii < 0) || (ii >= sh) ||
 	   (umod(ii, param_stride) > 0))
 	{
@@ -116,7 +116,7 @@ void backpropT_dL_dX(uint m, uint i, uint j, uint k)
 	}
 	ii = ii/int(param_stride);
 
-	int jj = int(j) + int(fj) - int(oj);
+	int jj = int(j + fj) - int(oj);
 	if((jj < 0) || (jj >= sw) ||
 	   (umod(jj, param_stride) > 0))
 	{

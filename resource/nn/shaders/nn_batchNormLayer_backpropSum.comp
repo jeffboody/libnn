@@ -41,7 +41,7 @@ layout(std430, set=0, binding=3) readonly buffer sb03
 	nn_dim_t dimG;
 };
 
-layout(std430, set=0, binding=4) writeonly buffer sb04
+layout(std430, set=0, binding=4) buffer sb04
 {
 	float G[];
 };
@@ -51,7 +51,7 @@ layout(std430, set=0, binding=5) readonly buffer sb05
 	nn_dim_t dimB;
 };
 
-layout(std430, set=0, binding=6) writeonly buffer sb06
+layout(std430, set=0, binding=6) buffer sb06
 {
 	float B[];
 };
@@ -109,20 +109,20 @@ float getXhat(uint n, uint i, uint j, uint k)
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
-void setG(uint n, uint i, uint j, uint k, float v)
+void addG(uint n, uint i, uint j, uint k, float v)
 {
 	uint sn = dimG.height*dimG.width*dimG.depth;
 	uint sy = dimG.width*dimG.depth;
 	uint sx = dimG.depth;
-	G[n*sn + i*sy + j*sx + k] = v;
+	G[n*sn + i*sy + j*sx + k] += v;
 }
 
-void setB(uint n, uint i, uint j, uint k, float v)
+void addB(uint n, uint i, uint j, uint k, float v)
 {
 	uint sn = dimB.height*dimB.width*dimB.depth;
 	uint sy = dimB.width*dimB.depth;
 	uint sx = dimB.depth;
-	B[n*sn + i*sy + j*sx + k] = v;
+	B[n*sn + i*sy + j*sx + k] += v;
 }
 
 float get_dL_dXhat(uint n, uint i, uint j, uint k)
@@ -223,7 +223,7 @@ void main()
 		setCsum(0, 0, 0, k, csum);
 
 		// update G and B
-		setG(0, 0, 0, k, -state_learning_rate*dl_dg);
-		setB(0, 0, 0, k, -state_learning_rate*dl_db);
+		addG(0, 0, 0, k, -state_learning_rate*dl_dg);
+		addB(0, 0, 0, k, -state_learning_rate*dl_db);
 	}
 }

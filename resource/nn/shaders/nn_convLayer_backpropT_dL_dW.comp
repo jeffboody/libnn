@@ -25,8 +25,8 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 
 layout(std430, set=0, binding=1) readonly buffer sb01
 {
-	uint param_stride;
 	uint param_disable_bias;
+	uint param_stride;
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb02
@@ -153,7 +153,7 @@ void main()
 	{
 		for(i = p; i < yh; i += 8)
 		{
-			ii = int(i) + int(fi) - int(oi);
+			ii = int(i + fi) - int(oi);
 			if((ii < 0) || (ii >= sh) ||
 			    (umod(ii, param_stride) > 0))
 			{
@@ -163,7 +163,7 @@ void main()
 
 			for(j = q; j < yw; j += 8)
 			{
-				jj = int(j) + int(fj) - int(oj);
+				jj = int(j + fj) - int(oj);
 				if((jj < 0) || (jj >= sw) ||
 				    (umod(jj, param_stride) > 0))
 				{

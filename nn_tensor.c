@@ -356,12 +356,6 @@ void nn_tensor_print(nn_tensor_t* self, const char* name)
 {
 	ASSERT(self);
 
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid mode=%i", self->mode);
-		return;
-	}
-
 	jsmn_stream_t* stream = jsmn_stream_new();
 	if(stream == NULL)
 	{
