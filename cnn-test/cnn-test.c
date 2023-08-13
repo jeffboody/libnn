@@ -270,6 +270,11 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 			nn_tensor_print(conv->dL_dB, "conv->dL_dB");
 			nn_tensor_print(conv->dL_dX, "conv->dL_dX");
 			nn_tensor_print(loss->dL_dY, "loss->dL_dY");
+			#else
+			nn_tensor_print(bn->G, "bn->G");
+			nn_tensor_print(bn->B, "bn->B");
+			nn_tensor_print(conv->W, "conv->W");
+			nn_tensor_print(conv->B, "conv->B");
 			#endif
 		}
 	}

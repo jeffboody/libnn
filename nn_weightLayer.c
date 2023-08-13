@@ -171,6 +171,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	nn_weightLayer_t* self  = (nn_weightLayer_t*) base;
 	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -307,12 +308,26 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		                     nc, 1, 1, 64, 1, 1);
 	}
 
+	// initialize gcw and gcb
+	nn_weightLayerGc_t gc =
+	{
+		.gcw = 1.0f,
+		.gcb = 1.0f,
+	};
+	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
+	                        2*sizeof(float), 0, &gc);
+
 	// nn_weightLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_weight_backpropGradientClipping);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     1, 1, 1, 8, 8, 1);
+	float clip_max = state->clip_max;
+	float clip_mu  = state->clip_momentum;
+	if((clip_max > 0.0f) || (clip_mu > 0.0f))
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_weight_backpropGradientClipping);
+		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+		                     1, 1, 1, 8, 8, 1);
+	}
 
 	// nn_weightLayer_backpropUpdateW
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)

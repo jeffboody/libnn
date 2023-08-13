@@ -179,8 +179,9 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self = (nn_convLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_convLayer_t* self  = (nn_convLayer_t*) base;
+	nn_arch_t*      arch  = base->arch;
+	nn_archState_t* state = &arch->state;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -368,12 +369,26 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
+	// initialize gcw and gcb
+	nn_convLayerGc_t gc =
+	{
+		.gcw = 1.0f,
+		.gcb = 1.0f,
+	};
+	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
+	                        2*sizeof(float), 0, &gc);
+
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropGradientClipping);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     1, 1, 1, 4, 4, 4);
+	float clip_max = state->clip_max;
+	float clip_mu  = state->clip_momentum;
+	if((clip_max > 0.0f) || (clip_mu > 0.0f))
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_conv_backpropGradientClipping);
+		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+		                     1, 1, 1, 4, 4, 4);
+	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
@@ -508,8 +523,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self = (nn_convLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_convLayer_t* self  = (nn_convLayer_t*) base;
+	nn_arch_t*      arch  = base->arch;
+	nn_archState_t* state = &arch->state;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -697,12 +713,26 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
+	// initialize gcw and gcb
+	nn_convLayerGc_t gc =
+	{
+		.gcw = 1.0f,
+		.gcb = 1.0f,
+	};
+	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
+	                        2*sizeof(float), 0, &gc);
+
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropGradientClipping);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     1, 1, 1, 4, 4, 4);
+	float clip_max = state->clip_max;
+	float clip_mu  = state->clip_momentum;
+	if((clip_max > 0.0f) || (clip_mu > 0.0f))
+	{
+		vkk_compute_bindComputePipeline(arch->compute,
+		                                arch->cp_conv_backpropGradientClipping);
+		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
+		                     1, 1, 1, 4, 4, 4);
+	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)

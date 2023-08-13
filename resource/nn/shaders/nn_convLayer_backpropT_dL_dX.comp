@@ -12,8 +12,8 @@ struct nn_dim_t
 
 layout(std430, set=1, binding=1) readonly buffer sb11
 {
-	uint param_stride;
 	uint param_disable_bias;
+	uint param_stride;
 };
 
 layout(std430, set=0, binding=4) readonly buffer sb04
