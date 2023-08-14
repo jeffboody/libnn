@@ -35,6 +35,7 @@
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
+#include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "libvkk/vkk_platform.h"
@@ -516,6 +517,36 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
 			     epoch, step, n, l);
+			#if 0
+			// if too many results are output then nn_tensor_store
+			// may be modified to output the first instance
+			nn_tensor_print(bn0->Y, "bn0->Y");
+			nn_tensor_print(enc1->conv->Y, "enc1->conv->Y");
+			nn_tensor_print(enc1->op->pool->Y, "enc1->op->pool->Y");
+			nn_tensor_print(enc2->conv->Y, "enc2->conv->Y");
+			nn_tensor_print(enc2->op->pool->Y, "enc2->op->pool->Y");
+			nn_tensor_print(dec3->conv->Y, "dec3->conv->Y");
+			nn_tensor_print(dec3->op->conv->Y, "dec3->op->conv->Y");
+			nn_tensor_print(dec4->conv->Y, "dec4->conv->Y");
+			nn_tensor_print(dec4->op->conv->Y, "dec4->op->conv->Y");
+			nn_tensor_print(convO->Y, "convO->Y");
+			nn_tensor_print(factO->Y, "factO->Y");
+			nn_tensor_print(loss->dL_dY, "loss->dL_dY");
+			nn_tensor_print(convO->dL_dX, "convO->dL_dX");
+			nn_tensor_print(dec4->op->conv->dL_dX, "dec4->op->conv->dL_dX");
+			nn_tensor_print(dec4->bn->dL_dXhat, "dec4->bn->dL_dXhat");
+			nn_tensor_print(dec4->conv->dL_dX, "dec4->conv->dL_dX");
+			nn_tensor_print(dec3->op->conv->dL_dX, "dec3->op->conv->dL_dX");
+			nn_tensor_print(dec3->bn->dL_dXhat, "dec3->bn->dL_dXhat");
+			nn_tensor_print(dec3->conv->dL_dX, "dec3->conv->dL_dX");
+			nn_tensor_print(enc2->op->pool->dL_dX, "enc2->op->pool->dL_dX");
+			nn_tensor_print(enc2->bn->dL_dXhat, "enc2->bn->dL_dXhat");
+			nn_tensor_print(enc2->conv->dL_dX, "enc2->conv->dL_dX");
+			nn_tensor_print(enc1->op->pool->dL_dX, "enc1->op->pool->dL_dX");
+			nn_tensor_print(enc1->bn->dL_dXhat, "enc1->bn->dL_dXhat");
+			nn_tensor_print(enc1->conv->dL_dX, "enc1->conv->dL_dX");
+			nn_tensor_print(bn0->dL_dXhat, "bn0->dL_dXhat");
+			#endif
 			++step;
 		}
 

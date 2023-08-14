@@ -1,5 +1,5 @@
-# CPU implementation used by default
-# export NN_USE_COMPUTE = 1
+# compute implementation used by default
+export NN_USE_COMPUTE = 1
 
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1

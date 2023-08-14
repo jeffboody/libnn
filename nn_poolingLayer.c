@@ -57,19 +57,16 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 	nn_tensor_t*       dY_dX = self->dY_dX;
 	nn_dim_t*          dimY  = nn_tensor_dim(Y);
 
-	vkk_computePipeline_t* cp;
-	if(self->mode == NN_POOLING_LAYER_MODE_AVERAGE)
+	vkk_computePipeline_t* cp[NN_POOLING_LAYER_MODE_COUNT] =
 	{
-		cp = arch->cp_pooling_forwardPassAvg;
-	}
-	else if(self->mode == NN_POOLING_LAYER_MODE_MAX)
+		arch->cp_pooling_forwardPassMax,
+		arch->cp_pooling_forwardPassAvg,
+	};
+
+	// clear forward gradients
+	if(self->mode == NN_POOLING_LAYER_MODE_MAX)
 	{
-		cp = arch->cp_pooling_forwardPassMax;
-	}
-	else
-	{
-		LOGE("invalid");
-		return NULL;
+		nn_tensor_clear(dY_dX, NN_TENSOR_HAZZARD_NONE);
 	}
 
 	// sb00: state
@@ -136,7 +133,8 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 	// nn_poolingLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                cp[self->mode]);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 4, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
@@ -418,13 +416,16 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 	uint32_t     yw     = dimY->width;
 	uint32_t     xd     = dimY->depth;
 
-	nn_poolingLayer_fn fn = nn_poolingLayer_avg;
+	nn_poolingLayer_fn fn[NN_POOLING_LAYER_MODE_COUNT] =
+	{
+		nn_poolingLayer_max,
+		nn_poolingLayer_avg,
+	};
+
+	// clear forward gradients
 	if(self->mode == NN_POOLING_LAYER_MODE_MAX)
 	{
-		// clear forward gradients
 		nn_tensor_clear(dY_dX, NN_TENSOR_HAZZARD_NONE);
-
-		fn = nn_poolingLayer_max;
 	}
 
 	// output and forward gradients
@@ -440,7 +441,7 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					(*fn)(self, X, m, i, j, k);
+					(*fn[self->mode])(self, X, m, i, j, k);
 				}
 			}
 		}

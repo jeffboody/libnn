@@ -32,6 +32,7 @@
 
 #define NN_POOLING_LAYER_MODE_MAX     0
 #define NN_POOLING_LAYER_MODE_AVERAGE 1
+#define NN_POOLING_LAYER_MODE_COUNT   2
 
 typedef struct nn_poolingLayer_s
 {

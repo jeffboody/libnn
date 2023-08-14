@@ -56,6 +56,31 @@ typedef struct nn_coderLayerInfo_s
 	int op_mode;
 } nn_coderLayerInfo_t;
 
+typedef struct nn_coderOpLayer_s
+{
+	nn_layer_t base;
+
+	int op_mode;
+	union
+	{
+		// upscale layer
+		// transpose, xavier, stride=2
+		// W : dim(xd,2,2,xd)
+		// Y : dim(bs,2*xh,2*xw,xd)
+		//
+		// downscale layer
+		// xavier, stride=2
+		// W : dim(xd,3,3,xd)
+		// Y : dim(bs,xh/2,xw/2,xd)
+		nn_convLayer_t* conv;
+
+		// pooling layer
+		// 2x2, max or avg
+		// Y : dim(bs,xh/2,xw/2,xd)
+		nn_poolingLayer_t* pool;
+	};
+} nn_coderOpLayer_t;
+
 typedef struct nn_coderLayer_s
 {
 	nn_layer_t base;
