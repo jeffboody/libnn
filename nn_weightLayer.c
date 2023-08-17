@@ -397,7 +397,7 @@ nn_weightLayer_newCompute(nn_weightLayer_t* self)
 		.norm_dl_db_ra = 0.0f,
 	};
 	self->sb20_gc = vkk_buffer_new(arch->engine,
-	                               VKK_UPDATE_MODE_STATIC,
+	                               VKK_UPDATE_MODE_SYNCHRONOUS,
 	                               VKK_BUFFER_USAGE_STORAGE,
 	                               sizeof(nn_weightLayerGc_t),
 	                               &gc);
