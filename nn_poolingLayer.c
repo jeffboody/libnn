@@ -33,6 +33,9 @@
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
+const char* NN_POOLING_LAYER_STRING_MAX     = "max";
+const char* NN_POOLING_LAYER_STRING_AVERAGE = "average";
+
 /***********************************************************
 * private                                                  *
 ***********************************************************/
@@ -45,7 +48,8 @@ typedef struct
 } nn_poolingLayerParam_t;
 
 static nn_tensor_t*
-nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_poolingLayer_forwardPassFn(nn_layer_t* base,
+                              nn_poolingLayerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -400,7 +404,8 @@ nn_poolingLayer_avg(nn_poolingLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_poolingLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_poolingLayer_forwardPassFn(nn_layer_t* base,
+                              nn_poolingLayerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -531,16 +536,47 @@ nn_poolingLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(self->Y);
 }
 
+static nn_poolingLayerMode_e
+nn_poolingLayer_mode(const char* str)
+{
+	ASSERT(str);
+
+	const char* mode_fn[NN_POOLING_LAYER_MODE_COUNT] =
+	{
+		NN_POOLING_LAYER_STRING_MAX,
+		NN_POOLING_LAYER_STRING_AVERAGE,
+	};
+
+	int i;
+	for(i = 0; i < NN_POOLING_LAYER_MODE_COUNT; ++i)
+	{
+		if(strcmp(str, mode_fn[i]) == 0)
+		{
+			return (nn_poolingLayerMode_e) i;
+		}
+	}
+
+	LOGE("invalid %s", str);
+	return NN_POOLING_LAYER_MODE_ERROR;
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
 
 nn_poolingLayer_t*
 nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                    uint32_t stride, int mode)
+                    uint32_t stride,
+                    nn_poolingLayerMode_e mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
+
+	if(((int) mode < 0) ||
+	   ((int) mode >= NN_POOLING_LAYER_MODE_COUNT))
+	{
+		LOGE("invalid mode=%i", (int) mode);
+	}
 
 	nn_layerInfo_t info =
 	{
@@ -679,12 +715,8 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	uint32_t stride;
 	stride = (uint32_t) strtol(val_stride->data, NULL, 0);
 
-	int mode = NN_POOLING_LAYER_MODE_MAX;
-	if(strcmp(val_mode->data, "average") == 0)
-	{
-		mode = NN_POOLING_LAYER_MODE_AVERAGE;
-	}
-
+	nn_poolingLayerMode_e mode;
+	mode = nn_poolingLayer_mode(val_mode->data);
 	return nn_poolingLayer_new(arch, &dimX, stride, mode);
 }
 

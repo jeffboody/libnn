@@ -30,9 +30,14 @@
 #include "../libvkk/vkk.h"
 #endif
 
-#define NN_POOLING_LAYER_MODE_MAX     0
-#define NN_POOLING_LAYER_MODE_AVERAGE 1
-#define NN_POOLING_LAYER_MODE_COUNT   2
+typedef enum
+{
+	NN_POOLING_LAYER_MODE_ERROR   = -1,
+	NN_POOLING_LAYER_MODE_MAX     = 0,
+	NN_POOLING_LAYER_MODE_AVERAGE = 1,
+} nn_poolingLayerMode_e;
+
+#define NN_POOLING_LAYER_MODE_COUNT 2
 
 typedef struct nn_poolingLayer_s
 {
@@ -40,7 +45,7 @@ typedef struct nn_poolingLayer_s
 
 	uint32_t stride;
 
-	int mode;
+	nn_poolingLayerMode_e mode;
 
 	// output
 	// yh = xh/stride
@@ -66,7 +71,7 @@ typedef struct nn_poolingLayer_s
 nn_poolingLayer_t* nn_poolingLayer_new(nn_arch_t* arch,
                                        nn_dim_t* dimX,
                                        uint32_t stride,
-                                       int mode);
+                                       nn_poolingLayerMode_e mode);
 nn_poolingLayer_t* nn_poolingLayer_import(nn_arch_t* arch,
                                           jsmn_val_t* val);
 int                nn_poolingLayer_export(nn_poolingLayer_t* self,
