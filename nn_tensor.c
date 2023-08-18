@@ -237,7 +237,8 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 
 nn_tensor_t*
 nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
-              int init, int mode)
+              nn_tensorInit_e init,
+              nn_tensorMode_e mode)
 {
 	ASSERT(arch);
 	ASSERT(dim);
@@ -571,7 +572,7 @@ float nn_tensor_get(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
@@ -591,7 +592,7 @@ void nn_tensor_set(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return;
 	}
 
@@ -611,7 +612,7 @@ void nn_tensor_add(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return;
 	}
 
@@ -631,7 +632,7 @@ void nn_tensor_mul(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return;
 	}
 
@@ -650,7 +651,7 @@ float nn_tensor_norm(nn_tensor_t* self, uint32_t count)
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
@@ -685,7 +686,7 @@ float nn_tensor_min(nn_tensor_t* self, uint32_t count)
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
@@ -723,7 +724,7 @@ float nn_tensor_max(nn_tensor_t* self, uint32_t count)
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
@@ -761,7 +762,7 @@ float nn_tensor_avg(nn_tensor_t* self, uint32_t count)
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid mode=%i", self->mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
