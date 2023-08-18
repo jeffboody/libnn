@@ -128,7 +128,7 @@ nn_coderOpLayer_dimYFn(nn_layer_t* base)
 
 static nn_coderOpLayer_t*
 nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                    int op_mode)
+                    nn_coderOpMode_e op_mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -209,7 +209,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 	else
 	{
-		LOGE("invalid op_mode=%i", op_mode);
+		LOGE("invalid op_mode=%i", (int) op_mode);
 		goto fail_op;
 	}
 
@@ -911,7 +911,8 @@ nn_coderLayer_newRepeater(nn_coderLayer_t* self,
 }
 
 static int
-nn_coderLayer_newOp(nn_coderLayer_t* self, int op_mode,
+nn_coderLayer_newOp(nn_coderLayer_t* self,
+                    nn_coderOpMode_e op_mode,
                     nn_dim_t* dimX)
 {
 	ASSERT(self);

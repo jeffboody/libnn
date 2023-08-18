@@ -30,11 +30,16 @@
 #include "nn_dim.h"
 #include "nn_layer.h"
 
-#define NN_CODER_OP_MODE_NONE      0
-#define NN_CODER_OP_MODE_UPSCALE   1
-#define NN_CODER_OP_MODE_DOWNSCALE 2
-#define NN_CODER_OP_MODE_POOLMAX   3
-#define NN_CODER_OP_MODE_POOLAVG   4
+typedef enum
+{
+	NN_CODER_OP_MODE_NONE      = 0,
+	NN_CODER_OP_MODE_UPSCALE   = 1,
+	NN_CODER_OP_MODE_DOWNSCALE = 2,
+	NN_CODER_OP_MODE_POOLMAX   = 3,
+	NN_CODER_OP_MODE_POOLAVG   = 4,
+} nn_coderOpMode_e;
+
+#define NN_CODER_OP_MODE_COUNT 5
 
 typedef struct nn_coderLayerInfo_s
 {
@@ -53,14 +58,14 @@ typedef struct nn_coderLayerInfo_s
 	uint32_t repeat;
 
 	// operation layer (optional)
-	int op_mode;
+	nn_coderOpMode_e op_mode;
 } nn_coderLayerInfo_t;
 
 typedef struct nn_coderOpLayer_s
 {
 	nn_layer_t base;
 
-	int op_mode;
+	nn_coderOpMode_e op_mode;
 	union
 	{
 		// upscale layer
