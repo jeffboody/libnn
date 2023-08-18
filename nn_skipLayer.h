@@ -31,15 +31,18 @@
 #include "../libvkk/vkk.h"
 #endif
 
-#define NN_SKIP_LAYER_MODE_FORK 0
-#define NN_SKIP_LAYER_MODE_ADD  1
-#define NN_SKIP_LAYER_MODE_CAT  2
+typedef enum
+{
+	NN_SKIP_LAYER_MODE_FORK = 0,
+	NN_SKIP_LAYER_MODE_ADD  = 1,
+	NN_SKIP_LAYER_MODE_CAT  = 2,
+} nn_skipLayerMode_e;
 
 typedef struct nn_skipLayer_s
 {
 	nn_layer_t base;
 
-	int mode;
+	nn_skipLayerMode_e mode;
 
 	// fork/add/cat layer
 	nn_skipLayer_t* skip; // reference
