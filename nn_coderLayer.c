@@ -532,8 +532,7 @@ nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	dim = nn_layer_dimY(&self->conv->base);
 
 	self->fact = nn_factLayer_new(arch, dim,
-	                              nn_factLayer_ReLU,
-	                              nn_factLayer_dReLU);
+	                              NN_FACT_LAYER_FN_RELU);
 	if(self->fact == NULL)
 	{
 		goto fail_fact;
@@ -1015,8 +1014,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 	}
 
 	self->fact = nn_factLayer_new(info->arch, dim,
-	                              nn_factLayer_ReLU,
-	                              nn_factLayer_dReLU);
+	                              NN_FACT_LAYER_FN_RELU);
 	if(self->fact == NULL)
 	{
 		goto fail_fact;

@@ -386,8 +386,7 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 
 	nn_factLayer_t* factO;
 	factO = nn_factLayer_new(arch, dim,
-	                         nn_factLayer_logistic,
-	                         nn_factLayer_dlogistic);
+	                         NN_FACT_LAYER_FN_LOGISTIC);
 	if(factO == NULL)
 	{
 		goto fail_factO;

@@ -91,8 +91,7 @@ int main(int argc, char** argv)
 
 	nn_factLayer_t* l2;
 	l2 = nn_factLayer_new(arch, dim,
-	                      nn_factLayer_tanh,
-	                      nn_factLayer_dtanh);
+	                      NN_FACT_LAYER_FN_TANH);
 	if(l2 == NULL)
 	{
 		goto fail_l2;

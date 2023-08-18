@@ -62,32 +62,14 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 	nn_tensor_t*    Y    = self->Y;
 	nn_dim_t*       dimX = nn_tensor_dim(X);
 
-	vkk_computePipeline_t* cp;
-	if(self->fact_fn == nn_factLayer_linear)
+	vkk_computePipeline_t* cp[NN_FACT_LAYER_FN_COUNT] =
 	{
-		cp = arch->cp_fact_forwardPassLinear;
-	}
-	else if(self->fact_fn == nn_factLayer_logistic)
-	{
-		cp = arch->cp_fact_forwardPassLogistic;
-	}
-	else if(self->fact_fn == nn_factLayer_ReLU)
-	{
-		cp = arch->cp_fact_forwardPassReLU;
-	}
-	else if(self->fact_fn == nn_factLayer_PReLU)
-	{
-		cp = arch->cp_fact_forwardPassPReLU;
-	}
-	else if(self->fact_fn == nn_factLayer_tanh)
-	{
-		cp = arch->cp_fact_forwardPassTanh;
-	}
-	else
-	{
-		LOGE("invalid");
-		return NULL;
-	}
+		arch->cp_fact_forwardPassLinear,
+		arch->cp_fact_forwardPassLogistic,
+		arch->cp_fact_forwardPassReLU,
+		arch->cp_fact_forwardPassPReLU,
+		arch->cp_fact_forwardPassTanh,
+	};
 
 	// sb00: dimX
 	// sb01: X
@@ -129,7 +111,8 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 	// nn_factLayer_forwardPass
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                cp[self->fn]);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 2, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
@@ -156,32 +139,14 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_arch_t*      arch = base->arch;
 	nn_dim_t*       dimX = nn_tensor_dim(self->X);
 
-	vkk_computePipeline_t* cp;
-	if(self->fact_fn == nn_factLayer_linear)
+	vkk_computePipeline_t* cp[NN_FACT_LAYER_FN_COUNT] =
 	{
-		cp = arch->cp_fact_backpropLinear;
-	}
-	else if(self->fact_fn == nn_factLayer_logistic)
-	{
-		cp = arch->cp_fact_backpropLogistic;
-	}
-	else if(self->fact_fn == nn_factLayer_ReLU)
-	{
-		cp = arch->cp_fact_backpropReLU;
-	}
-	else if(self->fact_fn == nn_factLayer_PReLU)
-	{
-		cp = arch->cp_fact_backpropPReLU;
-	}
-	else if(self->fact_fn == nn_factLayer_tanh)
-	{
-		cp = arch->cp_fact_backpropTanh;
-	}
-	else
-	{
-		LOGE("invalid");
-		return NULL;
-	}
+		arch->cp_fact_backpropLinear,
+		arch->cp_fact_backpropLogistic,
+		arch->cp_fact_backpropReLU,
+		arch->cp_fact_backpropPReLU,
+		arch->cp_fact_backpropTanh,
+	};
 
 	// sb20: dim_dL_dY
 	// sb21: dL_dY
@@ -208,7 +173,8 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	// nn_factLayer_backprop
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute, cp);
+	vkk_compute_bindComputePipeline(arch->compute,
+	                                cp[self->fn]);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 2, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
@@ -270,6 +236,80 @@ nn_factLayer_deleteCompute(nn_factLayer_t* self)
 
 #else // NN_USE_COMPUTE not defined
 
+typedef float (*nn_factLayer_fn)(float x);
+
+static float nn_factLayer_linear(float x)
+{
+	return x;
+}
+
+static float nn_factLayer_logistic(float x)
+{
+	return 1.0f/(1.0f + exp(-x));
+}
+
+static float nn_factLayer_ReLU(float x)
+{
+	if(x < 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return x;
+}
+
+static float nn_factLayer_PReLU(float x)
+{
+	if(x < 0.0f)
+	{
+		return 0.01f*x;
+	}
+
+	return x;
+}
+
+static float nn_factLayer_tanh(float x)
+{
+	return tanhf(x);
+}
+
+static float nn_factLayer_dlinear(float x)
+{
+	return 1.0f;
+}
+
+static float nn_factLayer_dlogistic(float x)
+{
+	float fx = nn_factLayer_logistic(x);
+	return fx*(1.0f - fx);
+}
+
+static float nn_factLayer_dReLU(float x)
+{
+	if(x < 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return 1.0f;
+}
+
+static float nn_factLayer_dPReLU(float x)
+{
+	if(x < 0.0f)
+	{
+		return 0.01f;
+	}
+
+	return 1.0f;
+}
+
+static float nn_factLayer_dtanh(float x)
+{
+	float tanhfx = tanhf(x);
+	return 1.0f - tanhfx*tanhfx;
+}
+
 static nn_tensor_t*
 nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
                            uint32_t bs, nn_tensor_t* X)
@@ -285,7 +325,14 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 	uint32_t     xw    = dimX->width;
 	uint32_t     xd    = dimX->depth;
 
-	nn_factLayer_fn fact_fn = self->fact_fn;
+	nn_factLayer_fn fact_fn[NN_FACT_LAYER_FN_COUNT] =
+	{
+		nn_factLayer_linear,
+		nn_factLayer_logistic,
+		nn_factLayer_ReLU,
+		nn_factLayer_PReLU,
+		nn_factLayer_tanh,
+	};
 
 	// output and forward gradients
 	float    x;
@@ -304,7 +351,7 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
 					// output
 					x = nn_tensor_get(X, m, i, j, k);
 					nn_tensor_set(Y, m, i, j, k,
-					              (*fact_fn)(x));
+					              (*fact_fn[self->fn])(x));
 				}
 			}
 		}
@@ -331,7 +378,14 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	uint32_t     xw   = dimX->width;
 	uint32_t     xd   = dimX->depth;
 
-	nn_factLayer_fn dfact_fn = self->dfact_fn;
+	nn_factLayer_fn dfact_fn[NN_FACT_LAYER_FN_COUNT] =
+	{
+		nn_factLayer_dlinear,
+		nn_factLayer_dlogistic,
+		nn_factLayer_dReLU,
+		nn_factLayer_dPReLU,
+		nn_factLayer_dtanh,
+	};
 
 	// backpropagate loss
 	float    dy_dx;
@@ -350,7 +404,7 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 				{
 					// forward gradient
 					x     = nn_tensor_get(X, m, i, j, k);
-					dy_dx = (*dfact_fn)(x);
+					dy_dx = (*dfact_fn[self->fn])(x);
 
 					// dL_dY replaced by dL_dX
 					// dl_dx = dl_dy*dy_dx;
@@ -398,178 +452,47 @@ nn_factLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(self->Y);
 }
 
-/***********************************************************
-* public - activation functions                            *
-***********************************************************/
-
-float nn_factLayer_linear(float x)
+static const char* nn_factLayer_string(nn_factLayerFn_e fn)
 {
-	return x;
+	ASSERT(fn >= 0);
+	ASSERT(fn < NN_FACT_LAYER_FN_COUNT);
+
+	const char* str_array[NN_FACT_LAYER_FN_COUNT] =
+	{
+		NN_FACT_LAYER_STRING_LINEAR,
+		NN_FACT_LAYER_STRING_LOGISTIC,
+		NN_FACT_LAYER_STRING_RELU,
+		NN_FACT_LAYER_STRING_PRELU,
+		NN_FACT_LAYER_STRING_TANH,
+	};
+
+	return str_array[fn];
 }
 
-float nn_factLayer_logistic(float x)
-{
-	return 1.0f/(1.0f + exp(-x));
-}
-
-float nn_factLayer_ReLU(float x)
-{
-	if(x < 0.0f)
-	{
-		return 0.0f;
-	}
-
-	return x;
-}
-
-float nn_factLayer_PReLU(float x)
-{
-	if(x < 0.0f)
-	{
-		return 0.01f*x;
-	}
-
-	return x;
-}
-
-float nn_factLayer_tanh(float x)
-{
-	return tanhf(x);
-}
-
-float nn_factLayer_dlinear(float x)
-{
-	return 1.0f;
-}
-
-float nn_factLayer_dlogistic(float x)
-{
-	float fx = nn_factLayer_logistic(x);
-	return fx*(1.0f - fx);
-}
-
-float nn_factLayer_dReLU(float x)
-{
-	if(x < 0.0f)
-	{
-		return 0.0f;
-	}
-
-	return 1.0f;
-}
-
-float nn_factLayer_dPReLU(float x)
-{
-	if(x < 0.0f)
-	{
-		return 0.01f;
-	}
-
-	return 1.0f;
-}
-
-float nn_factLayer_dtanh(float x)
-{
-	float tanhfx = tanhf(x);
-	return 1.0f - tanhfx*tanhfx;
-}
-
-const char* nn_factLayer_string(nn_factLayer_fn fact_fn)
-{
-	ASSERT(fact_fn);
-
-	if(fact_fn == nn_factLayer_linear)
-	{
-		return NN_FACT_LAYER_STRING_LINEAR;
-	}
-	else if(fact_fn == nn_factLayer_logistic)
-	{
-		return NN_FACT_LAYER_STRING_LOGISTIC;
-	}
-	else if(fact_fn == nn_factLayer_ReLU)
-	{
-		return NN_FACT_LAYER_STRING_RELU;
-	}
-	else if(fact_fn == nn_factLayer_PReLU)
-	{
-		return NN_FACT_LAYER_STRING_PRELU;
-	}
-	else if(fact_fn == nn_factLayer_tanh)
-	{
-		return NN_FACT_LAYER_STRING_TANH;
-	}
-	else if(fact_fn == nn_factLayer_dlinear)
-	{
-		return NN_FACT_LAYER_STRING_DLINEAR;
-	}
-	else if(fact_fn == nn_factLayer_dlogistic)
-	{
-		return NN_FACT_LAYER_STRING_DLOGISTIC;
-	}
-	else if(fact_fn == nn_factLayer_dReLU)
-	{
-		return NN_FACT_LAYER_STRING_DRELU;
-	}
-	else if(fact_fn == nn_factLayer_dPReLU)
-	{
-		return NN_FACT_LAYER_STRING_DPRELU;
-	}
-	else if(fact_fn == nn_factLayer_dtanh)
-	{
-		return NN_FACT_LAYER_STRING_DTANH;
-	}
-
-	LOGE("invalid");
-	return NULL;
-}
-
-nn_factLayer_fn nn_factLayer_function(const char* str)
+static nn_factLayerFn_e nn_factLayer_function(const char* str)
 {
 	ASSERT(str);
 
-	if(strcmp(str, NN_FACT_LAYER_STRING_LINEAR) == 0)
+	const char* str_fn[NN_FACT_LAYER_FN_COUNT] =
 	{
-		return nn_factLayer_linear;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_LOGISTIC) == 0)
+		NN_FACT_LAYER_STRING_LINEAR,
+		NN_FACT_LAYER_STRING_LOGISTIC,
+		NN_FACT_LAYER_STRING_RELU,
+		NN_FACT_LAYER_STRING_PRELU,
+		NN_FACT_LAYER_STRING_TANH,
+	};
+
+	int i;
+	for(i = 0; i < NN_FACT_LAYER_FN_COUNT; ++i)
 	{
-		return nn_factLayer_logistic;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_RELU) == 0)
-	{
-		return nn_factLayer_ReLU;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_PRELU) == 0)
-	{
-		return nn_factLayer_PReLU;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_TANH) == 0)
-	{
-		return nn_factLayer_tanh;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_DLINEAR) == 0)
-	{
-		return nn_factLayer_dlinear;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_DLOGISTIC) == 0)
-	{
-		return nn_factLayer_dlogistic;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_DRELU) == 0)
-	{
-		return nn_factLayer_dReLU;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_DPRELU) == 0)
-	{
-		return nn_factLayer_dPReLU;
-	}
-	else if(strcmp(str, NN_FACT_LAYER_STRING_DTANH) == 0)
-	{
-		return nn_factLayer_dtanh;
+		if(strcmp(str, str_fn[i]) == 0)
+		{
+			return (nn_factLayerFn_e) i;
+		}
 	}
 
 	LOGE("invalid %s", str);
-	return NULL;
+	return NN_FACT_LAYER_FN_ERROR;
 }
 
 /***********************************************************
@@ -578,13 +501,16 @@ nn_factLayer_fn nn_factLayer_function(const char* str)
 
 nn_factLayer_t*
 nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                 nn_factLayer_fn fact_fn,
-                 nn_factLayer_fn dfact_fn)
+                 nn_factLayerFn_e fn)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
-	ASSERT(fact_fn);
-	ASSERT(dfact_fn);
+
+	if(((int) fn < 0) || ((int) fn >= NN_FACT_LAYER_FN_COUNT))
+	{
+		LOGE("invalid fn=%i", (int) fn);
+		return NULL;
+	}
 
 	nn_layerInfo_t info =
 	{
@@ -603,8 +529,7 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	self->fact_fn  = fact_fn;
-	self->dfact_fn = dfact_fn;
+	self->fn = fn;
 
 	self->Y = nn_tensor_new(arch, dimX,
 	                        NN_TENSOR_INIT_ZERO,
@@ -642,9 +567,8 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX     = NULL;
-	jsmn_val_t* val_fact_fn  = NULL;
-	jsmn_val_t* val_dfact_fn = NULL;
+	jsmn_val_t* val_dimX = NULL;
+	jsmn_val_t* val_fn   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -654,13 +578,9 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 		if(kv->val->type == JSMN_TYPE_STRING)
 		{
-			if(strcmp(kv->key, "fact_fn") == 0)
+			if(strcmp(kv->key, "fn") == 0)
 			{
-				val_fact_fn = kv->val;
-			}
-			else if(strcmp(kv->key, "dfact_fn") == 0)
-			{
-				val_dfact_fn = kv->val;
+				val_fn = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -675,9 +595,7 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX     == NULL) ||
-	   (val_fact_fn  == NULL) ||
-	   (val_dfact_fn == NULL))
+	if((val_dimX == NULL) || (val_fn == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -689,18 +607,8 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	nn_factLayer_fn fact_fn;
-	nn_factLayer_fn dfact_fn;
-	fact_fn  = nn_factLayer_function(val_fact_fn->data);
-	dfact_fn = nn_factLayer_function(val_dfact_fn->data);
-	if((fact_fn == NULL) || (dfact_fn == NULL))
-	{
-		LOGE("invalid fact_fn=%s, dfact_fn=%s",
-		     val_fact_fn->data, val_dfact_fn->data);
-		return NULL;
-	}
-
-	return nn_factLayer_new(arch, &dimX, fact_fn, dfact_fn);
+	nn_factLayerFn_e fn = nn_factLayer_function(val_fn->data);
+	return nn_factLayer_new(arch, &dimX, fn);
 }
 
 int nn_factLayer_export(nn_factLayer_t* self,
@@ -711,11 +619,8 @@ int nn_factLayer_export(nn_factLayer_t* self,
 
 	nn_dim_t* dimX = nn_factLayer_dimXFn(&self->base);
 
-	const char* str_fact_fn;
-	const char* str_dfact_fn;
-	str_fact_fn  = nn_factLayer_string(self->fact_fn);
-	str_dfact_fn = nn_factLayer_string(self->dfact_fn);
-	if((str_fact_fn == NULL) || (str_dfact_fn == NULL))
+	const char* str_fn = nn_factLayer_string(self->fn);
+	if(str_fn == NULL)
 	{
 		LOGE("invalid");
 		return 0;
@@ -725,10 +630,8 @@ int nn_factLayer_export(nn_factLayer_t* self,
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "fact_fn");
-	ret &= jsmn_stream_string(stream, "%s", str_fact_fn);
-	ret &= jsmn_stream_key(stream, "%s", "dfact_fn");
-	ret &= jsmn_stream_string(stream, "%s", str_dfact_fn);
+	ret &= jsmn_stream_key(stream, "%s", "fn");
+	ret &= jsmn_stream_string(stream, "%s", str_fn);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
