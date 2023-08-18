@@ -32,30 +32,25 @@
 #include "../libvkk/vkk.h"
 #endif
 
-typedef nn_tensor_t* (*nn_loss_fn)
-                     (nn_loss_t* base, uint32_t bs,
-                      nn_tensor_t* Y, nn_tensor_t* Yt);
-
 // loss functions
 // mse: mean squared error
 // mae: mean absolute error
 // bce: binary cross-entropy
-nn_tensor_t* nn_loss_mse(nn_loss_t* base, uint32_t bs,
-                         nn_tensor_t* Y, nn_tensor_t* Yt);
-nn_tensor_t* nn_loss_mae(nn_loss_t* base, uint32_t bs,
-                         nn_tensor_t* Y, nn_tensor_t* Yt);
-nn_tensor_t* nn_loss_bce(nn_loss_t* base, uint32_t bs,
-                         nn_tensor_t* Y, nn_tensor_t* Yt);
+typedef enum
+{
+	NN_LOSS_FN_ERROR = -1,
+	NN_LOSS_FN_MSE   = 0,
+	NN_LOSS_FN_MAE   = 1,
+	NN_LOSS_FN_BCE   = 2,
+} nn_lossFn_e;
 
-// string/function conversions
-const char* nn_loss_string(nn_loss_fn loss_fn);
-nn_loss_fn  nn_loss_function(const char* str);
+#define NN_LOSS_FN_COUNT 3
 
 typedef struct nn_loss_s
 {
-	nn_arch_t* arch;
-	nn_loss_fn loss_fn;
-	float      loss;
+	nn_arch_t*  arch;
+	nn_lossFn_e loss_fn;
+	float       loss;
 
 	// backprop gradients
 	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
@@ -68,7 +63,7 @@ typedef struct nn_loss_s
 
 nn_loss_t*   nn_loss_new(nn_arch_t* arch,
                          nn_dim_t* dimY,
-                         nn_loss_fn loss_fn);
+                         nn_lossFn_e loss_fn);
 nn_loss_t*   nn_loss_import(nn_arch_t* arch,
                             jsmn_val_t* val);
 int          nn_loss_export(nn_loss_t* self,
