@@ -20,19 +20,9 @@ layout(std430, set=0, binding=2) readonly buffer sb02
 	float Xhat[];
 };
 
-layout(std430, set=0, binding=3) readonly buffer sb03
-{
-	nn_dim_t dimG;
-};
-
 layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	float G[];
-};
-
-layout(std430, set=0, binding=5) readonly buffer sb05
-{
-	nn_dim_t dimB;
 };
 
 layout(std430, set=0, binding=6) readonly buffer sb06
@@ -58,20 +48,14 @@ float getXhat(uint n, uint i, uint j, uint k)
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
-float getG(uint n, uint i, uint j, uint k)
+float getG(uint n)
 {
-	uint sn = dimG.height*dimG.width*dimG.depth;
-	uint sy = dimG.width*dimG.depth;
-	uint sx = dimG.depth;
-	return G[n*sn + i*sy + j*sx + k];
+	return G[n];
 }
 
-float getB(uint n, uint i, uint j, uint k)
+float getB(uint n)
 {
-	uint sn = dimB.height*dimB.width*dimB.depth;
-	uint sy = dimB.width*dimB.depth;
-	uint sx = dimB.depth;
-	return B[n*sn + i*sy + j*sx + k];
+	return B[n];
 }
 
 void setY(uint n, uint i, uint j, uint k, float v)
@@ -104,8 +88,8 @@ void main()
 	float y;
 	for(k = 0; k < xd; ++k)
 	{
-		gamma = getG(0, 0, 0, k);
-		beta  = getB(0, 0, 0, k);
+		gamma = getG(k);
+		beta  = getB(k);
 		xhat  = getXhat(m, i, j, k);
 		y     = gamma*xhat + beta;
 		setY(m, i, j, k, y);

@@ -469,7 +469,7 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int mode,
 			}
 			else
 			{
-				y = nn_tensor_get(B, n, 0, 0, 0);
+				y = nn_tensor_getv(B, n);
 			}
 
 			// compute weighted sum
@@ -537,8 +537,8 @@ nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
 		// bias gradient
 		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			b           = nn_tensor_get(B, n, 0, 0, 0);
-			dl_db       = s*nn_tensor_get(dL_dB, n, 0, 0, 0);
+			b           = nn_tensor_getv(B, n);
+			dl_db       = s*nn_tensor_getv(dL_dB, n);
 			norm_b     += b*b;
 			norm_dl_db += dl_db*dl_db;
 		}
@@ -648,7 +648,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 			// sum dL_dB
 			if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 			{
-				nn_tensor_add(dL_dB, n, 0, 0, 0, dl_dy*dy_db);
+				nn_tensor_addv(dL_dB, n, dl_dy*dy_db);
 			}
 		}
 	}
@@ -686,13 +686,13 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		// bias
 		if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			dl_db = s*nn_tensor_get(dL_dB, n, 0, 0, 0);
+			dl_db = s*nn_tensor_getv(dL_dB, n);
 
 			// Nesterov Momentum Update
-			v0    = nn_tensor_get(VB, n, 0, 0, 0);
+			v0    = nn_tensor_getv(VB, n);
 			v1    = mu*v0 - lr*gcb*dl_db;
-			nn_tensor_set(VB, n, 0, 0, 0, v1);
-			nn_tensor_add(B, n, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
+			nn_tensor_setv(VB, n, v1);
+			nn_tensor_addv(B, n, -mu*v0 + (1 + mu)*v1);
 		}
 	}
 

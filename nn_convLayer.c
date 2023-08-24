@@ -870,7 +870,7 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 	}
 	else
 	{
-		y = nn_tensor_get(B, f, 0, 0, 0);
+		y = nn_tensor_getv(B, f);
 	}
 
 	// compute weighted sum
@@ -1006,8 +1006,8 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 		// bias gradient
 		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			b           = nn_tensor_get(B, f, 0, 0, 0);
-			dl_db       = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
+			b           = nn_tensor_getv(B, f);
+			dl_db       = s*nn_tensor_getv(dL_dB, f);
 			norm_b     += b*b;
 			norm_dl_db += dl_db*dl_db;
 		}
@@ -1117,7 +1117,7 @@ nn_convLayer_backprop(nn_convLayer_t* self,
 	// sum dL_dB
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_add(dL_dB, f, 0, 0, 0, dl_dy*dy_db);
+		nn_tensor_addv(dL_dB, f, dl_dy*dy_db);
 	}
 }
 
@@ -1222,13 +1222,13 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		// bias
 		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
+			dl_db = s*nn_tensor_getv(dL_dB, f);
 
 			// Nesterov Momentum Update
-			v0 = nn_tensor_get(VB, f, 0, 0, 0);
+			v0 = nn_tensor_getv(VB, f);
 			v1 = mu*v0 - lr*gcb*dl_db;
-			nn_tensor_set(VB, f, 0, 0, 0, v1);
-			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
+			nn_tensor_setv(VB, f, v1);
+			nn_tensor_addv(B, f, -mu*v0 + (1 + mu)*v1);
 		}
 	}
 
@@ -1267,7 +1267,7 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 	}
 	else
 	{
-		y = nn_tensor_get(B, f, 0, 0, 0);
+		y = nn_tensor_getv(B, f);
 	}
 
 	// compute weighted sum
@@ -1433,7 +1433,7 @@ nn_convLayer_backpropT(nn_convLayer_t* self,
 	// sum dL_dB
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_add(dL_dB, f, 0, 0, 0, dl_dy*dy_db);
+		nn_tensor_addv(dL_dB, f, dl_dy*dy_db);
 	}
 }
 
@@ -1538,13 +1538,13 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		// bias
 		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			dl_db = s*nn_tensor_get(dL_dB, f, 0, 0, 0);
+			dl_db = s*nn_tensor_getv(dL_dB, f);
 
 			// Nesterov Momentum Update
-			v0 = nn_tensor_get(VB, f, 0, 0, 0);
+			v0 = nn_tensor_getv(VB, f);
 			v1 = mu*v0 - lr*gcb*dl_db;
-			nn_tensor_set(VB, f, 0, 0, 0, v1);
-			nn_tensor_add(B, f, 0, 0, 0, -mu*v0 + (1 + mu)*v1);
+			nn_tensor_setv(VB, f, v1);
+			nn_tensor_addv(B, f, -mu*v0 + (1 + mu)*v1);
 		}
 	}
 

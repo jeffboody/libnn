@@ -87,15 +87,26 @@ float        nn_tensor_get(nn_tensor_t* self,
 void         nn_tensor_set(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k,
-                           float val);
+                           float v);
 void         nn_tensor_add(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k,
-                           float val);
+                           float v);
 void         nn_tensor_mul(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k,
-                           float val);
+                           float v);
+float        nn_tensor_getv(nn_tensor_t* self,
+                            uint32_t n);
+void         nn_tensor_setv(nn_tensor_t* self,
+                            uint32_t n,
+                            float v);
+void         nn_tensor_addv(nn_tensor_t* self,
+                            uint32_t n,
+                            float v);
+void         nn_tensor_mulv(nn_tensor_t* self,
+                            uint32_t n,
+                            float v);
 float        nn_tensor_norm(nn_tensor_t* self,
                             uint32_t count);
 float        nn_tensor_min(nn_tensor_t* self,

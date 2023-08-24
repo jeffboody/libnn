@@ -46,11 +46,6 @@ layout(std430, set=0, binding=5) readonly buffer sb05
 	float W[];
 };
 
-layout(std430, set=0, binding=6) readonly buffer sb06
-{
-	nn_dim_t dimB;
-};
-
 layout(std430, set=0, binding=7) readonly buffer sb07
 {
 	float B[];
@@ -82,12 +77,9 @@ float getW(uint n, uint i, uint j, uint k)
 	return W[n*sn + i*sy + j*sx + k];
 }
 
-float getB(uint n, uint i, uint j, uint k)
+float getB(uint n)
 {
-	uint sn = dimB.height*dimB.width*dimB.depth;
-	uint sy = dimB.width*dimB.depth;
-	uint sx = dimB.depth;
-	return B[n*sn + i*sy + j*sx + k];
+	return B[n];
 }
 
 void setY(uint n, uint i, uint j, uint k, float v)
@@ -124,7 +116,7 @@ void main()
 	}
 	else
 	{
-		y = getB(n, 0, 0, 0);
+		y = getB(n);
 	}
 
 	// compute weighted sum

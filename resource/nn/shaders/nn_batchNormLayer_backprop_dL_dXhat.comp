@@ -10,11 +10,6 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=3) readonly buffer sb03
-{
-	nn_dim_t dimG;
-};
-
 layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	float G[];
@@ -40,12 +35,9 @@ layout(std430, set=2, binding=3) readonly buffer sb23
 	float dL_dY[];
 };
 
-float getG(uint n, uint i, uint j, uint k)
+float getG(uint n)
 {
-	uint sn = dimG.height*dimG.width*dimG.depth;
-	uint sy = dimG.width*dimG.depth;
-	uint sx = dimG.depth;
-	return G[n*sn + i*sy + j*sx + k];
+	return G[n];
 }
 
 void set_dL_dXhat(uint n, uint i, uint j, uint k, float v)
@@ -87,7 +79,7 @@ void main()
 	float dl_dxhat;
 	for(k = 0; k < xd; ++k)
 	{
-		gamma    = getG(0, 0, 0, k);
+		gamma    = getG(k);
 		dl_dy    = get_dL_dY(m, i, j, k);
 		dl_dxhat = dl_dy*gamma;
 		set_dL_dXhat(m, i, j, k, dl_dxhat);

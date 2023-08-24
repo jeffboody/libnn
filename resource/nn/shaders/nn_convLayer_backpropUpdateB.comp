@@ -39,19 +39,9 @@ layout(std430, set=2, binding=0) readonly buffer sb20
 	float gc_norm_dl_db_ra;
 };
 
-layout(std430, set=2, binding=5) readonly buffer sb25
-{
-	nn_dim_t dim_dL_dB;
-};
-
 layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	float dL_dB[];
-};
-
-layout(std430, set=2, binding=11) readonly buffer sb211
-{
-	nn_dim_t dimVB;
 };
 
 layout(std430, set=2, binding=12) buffer sb212
@@ -59,44 +49,24 @@ layout(std430, set=2, binding=12) buffer sb212
 	float VB[];
 };
 
-float getB(uint n, uint i, uint j, uint k)
+void addB(uint n, float v)
 {
-	uint sn = dimB.height*dimB.width*dimB.depth;
-	uint sy = dimB.width*dimB.depth;
-	uint sx = dimB.depth;
-	return B[n*sn + i*sy + j*sx + k];
+	B[n] += v;
 }
 
-void addB(uint n, uint i, uint j, uint k, float v)
+float get_dL_dB(uint n)
 {
-	uint sn = dimB.height*dimB.width*dimB.depth;
-	uint sy = dimB.width*dimB.depth;
-	uint sx = dimB.depth;
-	B[n*sn + i*sy + j*sx + k] += v;
+	return dL_dB[n];
 }
 
-float get_dL_dB(uint n, uint i, uint j, uint k)
+float getVB(uint n)
 {
-	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
-	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
-	uint sx = dim_dL_dB.depth;
-	return dL_dB[n*sn + i*sy + j*sx + k];
+	return VB[n];
 }
 
-float getVB(uint n, uint i, uint j, uint k)
+void setVB(uint n, float v)
 {
-	uint sn = dimVB.height*dimVB.width*dimVB.depth;
-	uint sy = dimVB.width*dimVB.depth;
-	uint sx = dimVB.depth;
-	return VB[n*sn + i*sy + j*sx + k];
-}
-
-void setVB(uint n, uint i, uint j, uint k, float v)
-{
-	uint sn = dimVB.height*dimVB.width*dimVB.depth;
-	uint sy = dimVB.width*dimVB.depth;
-	uint sx = dimVB.depth;
-	VB[n*sn + i*sy + j*sx + k] = v;
+	VB[n] = v;
 }
 
 void main()
@@ -114,11 +84,11 @@ void main()
 		return;
 	}
 
-	float dl_db = s*get_dL_dB(f, 0, 0, 0);
+	float dl_db = s*get_dL_dB(f);
 
 	// Nesterov Momentum Update
-	float v0  = getVB(f, 0, 0, 0);
+	float v0  = getVB(f);
 	float v1  = mu*v0 - lr*gc_gcb*dl_db;
-	setVB(f, 0, 0, 0, v1);
-	addB(f, 0, 0, 0, -mu*v0 + (1.0 + mu)*v1);
+	setVB(f, v1);
+	addB(f, -mu*v0 + (1.0 + mu)*v1);
 }

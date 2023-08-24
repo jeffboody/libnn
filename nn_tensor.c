@@ -586,7 +586,7 @@ float nn_tensor_get(nn_tensor_t* self,
 void nn_tensor_set(nn_tensor_t* self,
                    uint32_t n, uint32_t i,
                    uint32_t j, uint32_t k,
-                   float val)
+                   float v)
 {
 	ASSERT(self);
 
@@ -600,13 +600,13 @@ void nn_tensor_set(nn_tensor_t* self,
 	              self->dim.depth;
 	uint32_t sy = self->dim.width*self->dim.depth;
 	uint32_t sx = self->dim.depth;
-	self->data[n*sn + i*sy + j*sx + k] = val;
+	self->data[n*sn + i*sy + j*sx + k] = v;
 }
 
 void nn_tensor_add(nn_tensor_t* self,
                    uint32_t n, uint32_t i,
                    uint32_t j, uint32_t k,
-                   float val)
+                   float v)
 {
 	ASSERT(self);
 
@@ -620,13 +620,13 @@ void nn_tensor_add(nn_tensor_t* self,
 	              self->dim.depth;
 	uint32_t sy = self->dim.width*self->dim.depth;
 	uint32_t sx = self->dim.depth;
-	self->data[n*sn + i*sy + j*sx + k] += val;
+	self->data[n*sn + i*sy + j*sx + k] += v;
 }
 
 void nn_tensor_mul(nn_tensor_t* self,
                    uint32_t n, uint32_t i,
                    uint32_t j, uint32_t k,
-                   float val)
+                   float v)
 {
 	ASSERT(self);
 
@@ -640,7 +640,62 @@ void nn_tensor_mul(nn_tensor_t* self,
 	              self->dim.depth;
 	uint32_t sy = self->dim.width*self->dim.depth;
 	uint32_t sx = self->dim.depth;
-	self->data[n*sn + i*sy + j*sx + k] *= val;
+	self->data[n*sn + i*sy + j*sx + k] *= v;
+}
+
+float nn_tensor_getv(nn_tensor_t* self, uint32_t n)
+{
+	ASSERT(self);
+
+	if(nn_tensor_isModeIO(self) == 0)
+	{
+		LOGE("invalid mode=%i", (int) self->mode);
+		return 0.0f;
+	}
+
+	return self->data[n];
+}
+
+void
+nn_tensor_setv(nn_tensor_t* self, uint32_t n, float v)
+{
+	ASSERT(self);
+
+	if(nn_tensor_isModeIO(self) == 0)
+	{
+		LOGE("invalid mode=%i", (int) self->mode);
+		return;
+	}
+
+	self->data[n] = v;
+}
+
+void
+nn_tensor_addv(nn_tensor_t* self, uint32_t n, float v)
+{
+	ASSERT(self);
+
+	if(nn_tensor_isModeIO(self) == 0)
+	{
+		LOGE("invalid mode=%i", (int) self->mode);
+		return;
+	}
+
+	self->data[n] += v;
+}
+
+void
+nn_tensor_mulv(nn_tensor_t* self, uint32_t n, float v)
+{
+	ASSERT(self);
+
+	if(nn_tensor_isModeIO(self) == 0)
+	{
+		LOGE("invalid mode=%i", (int) self->mode);
+		return;
+	}
+
+	self->data[n] *= v;
 }
 
 float nn_tensor_norm(nn_tensor_t* self, uint32_t count)

@@ -89,13 +89,9 @@ float getXhat(uint n, uint i, uint j, uint k)
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
-float getXvar_mb(uint n, uint i, uint j, uint k)
+float getXvar_mb(uint n)
 {
-	uint sn = dimXvar_mb.height*dimXvar_mb.width*
-	          dimXvar_mb.depth;
-	uint sy = dimXvar_mb.width*dimXvar_mb.depth;
-	uint sx = dimXvar_mb.depth;
-	return Xvar_mb[n*sn + i*sy + j*sx + k];
+	return Xvar_mb[n];
 }
 
 float get_dL_dXhat(uint n, uint i, uint j, uint k)
@@ -124,20 +120,14 @@ void set_dL_dX(uint n, uint i, uint j, uint k, float v)
 	dL_dY[n*sn + i*sy + j*sx + k] = v;
 }
 
-float getBsum(uint n, uint i, uint j, uint k)
+float getBsum(uint n)
 {
-	uint sn = dimBsum.height*dimBsum.width*dimBsum.depth;
-	uint sy = dimBsum.width*dimBsum.depth;
-	uint sx = dimBsum.depth;
-	return Bsum[n*sn + i*sy + j*sx + k];
+	return Bsum[n];
 }
 
-float getCsum(uint n, uint i, uint j, uint k)
+float getCsum(uint n)
 {
-	uint sn = dimCsum.height*dimCsum.width*dimCsum.depth;
-	uint sy = dimCsum.width*dimCsum.depth;
-	uint sx = dimCsum.depth;
-	return Csum[n*sn + i*sy + j*sx + k];
+	return Csum[n];
 }
 
 void main()
@@ -169,11 +159,11 @@ void main()
 	for(k = 0; k < xd; ++k)
 	{
 		xhat     = getXhat(m, i, j, k);
-		xvar     = getXvar_mb(0, 0, 0, k);
+		xvar     = getXvar_mb(k);
 		dl_dxhat = get_dL_dXhat(m, i, j, k);
 		a        = M*dl_dxhat;
-		b        = getBsum(0, 0, 0, k);
-		c        = getCsum(0, 0, 0, k);
+		b        = getBsum(k);
+		c        = getCsum(k);
 		d        = M*sqrt(xvar + epsilon);
 		dl_dx    = (a - b - xhat*c)/d;
 		set_dL_dX(m, i, j, k, dl_dx);

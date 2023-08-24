@@ -33,11 +33,6 @@ layout(std430, set=2, binding=2) readonly buffer sb22
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=5) readonly buffer sb25
-{
-	nn_dim_t dim_dL_dB;
-};
-
 layout(std430, set=2, binding=6) writeonly buffer sb26
 {
 	float dL_dB[];
@@ -59,12 +54,9 @@ float get_dL_dY(uint n, uint i, uint j, uint k)
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
-void set_dL_dB(uint n, uint i, uint j, uint k, float v)
+void set_dL_dB(uint n, float v)
 {
-	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
-	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
-	uint sx = dim_dL_dB.depth;
-	dL_dB[n*sn + i*sy + j*sx + k] = v;
+	dL_dB[n] = v;
 }
 
 void main()
@@ -112,6 +104,6 @@ void main()
 		{
 			dl_db += dl_db_work[n];
 		}
-		set_dL_dB(f, 0, 0, 0, dl_db);
+		set_dL_dB(f, dl_db);
 	}
 }

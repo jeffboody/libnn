@@ -49,12 +49,9 @@ float get_dL_dY(uint n, uint i, uint j, uint k)
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
-void set_dL_dB(uint n, uint i, uint j, uint k, float v)
+void set_dL_dB(uint n, float v)
 {
-	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
-	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
-	uint sx = dim_dL_dB.depth;
-	dL_dB[n*sn + i*sy + j*sx + k] = v;
+	dL_dB[n] = v;
 }
 
 void main()
@@ -80,5 +77,5 @@ void main()
 		dl_db += get_dL_dY(m, 0, 0, n)*dy_db;
 	}
 
-	set_dL_dB(n, 0, 0, 0, dl_db);
+	set_dL_dB(n, dl_db);
 }

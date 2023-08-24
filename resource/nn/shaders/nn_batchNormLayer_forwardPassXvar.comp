@@ -23,11 +23,6 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_clip_momentum;
 };
 
-layout(std430, set=0, binding=7) readonly buffer sb07
-{
-	nn_dim_t dimXvar_mb;
-};
-
 layout(std430, set=0, binding=8) writeonly buffer sb08
 {
 	float Xvar_mb[];
@@ -43,19 +38,9 @@ layout(std430, set=1, binding=1) readonly buffer sb11
 	float X[];
 };
 
-layout(std430, set=1, binding=8) readonly buffer sb18
-{
-	nn_dim_t dimXmean_mb;
-};
-
 layout(std430, set=1, binding=9) readonly buffer sb19
 {
 	float Xmean_mb[];
-};
-
-layout(std430, set=1, binding=12) readonly buffer sb112
-{
-	nn_dim_t dimXvar_ra;
 };
 
 layout(std430, set=1, binding=13) buffer sb113
@@ -68,12 +53,9 @@ layout(std430, set=3, binding=0) readonly buffer sb30
 	uint idx_k;
 };
 
-void set_Xvar_mb(uint n, uint i, uint j, uint k, float v)
+void set_Xvar_mb(uint n, float v)
 {
-	uint sn = dimXvar_mb.height*dimXvar_mb.width*dimXvar_mb.depth;
-	uint sy = dimXvar_mb.width*dimXvar_mb.depth;
-	uint sx = dimXvar_mb.depth;
-	Xvar_mb[n*sn + i*sy + j*sx + k] = v;
+	Xvar_mb[n] = v;
 }
 
 float getX(uint n, uint i, uint j, uint k)
@@ -84,28 +66,19 @@ float getX(uint n, uint i, uint j, uint k)
 	return X[n*sn + i*sy + j*sx + k];
 }
 
-float get_Xmean_mb(uint n, uint i, uint j, uint k)
+float get_Xmean_mb(uint n)
 {
-	uint sn = dimXmean_mb.height*dimXmean_mb.width*dimXmean_mb.depth;
-	uint sy = dimXmean_mb.width*dimXmean_mb.depth;
-	uint sx = dimXmean_mb.depth;
-	return Xmean_mb[n*sn + i*sy + j*sx + k];
+	return Xmean_mb[n];
 }
 
-float get_Xvar_ra(uint n, uint i, uint j, uint k)
+float get_Xvar_ra(uint n)
 {
-	uint sn = dimXvar_ra.height*dimXvar_ra.width*dimXvar_ra.depth;
-	uint sy = dimXvar_ra.width*dimXvar_ra.depth;
-	uint sx = dimXvar_ra.depth;
-	return Xvar_ra[n*sn + i*sy + j*sx + k];
+	return Xvar_ra[n];
 }
 
-void set_Xvar_ra(uint n, uint i, uint j, uint k, float v)
+void set_Xvar_ra(uint n, float v)
 {
-	uint sn = dimXvar_ra.height*dimXvar_ra.width*dimXvar_ra.depth;
-	uint sy = dimXvar_ra.width*dimXvar_ra.depth;
-	uint sx = dimXvar_ra.depth;
-	Xvar_ra[n*sn + i*sy + j*sx + k] = v;
+	Xvar_ra[n] = v;
 }
 
 void main()
@@ -127,7 +100,7 @@ void main()
 	uint i;
 	uint j;
 	float dx;
-	float xmean_mb = get_Xmean_mb(0, 0, 0, k);
+	float xmean_mb = get_Xmean_mb(k);
 	for(m = 0; m < state_bs; ++m)
 	{
 		for(i = p; i < xh; i += 8)
@@ -157,13 +130,13 @@ void main()
 			xvar_mb += xvar_mb_work[n];
 		}
 		xvar_mb /= M;
-		set_Xvar_mb(0, 0, 0, k, xvar_mb);
+		set_Xvar_mb(k, xvar_mb);
 
 		// update running mean
 		float xvar_ra;
-		xvar_ra = get_Xvar_ra(0, 0, 0, k);
+		xvar_ra = get_Xvar_ra(k);
 		xvar_ra = state_batch_momentum*xvar_ra +
 		           (1.0 - state_batch_momentum)*xvar_mb;
-		set_Xvar_ra(0, 0, 0, k, xvar_ra);
+		set_Xvar_ra(k, xvar_ra);
 	}
 }

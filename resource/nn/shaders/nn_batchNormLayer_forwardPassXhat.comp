@@ -30,19 +30,9 @@ layout(std430, set=1, binding=1) readonly buffer sb11
 	float X[];
 };
 
-layout(std430, set=1, binding=4) readonly buffer sb14
-{
-	nn_dim_t dimXmean;
-};
-
 layout(std430, set=1, binding=5) readonly buffer sb15
 {
 	float Xmean[];
-};
-
-layout(std430, set=1, binding=6) readonly buffer sb16
-{
-	nn_dim_t dimXvar;
 };
 
 layout(std430, set=1, binding=7) readonly buffer sb17
@@ -66,20 +56,14 @@ float getX(uint n, uint i, uint j, uint k)
 	return X[n*sn + i*sy + j*sx + k];
 }
 
-float getXmean(uint n, uint i, uint j, uint k)
+float getXmean(uint n)
 {
-	uint sn = dimXmean.height*dimXmean.width*dimXmean.depth;
-	uint sy = dimXmean.width*dimXmean.depth;
-	uint sx = dimXmean.depth;
-	return Xmean[n*sn + i*sy + j*sx + k];
+	return Xmean[n];
 }
 
-float getXvar(uint n, uint i, uint j, uint k)
+float getXvar(uint n)
 {
-	uint sn = dimXvar.height*dimXvar.width*dimXvar.depth;
-	uint sy = dimXvar.width*dimXvar.depth;
-	uint sx = dimXvar.depth;
-	return Xvar[n*sn + i*sy + j*sx + k];
+	return Xvar[n];
 }
 
 void main()
@@ -105,8 +89,8 @@ void main()
 	float epsilon = 0.00001;
 	for(k = 0; k < xd; ++k)
 	{
-		xmean = getXmean(0, 0, 0, k);
-		xvar  = getXvar(0, 0, 0, k);
+		xmean = getXmean(k);
+		xvar  = getXvar(k);
 		x     = getX(m, i, j, k);
 		xhat  = (x - xmean)/(sqrt(xvar) + epsilon);
 		setXhat(m, i, j, k, xhat);

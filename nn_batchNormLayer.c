@@ -578,12 +578,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 				}
 			}
 			xmean_mb /= M;
-			nn_tensor_set(Xmean_mb, 0, 0, 0, k, xmean_mb);
+			nn_tensor_setv(Xmean_mb, k, xmean_mb);
 
 			// update running mean
-			xmean_ra = nn_tensor_get(Xmean_ra, 0, 0, 0, k);
+			xmean_ra = nn_tensor_getv(Xmean_ra, k);
 			xmean_ra = momentum*xmean_ra + (1.0f - momentum)*xmean_mb;
-			nn_tensor_set(Xmean_ra, 0, 0, 0, k, xmean_ra);
+			nn_tensor_setv(Xmean_ra, k, xmean_ra);
 		}
 
 		// compute mini-batch variance
@@ -595,7 +595,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 		{
 			// compute mini-batch variance
 			xvar_mb  = 0.0f;
-			xmean_mb = nn_tensor_get(Xmean_mb, 0, 0, 0, k);
+			xmean_mb = nn_tensor_getv(Xmean_mb, k);
 			for(m = 0; m < bs; ++m)
 			{
 				for(i = 0; i < xh; ++i)
@@ -608,12 +608,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 				}
 			}
 			xvar_mb /= M;
-			nn_tensor_set(Xvar_mb, 0, 0, 0, k, xvar_mb);
+			nn_tensor_setv(Xvar_mb, k, xvar_mb);
 
 			// update running variance
-			xvar_ra = nn_tensor_get(Xvar_ra, 0, 0, 0, k);
+			xvar_ra = nn_tensor_getv(Xvar_ra, k);
 			xvar_ra = momentum*xvar_ra + (1.0f - momentum)*xvar_mb;
-			nn_tensor_set(Xvar_ra, 0, 0, 0, k, xvar_ra);
+			nn_tensor_setv(Xvar_ra, k, xvar_ra);
 		}
 	}
 
@@ -625,8 +625,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 	float epsilon = FLT_EPSILON;
 	for(k = 0; k < xd; ++k)
 	{
-		xmean = nn_tensor_get(Xmean, 0, 0, 0, k);
-		xvar  = nn_tensor_get(Xvar,  0, 0, 0, k);
+		xmean = nn_tensor_getv(Xmean, k);
+		xvar  = nn_tensor_getv(Xvar,  k);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < xh; ++i)
@@ -647,8 +647,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
 	float beta;
 	for(k = 0; k < xd; ++k)
 	{
-		gamma = nn_tensor_get(G, 0, 0, 0, k);
-		beta  = nn_tensor_get(B, 0, 0, 0, k);
+		gamma = nn_tensor_getv(G, k);
+		beta  = nn_tensor_getv(B, k);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < xh; ++i)
@@ -738,7 +738,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	uint32_t k;
 	for(k = 0; k < xd; ++k)
 	{
-		gamma = nn_tensor_get(G, 0, 0, 0, k);
+		gamma = nn_tensor_getv(G, k);
 		for(m = 0; m < bs; ++m)
 		{
 			for(i = 0; i < xh; ++i)
@@ -769,7 +769,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	{
 		dl_dg = 0.0f;
 		dl_db = 0.0f;
-		xvar  = nn_tensor_get(Xvar_mb, 0, 0, 0, k);
+		xvar  = nn_tensor_getv(Xvar_mb, k);
 		d     = M*sqrtf(xvar + epsilon);
 		nn_batchNormLayer_backpropSum(self, bs, k, &b, &c);
 		for(m = 0; m < bs; ++m)
@@ -794,8 +794,8 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 
 		// update G and B
-		nn_tensor_add(G, 0, 0, 0, k, -lr*dl_dg);
-		nn_tensor_add(B, 0, 0, 0, k, -lr*dl_db);
+		nn_tensor_addv(G, k, -lr*dl_dg);
+		nn_tensor_addv(B, k, -lr*dl_db);
 	}
 
 	// dL_dY replaced by dL_dX
@@ -893,7 +893,7 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	uint32_t k;
 	for(k = 0; k < xd; ++k)
 	{
-		nn_tensor_set(tmpG, 0, 0, 0, k, 1.0f);
+		nn_tensor_setv(tmpG, k, 1.0f);
 	}
 
 	if(nn_tensor_blit(tmpG, self->G, 1, 0, 0) == 0)
