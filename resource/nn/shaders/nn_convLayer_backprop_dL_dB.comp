@@ -19,8 +19,10 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_momentum_decay;
 	float state_batch_momentum;
 	float state_l2_lambda;
-	float state_clip_max;
-	float state_clip_momentum;
+	float state_clip_max_weight;
+	float state_clip_max_bias;
+	float state_clip_mu_inc;
+	float state_clip_mu_dec;
 };
 
 layout(std430, set=2, binding=1) readonly buffer sb21

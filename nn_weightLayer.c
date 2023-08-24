@@ -319,9 +319,10 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	// nn_weightLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	float clip_max = state->clip_max;
-	float clip_mu  = state->clip_momentum;
-	if((clip_max > 0.0f) || (clip_mu > 0.0f))
+	if((state->clip_max_weight > 0.0f) &&
+	   (state->clip_max_bias   > 0.0f) &&
+	   (state->clip_mu_inc     > 0.0f) &&
+	   (state->clip_mu_dec     > 0.0f))
 	{
 		vkk_compute_bindComputePipeline(arch->compute,
 		                                arch->cp_weight_backpropGradientClipping);
@@ -510,8 +511,6 @@ nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
 	uint32_t        nc         = dimW->count;
 	uint32_t        xd         = dimW->depth;
 	float           s          = 1.0f/((float) bs);
-	float           clip_max   = state->clip_max;
-	float           clip_mu    = state->clip_momentum;
 	float           norm_w     = 0.0f;
 	float           norm_b     = 0.0f;
 	float           norm_dl_dw = 0.0f;
@@ -548,22 +547,46 @@ nn_weightLayer_gradientClipping(nn_weightLayer_t* self,
 	norm_dl_dw = sqrtf(norm_dl_dw);
 	norm_dl_db = sqrtf(norm_dl_db);
 
-	// compute running averages
+	// compute running averages for norm_dl_dw
+	float clip_mu;
+	if(norm_dl_dw > self->norm_dl_dw_ra)
+	{
+		clip_mu = state->clip_mu_inc;
+	}
+	else
+	{
+		clip_mu = state->clip_mu_dec;
+	}
 	self->norm_dl_dw_ra = clip_mu*self->norm_dl_dw_ra +
 	                      (1.0f - clip_mu)*norm_dl_dw;
+
+	// compute running averages for norm_dl_db
+	if(norm_dl_db > self->norm_dl_db_ra)
+	{
+		clip_mu = state->clip_mu_inc;
+	}
+	else
+	{
+		clip_mu = state->clip_mu_dec;
+	}
 	self->norm_dl_db_ra = clip_mu*self->norm_dl_db_ra +
 	                      (1.0f - clip_mu)*norm_dl_db;
 
-	// clamp norm
-	if(clip_max > 0.0f)
+	// clamp running averages for norm_dl_dw_ra
+	if(state->clip_max_weight > 0.0f)
 	{
-		if(self->norm_dl_dw_ra > clip_max)
+		if(self->norm_dl_dw_ra > state->clip_max_weight)
 		{
-			self->norm_dl_dw_ra = clip_max;
+			self->norm_dl_dw_ra = state->clip_max_weight;
 		}
-		if(self->norm_dl_db_ra > clip_max)
+	}
+
+	// clamp running averages for norm_dl_db_ra
+	if(state->clip_max_bias > 0.0f)
+	{
+		if(self->norm_dl_db_ra > state->clip_max_bias)
 		{
-			self->norm_dl_db_ra = clip_max;
+			self->norm_dl_db_ra = state->clip_max_bias;
 		}
 	}
 
@@ -594,20 +617,18 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_arch_t*        arch  = base->arch;
 	nn_archState_t*   state = &arch->state;
 
-	nn_tensor_t* W        = self->W;
-	nn_tensor_t* B        = self->B;
-	nn_tensor_t* VW       = self->VW;
-	nn_tensor_t* VB       = self->VB;
-	nn_tensor_t* dY_dX    = W;
-	nn_tensor_t* dY_dW    = self->X;
-	nn_dim_t*    dimW     = nn_tensor_dim(W);
-	uint32_t     nc       = dimW->count;
-	uint32_t     xd       = dimW->depth;
-	float        lr       = state->learning_rate;
-	float        mu       = state->momentum_decay;
-	float        lambda   = state->l2_lambda;
-	float        clip_max = state->clip_max;
-	float        clip_mu  = state->clip_momentum;
+	nn_tensor_t* W      = self->W;
+	nn_tensor_t* B      = self->B;
+	nn_tensor_t* VW     = self->VW;
+	nn_tensor_t* VB     = self->VB;
+	nn_tensor_t* dY_dX  = W;
+	nn_tensor_t* dY_dW  = self->X;
+	nn_dim_t*    dimW   = nn_tensor_dim(W);
+	uint32_t     nc     = dimW->count;
+	uint32_t     xd     = dimW->depth;
+	float        lr     = state->learning_rate;
+	float        mu     = state->momentum_decay;
+	float        lambda = state->l2_lambda;
 
 	// clear backprop gradients
 	nn_tensor_t* dL_dW = self->dL_dW;
@@ -656,7 +677,10 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// optionally compute gradient clipping
 	float gcw = 1.0f;
 	float gcb = 1.0f;
-	if((clip_max > 0.0f) || (clip_mu > 0.0f))
+	if((state->clip_max_weight > 0.0f) &&
+	   (state->clip_max_bias   > 0.0f) &&
+	   (state->clip_mu_inc     > 0.0f) &&
+	   (state->clip_mu_dec     > 0.0f))
 	{
 		nn_weightLayer_gradientClipping(self, bs, &gcw, &gcb);
 	}

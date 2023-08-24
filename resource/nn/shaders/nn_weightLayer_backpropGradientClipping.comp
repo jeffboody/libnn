@@ -22,8 +22,10 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_momentum_decay;
 	float state_batch_momentum;
 	float state_l2_lambda;
-	float state_clip_max;
-	float state_clip_momentum;
+	float state_clip_max_weight;
+	float state_clip_max_bias;
+	float state_clip_mu_inc;
+	float state_clip_mu_dec;
 };
 
 layout(std430, set=0, binding=1) readonly buffer sb01
@@ -167,22 +169,46 @@ void main()
 		norm_dl_dw = sqrt(norm_dl_dw);
 		norm_dl_db = sqrt(norm_dl_db);
 
-		// compute running averages
-		gc_norm_dl_dw_ra = state_clip_momentum*gc_norm_dl_dw_ra +
-		                   (1.0 - state_clip_momentum)*norm_dl_dw;
-		gc_norm_dl_db_ra = state_clip_momentum*gc_norm_dl_db_ra +
-		                   (1.0 - state_clip_momentum)*norm_dl_db;
-
-		// clamp norm
-		if(state_clip_max > 0.0)
+		// compute running averages for norm_dl_dw
+		float clip_mu;
+		if(norm_dl_dw > gc_norm_dl_dw_ra)
 		{
-			if(gc_norm_dl_dw_ra > state_clip_max)
+			clip_mu = state_clip_mu_inc;
+		}
+		else
+		{
+			clip_mu = state_clip_mu_dec;
+		}
+		gc_norm_dl_dw_ra = clip_mu*gc_norm_dl_dw_ra +
+		                   (1.0 - clip_mu)*norm_dl_dw;
+
+		// compute running averages for norm_dl_db
+		if(norm_dl_db > gc_norm_dl_db_ra)
+		{
+			clip_mu = state_clip_mu_inc;
+		}
+		else
+		{
+			clip_mu = state_clip_mu_dec;
+		}
+		gc_norm_dl_db_ra = clip_mu*gc_norm_dl_db_ra +
+		                   (1.0 - clip_mu)*norm_dl_db;
+
+		// clamp running averages for gc_norm_dl_dw_ra
+		if(state_clip_max_weight > 0.0)
+		{
+			if(gc_norm_dl_dw_ra > state_clip_max_weight)
 			{
-				gc_norm_dl_dw_ra = state_clip_max;
+				gc_norm_dl_dw_ra = state_clip_max_weight;
 			}
-			if(gc_norm_dl_db_ra > state_clip_max)
+		}
+
+		// clamp running averages for gc_norm_dl_db_ra
+		if(state_clip_max_bias > 0.0)
+		{
+			if(gc_norm_dl_db_ra > state_clip_max_bias)
 			{
-				gc_norm_dl_db_ra = state_clip_max;
+				gc_norm_dl_db_ra = state_clip_max_bias;
 			}
 		}
 

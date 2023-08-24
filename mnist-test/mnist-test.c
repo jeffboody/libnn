@@ -238,12 +238,14 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate  = 0.01f,
-		.momentum_decay = 0.5f,
-		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.01f,
-		.clip_max       = 10.0f,
-		.clip_momentum  = 0.99f,
+		.learning_rate   = 0.01f,
+		.momentum_decay  = 0.5f,
+		.batch_momentum  = 0.99f,
+		.l2_lambda       = 0.01f,
+		.clip_max_weight = 10.0f,
+		.clip_max_bias   = 10.0f,
+		.clip_mu_inc     = 0.99f,
+		.clip_mu_dec     = 0.90f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);

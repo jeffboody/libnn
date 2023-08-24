@@ -43,8 +43,10 @@ typedef struct nn_archState_s
 	float    momentum_decay;
 	float    batch_momentum;
 	float    l2_lambda;
-	float    clip_max;
-	float    clip_momentum;
+	float    clip_max_weight;
+	float    clip_max_bias;
+	float    clip_mu_inc;
+	float    clip_mu_dec;
 } nn_archState_t;
 
 typedef struct nn_arch_s
