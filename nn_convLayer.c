@@ -56,16 +56,9 @@ typedef struct
 	uint32_t stride;
 } nn_convLayerParam_t;
 
-typedef struct
-{
-	float gcw;
-	float gcb;
-	float norm_dl_dw_ra;
-	float norm_dl_db_ra;
-} nn_convLayerGc_t;
-
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_convLayer_forwardPassFn(nn_layer_t* base,
+                           nn_layerMode_e mode,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -179,9 +172,10 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self  = (nn_convLayer_t*) base;
-	nn_arch_t*      arch  = base->arch;
-	nn_archState_t* state = &arch->state;
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -369,14 +363,15 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// initialize gcw and gcb
-	nn_convLayerGc_t gc =
-	{
-		.gcw = 1.0f,
-		.gcb = 1.0f,
-	};
+	// initialize gc but keep running averages
+	gc->gcw        = 1.0f;
+	gc->gcb        = 1.0f;
+	gc->norm_w     = 0.0f;
+	gc->norm_b     = 0.0f;
+	gc->norm_dl_dw = 0.0f;
+	gc->norm_dl_db = 0.0f;
 	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
-	                        2*sizeof(float), 0, &gc);
+	                        sizeof(nn_convLayerGc_t), 0, gc);
 
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
@@ -409,8 +404,38 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	return dL_dX;
 }
 
+static void
+nn_convLayer_postFn(nn_layer_t* base,
+                    nn_layerMode_e mode)
+{
+	ASSERT(base);
+
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
+
+	if((mode == NN_LAYER_MODE_TRAIN)   &&
+	   (state->clip_max_weight > 0.0f) &&
+	   (state->clip_max_bias   > 0.0f) &&
+	   (state->clip_mu_inc     > 0.0f) &&
+	   (state->clip_mu_dec     > 0.0f))
+	{
+		vkk_compute_readBuffer(arch->compute, self->sb20_gc,
+		                       sizeof(nn_convLayerGc_t), 0, gc);
+
+		#ifdef NN_GC_DEBUG
+		LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
+		     gc->norm_w, gc->norm_b,
+		     gc->norm_dl_dw, gc->norm_dl_dw_ra,
+		     gc->norm_dl_db, gc->norm_dl_db_ra);
+		#endif
+	}
+}
+
 static nn_tensor_t*
-nn_convLayer_forwardPassTFn(nn_layer_t* base, int mode,
+nn_convLayer_forwardPassTFn(nn_layer_t* base,
+                            nn_layerMode_e mode,
                             uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -524,9 +549,10 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self  = (nn_convLayer_t*) base;
-	nn_arch_t*      arch  = base->arch;
-	nn_archState_t* state = &arch->state;
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -714,14 +740,15 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
-	// initialize gcw and gcb
-	nn_convLayerGc_t gc =
-	{
-		.gcw = 1.0f,
-		.gcb = 1.0f,
-	};
+	// initialize gc but keep running averages
+	gc->gcw        = 1.0f;
+	gc->gcb        = 1.0f;
+	gc->norm_w     = 0.0f;
+	gc->norm_b     = 0.0f;
+	gc->norm_dl_dw = 0.0f;
+	gc->norm_dl_db = 0.0f;
 	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
-	                        2*sizeof(float), 0, &gc);
+	                        sizeof(nn_convLayerGc_t), 0, gc);
 
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
@@ -797,18 +824,10 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 		goto fail_sb01_param;
 	}
 
-	nn_convLayerGc_t gc =
-	{
-		.gcw           = 0.0f,
-		.gcb           = 0.0f,
-		.norm_dl_dw_ra = 0.0f,
-		.norm_dl_db_ra = 0.0f,
-	};
 	self->sb20_gc = vkk_buffer_new(arch->engine,
 	                               VKK_UPDATE_MODE_SYNCHRONOUS,
 	                               VKK_BUFFER_USAGE_STORAGE,
-	                               sizeof(nn_convLayerGc_t),
-	                               &gc);
+	                               sizeof(nn_convLayerGc_t), NULL);
 	if(self->sb20_gc == NULL)
 	{
 		goto fail_sb20_gc;
@@ -911,7 +930,8 @@ nn_convLayer_forwardPass(nn_convLayer_t* self,
 }
 
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_convLayer_forwardPassFn(nn_layer_t* base,
+                           nn_layerMode_e mode,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -952,30 +972,23 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int mode,
 
 static void
 nn_convLayer_gradientClipping(nn_convLayer_t* self,
-                              uint32_t bs,
-                              float* _gcw,
-                              float* _gcb)
+                              uint32_t bs)
 {
 	ASSERT(self);
-	ASSERT(_gcw);
-	ASSERT(_gcb);
 
-	nn_arch_t*      arch       = self->base.arch;
-	nn_archState_t* state      = &arch->state;
-	nn_tensor_t*    W          = self->W;
-	nn_tensor_t*    B          = self->B;
-	nn_tensor_t*    dL_dW      = self->dL_dW;
-	nn_tensor_t*    dL_dB      = self->dL_dB;
-	nn_dim_t*       dimW       = nn_tensor_dim(W);
-	uint32_t        fc         = dimW->count;
-	uint32_t        fh         = dimW->height;
-	uint32_t        fw         = dimW->width;
-	uint32_t        xd         = dimW->depth;
-	float           s          = 1.0f/((float) bs);
-	float           norm_w     = 0.0f;
-	float           norm_b     = 0.0f;
-	float           norm_dl_dw = 0.0f;
-	float           norm_dl_db = 0.0f;
+	nn_arch_t*        arch  = self->base.arch;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_archState_t*   state = &arch->state;
+	nn_tensor_t*      W     = self->W;
+	nn_tensor_t*      B     = self->B;
+	nn_tensor_t*      dL_dW = self->dL_dW;
+	nn_tensor_t*      dL_dB = self->dL_dB;
+	nn_dim_t*         dimW  = nn_tensor_dim(W);
+	uint32_t          fc    = dimW->count;
+	uint32_t          fh    = dimW->height;
+	uint32_t          fw    = dimW->width;
+	uint32_t          xd    = dimW->depth;
+	float             s     = 1.0f/((float) bs);
 
 	// compute norms
 	float    w;
@@ -995,10 +1008,10 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					w           = nn_tensor_get(W, f, fi, fj, k);
-					dl_dw       = s*nn_tensor_get(dL_dW, f, fi, fj, k);
-					norm_w     += w*w;
-					norm_dl_dw += dl_dw*dl_dw;
+					w               = nn_tensor_get(W, f, fi, fj, k);
+					dl_dw           = s*nn_tensor_get(dL_dW, f, fi, fj, k);
+					gc->norm_w     += w*w;
+					gc->norm_dl_dw += dl_dw*dl_dw;
 				}
 			}
 		}
@@ -1006,20 +1019,20 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 		// bias gradient
 		if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 		{
-			b           = nn_tensor_getv(B, f);
-			dl_db       = s*nn_tensor_getv(dL_dB, f);
-			norm_b     += b*b;
-			norm_dl_db += dl_db*dl_db;
+			b               = nn_tensor_getv(B, f);
+			dl_db           = s*nn_tensor_getv(dL_dB, f);
+			gc->norm_b     += b*b;
+			gc->norm_dl_db += dl_db*dl_db;
 		}
 	}
-	norm_w     = sqrtf(norm_w);
-	norm_b     = sqrtf(norm_b);
-	norm_dl_dw = sqrtf(norm_dl_dw);
-	norm_dl_db = sqrtf(norm_dl_db);
+	gc->norm_w     = sqrtf(gc->norm_w);
+	gc->norm_b     = sqrtf(gc->norm_b);
+	gc->norm_dl_dw = sqrtf(gc->norm_dl_dw);
+	gc->norm_dl_db = sqrtf(gc->norm_dl_db);
 
 	// compute running averages for norm_dl_dw
 	float clip_mu;
-	if(norm_dl_dw > self->norm_dl_dw_ra)
+	if(gc->norm_dl_dw > gc->norm_dl_dw_ra)
 	{
 		clip_mu = state->clip_mu_inc;
 	}
@@ -1027,11 +1040,11 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 	{
 		clip_mu = state->clip_mu_dec;
 	}
-	self->norm_dl_dw_ra = clip_mu*self->norm_dl_dw_ra +
-	                      (1.0f - clip_mu)*norm_dl_dw;
+	gc->norm_dl_dw_ra = clip_mu*gc->norm_dl_dw_ra +
+	                    (1.0f - clip_mu)*gc->norm_dl_dw;
 
 	// compute running averages for norm_dl_db
-	if(norm_dl_db > self->norm_dl_db_ra)
+	if(gc->norm_dl_db > gc->norm_dl_db_ra)
 	{
 		clip_mu = state->clip_mu_inc;
 	}
@@ -1039,41 +1052,36 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 	{
 		clip_mu = state->clip_mu_dec;
 	}
-	self->norm_dl_db_ra = clip_mu*self->norm_dl_db_ra +
-	                      (1.0f - clip_mu)*norm_dl_db;
+	gc->norm_dl_db_ra = clip_mu*gc->norm_dl_db_ra +
+	                    (1.0f - clip_mu)*gc->norm_dl_db;
 
 	// clamp running averages for norm_dl_dw_ra
 	if(state->clip_max_weight > 0.0f)
 	{
-		if(self->norm_dl_dw_ra > state->clip_max_weight)
+		if(gc->norm_dl_dw_ra > state->clip_max_weight)
 		{
-			self->norm_dl_dw_ra = state->clip_max_weight;
+			gc->norm_dl_dw_ra = state->clip_max_weight;
 		}
 	}
 
 	// clamp running averages for norm_dl_db_ra
 	if(state->clip_max_bias > 0.0f)
 	{
-		if(self->norm_dl_db_ra > state->clip_max_bias)
+		if(gc->norm_dl_db_ra > state->clip_max_bias)
 		{
-			self->norm_dl_db_ra = state->clip_max_bias;
+			gc->norm_dl_db_ra = state->clip_max_bias;
 		}
 	}
 
 	// apply gradient clipping
-	if(norm_dl_dw > self->norm_dl_dw_ra)
+	if(gc->norm_dl_dw > gc->norm_dl_dw_ra)
 	{
-		*_gcw = self->norm_dl_dw_ra/norm_dl_dw;
+		gc->gcw = gc->norm_dl_dw_ra/gc->norm_dl_dw;
 	}
-	if(norm_dl_db > self->norm_dl_db_ra)
+	if(gc->norm_dl_db > gc->norm_dl_db_ra)
 	{
-		*_gcb = self->norm_dl_db_ra/norm_dl_db;
+		gc->gcb = gc->norm_dl_db_ra/gc->norm_dl_db;
 	}
-
-	LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
-	     norm_w, norm_b,
-	     norm_dl_dw, self->norm_dl_dw_ra,
-	     norm_dl_db, self->norm_dl_db_ra);
 }
 
 static void
@@ -1152,9 +1160,10 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self  = (nn_convLayer_t*) base;
-	nn_arch_t*      arch  = base->arch;
-	nn_archState_t* state = &arch->state;
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* W      = self->W;
 	nn_tensor_t* B      = self->B;
@@ -1203,14 +1212,19 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	}
 
 	// optionally compute gradient clipping
-	float gcw = 1.0f;
-	float gcb = 1.0f;
+	// initialize gc but keep running averages
+	gc->gcw        = 1.0f;
+	gc->gcb        = 1.0f;
+	gc->norm_w     = 0.0f;
+	gc->norm_b     = 0.0f;
+	gc->norm_dl_dw = 0.0f;
+	gc->norm_dl_db = 0.0f;
 	if((state->clip_max_weight > 0.0f) &&
 	   (state->clip_max_bias   > 0.0f) &&
 	   (state->clip_mu_inc     > 0.0f) &&
 	   (state->clip_mu_dec     > 0.0f))
 	{
-		nn_convLayer_gradientClipping(self, bs, &gcw, &gcb);
+		nn_convLayer_gradientClipping(self, bs);
 	}
 
 	// update parameters
@@ -1237,7 +1251,7 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 					// Nesterov Momentum Update and L2 Regularization
 					v0 = nn_tensor_get(VW, f, fi, fj, k);
-					v1 = mu*v0 - lr*(gcw*dl_dw + 2*lambda*w);
+					v1 = mu*v0 - lr*(gc->gcw*dl_dw + 2*lambda*w);
 					nn_tensor_set(VW, f, fi, fj, k, v1);
 					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 + mu)*v1);
 				}
@@ -1251,7 +1265,7 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 			// Nesterov Momentum Update
 			v0 = nn_tensor_getv(VB, f);
-			v1 = mu*v0 - lr*gcb*dl_db;
+			v1 = mu*v0 - lr*gc->gcb*dl_db;
 			nn_tensor_setv(VB, f, v1);
 			nn_tensor_addv(B, f, -mu*v0 + (1 + mu)*v1);
 		}
@@ -1340,8 +1354,35 @@ nn_convLayer_forwardPassT(nn_convLayer_t* self,
 	nn_tensor_set(Y, m, i, j, f, y);
 }
 
+static void
+nn_convLayer_postFn(nn_layer_t* base,
+                    nn_layerMode_e mode)
+{
+	ASSERT(base);
+
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
+
+	if((mode == NN_LAYER_MODE_TRAIN)   &&
+	   (state->clip_max_weight > 0.0f) &&
+	   (state->clip_max_bias   > 0.0f) &&
+	   (state->clip_mu_inc     > 0.0f) &&
+	   (state->clip_mu_dec     > 0.0f))
+	{
+		#ifdef NN_GC_DEBUG
+		LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
+		     gc->norm_w, gc->norm_b,
+		     gc->norm_dl_dw, gc->norm_dl_dw_ra,
+		     gc->norm_dl_db, gc->norm_dl_db_ra);
+		#endif
+	}
+}
+
 static nn_tensor_t*
-nn_convLayer_forwardPassTFn(nn_layer_t* base, int mode,
+nn_convLayer_forwardPassTFn(nn_layer_t* base,
+                            nn_layerMode_e mode,
                             uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -1469,9 +1510,10 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t* self  = (nn_convLayer_t*) base;
-	nn_arch_t*      arch  = base->arch;
-	nn_archState_t* state = &arch->state;
+	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc    = &self->gc;
+	nn_arch_t*        arch  = base->arch;
+	nn_archState_t*   state = &arch->state;
 
 	nn_tensor_t* W      = self->W;
 	nn_tensor_t* B      = self->B;
@@ -1520,14 +1562,19 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	}
 
 	// optionally compute gradient clipping
-	float gcw = 1.0f;
-	float gcb = 1.0f;
+	// initialize gc but keep running averages
+	gc->gcw        = 1.0f;
+	gc->gcb        = 1.0f;
+	gc->norm_w     = 0.0f;
+	gc->norm_b     = 0.0f;
+	gc->norm_dl_dw = 0.0f;
+	gc->norm_dl_db = 0.0f;
 	if((state->clip_max_weight > 0.0f) &&
 	   (state->clip_max_bias   > 0.0f) &&
 	   (state->clip_mu_inc     > 0.0f) &&
 	   (state->clip_mu_dec     > 0.0f))
 	{
-		nn_convLayer_gradientClipping(self, bs, &gcw, &gcb);
+		nn_convLayer_gradientClipping(self, bs);
 	}
 
 	// update parameters
@@ -1554,7 +1601,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 
 					// Nesterov Momentum Update and L2 Regularization
 					v0 = nn_tensor_get(VW, f, fi, fj, k);
-					v1 = mu*v0 - lr*(gcw*dl_dw + 2*lambda*w);
+					v1 = mu*v0 - lr*(gc->gcw*dl_dw + 2*lambda*w);
 					nn_tensor_set(VW, f, fi, fj, k, v1);
 					nn_tensor_add(W, f, fi, fj, k, -mu*v0 + (1 + mu)*v1);
 				}
@@ -1568,7 +1615,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 
 			// Nesterov Momentum Update
 			v0 = nn_tensor_getv(VB, f);
-			v1 = mu*v0 - lr*gcb*dl_db;
+			v1 = mu*v0 - lr*gc->gcb*dl_db;
 			nn_tensor_setv(VB, f, v1);
 			nn_tensor_addv(B, f, -mu*v0 + (1 + mu)*v1);
 		}
@@ -1646,6 +1693,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_convLayer_forwardPassFn,
 		.backprop_fn     = nn_convLayer_backpropFn,
+		.post_fn         = nn_convLayer_postFn,
 		.dimX_fn         = nn_convLayer_dimXFn,
 		.dimY_fn         = nn_convLayer_dimYFn,
 	};
@@ -1667,8 +1715,9 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	self->flags  = flags;
 	self->stride = stride;
 
-	self->norm_dl_dw_ra = 1.0f;
-	self->norm_dl_db_ra = 1.0f;
+	// initialize running averages
+	self->gc.norm_dl_dw_ra = 1.0f;
+	self->gc.norm_dl_db_ra = 1.0f;
 
 	// XAVIER is default
 	if(flags & NN_CONV_LAYER_FLAG_HE)
@@ -1918,8 +1967,9 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	self->norm_dl_dw_ra = strtof(val_norm_dl_dw_ra->data, NULL);
-	self->norm_dl_db_ra = strtof(val_norm_dl_db_ra->data, NULL);
+	// initialize running averages
+	self->gc.norm_dl_dw_ra = strtof(val_norm_dl_dw_ra->data, NULL);
+	self->gc.norm_dl_db_ra = strtof(val_norm_dl_db_ra->data, NULL);
 
 	// load tensors
 	if((nn_tensor_load(self->W,  val_W)  == 0) ||
@@ -1967,9 +2017,9 @@ int nn_convLayer_export(nn_convLayer_t* self,
 	ret &= jsmn_stream_key(stream, "%s", "VB");
 	ret &= nn_tensor_store(self->VB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "norm_dl_dw_ra");
-	ret &= jsmn_stream_float(stream, self->norm_dl_dw_ra);
+	ret &= jsmn_stream_float(stream, self->gc.norm_dl_dw_ra);
 	ret &= jsmn_stream_key(stream, "%s", "norm_dl_db_ra");
-	ret &= jsmn_stream_float(stream, self->norm_dl_db_ra);
+	ret &= jsmn_stream_float(stream, self->gc.norm_dl_db_ra);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

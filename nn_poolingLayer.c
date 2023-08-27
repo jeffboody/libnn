@@ -49,7 +49,7 @@ typedef struct
 
 static nn_tensor_t*
 nn_poolingLayer_forwardPassFn(nn_layer_t* base,
-                              nn_poolingLayerMode_e mode,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -405,7 +405,7 @@ nn_poolingLayer_avg(nn_poolingLayer_t* self,
 
 static nn_tensor_t*
 nn_poolingLayer_forwardPassFn(nn_layer_t* base,
-                              nn_poolingLayerMode_e mode,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);

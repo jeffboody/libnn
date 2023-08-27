@@ -37,7 +37,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_flattenLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_flattenLayer_forwardPassFn(nn_layer_t* base,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);

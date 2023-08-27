@@ -38,7 +38,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int mode,
+nn_skipLayer_forwardPassForkFn(nn_layer_t* base,
+                               nn_layerMode_e mode,
                                uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -68,7 +69,8 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base, uint32_t bs,
 #ifdef NN_USE_COMPUTE
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
+nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -148,7 +150,8 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int mode,
+nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -446,7 +449,8 @@ nn_skipLayer_deleteCompute(nn_skipLayer_t* self)
 #else // NN_USE_COMPUTE not defined
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
+nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -495,7 +499,8 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int mode,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int mode,
+nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
+                              nn_layerMode_e mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);

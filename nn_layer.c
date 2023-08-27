@@ -53,6 +53,7 @@ nn_layer_t* nn_layer_new(size_t base_size,
 	self->arch            = info->arch;
 	self->forward_pass_fn = info->forward_pass_fn;
 	self->backprop_fn     = info->backprop_fn;
+	self->post_fn         = info->post_fn;
 	self->dimX_fn         = info->dimX_fn;
 	self->dimY_fn         = info->dimY_fn;
 
@@ -73,7 +74,7 @@ void nn_layer_delete(nn_layer_t** _self)
 }
 
 nn_tensor_t*
-nn_layer_forwardPass(nn_layer_t* self, int mode,
+nn_layer_forwardPass(nn_layer_t* self, nn_layerMode_e mode,
                      uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(self);
@@ -94,6 +95,19 @@ nn_layer_backprop(nn_layer_t* self, uint32_t bs,
 	nn_layer_backpropFn backprop_fn;
 	backprop_fn = self->backprop_fn;
 	return (*backprop_fn)(self, bs, dL_dY);
+}
+
+void nn_layer_post(nn_layer_t* self,
+                   nn_layerMode_e mode)
+{
+	ASSERT(self);
+
+	// optional post training/prediction operation
+	nn_layer_postFn post_fn = self->post_fn;
+	if(post_fn)
+	{
+		return (*post_fn)(self, mode);
+	}
 }
 
 nn_dim_t* nn_layer_dimX(nn_layer_t* self)

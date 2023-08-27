@@ -43,7 +43,7 @@
 
 static nn_tensor_t*
 nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
-                              int mode,
+                              nn_layerMode_e mode,
                               uint32_t bs,
                               nn_tensor_t* X)
 {
@@ -85,6 +85,25 @@ nn_coderOpLayer_backpropFn(nn_layer_t* base,
 	else
 	{
 		return nn_layer_backprop(&self->pool->base, bs, dL_dY);
+	}
+}
+
+static void
+nn_coderOpLayer_postFn(nn_layer_t* base,
+                       nn_layerMode_e mode)
+{
+	ASSERT(base);
+
+	nn_coderOpLayer_t* self = (nn_coderOpLayer_t*) base;
+
+	if((self->op_mode == NN_CODER_OP_MODE_UPSCALE) ||
+	   (self->op_mode == NN_CODER_OP_MODE_DOWNSCALE))
+	{
+		return nn_layer_post(&self->conv->base, mode);
+	}
+	else
+	{
+		return nn_layer_post(&self->pool->base, mode);
 	}
 }
 
@@ -138,6 +157,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_coderOpLayer_forwardPassFn,
 		.backprop_fn     = nn_coderOpLayer_backpropFn,
+		.post_fn         = nn_coderOpLayer_postFn,
 		.dimX_fn         = nn_coderOpLayer_dimXFn,
 		.dimY_fn         = nn_coderOpLayer_dimYFn,
 	};
@@ -300,6 +320,7 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		.arch            = arch,
 		.forward_pass_fn = nn_coderOpLayer_forwardPassFn,
 		.backprop_fn     = nn_coderOpLayer_backpropFn,
+		.post_fn         = nn_coderOpLayer_postFn,
 		.dimX_fn         = nn_coderOpLayer_dimXFn,
 		.dimY_fn         = nn_coderOpLayer_dimYFn,
 	};
@@ -426,7 +447,7 @@ typedef struct nn_coderRepeaterLayer_s
 
 static nn_tensor_t*
 nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
-                                    int mode,
+                                    nn_layerMode_e mode,
                                     uint32_t bs,
                                     nn_tensor_t* X)
 {
@@ -466,6 +487,19 @@ nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
 	return nn_layer_backprop(&self->conv->base, bs, dL_dY);
 }
 
+static void
+nn_coderRepeaterLayer_postFn(nn_layer_t* base,
+                             nn_layerMode_e mode)
+{
+	ASSERT(base);
+
+	nn_coderRepeaterLayer_t* self;
+	self = (nn_coderRepeaterLayer_t*) base;
+
+	nn_layer_post(&self->conv->base, mode);
+	nn_layer_post(&self->fact->base, mode);
+}
+
 static nn_dim_t*
 nn_coderRepeaterLayer_dimXFn(nn_layer_t* base)
 {
@@ -499,6 +533,7 @@ nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 		.arch            = arch,
 		.forward_pass_fn = nn_coderRepeaterLayer_forwardPassFn,
 		.backprop_fn     = nn_coderRepeaterLayer_backpropFn,
+		.post_fn         = nn_coderRepeaterLayer_postFn,
 		.dimX_fn         = nn_coderRepeaterLayer_dimXFn,
 		.dimY_fn         = nn_coderRepeaterLayer_dimYFn,
 	};
@@ -613,6 +648,7 @@ nn_coderRepeaterLayer_import(nn_arch_t* arch,
 		.arch            = arch,
 		.forward_pass_fn = nn_coderRepeaterLayer_forwardPassFn,
 		.backprop_fn     = nn_coderRepeaterLayer_backpropFn,
+		.post_fn         = nn_coderRepeaterLayer_postFn,
 		.dimX_fn         = nn_coderRepeaterLayer_dimXFn,
 		.dimY_fn         = nn_coderRepeaterLayer_dimYFn,
 	};
@@ -673,7 +709,7 @@ nn_coderRepeaterLayer_export(nn_coderRepeaterLayer_t* self,
 
 static nn_tensor_t*
 nn_coderLayer_forwardPassFn(nn_layer_t* base,
-                            int mode,
+                            nn_layerMode_e mode,
                             uint32_t bs,
                             nn_tensor_t* X)
 {
@@ -810,6 +846,43 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 	}
 
 	return dL_dY;
+}
+
+static void
+nn_coderLayer_postFn(nn_layer_t* base,
+                     nn_layerMode_e mode)
+{
+	ASSERT(base);
+
+	nn_coderLayer_t* self = (nn_coderLayer_t*) base;
+
+	nn_layer_post(&self->conv->base, mode);
+	if(self->skip)
+	{
+		nn_layer_post(&self->skip->base, mode);
+	}
+	nn_layer_post(&self->bn->base, mode);
+	nn_layer_post(&self->fact->base, mode);
+
+	cc_listIter_t* iter;
+	if(self->repeater)
+	{
+		iter = cc_list_head(self->repeater);
+		while(iter)
+		{
+			nn_layer_t* layer;
+			layer = (nn_layer_t*) cc_list_peekIter(iter);
+
+			nn_layer_post(layer, mode);
+
+			cc_list_next(iter);
+		}
+	}
+
+	if(self->op)
+	{
+		nn_layer_post(&self->op->base, mode);
+	}
 }
 
 static nn_dim_t*
@@ -949,6 +1022,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		.arch            = info->arch,
 		.forward_pass_fn = nn_coderLayer_forwardPassFn,
 		.backprop_fn     = nn_coderLayer_backpropFn,
+		.post_fn         = nn_coderLayer_postFn,
 		.dimX_fn         = nn_coderLayer_dimXFn,
 		.dimY_fn         = nn_coderLayer_dimYFn,
 	};
@@ -1151,6 +1225,7 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		.arch            = arch,
 		.forward_pass_fn = nn_coderLayer_forwardPassFn,
 		.backprop_fn     = nn_coderLayer_backpropFn,
+		.post_fn         = nn_coderLayer_postFn,
 		.dimX_fn         = nn_coderLayer_dimXFn,
 		.dimY_fn         = nn_coderLayer_dimYFn,
 	};

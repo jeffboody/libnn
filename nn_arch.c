@@ -42,6 +42,25 @@
 * private                                                  *
 ***********************************************************/
 
+static void
+nn_arch_post(nn_arch_t* self, nn_layerMode_e mode)
+{
+	ASSERT(self);
+
+	cc_listIter_t* iter = cc_list_head(self->layers);
+	while(iter)
+	{
+		nn_layer_t* layer;
+		layer = (nn_layer_t*) cc_list_peekIter(iter);
+
+		nn_layer_post(layer, mode);
+
+		iter = cc_list_next(iter);
+	}
+
+	nn_loss_post(self->loss);
+}
+
 #ifdef NN_USE_COMPUTE
 
 typedef struct
@@ -1185,10 +1204,6 @@ static void nn_arch_endCompute(nn_arch_t* self)
 	self->computing = 0;
 
 	vkk_compute_end(self->compute);
-
-	nn_loss_t* loss = self->loss;
-	vkk_compute_readBuffer(self->compute, loss->sb07_loss,
-	                       sizeof(float), 0, &loss->loss);
 }
 
 #else // NN_USE_COMPUTE not defined
@@ -1717,6 +1732,7 @@ int nn_arch_train(nn_arch_t* self,
 	}
 
 	nn_arch_endCompute(self);
+	nn_arch_post(self, NN_LAYER_MODE_TRAIN);
 
 	// success
 	return 1;
@@ -1772,6 +1788,7 @@ int nn_arch_predict(nn_arch_t* self,
 	}
 
 	nn_arch_endCompute(self);
+	nn_arch_post(self, NN_LAYER_MODE_PREDICT);
 
 	// success
 	return nn_tensor_blit(X, Y, 1, 0, 0);

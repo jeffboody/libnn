@@ -35,6 +35,18 @@
 #define NN_WEIGHT_LAYER_FLAG_HE           0x0002
 #define NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS 0x0010
 
+typedef struct
+{
+	float gcw;
+	float gcb;
+	float norm_w;
+	float norm_b;
+	float norm_dl_dw;
+	float norm_dl_db;
+	float norm_dl_dw_ra;
+	float norm_dl_db_ra;
+} nn_weightLayerGc_t;
+
 typedef struct nn_weightLayer_s
 {
 	nn_layer_t base;
@@ -55,8 +67,7 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* VB; // dim(nc,1,1,1)
 
 	// gradient clipping
-	float norm_dl_dw_ra;
-	float norm_dl_db_ra;
+	nn_weightLayerGc_t gc;
 
 	// forward gradients
 	// dY_dB; // 1

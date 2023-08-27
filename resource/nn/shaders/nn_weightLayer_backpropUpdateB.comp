@@ -37,6 +37,10 @@ layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	float gc_gcw;
 	float gc_gcb;
+	float gc_norm_w;
+	float gc_norm_b;
+	float gc_norm_dl_dw;
+	float gc_norm_dl_db;
 	float gc_norm_dl_dw_ra;
 	float gc_norm_dl_db_ra;
 };

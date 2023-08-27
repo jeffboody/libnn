@@ -52,6 +52,10 @@ layout(std430, set=2, binding=0) buffer sb20
 {
 	float gc_gcw;
 	float gc_gcb;
+	float gc_norm_w;
+	float gc_norm_b;
+	float gc_norm_dl_dw;
+	float gc_norm_dl_db;
 	float gc_norm_dl_dw_ra;
 	float gc_norm_dl_db_ra;
 };
@@ -221,5 +225,11 @@ void main()
 		{
 			gc_gcb = gc_norm_dl_db_ra/norm_dl_db;
 		}
+
+		// save norm for logging
+		gc_norm_w     = norm_w;
+		gc_norm_b     = norm_b;
+		gc_norm_dl_dw = norm_dl_dw;
+		gc_norm_dl_db = norm_dl_db;
 	}
 }

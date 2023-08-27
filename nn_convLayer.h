@@ -36,6 +36,18 @@
 #define NN_CONV_LAYER_FLAG_DISABLE_BIAS 0x0010
 #define NN_CONV_LAYER_FLAG_TRANSPOSE    0x1000
 
+typedef struct nn_convLayerGc_s
+{
+	float gcw;
+	float gcb;
+	float norm_w;
+	float norm_b;
+	float norm_dl_dw;
+	float norm_dl_db;
+	float norm_dl_dw_ra;
+	float norm_dl_db_ra;
+} nn_convLayerGc_t;
+
 typedef struct nn_convLayer_s
 {
 	nn_layer_t base;
@@ -63,8 +75,7 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* VB; // dim(fc,1,1,1)
 
 	// gradient clipping
-	float norm_dl_dw_ra;
-	float norm_dl_db_ra;
+	nn_convLayerGc_t gc;
 
 	// forward gradients
 	// dY_dB; // 1

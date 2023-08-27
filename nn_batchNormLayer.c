@@ -44,7 +44,8 @@ extern vkk_uniformSet_t*
 nn_arch_getBatchNormIdx(nn_arch_t* self, uint32_t k);
 
 static nn_tensor_t*
-nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
+                                nn_layerMode_e mode,
                                 uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -520,7 +521,8 @@ nn_batchNormLayer_deleteCompute(nn_batchNormLayer_t* self)
 #else // NN_USE_COMPUTE not defined
 
 static nn_tensor_t*
-nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
+                                nn_layerMode_e mode,
                                 uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);

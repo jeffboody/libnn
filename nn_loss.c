@@ -403,9 +403,17 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	                     bs, dimY->height, dimY->width,
 	                     1, 8, 8);
 
-	// loss is read by nn_arch_endCompute
-
 	return dL_dY;
+}
+
+void nn_loss_post(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	nn_arch_t* arch = self->arch;
+
+	vkk_compute_readBuffer(arch->compute, self->sb07_loss,
+	                       sizeof(float), 0, &self->loss);
 }
 
 #else // NN_USE_COMPUTE not defined
@@ -574,6 +582,10 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	};
 
 	return (*loss_fn[self->loss_fn])(self, bs, Y, Yt);
+}
+
+void nn_loss_post(nn_loss_t* self)
+{
 }
 
 #endif

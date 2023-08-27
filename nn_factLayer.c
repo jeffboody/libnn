@@ -51,7 +51,8 @@ const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 #ifdef NN_USE_COMPUTE
 
 static nn_tensor_t*
-nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_factLayer_forwardPassFn(nn_layer_t* base,
+                           nn_layerMode_e mode,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -311,7 +312,8 @@ static float nn_factLayer_dtanh(float x)
 }
 
 static nn_tensor_t*
-nn_factLayer_forwardPassFn(nn_layer_t* base, int mode,
+nn_factLayer_forwardPassFn(nn_layer_t* base,
+                           nn_layerMode_e mode,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);

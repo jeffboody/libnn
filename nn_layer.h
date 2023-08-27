@@ -26,15 +26,21 @@
 
 #include "nn.h"
 
-#define NN_LAYER_MODE_TRAIN   0
-#define NN_LAYER_MODE_PREDICT 1
+typedef enum
+{
+	NN_LAYER_MODE_TRAIN   = 0,
+	NN_LAYER_MODE_PREDICT = 1,
+} nn_layerMode_e;
 
 typedef nn_tensor_t* (*nn_layer_forwardPassFn)
-                     (nn_layer_t* base, int mode,
+                     (nn_layer_t* base,
+                      nn_layerMode_e mode,
                       uint32_t bs, nn_tensor_t* X);
 typedef nn_tensor_t* (*nn_layer_backpropFn)
                      (nn_layer_t* base, uint32_t bs,
                       nn_tensor_t* dL_dY);
+typedef void (*nn_layer_postFn)(nn_layer_t* base,
+                                nn_layerMode_e mode);
 typedef nn_dim_t* (*nn_layer_dimFn)
                   (nn_layer_t* base);
 
@@ -43,6 +49,7 @@ typedef struct nn_layerInfo_s
 	nn_arch_t*             arch;
 	nn_layer_forwardPassFn forward_pass_fn;
 	nn_layer_backpropFn    backprop_fn;
+	nn_layer_postFn        post_fn;
 	nn_layer_dimFn         dimX_fn;
 	nn_layer_dimFn         dimY_fn;
 } nn_layerInfo_t;
@@ -52,6 +59,7 @@ typedef struct nn_layer_s
 	nn_arch_t*             arch;
 	nn_layer_forwardPassFn forward_pass_fn;
 	nn_layer_backpropFn    backprop_fn;
+	nn_layer_postFn        post_fn;
 	nn_layer_dimFn         dimX_fn;
 	nn_layer_dimFn         dimY_fn;
 } nn_layer_t;
@@ -60,11 +68,14 @@ nn_layer_t*  nn_layer_new(size_t base_size,
                           nn_layerInfo_t* info);
 void         nn_layer_delete(nn_layer_t** _self);
 nn_tensor_t* nn_layer_forwardPass(nn_layer_t* self,
-                                  int mode, uint32_t bs,
+                                  nn_layerMode_e mode,
+                                  uint32_t bs,
                                   nn_tensor_t* X);
 nn_tensor_t* nn_layer_backprop(nn_layer_t* self,
                                uint32_t bs,
                                nn_tensor_t* dL_dY);
+void         nn_layer_post(nn_layer_t* self,
+                           nn_layerMode_e mode);
 nn_dim_t*    nn_layer_dimX(nn_layer_t* self);
 nn_dim_t*    nn_layer_dimY(nn_layer_t* self);
 
