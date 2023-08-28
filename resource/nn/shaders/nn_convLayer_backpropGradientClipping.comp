@@ -28,6 +28,12 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_clip_mu_dec;
 };
 
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	uint param_disable_bias;
+	uint param_stride;
+};
+
 layout(std430, set=0, binding=4) readonly buffer sb04
 {
 	nn_dim_t dimW;
@@ -36,11 +42,6 @@ layout(std430, set=0, binding=4) readonly buffer sb04
 layout(std430, set=0, binding=5) readonly buffer sb05
 {
 	float W[];
-};
-
-layout(std430, set=0, binding=6) readonly buffer sb06
-{
-	nn_dim_t dimB;
 };
 
 layout(std430, set=0, binding=7) readonly buffer sb07
@@ -70,11 +71,6 @@ layout(std430, set=2, binding=4) readonly buffer sb24
 	float dL_dW[];
 };
 
-layout(std430, set=2, binding=5) readonly buffer sb25
-{
-	nn_dim_t dim_dL_dB;
-};
-
 layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	float dL_dB[];
@@ -88,12 +84,9 @@ float getW(uint n, uint i, uint j, uint k)
 	return W[n*sn + i*sy + j*sx + k];
 }
 
-float getB(uint n, uint i, uint j, uint k)
+float getB(uint n)
 {
-	uint sn = dimB.height*dimB.width*dimB.depth;
-	uint sy = dimB.width*dimB.depth;
-	uint sx = dimB.depth;
-	return B[n*sn + i*sy + j*sx + k];
+	return B[n];
 }
 
 float get_dL_dW(uint n, uint i, uint j, uint k)
@@ -104,12 +97,9 @@ float get_dL_dW(uint n, uint i, uint j, uint k)
 	return dL_dW[n*sn + i*sy + j*sx + k];
 }
 
-float get_dL_dB(uint n, uint i, uint j, uint k)
+float get_dL_dB(uint n)
 {
-	uint sn = dim_dL_dB.height*dim_dL_dB.width*dim_dL_dB.depth;
-	uint sy = dim_dL_dB.width*dim_dL_dB.depth;
-	uint sx = dim_dL_dB.depth;
-	return dL_dB[n*sn + i*sy + j*sx + k];
+	return dL_dB[n];
 }
 
 uint umod(uint x, uint y)
@@ -136,8 +126,7 @@ void main()
 	norm_b_work[idx]     = 0.0;
 	norm_dl_db_work[idx] = 0.0;
 
-	// compute norm_w_work, norm_dl_dw_work,
-	// norm_b_work and norm_dl_db_work
+	// compute norm_w_work, norm_dl_dw_work
 	uint  f;
 	uint  fi;
 	uint  fj;
@@ -161,6 +150,19 @@ void main()
 				norm_w_work[idx]     += w*w;
 				norm_dl_dw_work[idx] += dl_dw*dl_dw;
 			}
+		}
+	}
+
+	// compute norm_b_work, norm_dl_db_work
+	if((param_disable_bias == 0) && (q == 0) && (r == 0))
+	{
+		// bias gradient
+		for(f = p; f < fc; f += 4)
+		{
+			b                     = getB(f);
+			dl_db                 = s*get_dL_dB(f);
+			norm_b_work[idx]     += b*b;
+			norm_dl_db_work[idx] += dl_db*dl_db;
 		}
 	}
 

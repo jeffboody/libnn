@@ -117,8 +117,7 @@ void main()
 	norm_b_work[idx]     = 0.0;
 	norm_dl_db_work[idx] = 0.0;
 
-	// compute norm_w_work, norm_dl_dw_work,
-	// norm_b_work and norm_dl_db_work
+	// compute norm_w_work, norm_dl_dw_work
 	uint  n;
 	uint  k;
 	float w;
@@ -135,9 +134,13 @@ void main()
 			norm_w_work[idx]     += w*w;
 			norm_dl_dw_work[idx] += dl_dw*dl_dw;
 		}
+	}
 
+	// compute norm_b_work, norm_dl_db_work
+	if((param_disable_bias == 0) && (q == 0))
+	{
 		// bias gradient
-		if(param_disable_bias == 0)
+		for(n = p; n < nc; n += 8)
 		{
 			b                     = getB(n);
 			dl_db                 = s*get_dL_dB(n);
