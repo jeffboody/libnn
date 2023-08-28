@@ -875,7 +875,7 @@ nn_coderLayer_postFn(nn_layer_t* base,
 
 			nn_layer_post(layer, mode);
 
-			cc_list_next(iter);
+			iter = cc_list_next(iter);
 		}
 	}
 
