@@ -207,7 +207,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	}
 
 	nn_loss_t* loss;
-	loss = nn_loss_new(arch, dim, nn_loss_mse);
+	loss = nn_loss_new(arch, dim, NN_LOSS_FN_MSE);
 	if(loss == NULL)
 	{
 		goto fail_loss;
