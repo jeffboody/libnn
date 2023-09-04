@@ -44,6 +44,20 @@ const char* NN_LOSS_STRING_BCE = "bce";
 
 #ifdef NN_USE_COMPUTE
 
+// protected
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
+
 static int nn_loss_newCompute(nn_loss_t* self)
 {
 	ASSERT(self);
@@ -388,20 +402,26 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 
 	// nn_loss
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	vkk_compute_bindComputePipeline(arch->compute, cp);
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 8, ua0_array);
 	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     1, 1, 1, 8, 8, 1);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 1, 1, 1, 8, 8, 1);
 
 	// nn_loss_dL_dY
 	// RAW hazzard handled by nn_loss
 	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute, cp_dL_dY);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     bs, dimY->height, dimY->width,
-	                     1, 8, 8);
+	if(nn_arch_bind(arch, cp_dL_dY) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+	                 bs, dimY->height, dimY->width,
+	                 1, 8, 8);
 
 	return dL_dY;
 }

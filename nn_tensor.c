@@ -36,6 +36,22 @@
 * private                                                  *
 ***********************************************************/
 
+#ifdef NN_USE_COMPUTE
+// protected
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
+#endif
+
 static int
 nn_tensor_isModeIO(nn_tensor_t* self)
 {
@@ -538,24 +554,24 @@ void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 		};
 
 		// dispatch(NONE, xn*xh*xw*xd, 1, 1, 64, 1, 1)
+		vkk_computePipeline_t* cp;
 		if(count%64 == 0)
 		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clearAligned);
+			cp = arch->cp_tensor_clearAligned;
 		}
 		else
 		{
-			vkk_compute_bindComputePipeline(arch->compute,
-			                                arch->cp_tensor_clear);
+			cp = arch->cp_tensor_clear;
 		}
+		nn_arch_bind(arch, cp);
 		vkk_compute_updateUniformSetRefs(arch->compute,
 		                                 self->us0_clear,
 		                                 2, ua0_array);
 		vkk_compute_bindUniformSets(arch->compute, 1,
 		                            &self->us0_clear);
-		vkk_compute_dispatch(arch->compute,
-		                     (vkk_hazzard_e) hazzard,
-		                     count, 1, 1, 64, 1, 1);
+		nn_arch_dispatch(arch,
+		                 (vkk_hazzard_e) hazzard,
+		                 count, 1, 1, 64, 1, 1);
 	}
 	else
 	#endif

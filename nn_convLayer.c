@@ -45,10 +45,23 @@
 
 #ifdef NN_USE_COMPUTE
 
+// protected
 extern vkk_uniformSet_t*
 nn_arch_getConvIdx(nn_arch_t* self,
                    uint32_t f, uint32_t fi,
                    uint32_t fj, uint32_t k);
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
 
 typedef struct
 {
@@ -148,16 +161,20 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_convLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_forwardPass);
+	vkk_computePipeline_t* cp;
+	cp = arch->cp_conv_forwardPass;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 8, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimY->height, dimY->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimY->height, dimY->width,
+	                 1, 8, 8);
 
 	// store reference
 	self->X = X;
@@ -291,9 +308,13 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint fi;
 	uint fj;
-	vkk_uniformSet_t* us3;
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backprop_dL_dX);
+	vkk_computePipeline_t* cp;
+	vkk_uniformSet_t*      us3;
+	cp = arch->cp_conv_backprop_dL_dX;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 13, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
@@ -307,9 +328,9 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-			                     bs, dimY->height, dimY->width,
-			                     1, 8, 8);
+			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+			                 bs, dimY->height, dimY->width,
+			                 1, 8, 8);
 		}
 	}
 
@@ -319,10 +340,14 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backprop_dL_dW);
+	cp = arch->cp_conv_backprop_dL_dW;
 	for(f = 0; f < fc; ++f)
 	{
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
+
 		for(fi = 0; fi < fh; ++fi)
 		{
 			for(fj = 0; fj < fw; ++fj)
@@ -335,8 +360,8 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 						return NULL;
 					}
 					vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-					vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-					                     1, 1, 1, 8, 8, 1);
+					nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+					                 1, 1, 1, 8, 8, 1);
 				}
 			}
 		}
@@ -348,8 +373,11 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_conv_backprop_dL_dB);
+		cp = arch->cp_conv_backprop_dL_dB;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
 		for(f = 0; f < fc; ++f)
 		{
 			us3 = nn_arch_getConvIdx(arch, f, 0, 0, 0);
@@ -358,8 +386,8 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-			                     1, 1, 1, 8, 8, 1);
+			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+			                 1, 1, 1, 8, 8, 1);
 		}
 	}
 
@@ -380,26 +408,35 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	   (state->clip_mu_inc     > 0.0f) &&
 	   (state->clip_mu_dec     > 0.0f))
 	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_conv_backpropGradientClipping);
-		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-		                     1, 1, 1, 4, 4, 4);
+		cp = arch->cp_conv_backpropGradientClipping;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
+		nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+		                 1, 1, 1, 4, 4, 4);
 	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropUpdateW);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     fc, fh, fw, 4, 4, 4);
+	cp = arch->cp_conv_backpropUpdateW;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
 	// RAW hazzard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropUpdateB);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     fc, 1, 1, 64, 1, 1);
+	cp = arch->cp_conv_backpropUpdateB;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+	                 fc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
 }
@@ -525,16 +562,20 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base,
 
 	// nn_convLayer_forwardPassT
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_forwardPassT);
+	vkk_computePipeline_t* cp;
+	cp = arch->cp_conv_forwardPassT;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 8, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimY->height, dimY->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimY->height, dimY->width,
+	                 1, 8, 8);
 
 	// store reference
 	self->X = X;
@@ -668,9 +709,13 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint fi;
 	uint fj;
-	vkk_uniformSet_t* us3;
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropT_dL_dX);
+	vkk_computePipeline_t* cp;
+	vkk_uniformSet_t*      us3;
+	cp = arch->cp_conv_backpropT_dL_dX;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 13, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
@@ -684,9 +729,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-			                     bs, dimY->height, dimY->width,
-			                     1, 8, 8);
+			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+			                 bs, dimY->height, dimY->width,
+			                 1, 8, 8);
 		}
 	}
 
@@ -696,10 +741,14 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropT_dL_dW);
+	cp = arch->cp_conv_backpropT_dL_dW;
 	for(f = 0; f < fc; ++f)
 	{
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
+
 		for(fi = 0; fi < fh; ++fi)
 		{
 			for(fj = 0; fj < fw; ++fj)
@@ -712,8 +761,8 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 						return NULL;
 					}
 					vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-					vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-					                     1, 1, 1, 8, 8, 1);
+					nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+					                 1, 1, 1, 8, 8, 1);
 				}
 			}
 		}
@@ -725,8 +774,11 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_conv_backprop_dL_dB);
+		cp = arch->cp_conv_backprop_dL_dB;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
 		for(f = 0; f < fc; ++f)
 		{
 			us3 = nn_arch_getConvIdx(arch, f, 0, 0, 0);
@@ -735,8 +787,8 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-			                     1, 1, 1, 8, 8, 1);
+			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+			                 1, 1, 1, 8, 8, 1);
 		}
 	}
 
@@ -757,26 +809,35 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	   (state->clip_mu_inc     > 0.0f) &&
 	   (state->clip_mu_dec     > 0.0f))
 	{
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_conv_backpropGradientClipping);
-		vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-		                     1, 1, 1, 4, 4, 4);
+		cp = arch->cp_conv_backpropGradientClipping;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
+		nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+		                 1, 1, 1, 4, 4, 4);
 	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropUpdateW);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     fc, fh, fw, 4, 4, 4);
+	cp = arch->cp_conv_backpropUpdateW;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
 	// RAW hazzard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_conv_backpropUpdateB);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-	                     fc, 1, 1, 64, 1, 1);
+	cp = arch->cp_conv_backpropUpdateB;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+	                 fc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
 }
@@ -1360,10 +1421,8 @@ nn_convLayer_postFn(nn_layer_t* base,
 {
 	ASSERT(base);
 
-	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc    = &self->gc;
-	nn_arch_t*        arch  = base->arch;
-	nn_archState_t*   state = &arch->state;
+	nn_arch_t*      arch  = base->arch;
+	nn_archState_t* state = &arch->state;
 
 	if((mode == NN_LAYER_MODE_TRAIN)   &&
 	   (state->clip_max_weight > 0.0f) &&
@@ -1372,6 +1431,8 @@ nn_convLayer_postFn(nn_layer_t* base,
 	   (state->clip_mu_dec     > 0.0f))
 	{
 		#ifdef NN_GC_DEBUG
+		nn_convLayer_t*   self = (nn_convLayer_t*) base;
+		nn_convLayerGc_t* gc   = &self->gc;
 		LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
 		     gc->norm_w, gc->norm_b,
 		     gc->norm_dl_dw, gc->norm_dl_dw_ra,

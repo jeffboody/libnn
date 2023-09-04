@@ -40,8 +40,21 @@
 
 #ifdef NN_USE_COMPUTE
 
+// protected
 extern vkk_uniformSet_t*
 nn_arch_getBatchNormIdx(nn_arch_t* self, uint32_t k);
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
 
 static nn_tensor_t*
 nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
@@ -233,14 +246,19 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	int update = 1;
 
 	uint32_t k;
-	vkk_uniformSet_t* us3;
+	vkk_computePipeline_t* cp;
+	vkk_uniformSet_t*      us3;
 	if(mode == NN_LAYER_MODE_TRAIN)
 	{
 		// nn_batchNormLayer_forwardPassXmean
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_batchNorm_forwardPassXmean);
+
+		cp = arch->cp_batchNorm_forwardPassXmean;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
 		vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 		                                 9, ua0_array);
 		vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
@@ -258,21 +276,24 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
 			if(k == 0)
 			{
-				vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-				                     1, 1, 1, 8, 8, 1);
+				nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+				                 1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-				                     1, 1, 1, 8, 8, 1);
+				nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+				                 1, 1, 1, 8, 8, 1);
 			}
 		}
 
 		// nn_batchNormLayer_forwardPassXvar
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
-		vkk_compute_bindComputePipeline(arch->compute,
-		                                arch->cp_batchNorm_forwardPassXvar);
+		cp = arch->cp_batchNorm_forwardPassXvar;
+		if(nn_arch_bind(arch, cp) == 0)
+		{
+			return NULL;
+		}
 
 		for(k = 0; k < xd; ++k)
 		{
@@ -284,21 +305,25 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
 			if(k == 0)
 			{
-				vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-				                     1, 1, 1, 8, 8, 1);
+				nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+				                 1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-				                     1, 1, 1, 8, 8, 1);
+				nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+				                 1, 1, 1, 8, 8, 1);
 			}
 		}
 	}
 
+
 	// nn_batchNormLayer_forwardPassXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_batchNorm_forwardPassXhat);
+	cp = arch->cp_batchNorm_forwardPassXhat;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	if(update)
 	{
 		vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
@@ -308,15 +333,18 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		vkk_compute_bindUniformSets(arch->compute, 2, us_array);
 		update = 0;
 	}
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, xh, xw, 1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, xh, xw, 1, 8, 8);
 
 	// nn_batchNormLayer_forwardPassY
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_batchNorm_forwardPassY);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, xh, xw, 1, 8, 8);
+	cp = arch->cp_batchNorm_forwardPassY;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, xh, xw, 1, 8, 8);
 
 	return Y;
 }
@@ -400,21 +428,28 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	// nn_batchNormLayer_dL_dXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_batchNorm_backprop_dL_dXhat);
+	vkk_computePipeline_t* cp;
+	cp = arch->cp_batchNorm_backprop_dL_dXhat;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 8, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, xh, xw, 1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, xh, xw, 1, 8, 8);
 
 	// nn_batchNormLayer_backpropSum
 	// dispatch required for each k
 	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t k;
 	vkk_uniformSet_t* us3;
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_batchNorm_backpropSum);
+	cp = arch->cp_batchNorm_backpropSum;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	for(k = 0; k < xd; ++k)
 	{
 		us3 = nn_arch_getBatchNormIdx(arch, k);
@@ -425,22 +460,25 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		vkk_compute_bindUniformSets(arch->compute, 1, &us3);
 		if(k == 0)
 		{
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-			                     1, 1, 1, 8, 8, 1);
+			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+			                 1, 1, 1, 8, 8, 1);
 		}
 		else
 		{
-			vkk_compute_dispatch(arch->compute, VKK_HAZZARD_NONE,
-			                     1, 1, 1, 8, 8, 1);
+			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
+			                 1, 1, 1, 8, 8, 1);
 		}
 	}
 
 	// nn_batchNorm_backprop_dL_dX
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_batchNorm_backprop_dL_dX);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, xh, xw, 1, 8, 8);
+	cp = arch->cp_batchNorm_backprop_dL_dX;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, xh, xw, 1, 8, 8);
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;

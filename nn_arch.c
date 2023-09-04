@@ -38,6 +38,14 @@
 
 #define NN_ARCH_THREADS 4
 
+// split dispatch to improve UI responsiveness
+// 1) the actual number of dispatches issued may vary
+//    depending on NN layer design
+// 2) the dispatch amount to achieve good UI performance may
+//    depend on the hardware used and the neural network
+//    architecure for a particular problem
+#define NN_ARCH_DISPATCH_HINT 100
+
 /***********************************************************
 * private                                                  *
 ***********************************************************/
@@ -1201,9 +1209,15 @@ static void nn_arch_endCompute(nn_arch_t* self)
 {
 	ASSERT(self);
 
-	self->computing = 0;
+	if(self->computing)
+	{
+		LOGD("DISPATCH %i", self->dispatch);
 
-	vkk_compute_end(self->compute);
+		self->computing = 0;
+		self->dispatch  = 0;
+
+		vkk_compute_end(self->compute);
+	}
 }
 
 #else // NN_USE_COMPUTE not defined
@@ -1402,6 +1416,58 @@ nn_arch_getConvIdx(nn_arch_t* self,
 	fail_sb30:
 		FREE(data);
 	return NULL;
+}
+
+void nn_arch_dispatch(nn_arch_t* self,
+                      vkk_hazzard_e hazzard,
+                      uint32_t count_x,
+                      uint32_t count_y,
+                      uint32_t count_z,
+                      uint32_t local_size_x,
+                      uint32_t local_size_y,
+                      uint32_t local_size_z)
+{
+	ASSERT(self);
+
+	vkk_compute_dispatch(self->compute, hazzard,
+	                     count_x, count_y, count_z,
+	                     local_size_x, local_size_y,
+	                     local_size_z);
+	++self->dispatch;
+}
+
+int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp)
+{
+	ASSERT(self);
+	ASSERT(cp);
+
+	if(self->computing == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	// split dispatch to improve UI responsiveness
+	if(self->dispatch >= NN_ARCH_DISPATCH_HINT)
+	{
+		LOGD("DISPATCH %i", self->dispatch);
+
+		self->dispatch = 0;
+
+		vkk_compute_end(self->compute);
+		if(vkk_compute_begin(self->compute) == 0)
+		{
+			LOGE("invalid");
+			self->computing = 0;
+			return 0;
+		}
+	}
+
+	vkk_compute_bindComputePipeline(self->compute, cp);
+
+	return 1;
 }
 
 #endif

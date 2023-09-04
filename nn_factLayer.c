@@ -50,6 +50,20 @@ const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
 
 #ifdef NN_USE_COMPUTE
 
+// protected
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
+
 static nn_tensor_t*
 nn_factLayer_forwardPassFn(nn_layer_t* base,
                            nn_layerMode_e mode,
@@ -112,16 +126,18 @@ nn_factLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_factLayer_forwardPass
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                cp[self->fn]);
+	if(nn_arch_bind(arch, cp[self->fn]) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 2, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimX->height, dimX->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimX->height, dimX->width,
+	                 1, 8, 8);
 
 	// reference for backprop
 	self->X = X;
@@ -174,14 +190,16 @@ nn_factLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	// nn_factLayer_backprop
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                cp[self->fn]);
+	if(nn_arch_bind(arch, cp[self->fn]) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 2, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimX->height, dimX->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimX->height, dimX->width,
+	                 1, 8, 8);
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;

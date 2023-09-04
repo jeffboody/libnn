@@ -42,6 +42,20 @@ const char* NN_POOLING_LAYER_STRING_AVERAGE = "average";
 
 #ifdef NN_USE_COMPUTE
 
+// protected
+extern void
+nn_arch_dispatch(nn_arch_t* self,
+                 vkk_hazzard_e hazzard,
+                 uint32_t count_x,
+                 uint32_t count_y,
+                 uint32_t count_z,
+                 uint32_t local_size_x,
+                 uint32_t local_size_y,
+                 uint32_t local_size_z);
+extern int
+nn_arch_bind(nn_arch_t* self,
+             vkk_computePipeline_t* cp);
+
 typedef struct
 {
 	uint32_t stride;
@@ -137,16 +151,18 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_poolingLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                cp[self->mode]);
+	if(nn_arch_bind(arch, cp[self->mode]) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
 	                                 4, ua0_array);
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
 	                                 4, ua1_array);
 	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimY->height, dimY->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimY->height, dimY->width,
+	                 1, 8, 8);
 
 	return Y;
 }
@@ -200,14 +216,18 @@ nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 	// nn_poolingLayer_backprop
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_compute_bindComputePipeline(arch->compute,
-	                                arch->cp_pooling_backprop);
+	vkk_computePipeline_t* cp;
+	cp = arch->cp_pooling_backprop;
+	if(nn_arch_bind(arch, cp) == 0)
+	{
+		return NULL;
+	}
 	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
 	                                 4, ua2_array);
 	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
-	vkk_compute_dispatch(arch->compute, VKK_HAZZARD_RAW,
-	                     bs, dimX->height, dimX->width,
-	                     1, 8, 8);
+	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
+	                 bs, dimX->height, dimX->width,
+	                 1, 8, 8);
 
 	return dL_dX;
 }
