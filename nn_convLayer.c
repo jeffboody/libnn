@@ -1715,10 +1715,6 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	self->flags  = flags;
 	self->stride = stride;
 
-	// initialize running averages
-	self->gc.norm_dl_dw_ra = 1.0f;
-	self->gc.norm_dl_db_ra = 1.0f;
-
 	// XAVIER is default
 	if(flags & NN_CONV_LAYER_FLAG_HE)
 	{
