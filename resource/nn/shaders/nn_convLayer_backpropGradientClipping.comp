@@ -26,6 +26,7 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_clip_max_bias;
 	float state_clip_mu_inc;
 	float state_clip_mu_dec;
+	float state_clip_scale;
 };
 
 layout(std430, set=0, binding=1) readonly buffer sb01
@@ -188,10 +189,10 @@ void main()
 		}
 
 		// compute norms
-		norm_w     = sqrt(norm_w);
-		norm_b     = sqrt(norm_b);
-		norm_dl_dw = sqrt(norm_dl_dw);
-		norm_dl_db = sqrt(norm_dl_db);
+		norm_w     = state_clip_scale*sqrt(norm_w);
+		norm_b     = state_clip_scale*sqrt(norm_b);
+		norm_dl_dw = state_clip_scale*sqrt(norm_dl_dw);
+		norm_dl_db = state_clip_scale*sqrt(norm_dl_db);
 
 		// compute running averages for norm_dl_dw
 		float clip_mu;

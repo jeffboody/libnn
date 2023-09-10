@@ -246,6 +246,7 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		.clip_max_bias   = 10.0f,
 		.clip_mu_inc     = 0.99f,
 		.clip_mu_dec     = 0.90f,
+		.clip_scale      = 0.1f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);

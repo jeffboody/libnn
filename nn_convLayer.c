@@ -1086,10 +1086,10 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 			gc->norm_dl_db += dl_db*dl_db;
 		}
 	}
-	gc->norm_w     = sqrtf(gc->norm_w);
-	gc->norm_b     = sqrtf(gc->norm_b);
-	gc->norm_dl_dw = sqrtf(gc->norm_dl_dw);
-	gc->norm_dl_db = sqrtf(gc->norm_dl_db);
+	gc->norm_w     = state->clip_scale*sqrtf(gc->norm_w);
+	gc->norm_b     = state->clip_scale*sqrtf(gc->norm_b);
+	gc->norm_dl_dw = state->clip_scale*sqrtf(gc->norm_dl_dw);
+	gc->norm_dl_db = state->clip_scale*sqrtf(gc->norm_dl_db);
 
 	// compute running averages for norm_dl_dw
 	float clip_mu;

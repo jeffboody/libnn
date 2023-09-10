@@ -23,6 +23,7 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_clip_max_bias;
 	float state_clip_mu_inc;
 	float state_clip_mu_dec;
+	float state_clip_scale;
 };
 
 layout(std430, set=1, binding=0) readonly buffer sb10
