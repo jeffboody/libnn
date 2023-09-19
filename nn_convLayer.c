@@ -1091,7 +1091,7 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 	gc->norm_dl_dw = state->clip_scale*sqrtf(gc->norm_dl_dw);
 	gc->norm_dl_db = state->clip_scale*sqrtf(gc->norm_dl_db);
 
-	// compute running averages for norm_dl_dw
+	// determine clip momentum
 	float clip_mu;
 	if(gc->norm_dl_dw > gc->norm_dl_dw_ra)
 	{
@@ -1101,10 +1101,22 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 	{
 		clip_mu = state->clip_mu_dec;
 	}
-	gc->norm_dl_dw_ra = clip_mu*gc->norm_dl_dw_ra +
-	                    (1.0f - clip_mu)*gc->norm_dl_dw;
 
-	// compute running averages for norm_dl_db
+	// clamp norm_dl_dw
+	float norm_dl_dw = gc->norm_dl_dw;
+	if(state->clip_max_weight > 0.0f)
+	{
+		if(norm_dl_dw > state->clip_max_weight)
+		{
+			norm_dl_dw = state->clip_max_weight;
+		}
+	}
+
+	// compute running averages for norm_dl_dw
+	gc->norm_dl_dw_ra = clip_mu*gc->norm_dl_dw_ra +
+	                    (1.0f - clip_mu)*norm_dl_dw;
+
+	// determine clip momentum
 	if(gc->norm_dl_db > gc->norm_dl_db_ra)
 	{
 		clip_mu = state->clip_mu_inc;
@@ -1113,35 +1125,29 @@ nn_convLayer_gradientClipping(nn_convLayer_t* self,
 	{
 		clip_mu = state->clip_mu_dec;
 	}
-	gc->norm_dl_db_ra = clip_mu*gc->norm_dl_db_ra +
-	                    (1.0f - clip_mu)*gc->norm_dl_db;
 
-	// clamp running averages for norm_dl_dw_ra
-	if(state->clip_max_weight > 0.0f)
-	{
-		if(gc->norm_dl_dw_ra > state->clip_max_weight)
-		{
-			gc->norm_dl_dw_ra = state->clip_max_weight;
-		}
-	}
-
-	// clamp running averages for norm_dl_db_ra
+	// clamp norm_dl_db
+	float norm_dl_db = gc->norm_dl_db;
 	if(state->clip_max_bias > 0.0f)
 	{
-		if(gc->norm_dl_db_ra > state->clip_max_bias)
+		if(norm_dl_db > state->clip_max_bias)
 		{
-			gc->norm_dl_db_ra = state->clip_max_bias;
+			norm_dl_db = state->clip_max_bias;
 		}
 	}
 
+	// compute running averages for norm_dl_db
+	gc->norm_dl_db_ra = clip_mu*gc->norm_dl_db_ra +
+	                    (1.0f - clip_mu)*norm_dl_db;
+
 	// apply gradient clipping
-	if(gc->norm_dl_dw > gc->norm_dl_dw_ra)
+	if(norm_dl_dw > gc->norm_dl_dw_ra)
 	{
-		gc->gcw = gc->norm_dl_dw_ra/gc->norm_dl_dw;
+		gc->gcw = gc->norm_dl_dw_ra/norm_dl_dw;
 	}
-	if(gc->norm_dl_db > gc->norm_dl_db_ra)
+	if(norm_dl_db > gc->norm_dl_db_ra)
 	{
-		gc->gcb = gc->norm_dl_db_ra/gc->norm_dl_db;
+		gc->gcb = gc->norm_dl_db_ra/norm_dl_db;
 	}
 }
 

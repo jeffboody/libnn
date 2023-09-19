@@ -177,7 +177,13 @@ void main()
 		norm_dl_dw = state_clip_scale*sqrt(norm_dl_dw);
 		norm_dl_db = state_clip_scale*sqrt(norm_dl_db);
 
-		// compute running averages for norm_dl_dw
+		// save norm for logging
+		gc_norm_w     = norm_w;
+		gc_norm_b     = norm_b;
+		gc_norm_dl_dw = norm_dl_dw;
+		gc_norm_dl_db = norm_dl_db;
+
+		// determine clip momentum
 		float clip_mu;
 		if(norm_dl_dw > gc_norm_dl_dw_ra)
 		{
@@ -187,10 +193,21 @@ void main()
 		{
 			clip_mu = state_clip_mu_dec;
 		}
+
+		// clamp norm_dl_dw
+		if(state_clip_max_weight > 0.0)
+		{
+			if(norm_dl_dw > state_clip_max_weight)
+			{
+				norm_dl_dw = state_clip_max_weight;
+			}
+		}
+
+		// compute running averages for norm_dl_dw
 		gc_norm_dl_dw_ra = clip_mu*gc_norm_dl_dw_ra +
 		                   (1.0 - clip_mu)*norm_dl_dw;
 
-		// compute running averages for norm_dl_db
+		// determine clip momentum
 		if(norm_dl_db > gc_norm_dl_db_ra)
 		{
 			clip_mu = state_clip_mu_inc;
@@ -199,26 +216,19 @@ void main()
 		{
 			clip_mu = state_clip_mu_dec;
 		}
-		gc_norm_dl_db_ra = clip_mu*gc_norm_dl_db_ra +
-		                   (1.0 - clip_mu)*norm_dl_db;
 
-		// clamp running averages for gc_norm_dl_dw_ra
-		if(state_clip_max_weight > 0.0)
-		{
-			if(gc_norm_dl_dw_ra > state_clip_max_weight)
-			{
-				gc_norm_dl_dw_ra = state_clip_max_weight;
-			}
-		}
-
-		// clamp running averages for gc_norm_dl_db_ra
+		// clamp norm_dl_db
 		if(state_clip_max_bias > 0.0)
 		{
-			if(gc_norm_dl_db_ra > state_clip_max_bias)
+			if(norm_dl_db > state_clip_max_bias)
 			{
-				gc_norm_dl_db_ra = state_clip_max_bias;
+				norm_dl_db = state_clip_max_bias;
 			}
 		}
+
+		// compute running averages for norm_dl_db
+		gc_norm_dl_db_ra = clip_mu*gc_norm_dl_db_ra +
+		                   (1.0 - clip_mu)*norm_dl_db;
 
 		// apply gradient clipping
 		if(norm_dl_dw > gc_norm_dl_dw_ra)
@@ -229,11 +239,5 @@ void main()
 		{
 			gc_gcb = gc_norm_dl_db_ra/norm_dl_db;
 		}
-
-		// save norm for logging
-		gc_norm_w     = norm_w;
-		gc_norm_b     = norm_b;
-		gc_norm_dl_dw = norm_dl_dw;
-		gc_norm_dl_db = norm_dl_db;
 	}
 }
