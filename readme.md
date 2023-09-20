@@ -214,9 +214,14 @@ The Mean Squared Error (MSE) and Mean Absolute Error (MAE)
 are the most commonly used loss functions for regression
 problems. The MSE is typically used unless the training data
 has a large number of outliers. This is because the MSE is
-highly sensitive to outliers due to the squared term. The
-Binary Cross-Entropy (BCE) may also be used for regression
-problems when the output values are in the range [0, 1].
+highly sensitive to outliers due to the squared term.
+
+The Binary Cross-Entropy (BCE) may also be used for
+regression problems when the output values are in the
+range [0, 1]. Note, however, that the BCE plot does not
+converge to 0.0 loss when yi == yti. This fact seems to
+contradict the claim that BCE may be used for regression
+problems.
 
 	MSE
 	L(Y,Yt) = (1/n)*SUM((yi - yti)^2)
@@ -231,6 +236,10 @@ problems when the output values are in the range [0, 1].
 	dL/dyi  = -(yi - yti)/(ln(10)*(yi - 1)*yi)
 
 Add a small epsilon to avoid divide-by-zero problems.
+
+The following plots show the loss for yi and yti.
+
+![Loss Functions](docs/loss/loss.jpg?raw=true "Loss Functions")
 
 The Categorical Cross Entropy Loss is the most commonly used
 loss function for classification problems. Additionally, the
