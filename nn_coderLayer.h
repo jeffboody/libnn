@@ -32,11 +32,37 @@
 
 typedef enum
 {
-	NN_CODER_OP_MODE_NONE      = 0,
-	NN_CODER_OP_MODE_UPSCALE   = 1,
-	NN_CODER_OP_MODE_DOWNSCALE = 2,
-	NN_CODER_OP_MODE_POOLMAX   = 3,
-	NN_CODER_OP_MODE_POOLAVG   = 4,
+	NN_CODER_CONV_MODE_NONE     = 0,
+	NN_CODER_CONV_MODE_3X3_RELU = 1,
+} nn_coderConvMode_e;
+
+#define NN_CODER_CONV_MODE_COUNT 2
+
+typedef enum
+{
+	NN_CODER_SKIP_MODE_NONE = 0,
+	NN_CODER_SKIP_MODE_FORK = 1,
+	NN_CODER_SKIP_MODE_ADD  = 2,
+	NN_CODER_SKIP_MODE_CAT  = 3,
+} nn_coderSkipMode_e;
+
+#define NN_CODER_SKIP_MODE_COUNT 4
+
+typedef enum
+{
+	NN_CODER_BATCH_NORMALIZATION_MODE_DISABLE = 0,
+	NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE  = 1,
+} nn_coderBatchNormalizationMode_e;
+
+#define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 2
+
+typedef enum
+{
+	NN_CODER_OP_MODE_NONE         = 0,
+	NN_CODER_OP_MODE_CONVT_2X2_S2 = 1, // upscale
+	NN_CODER_OP_MODE_CONV_3X3_S2  = 2, // downscale
+	NN_CODER_OP_MODE_POOL_MAX_S2  = 3,
+	NN_CODER_OP_MODE_POOL_AVG_S2  = 4,
 } nn_coderOpMode_e;
 
 #define NN_CODER_OP_MODE_COUNT 5
@@ -48,16 +74,22 @@ typedef struct nn_coderLayerInfo_s
 	nn_dim_t* dimX;
 	uint32_t  fc;
 
-	// skip layer (optional)
+	// conv layer
+	nn_coderConvMode_e conv_mode;
+
+	// skip layer
 	// skip_coder must be set for add/cat modes
-	int              skip_enable;
-	int              skip_mode;
-	nn_coderLayer_t* skip_coder;
+	nn_coderSkipMode_e skip_mode;
+	nn_coderLayer_t*   skip_coder;
 
-	// repeater layers (optional)
-	uint32_t repeat;
+	// bn layer
+	nn_coderBatchNormalizationMode_e bn_mode;
 
-	// operation layer (optional)
+	// repeater layers
+	nn_coderConvMode_e repeat_mode;
+	uint32_t           repeat;
+
+	// operation layer
 	nn_coderOpMode_e op_mode;
 } nn_coderLayerInfo_t;
 
@@ -90,12 +122,17 @@ typedef struct nn_coderLayer_s
 {
 	nn_layer_t base;
 
+	nn_dim_t dimX;
+	nn_dim_t dimY;
+
+	// layers may be NULL depending on the desired modes
+
 	// main layer
 	// disable_bias, he, relu
 	// W : dim(fc,3,3,xd)
 	// Y : dim(bs,xh,xw,fc)
 	//
-	// skip layer (optional)
+	// skip layer
 	// fork (encoder)
 	// add/cat (decoder)
 	nn_convLayer_t*      conv;
@@ -103,10 +140,10 @@ typedef struct nn_coderLayer_s
 	nn_batchNormLayer_t* bn;
 	nn_factLayer_t*      fact;
 
-	// repeater layers (optional)
+	// repeater layers
 	cc_list_t* repeater;
 
-	// operation layer (optional)
+	// operation layer
 	nn_coderOpLayer_t* op;
 } nn_coderLayer_t;
 

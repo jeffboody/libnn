@@ -295,11 +295,11 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		.arch        = arch,
 		.dimX        = dim,
 		.fc          = fc,
-		.skip_enable = 0,
-		.skip_mode   = NN_SKIP_LAYER_MODE_FORK,
-		.skip_coder  = NULL,
-		.repeat      = 0,
-		.op_mode     = NN_CODER_OP_MODE_POOLMAX,
+		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
+		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
+		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.repeat_mode = NN_CODER_CONV_MODE_NONE,
+		.op_mode     = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
 
 	nn_coderLayer_t* enc1;
@@ -315,11 +315,11 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		.arch        = arch,
 		.dimX        = dim,
 		.fc          = fc,
-		.skip_enable = 0,
-		.skip_mode   = NN_SKIP_LAYER_MODE_FORK,
-		.skip_coder  = NULL,
-		.repeat      = 0,
-		.op_mode     = NN_CODER_OP_MODE_POOLMAX,
+		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
+		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
+		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.repeat_mode = NN_CODER_CONV_MODE_NONE,
+		.op_mode     = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
 
 	nn_coderLayer_t* enc2;
@@ -335,11 +335,11 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		.arch        = arch,
 		.dimX        = dim,
 		.fc          = fc,
-		.skip_enable = 0,
-		.skip_mode   = NN_SKIP_LAYER_MODE_ADD,
-		.skip_coder  = NULL,
-		.repeat      = 0,
-		.op_mode     = NN_CODER_OP_MODE_UPSCALE,
+		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
+		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
+		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.repeat_mode = NN_CODER_CONV_MODE_NONE,
+		.op_mode     = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
 
 	nn_coderLayer_t* dec3;
@@ -355,11 +355,11 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		.arch        = arch,
 		.dimX        = dim,
 		.fc          = fc,
-		.skip_enable = 0,
-		.skip_mode   = NN_SKIP_LAYER_MODE_ADD,
-		.skip_coder  = NULL,
-		.repeat      = 0,
-		.op_mode     = NN_CODER_OP_MODE_UPSCALE,
+		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
+		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
+		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.repeat_mode = NN_CODER_CONV_MODE_NONE,
+		.op_mode     = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
 
 	nn_coderLayer_t* dec4;
