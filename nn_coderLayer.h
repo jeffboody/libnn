@@ -60,12 +60,13 @@ typedef enum
 {
 	NN_CODER_OP_MODE_NONE         = 0,
 	NN_CODER_OP_MODE_CONVT_2X2_S2 = 1, // upscale
-	NN_CODER_OP_MODE_CONV_3X3_S2  = 2, // downscale
-	NN_CODER_OP_MODE_POOL_MAX_S2  = 3,
-	NN_CODER_OP_MODE_POOL_AVG_S2  = 4,
+	NN_CODER_OP_MODE_CONVT_6X6_S2 = 2, // upscale
+	NN_CODER_OP_MODE_CONV_3X3_S2  = 3, // downscale
+	NN_CODER_OP_MODE_POOL_MAX_S2  = 4,
+	NN_CODER_OP_MODE_POOL_AVG_S2  = 5,
 } nn_coderOpMode_e;
 
-#define NN_CODER_OP_MODE_COUNT 5
+#define NN_CODER_OP_MODE_COUNT 6
 
 typedef struct nn_coderLayerInfo_s
 {

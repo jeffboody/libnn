@@ -54,6 +54,7 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
 	self = (nn_coderOpLayer_t*) base;
 
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_forwardPass(&self->conv->base,
@@ -78,6 +79,7 @@ nn_coderOpLayer_backpropFn(nn_layer_t* base,
 	self = (nn_coderOpLayer_t*) base;
 
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_backprop(&self->conv->base, bs, dL_dY);
@@ -97,6 +99,7 @@ nn_coderOpLayer_postFn(nn_layer_t* base,
 	nn_coderOpLayer_t* self = (nn_coderOpLayer_t*) base;
 
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_post(&self->conv->base, mode);
@@ -116,6 +119,7 @@ nn_coderOpLayer_dimXFn(nn_layer_t* base)
 	self = (nn_coderOpLayer_t*) base;
 
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_dimX(&self->conv->base);
@@ -135,6 +139,7 @@ nn_coderOpLayer_dimYFn(nn_layer_t* base)
 	self = (nn_coderOpLayer_t*) base;
 
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_dimY(&self->conv->base);
@@ -181,6 +186,24 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 			.count  = xd,
 			.width  = 2,
 			.height = 2,
+			.depth  = xd,
+		};
+
+		self->conv = nn_convLayer_new(arch, dimX, &dimW, 2,
+		                              NN_CONV_LAYER_FLAG_TRANSPOSE |
+		                              NN_CONV_LAYER_FLAG_XAVIER);
+		if(self->conv == NULL)
+		{
+			goto fail_op;
+		}
+	}
+	else if(op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2)
+	{
+		nn_dim_t dimW =
+		{
+			.count  = xd,
+			.width  = 6,
+			.height = 6,
 			.depth  = xd,
 		};
 
@@ -251,6 +274,7 @@ nn_coderOpLayer_delete(nn_coderOpLayer_t** _self)
 	if(self)
 	{
 		if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+		   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 		   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 		{
 			nn_convLayer_delete(&self->conv);
@@ -338,6 +362,10 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	{
 		self->op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2;
 	}
+	else if(strcmp(val_op_mode->data, "CONVT_6X6_S2") == 0)
+	{
+		self->op_mode = NN_CODER_OP_MODE_CONVT_6X6_S2;
+	}
 	else if(strcmp(val_op_mode->data, "CONV_3X3_S2") == 0)
 	{
 		self->op_mode = NN_CODER_OP_MODE_CONV_3X3_S2;
@@ -353,6 +381,7 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 	if(val_conv &&
 	   ((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
+	    (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	    (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2)))
 	{
 		self->conv = nn_convLayer_import(arch, val_conv);
@@ -399,6 +428,13 @@ nn_coderOpLayer_export(nn_coderOpLayer_t* self,
 	{
 		ret &= jsmn_stream_key(stream, "%s", "op_mode");
 		ret &= jsmn_stream_string(stream, "%s", "CONVT_2X2_S2");
+		ret &= jsmn_stream_key(stream, "%s", "conv");
+		ret &= nn_convLayer_export(self->conv, stream);
+	}
+	else if(self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2)
+	{
+		ret &= jsmn_stream_key(stream, "%s", "op_mode");
+		ret &= jsmn_stream_string(stream, "%s", "CONVT_6X6_S2");
 		ret &= jsmn_stream_key(stream, "%s", "conv");
 		ret &= nn_convLayer_export(self->conv, stream);
 	}
