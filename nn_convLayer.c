@@ -404,9 +404,7 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		cp = arch->cp_conv_backpropGradientClipping;
 		if(nn_arch_bind(arch, cp) == 0)
@@ -454,9 +452,7 @@ nn_convLayer_postFn(nn_layer_t* base,
 
 	if((mode == NN_LAYER_MODE_TRAIN)   &&
 	   (state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		vkk_compute_readBuffer(arch->compute, self->sb20_gc,
 		                       sizeof(nn_convLayerGc_t), 0, gc);
@@ -805,9 +801,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	// nn_convLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		cp = arch->cp_conv_backpropGradientClipping;
 		if(nn_arch_bind(arch, cp) == 0)
@@ -1287,9 +1281,7 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	gc->norm_dl_dw = 0.0f;
 	gc->norm_dl_db = 0.0f;
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		nn_convLayer_gradientClipping(self, bs);
 	}
@@ -1432,9 +1424,7 @@ nn_convLayer_postFn(nn_layer_t* base,
 
 	if((mode == NN_LAYER_MODE_TRAIN)   &&
 	   (state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		#ifdef NN_GC_DEBUG
 		nn_convLayer_t*   self = (nn_convLayer_t*) base;
@@ -1637,9 +1627,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 	gc->norm_dl_dw = 0.0f;
 	gc->norm_dl_db = 0.0f;
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		nn_convLayer_gradientClipping(self, bs);
 	}

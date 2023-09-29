@@ -343,9 +343,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	// nn_weightLayer_backpropGradientClipping
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		cp = arch->cp_weight_backpropGradientClipping;
 		if(nn_arch_bind(arch, cp) == 0)
@@ -392,9 +390,7 @@ nn_weightLayer_postFn(nn_layer_t* base, nn_layerMode_e mode)
 
 	if((mode == NN_LAYER_MODE_TRAIN)   &&
 	   (state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		vkk_compute_readBuffer(arch->compute, self->sb20_gc,
 		                       sizeof(nn_weightLayerGc_t), 0, gc);
@@ -731,9 +727,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	gc->norm_dl_dw = 0.0f;
 	gc->norm_dl_db = 0.0f;
 	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		nn_weightLayer_gradientClipping(self, bs);
 	}
@@ -786,9 +780,7 @@ nn_weightLayer_postFn(nn_layer_t* base, nn_layerMode_e mode)
 
 	if((mode == NN_LAYER_MODE_TRAIN)   &&
 	   (state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f) &&
-	   (state->clip_mu_inc     > 0.0f) &&
-	   (state->clip_mu_dec     > 0.0f))
+	   (state->clip_max_bias   > 0.0f))
 	{
 		#ifdef NN_GC_DEBUG
 		nn_weightLayer_t*   self = (nn_weightLayer_t*) base;
