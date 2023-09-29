@@ -571,6 +571,13 @@ a hyperparameter and it was suggested that a good default is
 	Xmean_ra = Xmean_ra*momentum + Xmean_mb*(1 - momentum)
 	Xvar_ra  = Xvar_ra*momentum + Xvar_mb*(1 - momentum)
 
+The instance normalization technique is an alternative
+approach to computing running averages and simply involves
+using the statistics of the test batch rather than the
+aggregated statistics of the training batch. The instance
+normalization technique was referenced by the Pix-To-Pix GAN
+paper.
+
 There is some discussion as to the best place for the BN
 layer. The original paper placed this layer between the
 perceptron weighted average and the activation function. It
@@ -737,6 +744,7 @@ Regularization in practice.
 
 References
 
+* [ADAM: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980.pdf)
 * [Why AdamW matters](https://towardsdatascience.com/why-adamw-matters-736223f31b5d)
 * [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v2.pdf)
 * [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf)
@@ -955,7 +963,7 @@ optimization.
 The cross-validation technique may also be applied to
 determine how well the model generalizes across different
 training sets. In this case, the training set is divided
-into folds (e.g. a 5-fold traiing set) and the training
+into folds (e.g. a 5-fold training set) and the training
 algorithm is performed on each fold. The mean and variance
 of the loss may be analyzed (see Yerrorlines in gnuplot) to
 determine the optimal hyperparameter values and to determine
@@ -1052,6 +1060,26 @@ References
 * [Accurate Image Super-Resolution Using Very Deep Convolutional Networks](https://arxiv.org/pdf/1511.04587v2.pdf)
 * [Super-Resolution of Multispectral Satellite Images Using Convolutional Neural Networks](https://arxiv.org/pdf/2002.00580.pdf)
 * [Image Restoration Using Very Deep Convolutional Encoder-Decoder Networks with Symmetric Skip Connections](https://arxiv.org/pdf/1603.09056.pdf)
+
+Generative Adversarial Networks (GAN)
+-------------------------------------
+
+References
+
+* [Generative Adversarial Nets](https://arxiv.org/pdf/1406.2661.pdf)
+* [NIPS 2016 Tutorial: Generative Adversarial Networks](https://arxiv.org/pdf/1701.00160.pdf)
+* [Introduction to GANs, NIPS 2016](https://www.youtube.com/watch?v=9JpdAg6uMXs)
+* [Classic - Generative Adversarial Networks - Paper Explained](https://www.youtube.com/watch?v=eyxmSmjmNS0)
+* [Must-Read Papers on GANs](https://towardsdatascience.com/must-read-papers-on-gans-b665bbae3317)
+* [Improved Techniques for Training GANs](https://arxiv.org/pdf/1606.03498.pdf)
+* [Conditional Generative Adversarial Nets](https://arxiv.org/pdf/1411.1784.pdf)
+* [Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks](https://arxiv.org/pdf/1511.06434.pdf)
+* [Image-to-Image Translation with Conditional Adversarial Networks](https://arxiv.org/pdf/1611.07004.pdf)
+* [Progressive Growing of GANs for Improved Quality, Stability, and Variation](https://arxiv.org/pdf/1710.10196.pdf)
+* [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/pdf/1703.10593.pdf)
+* [Least Squares Generative Adversarial Networks](https://arxiv.org/pdf/1611.04076.pdf)
+* [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
+* [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
 
 License
 =======
