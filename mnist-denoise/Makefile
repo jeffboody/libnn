@@ -5,7 +5,7 @@ export NN_GC_DEBUG    = 1
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 
-TARGET   = mnist-test
+TARGET   = mnist-denoise
 CLASSES  =
 SOURCE   = $(TARGET).c $(CLASSES:%=%.c)
 OBJECTS  = $(TARGET).o $(CLASSES:%=%.o)

@@ -232,7 +232,8 @@ mnist_savepng(const char* fname, texgz_tex_t* tex,
 ***********************************************************/
 
 static int
-mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
+mnist_denoise_onMain(vkk_engine_t* engine, int argc,
+                     char** argv)
 {
 	ASSERT(engine);
 
@@ -648,13 +649,13 @@ mnist_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "MNIST-Test",
+	.app_name    = "MNIST-Denoise",
 	.app_version =
 	{
 		.major = 1,
 		.minor = 0,
 		.patch = 0,
 	},
-	.app_dir = "MNISTTest",
-	.onMain  = mnist_test_onMain,
+	.app_dir = "mnist-denoise",
+	.onMain  = mnist_denoise_onMain,
 };
