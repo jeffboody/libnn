@@ -24,11 +24,8 @@
 #ifndef nn_weightLayer_H
 #define nn_weightLayer_H
 
-#include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_layer.h"
 
 // XAVIER is default
 #define NN_WEIGHT_LAYER_FLAG_XAVIER       0x0001
@@ -80,13 +77,11 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* dL_dB; // dim(nc,1,1,1)
 	nn_tensor_t* dL_dX; // dim(bs,1,1,xd)
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
 	vkk_buffer_t*     sb01_param;
 	vkk_buffer_t*     sb20_gc;
-	#endif
 } nn_weightLayer_t;
 
 nn_weightLayer_t* nn_weightLayer_new(nn_arch_t* arch,

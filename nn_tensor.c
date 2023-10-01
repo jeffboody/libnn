@@ -36,7 +36,6 @@
 * private                                                  *
 ***********************************************************/
 
-#ifdef NN_USE_COMPUTE
 // protected
 extern void
 nn_arch_dispatch(nn_arch_t* self,
@@ -50,7 +49,6 @@ nn_arch_dispatch(nn_arch_t* self,
 extern int
 nn_arch_bind(nn_arch_t* self,
              vkk_computePipeline_t* cp);
-#endif
 
 static int
 nn_tensor_isModeIO(nn_tensor_t* self)
@@ -58,12 +56,10 @@ nn_tensor_isModeIO(nn_tensor_t* self)
 	ASSERT(self);
 
 	// ignore mode when compute is disabled
-	#ifdef NN_USE_COMPUTE
 	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		return 0;
 	}
-	#endif
 
 	return 1;
 }
@@ -104,7 +100,6 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 
 	nn_dim_t* dim = nn_tensor_dim(self);
 
-	#ifdef NN_USE_COMPUTE
 	nn_tensor_t* tmp = NULL;
 	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
@@ -129,7 +124,6 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 		nn_tensor_delete(&tmp);
 	}
 	else
-	#endif
 	{
 		uint32_t count = dim->count*dim->height*
 		                 dim->width*dim->depth;
@@ -162,12 +156,10 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 	return 1;
 
 	// failure
-	#ifdef NN_USE_COMPUTE
 	fail_blit:
 	fail_loadData:
 		nn_tensor_delete(&tmp);
 	return 0;
-	#endif
 }
 
 static void
@@ -273,8 +265,6 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 
 	nn_dim_copy(dim, &self->dim);
 
-	#ifdef NN_USE_COMPUTE
-
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(arch->compute);
 
@@ -322,7 +312,6 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 		nn_tensor_delete(&tmp);
 	}
 	else
-	#endif
 	{
 		self->data = (float*)
 		             CALLOC(1, nn_dim_sizeof(dim));
@@ -358,11 +347,9 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	nn_tensor_t* self = *_self;
 	if(self)
 	{
-		#ifdef NN_USE_COMPUTE
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
 		vkk_uniformSet_delete(&self->us0_clear);
-		#endif
 		FREE(self->data);
 		FREE(self);
 		*_self = NULL;
@@ -457,7 +444,6 @@ int nn_tensor_store(nn_tensor_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self);
 
 	int ret = 1;
-	#ifdef NN_USE_COMPUTE
 	nn_tensor_t* tmp = NULL;
 	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
@@ -482,7 +468,6 @@ int nn_tensor_store(nn_tensor_t* self,
 		nn_tensor_delete(&tmp);
 	}
 	else
-	#endif
 	{
 		uint32_t count = dim->count*dim->height*
 		                 dim->width*dim->depth;
@@ -507,12 +492,10 @@ int nn_tensor_store(nn_tensor_t* self,
 	return ret;
 
 	// failure
-	#ifdef NN_USE_COMPUTE
 	fail_store:
 	fail_blit:
 		nn_tensor_delete(&tmp);
 	return 0;
-	#endif
 }
 
 void nn_tensor_clear(nn_tensor_t* self, int hazzard)
@@ -525,7 +508,6 @@ void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 	count = dim->count*dim->height*
 	        dim->width*dim->depth;
 
-	#ifdef NN_USE_COMPUTE
 	if(nn_tensor_isModeIO(self) == 0)
 	{
 		nn_arch_t* arch = self->arch;
@@ -574,7 +556,6 @@ void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 		                 count, 1, 1, 64, 1, 1);
 	}
 	else
-	#endif
 	{
 		memset(self->data, 0, count*sizeof(float));
 	}
@@ -895,7 +876,6 @@ int nn_tensor_blit(nn_tensor_t* src,
 	float* src_data = nn_tensor_data(src, src_offset);
 	float* dst_data = nn_tensor_data(dst, dst_offset);
 
-	#ifdef NN_USE_COMPUTE
 	vkk_compute_t* compute = src->arch->compute;
 	if((src->mode == NN_TENSOR_MODE_IO) &&
 	   (dst->mode == NN_TENSOR_MODE_COMPUTE))
@@ -916,7 +896,6 @@ int nn_tensor_blit(nn_tensor_t* src,
 		return 0;
 	}
 	else
-	#endif
 	{
 		memcpy(dst_data, src_data, size);
 	}

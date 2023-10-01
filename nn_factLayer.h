@@ -26,11 +26,8 @@
 
 #include "../jsmn/wrapper/jsmn_stream.h"
 #include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_layer.h"
 
 typedef enum
 {
@@ -61,11 +58,9 @@ typedef struct nn_factLayer_s
 	// dL_dY : dim(bs,xh,xw,xd)
 	// dL_dX : dim(bs,xh,xw,xd)
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
-	#endif
 } nn_factLayer_t;
 
 nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,

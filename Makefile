@@ -18,11 +18,6 @@ OBJECTS = $(SOURCE:.c=.o)
 HFILES  = $(CLASSES:%=%.h)
 OPT     = -O2 -Wall
 CFLAGS  = $(OPT)
-ifeq ($(NN_USE_COMPUTE),1)
-	# NN_USE_COMPUTE must also be included in CFLAGS of app in
-	# order for header files to be included properly
-	CFLAGS += -DNN_USE_COMPUTE
-endif
 ifeq ($(NN_GC_DEBUG),1)
 	CFLAGS += -DNN_GC_DEBUG
 endif

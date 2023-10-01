@@ -1,6 +1,3 @@
-# compute implementation used by default
-export NN_USE_COMPUTE = 1
-
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 
@@ -14,9 +11,6 @@ CFLAGS   = \
 	$(OPT) -I.             \
 	`sdl2-config --cflags` \
 	-I$(VULKAN_SDK)/include
-ifeq ($(NN_USE_COMPUTE),1)
-	CFLAGS += -DNN_USE_COMPUTE
-endif
 LDFLAGS  = -Llibnn -lnn -Llibvkk -lvkk -Ljsmn/wrapper -ljsmn -Llibbfs -lbfs -Llibcc -lcc -Llibsqlite3 -lsqlite3 -L$(VULKAN_SDK)/lib -lvulkan -L/usr/lib `sdl2-config --libs` -ldl -lpthread -lm
 CCC      = gcc
 

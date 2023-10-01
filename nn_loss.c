@@ -42,8 +42,6 @@ const char* NN_LOSS_STRING_BCE = "bce";
 * private                                                  *
 ***********************************************************/
 
-#ifdef NN_USE_COMPUTE
-
 // protected
 extern void
 nn_arch_dispatch(nn_arch_t* self,
@@ -99,19 +97,6 @@ static void nn_loss_deleteCompute(nn_loss_t* self)
 	vkk_buffer_delete(&self->sb07_loss);
 	vkk_uniformSet_delete(&self->us0);
 }
-
-#else // NN_USE_COMPUTE not defined
-
-static int nn_loss_newCompute(nn_loss_t* self)
-{
-	return 1;
-}
-
-static void nn_loss_deleteCompute(nn_loss_t* self)
-{
-}
-
-#endif
 
 static const char* nn_loss_string(nn_lossFn_e fn)
 {
@@ -306,8 +291,6 @@ void nn_loss_delete(nn_loss_t** _self)
 	}
 }
 
-#ifdef NN_USE_COMPUTE
-
 nn_tensor_t*
 nn_loss_loss(nn_loss_t* self, uint32_t bs,
              nn_tensor_t* Y, nn_tensor_t* Yt)
@@ -435,180 +418,6 @@ void nn_loss_post(nn_loss_t* self)
 	vkk_compute_readBuffer(arch->compute, self->sb07_loss,
 	                       sizeof(float), 0, &self->loss);
 }
-
-#else // NN_USE_COMPUTE not defined
-
-typedef nn_tensor_t* (*nn_loss_fn)
-                     (nn_loss_t* base, uint32_t bs,
-                      nn_tensor_t* Y, nn_tensor_t* Yt);
-
-static nn_tensor_t*
-nn_loss_mse(nn_loss_t* self, uint32_t bs,
-            nn_tensor_t* Y, nn_tensor_t* Yt)
-{
-	ASSERT(self);
-	ASSERT(Y);
-	ASSERT(Yt);
-
-	nn_tensor_t* dL_dY = self->dL_dY;
-	nn_dim_t*    dim   = nn_tensor_dim(Y);
-	uint32_t     yh    = dim->height;
-	uint32_t     yw    = dim->width;
-	uint32_t     yd    = dim->depth;
-
-	float    y;
-	float    yt;
-	float    dy;
-	float    dl_dy;
-	float    M    = (float) (bs*yh*yw*yd);
-	float    loss = 0.0f;
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(m = 0; m < bs; ++m)
-	{
-		for(i = 0; i < yh; ++i)
-		{
-			for(j = 0; j < yw; ++j)
-			{
-				for(k = 0; k < yd; ++k)
-				{
-					y     = nn_tensor_get(Y, m, i, j, k);
-					yt    = nn_tensor_get(Yt, m, i, j, k);
-					dy    = y - yt;
-					dl_dy = 2.0f*dy;
-					loss += dy*dy;
-					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
-				}
-			}
-		}
-	}
-	self->loss = loss/M;
-
-	return dL_dY;
-}
-
-static nn_tensor_t*
-nn_loss_mae(nn_loss_t* self, uint32_t bs,
-            nn_tensor_t* Y, nn_tensor_t* Yt)
-{
-	ASSERT(self);
-	ASSERT(Y);
-	ASSERT(Yt);
-
-	nn_tensor_t* dL_dY = self->dL_dY;
-	nn_dim_t*    dim   = nn_tensor_dim(Y);
-	uint32_t     yh    = dim->height;
-	uint32_t     yw    = dim->width;
-	uint32_t     yd    = dim->depth;
-
-	float    y;
-	float    yt;
-	float    dy;
-	float    ady;
-	float    dl_dy;
-	float    M    = (float) (bs*yh*yw*yd);
-	float    loss = 0.0f;
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(m = 0; m < bs; ++m)
-	{
-		for(i = 0; i < yh; ++i)
-		{
-			for(j = 0; j < yw; ++j)
-			{
-				for(k = 0; k < yd; ++k)
-				{
-					y     = nn_tensor_get(Y, m, i, j, k);
-					yt    = nn_tensor_get(Yt, m, i, j, k);
-					dy    = y - yt;
-					ady   = fabs(dy);
-					dl_dy = dy/(ady + FLT_EPSILON);
-					loss += ady;
-					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
-				}
-			}
-		}
-	}
-	self->loss = loss/M;
-
-	return dL_dY;
-}
-
-static nn_tensor_t*
-nn_loss_bce(nn_loss_t* self, uint32_t bs,
-            nn_tensor_t* Y, nn_tensor_t* Yt)
-{
-	ASSERT(self);
-	ASSERT(Y);
-	ASSERT(Yt);
-
-	nn_tensor_t* dL_dY = self->dL_dY;
-	nn_dim_t*    dim   = nn_tensor_dim(Y);
-	uint32_t     yh    = dim->height;
-	uint32_t     yw    = dim->width;
-	uint32_t     yd    = dim->depth;
-
-	float    y;
-	float    yt;
-	float    dl_dy;
-	float    M       = (float) (bs*yh*yw*yd);
-	float    loss    = 0.0f;
-	float    epsilon = FLT_EPSILON;
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(m = 0; m < bs; ++m)
-	{
-		for(i = 0; i < yh; ++i)
-		{
-			for(j = 0; j < yw; ++j)
-			{
-				for(k = 0; k < yd; ++k)
-				{
-					y     = nn_tensor_get(Y, m, i, j, k);
-					y     = cc_clamp(y, epsilon, 1.0f - epsilon);
-					yt    = nn_tensor_get(Yt, m, i, j, k);
-					dl_dy = -(y - yt)/(logf(10.0f)*(y - 1.0f)*y + epsilon);
-					loss += -(yt*log10f(y + epsilon) +
-					          (1.0f - yt)*log10f(1.0f - y + epsilon));
-					nn_tensor_set(dL_dY, m, i, j, k, dl_dy);
-				}
-			}
-		}
-	}
-	self->loss = loss/M;
-
-	return dL_dY;
-}
-
-nn_tensor_t*
-nn_loss_loss(nn_loss_t* self, uint32_t bs,
-             nn_tensor_t* Y, nn_tensor_t* Yt)
-{
-	ASSERT(self);
-	ASSERT(Y);
-	ASSERT(Yt);
-
-	nn_loss_fn loss_fn[NN_LOSS_FN_COUNT] =
-	{
-		nn_loss_mse,
-		nn_loss_mae,
-		nn_loss_bce,
-	};
-
-	return (*loss_fn[self->loss_fn])(self, bs, Y, Yt);
-}
-
-void nn_loss_post(nn_loss_t* self)
-{
-}
-
-#endif
 
 nn_dim_t* nn_loss_dimY(nn_loss_t* self)
 {

@@ -53,11 +53,8 @@ nn_flattenLayer_forwardPassFn(nn_layer_t* base,
 		return NULL;
 	}
 
-	Y->data = X->data;
-
-	#ifdef NN_USE_COMPUTE
+	Y->data    = X->data;
 	Y->sb_data = X->sb_data;
-	#endif
 
 	return Y;
 }
@@ -92,8 +89,6 @@ nn_flattenLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(&self->Y);
 }
 
-#ifdef NN_USE_COMPUTE
-
 static int
 nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
                            nn_dim_t* dimY)
@@ -126,22 +121,6 @@ nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
 	nn_tensor_t* Y = &self->Y;
 	vkk_buffer_delete(&Y->sb_dim);
 }
-
-#else // NN_USE_COMPUTE not defined
-
-static int
-nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
-                           nn_dim_t* dimY)
-{
-	return 1;
-}
-
-static void
-nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
-{
-}
-
-#endif
 
 /***********************************************************
 * public                                                   *

@@ -24,12 +24,9 @@
 #ifndef nn_skipLayer_H
 #define nn_skipLayer_H
 
+#include "../libvkk/vkk.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
-#include "../libvkk/vkk.h"
-#endif
 
 typedef enum
 {
@@ -83,10 +80,8 @@ typedef struct nn_skipLayer_s
 	nn_tensor_t* dL_dX1;
 	nn_tensor_t* dL_dX2;
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
-	#endif
 } nn_skipLayer_t;
 
 nn_skipLayer_t* nn_skipLayer_newFork(nn_arch_t* arch,

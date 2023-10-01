@@ -257,10 +257,8 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 			nn_tensor_print(bn->Xvar_mb, "bn->Xvar_mb");
 			nn_tensor_print(bn->Xvar_ra, "bn->Xvar_ra");
 			nn_tensor_print(bn->dL_dXhat, "bn->dL_dXhat");
-			#ifdef NN_USE_COMPUTE
 			nn_tensor_print(bn->Bsum, "bn->Bsum");
 			nn_tensor_print(bn->Csum, "bn->Csum");
-			#endif
 			nn_tensor_print(conv->W, "conv->W");
 			nn_tensor_print(conv->B, "conv->B");
 			nn_tensor_print(conv->Y, "conv->Y");
@@ -314,6 +312,6 @@ vkk_platformInfo_t VKK_PLATFORM_INFO =
 		.minor = 0,
 		.patch = 0,
 	},
-	.app_dir = "CNNTest",
+	.app_dir = "cnn-test",
 	.onMain  = cnn_test_onMain,
 };

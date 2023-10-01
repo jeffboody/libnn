@@ -26,11 +26,8 @@
 
 #include "../jsmn/wrapper/jsmn_stream.h"
 #include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_layer.h"
 
 typedef struct nn_batchNormLayer_s
 {
@@ -55,13 +52,11 @@ typedef struct nn_batchNormLayer_s
 	//           dL_dX;     // dim(bs,xh,xw,xd)
 	nn_tensor_t* dL_dXhat;  // dim(bs,xh,xw,xd)
 
-	#ifdef NN_USE_COMPUTE
 	nn_tensor_t*      Bsum; // dim(1,1,1,xd)
 	nn_tensor_t*      Csum; // dim(1,1,1,xd)
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
-	#endif
 } nn_batchNormLayer_t;
 
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,

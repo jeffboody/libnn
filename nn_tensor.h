@@ -26,11 +26,8 @@
 
 #include "../jsmn/wrapper/jsmn_stream.h"
 #include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "nn_dim.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_dim.h"
 
 typedef enum
 {
@@ -61,11 +58,9 @@ typedef struct nn_tensor_s
 	nn_dim_t dim;
 	float*   data;
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0_clear;
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;
-	#endif
 } nn_tensor_t;
 
 nn_tensor_t* nn_tensor_new(nn_arch_t* arch,

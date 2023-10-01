@@ -27,14 +27,11 @@
 #define LOG_TAG "nn"
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
+#include "../libvkk/vkk.h"
 #include "nn_arch.h"
 #include "nn_layer.h"
 #include "nn_loss.h"
 #include "nn_tensor.h"
-
-#ifdef NN_USE_COMPUTE
-#include "../libvkk/vkk.h"
-#endif
 
 #define NN_ARCH_THREADS 4
 
@@ -68,8 +65,6 @@ nn_arch_post(nn_arch_t* self, nn_layerMode_e mode)
 
 	nn_loss_post(self->loss);
 }
-
-#ifdef NN_USE_COMPUTE
 
 typedef struct
 {
@@ -1220,38 +1215,9 @@ static void nn_arch_endCompute(nn_arch_t* self)
 	}
 }
 
-#else // NN_USE_COMPUTE not defined
-
-static int
-nn_arch_newCompute(nn_arch_t* self, void* _engine)
-{
-	return 1;
-}
-
-static void nn_arch_deleteCompute(nn_arch_t* self)
-{
-}
-
-static int
-nn_arch_beginCompute(nn_arch_t* self,
-                     uint32_t bs,
-                     nn_tensor_t* X,
-                     nn_tensor_t* Yt)
-{
-	return 1;
-}
-
-static void nn_arch_endCompute(nn_arch_t* self)
-{
-}
-
-#endif
-
 /***********************************************************
 * protected                                                *
 ***********************************************************/
-
-#ifdef NN_USE_COMPUTE
 
 vkk_uniformSet_t*
 nn_arch_getBatchNormIdx(nn_arch_t* self, uint32_t k)
@@ -1469,8 +1435,6 @@ nn_arch_bind(nn_arch_t* self,
 
 	return 1;
 }
-
-#endif
 
 /***********************************************************
 * public                                                   *
@@ -1757,10 +1721,8 @@ int nn_arch_train(nn_arch_t* self,
 	}
 
 	// replace X and Yt with compute tensors
-	#ifdef NN_USE_COMPUTE
 	X  = self->X;
 	Yt = self->Yt;
-	#endif
 
 	// perform forward pass for each batch
 	cc_listIter_t* iter = cc_list_head(self->layers);
@@ -1841,9 +1803,7 @@ int nn_arch_predict(nn_arch_t* self,
 	}
 
 	// replace X with compute tensor
-	#ifdef NN_USE_COMPUTE
 	X = self->X;
-	#endif
 
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)

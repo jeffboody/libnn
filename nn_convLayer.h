@@ -24,11 +24,8 @@
 #ifndef nn_convLayer_H
 #define nn_convLayer_H
 
-#include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_layer.h"
 
 // XAVIER is default
 #define NN_CONV_LAYER_FLAG_XAVIER       0x0001
@@ -88,13 +85,11 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* dL_dB; // dim(fc,1,1,1)
 	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
 	vkk_buffer_t*     sb01_param;
 	vkk_buffer_t*     sb20_gc;
-	#endif
 } nn_convLayer_t;
 
 nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,

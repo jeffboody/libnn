@@ -29,12 +29,9 @@
 #include "../libcc/rng/cc_rngNormal.h"
 #include "../libcc/rng/cc_rngUniform.h"
 #include "../libcc/cc_list.h"
-#include "nn.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libcc/cc_map.h"
 #include "../libvkk/vkk.h"
-#endif
+#include "nn.h"
 
 typedef struct nn_archState_s
 {
@@ -62,9 +59,7 @@ typedef struct nn_arch_s
 	cc_rngUniform_t rng_uniform;
 	cc_rngNormal_t  rng_normal;
 
-	#ifdef NN_USE_COMPUTE
-	vkk_engine_t* engine;
-
+	vkk_engine_t*  engine;
 	vkk_compute_t* compute;
 
 	int computing;
@@ -159,7 +154,6 @@ typedef struct nn_arch_s
 
 	cc_map_t* map_batchNormIdx;
 	cc_map_t* map_convIdx;
-	#endif
 } nn_arch_t;
 
 nn_arch_t* nn_arch_new(void* _engine,

@@ -24,11 +24,8 @@
 #ifndef nn_poolingLayer_H
 #define nn_poolingLayer_H
 
-#include "nn_layer.h"
-
-#ifdef NN_USE_COMPUTE
 #include "../libvkk/vkk.h"
-#endif
+#include "nn_layer.h"
 
 typedef enum
 {
@@ -60,12 +57,10 @@ typedef struct nn_poolingLayer_s
 	//           dL_dY; // dim(bs,yh,yw,xd)
 	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 
-	#ifdef NN_USE_COMPUTE
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
 	vkk_buffer_t*     sb01_param;
-	#endif
 } nn_poolingLayer_t;
 
 nn_poolingLayer_t* nn_poolingLayer_new(nn_arch_t* arch,
