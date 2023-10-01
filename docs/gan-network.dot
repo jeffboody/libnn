@@ -1,0 +1,21 @@
+// sudo apt-get install graphviz
+// dot -Tpng gan-network.dot -o gan-network.png
+// xdot gan-network.dot
+digraph NN
+{
+	label="GAN Network";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	x [shape=box, label="x"];
+	z [shape=box, label="z"];
+	D [label="D(x) or D(G(z))"];
+	G [label="G(z)"];
+	V [label="V(D,G)"];
+
+	x -> D;
+	z -> G;
+	G -> D;
+	D -> V;
+}

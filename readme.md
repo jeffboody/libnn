@@ -1064,6 +1064,67 @@ References
 Generative Adversarial Networks (GAN)
 -------------------------------------
 
+Generative Adversarial Networks (GANs) loosely refers to a
+neural network architecture that pits two or more networks
+against one another in a game to maximize their own value.
+Many different variations of GANs have been developed but
+are typically similar to the original design which includes
+a discriminator network D and a generator network G. The
+role of the discriminator is to classify it's input as
+belonging to the set of real samples or to the set of
+generated samples (aka fake samples). The role of the
+generator is to produce samples that the discriminator is
+unable to differentiate with real samples. The following
+diagram shows the classical GAN network structure.
+
+![Generative Adversarial Network](docs/gan-network.jpg?raw=true "Generative Adversarial Network")
+
+The GAN objective function is closely related to the binary
+cross entropy loss function and is used to keep score
+between the discriminator and the generator. It is useful to
+note that loss functions are also objective functions except
+that they are only designed to minimize a value.
+
+	minG maxD V(D,G) = Ex~pdata(x)[log(D(x)] + Ez~pz(z)[log(1 - D(G(z)))]
+
+In practice, it was recommended to train G to maximize
+log(D(G(z))) since the GAN objective function above may not
+provide sufficient gradient for G to learn well. The
+expected value function (e.g. E[]) simply returns the mean
+value similar to the mean squared error (MSE) loss function.
+The notation x~pdata(x) simply states that x is an input
+sample to D from the real data with a probability density
+function pdata(x). The notation z~pz(z) simply states that z
+is a random input sample to G from a uniform distribution
+function pz(z).
+
+The descriminator network may output one or more values to
+be evaluated by the objective function. One example of
+passing multiple values to the objective is described in
+Pix-To-Pix GANs which incorporate a 70x70 Patch GAN to
+reduce the number of network parameters and reduce tiling
+artifacts.
+
+The generator network only receives random inputs z and
+therefore must learn to map the uniform distribution pz(x)
+onto the probability distribution of the real data pdata(x)
+in order to generate samples that look like real data. A
+typical generator may receive a set N random samples as
+input. These samples may be fed into a multi-layer
+perceptron to produce M outputs. These M outputs are
+reshaped into a tensor that is typically fed into a CNN.
+
+The generator network not only feeds it's output Y=G(z) into
+the discriminator network and also receives the backprop
+gradient dL/dY which is propagated through the discriminator
+network. Keep in mind that the correct term of the objective
+function must be evaluated depending on if the input sample
+is real or generated.
+
+Conditional GANs may combine/replace the z input with a
+conditional class label (e.g. using one hot encoding),
+conditional image or other conditional information.
+
 References
 
 * [Generative Adversarial Nets](https://arxiv.org/pdf/1406.2661.pdf)
