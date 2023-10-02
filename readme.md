@@ -1067,12 +1067,13 @@ Generative Adversarial Networks (GAN)
 Generative Adversarial Networks (GANs) loosely refers to a
 neural network architecture that pits two or more networks
 against one another in a game to maximize their own value.
-Many different variations of GANs have been developed but
-are typically similar to the original design which includes
-a discriminator network D and a generator network G. The
-role of the discriminator is to classify it's input as
-belonging to the set of real samples or to the set of
-generated samples (aka fake samples). The role of the
+GANs typically include a discriminator network D and a
+generator network G. The role of the discriminator is to
+classify it's input as belonging to the distribution of real
+samples or to the distribution of generated samples (aka
+fake samples). An alternative interpretation of the role for
+the discriminator (as suggested by the Pix-To-Pix GAN) is
+that it acts as a trainable loss function. The role of the
 generator is to produce samples that the discriminator is
 unable to differentiate with real samples. The following
 diagram shows the classical GAN network structure.
@@ -1081,49 +1082,76 @@ diagram shows the classical GAN network structure.
 
 The GAN objective function is closely related to the binary
 cross entropy loss function and is used to keep score
-between the discriminator and the generator. It is useful to
-note that loss functions are also objective functions except
-that they are only designed to minimize a value.
+between the discriminator and the generator.
 
 	minG maxD V(D,G) = Ex~pdata(x)[log(D(x)] + Ez~pz(z)[log(1 - D(G(z)))]
+
+It is useful to note that loss functions are also objective
+functions except that they are only designed to minimize a
+value.
 
 In practice, it was recommended to train G to maximize
 log(D(G(z))) since the GAN objective function above may not
 provide sufficient gradient for G to learn well. The
 expected value function (e.g. E[]) simply returns the mean
 value similar to the mean squared error (MSE) loss function.
-The notation x~pdata(x) simply states that x is an input
+The notation x\~pdata(x) simply states that x is an input
 sample to D from the real data with a probability density
-function pdata(x). The notation z~pz(z) simply states that z
-is a random input sample to G from a uniform distribution
+function pdata(x). The notation z\~pz(z) simply states that
+z is a random input sample to G from a uniform distribution
 function pz(z).
 
-The descriminator network may output one or more values to
-be evaluated by the objective function. One example of
-passing multiple values to the objective is described in
-Pix-To-Pix GANs which incorporate a 70x70 Patch GAN to
-reduce the number of network parameters and reduce tiling
-artifacts.
+The GAN objective function may also be selected by the
+network architecture in the same way that the loss function
+is chosen by CNN networks. Some examples of additional
+objective functions include Least Squares GANs, Wasserstein
+GAN and the Cycle GAN. The advantages of these objective
+functions include improved stability and reduced probability
+of mode collapse. The Cycle GAN enforces transitivity in
+order to perform image-to-image translation with unordered
+image collections.
+
+The descriminator network typically outputs a single value
+that the objective function uses to determine if the input
+was real or generated. Alternatively, the Patch GAN
+described by Pix-To-Pix GANs uses multiple outputs. The
+purpose of multiple outputs in this case is to reduce the
+number of network parameters and reduce tiling artifacts in
+the generator network output. Keep in mind that the
+corresponding term of the objective function must be
+evaluated when the input is real or generated.
 
 The generator network only receives random inputs z and
 therefore must learn to map the uniform distribution pz(x)
 onto the probability distribution of the real data pdata(x)
-in order to generate samples that look like real data. A
-typical generator may receive a set N random samples as
-input. These samples may be fed into a multi-layer
-perceptron to produce M outputs. These M outputs are
-reshaped into a tensor that is typically fed into a CNN.
+in order to generate samples that look like real data. The
+z input is also known as the latient space. It has been
+shown that walking  the latient space (e.g. through vector
+addition or interpolation) can cause the generator to
+produce variations on the outputs associated with the
+latient vectors.
 
-The generator network not only feeds it's output Y=G(z) into
-the discriminator network and also receives the backprop
-gradient dL/dY which is propagated through the discriminator
-network. Keep in mind that the correct term of the objective
-function must be evaluated depending on if the input sample
-is real or generated.
+The process of training the generator involves a couple of
+subtle details. The generator receives an input z which
+consists of N random samples as input. These samples may be
+fed into a multi-layer perceptron to produce M outputs.
+These M outputs are reshaped into a tensor that is typically
+fed into a CNN. Secondly, the generator network not only
+feeds it's output Y=G(z) into the discriminator network but
+also receives the backprop gradient dL/dY from the
+discriminator network input. This differs from a non-GAN
+neural network where the backprop gradient is discarded at
+the input.
 
-Conditional GANs may combine/replace the z input with a
-conditional class label (e.g. using one hot encoding),
-conditional image or other conditional information.
+Many of the GAN variations which have been developed fall
+under the category of Conditional GANs. Conditional GANs may
+combine/replace the z input with a conditional class label
+(e.g. using one hot encoding), conditional image or other
+conditional information to guide the generator in producing
+the desired output. Some notable examples of Conditional
+GANs include Pixel-To-Pixel GAN (paired image-to-image
+translation) and Cycle GAN (unpaired image-to-image
+translation).
 
 References
 
