@@ -1080,62 +1080,68 @@ diagram shows the classical GAN network structure.
 
 ![Generative Adversarial Network](docs/gan-network.jpg?raw=true "Generative Adversarial Network")
 
-The GAN objective function is closely related to the binary
-cross entropy loss function and is used to keep score
-between the discriminator and the generator.
-
-	minG maxD V(D,G) = Ex~pdata(x)[log(D(x)] + Ez~pz(z)[log(1 - D(G(z)))]
-
-It is useful to note that loss functions are also objective
-functions except that they are only designed to minimize a
-value.
-
-In practice, it was recommended to train G to maximize
-log(D(G(z))) since the GAN objective function above may not
-provide sufficient gradient for G to learn well. The
-expected value function (e.g. E[]) simply returns the mean
-value similar to the mean squared error (MSE) loss function.
-The notation x\~pdata(x) simply states that x is an input
-sample to D from the real data with a probability density
-function pdata(x). The notation z\~pz(z) simply states that
-z is a random input sample to G from a uniform distribution
-function pz(z).
-
-The GAN objective function may also be selected by the
-network architecture in the same way that the loss function
-is chosen by CNN networks. Some examples of additional
-objective functions include Least Squares GANs, Wasserstein
-GAN and the Cycle GAN. The advantages of these objective
-functions include improved stability and reduced probability
-of mode collapse. The Cycle GAN enforces transitivity in
-order to perform image-to-image translation with unordered
-image collections.
-
 The descriminator network typically outputs a single value
 that the objective function uses to determine if the input
 was real or generated. Alternatively, the Patch GAN
 described by Pix-To-Pix GANs uses multiple outputs. The
 purpose of multiple outputs in this case is to reduce the
 number of network parameters and reduce tiling artifacts in
-the generator network output. Keep in mind that the
-corresponding term of the objective function must be
-evaluated when the input is real or generated.
+the generator network output.
 
 The generator network only receives random inputs z and
 therefore must learn to map the uniform distribution pz(x)
 onto the probability distribution of the real data pdata(x)
 in order to generate samples that look like real data. The
 z input is also known as the latient space. It has been
-shown that walking  the latient space (e.g. through vector
+shown that walking the latient space (e.g. through vector
 addition or interpolation) can cause the generator to
 produce variations on the outputs associated with the
 latient vectors.
 
+The GAN objective function is closely related to the binary
+cross entropy loss function and is used to keep score
+between the discriminator and the generator.
+
+	minG maxD V(D,G) = Ex~pdata(x)[log(D(x)] + Ez~pz(z)[log(1 - D(G(z)))]
+
+An objective function may also be referred to as a loss,
+cost or error function when we seek to minimize the value as
+is typical for neural networks. The expected value function
+(e.g. E[]) simply returns the mean value similar to the mean
+squared error (MSE) loss function. The notation x\~pdata(x)
+simply states that x is an input sample to D from the real
+data with a probability density function pdata(x). The
+notation z\~pz(z) simply states that z is a random input
+sample to G from a uniform distribution function pz(z). The
+first term of the GAN objective function is used with real
+samples and the second term is used with generated samples.
+
+The GAN training procedure described by the original GAN
+paper consists of a two step process that is repeated for
+each iteration.
+
+Update the descriminator.
+
+1. Select a minibatch of m samples of z from pz(z)
+2. Sample a minibatch of m samples of x from pdata(x)
+3. Update the descriminator by ascending its stochastic gradient
+4. dV/dD[1/m SUM(1, m, log(D(xi)) + log(1 - D(G(zi))))]
+
+Update the generator.
+
+1. Select a minibatch of m samples of z from pz(z)
+2. Update the generator by descending its stochastic gradient
+3. dV/dG[1/m SUM(1, m, log(1 - D(G(zi))))]
+
+In practice, it was recommended to maximize log(D(G(z)))
+during training since the GAN objective function above may
+not provide sufficient gradient for G to learn well.
+
 The process of training the generator involves a couple of
 subtle details. The generator receives an input z which
-consists of N random samples as input. These samples may be
-fed into a multi-layer perceptron to produce M outputs.
-These M outputs are reshaped into a tensor that is typically
+consists of M random samples as input. These samples may be
+fed into a multi-layer perceptron to produce N outputs.
+These N outputs are reshaped into a tensor that is typically
 fed into a CNN. Secondly, the generator network not only
 feeds it's output Y=G(z) into the discriminator network but
 also receives the backprop gradient dL/dY from the
@@ -1143,15 +1149,28 @@ discriminator network input. This differs from a non-GAN
 neural network where the backprop gradient is discarded at
 the input.
 
+Notable examples of classic GANs described above include
+Deep Convolutional GANs (DCGANs) and Progressive GANs.
+
 Many of the GAN variations which have been developed fall
 under the category of Conditional GANs. Conditional GANs may
 combine/replace the z input with a conditional class label
 (e.g. using one hot encoding), conditional image or other
 conditional information to guide the generator in producing
-the desired output. Some notable examples of Conditional
-GANs include Pixel-To-Pixel GAN (paired image-to-image
+the desired output. Notable examples of Conditional GANs
+include Pixel-To-Pixel GAN (paired image-to-image
 translation) and Cycle GAN (unpaired image-to-image
 translation).
+
+The GAN objective function may also be selected by the
+network architecture in the same way that the loss function
+is chosen by CNN networks. Some examples of additional
+objective functions include Least Squares GANs, Wasserstein
+GAN, feature matching and the Cycle GAN. The advantages of
+these objective functions include improved stability and
+reduced probability of mode collapse. The Cycle GAN enforces
+transitivity in order to perform image-to-image translation
+with unpaired image collections.
 
 References
 
