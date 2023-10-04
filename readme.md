@@ -1137,17 +1137,21 @@ In practice, it was recommended to maximize log(D(G(z)))
 during training since the GAN objective function above may
 not provide sufficient gradient for G to learn well.
 
-The process of training the generator involves a couple of
-subtle details. The generator receives an input z which
-consists of M random samples as input. These samples may be
-fed into a multi-layer perceptron to produce N outputs.
-These N outputs are reshaped into a tensor that is typically
-fed into a CNN. Secondly, the generator network not only
-feeds it's output Y=G(z) into the discriminator network but
-also receives the backprop gradient dL/dY from the
-discriminator network input. This differs from a non-GAN
-neural network where the backprop gradient is discarded at
-the input.
+The process of training the generator involves a few subtle
+details. The generator receives an input z which consists of
+M random samples as input. These samples may be fed into a
+multi-layer perceptron to produce N outputs. These N outputs
+are reshaped into a tensor that is typically fed into a CNN.
+Secondly, the generator network not only feeds it's output
+Y=G(z) into the discriminator network but also receives the
+backprop gradient dL/dY from the discriminator network
+input. This differs from a non-GAN neural network where the
+backprop gradient is discarded at the input. Finally, the
+parameter update of the descriminator should be disabled
+when training the generator. This is required due to the
+fact that the descriminator update is performed by ascending
+the stochastic gradient and the generator update is
+performed by descending the stochastic gradient.
 
 Notable examples of classic GANs described above include
 Deep Convolutional GANs (DCGANs) and Progressive GANs.
