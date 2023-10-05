@@ -1086,7 +1086,8 @@ was real or generated. Alternatively, the Patch GAN
 described by Pix-To-Pix GANs uses multiple outputs. The
 purpose of multiple outputs in this case is to reduce the
 number of network parameters and reduce tiling artifacts in
-the generator network output.
+the generator network output. A 70x70 Patch GAN refers to
+the size of the receptive field of the discriminator output.
 
 The generator network only receives random inputs z and
 therefore must learn to map the uniform distribution pz(x)
@@ -1155,6 +1156,21 @@ performed by descending the stochastic gradient.
 
 Notable examples of classic GANs described above include
 Deep Convolutional GANs (DCGANs) and Progressive GANs.
+The DCGAN paper is generally credited with proposing one of
+the first viable GAN architectures which was achieved by
+incorporating a number of previously known techniques such
+as batch normalization, strided convolutions, ReLU
+activation functions and the Adam optimizer. The main
+contribution of the Progressive GAN paper is a training
+framework which starts at low resolution while progressively
+blending upscaling layers to produce a final high resolution
+output. In addition, they propose a technique to increase
+variation and propose alternative techniques for
+normalization (e.g. non-batch normalization). Progressive
+GANs also use nearest neighbor filtering for upscaling,
+average pooling for downscaling, 1x1 convolution to project
+tensors to/from RGB, the Adam optimizer, the leaky ReLU and
+the Wasserstein GAN objective function.
 
 Many of the GAN variations which have been developed fall
 under the category of Conditional GANs. Conditional GANs may
@@ -1164,17 +1180,24 @@ conditional information to guide the generator in producing
 the desired output. Notable examples of Conditional GANs
 include Pixel-To-Pixel GAN (paired image-to-image
 translation) and Cycle GAN (unpaired image-to-image
-translation).
+translation). The Pixel-To-Pixel GAN paper proposes a
+generic architecture that incorporates U-Net skip
+connections for the generator, a custom cGAN + L1 objective
+fuction combined with a Patch GAN, the Adam optimizer, batch
+normalization with instance normalization, dropout in the
+generator (to increase variation), strided convolutions, and
+ReLU/leaky ReLU activation functions.
 
 The GAN objective function may also be selected by the
 network architecture in the same way that the loss function
 is chosen by CNN networks. Some examples of additional
 objective functions include Least Squares GANs, Wasserstein
-GAN, feature matching and the Cycle GAN. The advantages of
-these objective functions include improved stability and
-reduced probability of mode collapse. The Cycle GAN enforces
-transitivity in order to perform image-to-image translation
-with unpaired image collections.
+GAN, feature matching (Improved Techniques for Training
+GANs), cGAN + L1 (Pixel-To-Pixel GAN) and the Cycle GAN. The
+advantages of these objective functions include improved
+stability and reduced probability of mode collapse. The
+Cycle GAN enforces transitivity in order to perform
+image-to-image translation with unpaired image collections.
 
 References
 
