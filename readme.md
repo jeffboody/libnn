@@ -1183,21 +1183,19 @@ translation) and Cycle GAN (unpaired image-to-image
 translation). The Pixel-To-Pixel GAN paper proposes a
 generic architecture that incorporates U-Net skip
 connections for the generator, a custom cGAN + L1 objective
-fuction combined with a Patch GAN, the Adam optimizer, batch
+fuction combined with a Patch GAN, divide the objective by 2
+when training the descriminator, the Adam optimizer, batch
 normalization with instance normalization, dropout in the
 generator (to increase variation), strided convolutions, and
-ReLU/leaky ReLU activation functions.
-
-The GAN objective function may also be selected by the
-network architecture in the same way that the loss function
-is chosen by CNN networks. Some examples of additional
-objective functions include Least Squares GANs, Wasserstein
-GAN, feature matching (Improved Techniques for Training
-GANs), cGAN + L1 (Pixel-To-Pixel GAN) and the Cycle GAN. The
-advantages of these objective functions include improved
-stability and reduced probability of mode collapse. The
-Cycle GAN enforces transitivity in order to perform
-image-to-image translation with unpaired image collections.
+ReLU/leaky ReLU activation functions. The Cycle GAN enforces
+transitivity via a cycle consistency loss term. The Cycle
+GAN architecture consists of residual blocks for the
+generator, the objective function is combined with a Patch
+GAN and Least Squares GAN, divide objective by 2 when
+training the descriminator, reduced model oscillation using
+historically generated images, the Adam optimizer, batch
+normalization combined with instance normalization, strided
+convolutions and ReLU/leaky ReLU activation functions.
 
 References
 
