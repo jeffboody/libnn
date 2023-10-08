@@ -29,9 +29,18 @@
 #include "../libvkk/vkk.h"
 #include "nn_layer.h"
 
+// see nn_coderBatchNormMode_e
+typedef enum
+{
+	NN_BATCH_NORM_MODE_RUNNING  = 0,
+	NN_BATCH_NORM_MODE_INSTANCE = 1,
+} nn_batchNormMode_e;
+
 typedef struct nn_batchNormLayer_s
 {
 	nn_layer_t base;
+
+	nn_batchNormMode_e bn_mode;
 
 	// gamma, beta, xhat, output
 	nn_tensor_t* G;    // dim(1,1,1,xd)
@@ -60,6 +69,7 @@ typedef struct nn_batchNormLayer_s
 } nn_batchNormLayer_t;
 
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,
+                                           nn_batchNormMode_e bn_mode,
                                            nn_dim_t* dimX);
 nn_batchNormLayer_t* nn_batchNormLayer_import(nn_arch_t* arch,
                                               jsmn_val_t* val);

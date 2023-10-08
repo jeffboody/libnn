@@ -172,7 +172,7 @@ int main(int argc, char** argv)
 				nn_tensor_set(Y, m, 0, 0, 0, yt);
 			}
 
-			nn_arch_train(arch, bs, X, Y);
+			nn_arch_train(arch, NN_LAYER_MODE_TRAIN, bs, X, Y);
 		}
 
 		char fname[256];
@@ -192,7 +192,7 @@ int main(int argc, char** argv)
 				yt = 2.0f*x*x + 1.0f;
 
 				nn_tensor_set(X, 0, 0, 0, 0, x);
-				if(nn_arch_predict(arch, X, Y))
+				if(nn_arch_predict(arch, 1, X, Y))
 				{
 					y = nn_tensor_get(Y, 0, 0, 0, 0);
 

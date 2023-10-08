@@ -29,7 +29,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
-#include "nn_flattenLayer.h"
+#include "nn_reshapeLayer.h"
 #include "nn_tensor.h"
 
 /***********************************************************
@@ -37,14 +37,14 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_flattenLayer_forwardPassFn(nn_layer_t* base,
-                              nn_layerMode_e mode,
+nn_reshapeLayer_forwardPassFn(nn_layer_t* base,
+                              nn_layerMode_e layer_mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_flattenLayer_t* self = (nn_flattenLayer_t*) base;
+	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 	nn_tensor_t*       Y    = &self->Y;
 
 	if(nn_dim_equals(nn_tensor_dim(X), &self->dimX) == 0)
@@ -60,7 +60,9 @@ nn_flattenLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_flattenLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+nn_reshapeLayer_backpropFn(nn_layer_t* base,
+                           nn_layerMode_e layer_mode,
+                           uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -70,27 +72,27 @@ nn_flattenLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 }
 
 static nn_dim_t*
-nn_flattenLayer_dimXFn(nn_layer_t* base)
+nn_reshapeLayer_dimXFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
-	nn_flattenLayer_t* self = (nn_flattenLayer_t*) base;
+	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 
 	return &self->dimX;
 }
 
 static nn_dim_t*
-nn_flattenLayer_dimYFn(nn_layer_t* base)
+nn_reshapeLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
-	nn_flattenLayer_t* self = (nn_flattenLayer_t*) base;
+	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 
 	return nn_tensor_dim(&self->Y);
 }
 
 static int
-nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
+nn_reshapeLayer_newCompute(nn_reshapeLayer_t* self,
                            nn_dim_t* dimY)
 {
 	ASSERT(self);
@@ -114,7 +116,7 @@ nn_flattenLayer_newCompute(nn_flattenLayer_t* self,
 }
 
 static void
-nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
+nn_reshapeLayer_deleteCompute(nn_reshapeLayer_t* self)
 {
 	ASSERT(self);
 
@@ -126,41 +128,45 @@ nn_flattenLayer_deleteCompute(nn_flattenLayer_t* self)
 * public                                                   *
 ***********************************************************/
 
-nn_flattenLayer_t*
-nn_flattenLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
+nn_reshapeLayer_t*
+nn_reshapeLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                    nn_dim_t* dimY)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
+	ASSERT(dimY);
+
+	size_t sizeX = nn_dim_sizeof(dimX);
+	size_t sizeY = nn_dim_sizeof(dimY);
+	if(sizeY > sizeX)
+	{
+		LOGE("invalid sizeX=%u, sizeY=%u",
+		     (uint32_t) sizeX, (uint32_t) sizeY);
+		return NULL;
+	}
 
 	nn_layerInfo_t info =
 	{
 		.arch            = arch,
-		.forward_pass_fn = nn_flattenLayer_forwardPassFn,
-		.backprop_fn     = nn_flattenLayer_backpropFn,
-		.dimX_fn         = nn_flattenLayer_dimXFn,
-		.dimY_fn         = nn_flattenLayer_dimYFn,
+		.forward_pass_fn = nn_reshapeLayer_forwardPassFn,
+		.backprop_fn     = nn_reshapeLayer_backpropFn,
+		.dimX_fn         = nn_reshapeLayer_dimXFn,
+		.dimY_fn         = nn_reshapeLayer_dimYFn,
 	};
 
-	nn_flattenLayer_t* self;
-	self = (nn_flattenLayer_t*)
-	       nn_layer_new(sizeof(nn_flattenLayer_t), &info);
+	nn_reshapeLayer_t* self;
+	self = (nn_reshapeLayer_t*)
+	       nn_layer_new(sizeof(nn_reshapeLayer_t), &info);
 	if(self == NULL)
 	{
 		return NULL;
 	}
 
+	nn_tensor_t* Y = &self->Y;
 	nn_dim_copy(dimX, &self->dimX);
+	nn_dim_copy(dimY, nn_tensor_dim(Y));
 
-	nn_tensor_t* Y;
-	nn_dim_t*    dimY;
-	Y            = &self->Y;
-	dimY         = nn_tensor_dim(Y);
-	dimY->count  = dimX->count;
-	dimY->height = 1;
-	dimY->width  = 1;
-	dimY->depth  = dimX->height*dimX->width*dimX->depth;
-
-	if(nn_flattenLayer_newCompute(self, dimY) == 0)
+	if(nn_reshapeLayer_newCompute(self, dimY) == 0)
 	{
 		goto fail_compute;
 	}
@@ -174,8 +180,8 @@ nn_flattenLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	return NULL;
 }
 
-nn_flattenLayer_t*
-nn_flattenLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_reshapeLayer_t*
+nn_reshapeLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
@@ -187,6 +193,7 @@ nn_flattenLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	jsmn_val_t* val_dimX = NULL;
+	jsmn_val_t* val_dimY = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -200,13 +207,17 @@ nn_flattenLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			{
 				val_dimX = kv->val;
 			}
+			else if(strcmp(kv->key, "dimY") == 0)
+			{
+				val_dimY = kv->val;
+			}
 		}
 
 		iter = cc_list_next(iter);
 	}
 
 	// check for required parameters
-	if(val_dimX == NULL)
+	if((val_dimX == NULL) || (val_dimY == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -218,34 +229,43 @@ nn_flattenLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	return nn_flattenLayer_new(arch, &dimX);
+	nn_dim_t dimY;
+	if(nn_dim_load(&dimY, val_dimY) == 0)
+	{
+		return NULL;
+	}
+
+	return nn_reshapeLayer_new(arch, &dimX, &dimY);
 }
 
-int nn_flattenLayer_export(nn_flattenLayer_t* self,
+int nn_reshapeLayer_export(nn_reshapeLayer_t* self,
                            jsmn_stream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	nn_dim_t* dimX = &self->dimX;
+	nn_dim_t* dimY = nn_tensor_dim(&self->Y);
 
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimY");
+	ret &= nn_dim_store(dimY, stream);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
 }
 
-void nn_flattenLayer_delete(nn_flattenLayer_t** _self)
+void nn_reshapeLayer_delete(nn_reshapeLayer_t** _self)
 {
 	ASSERT(_self);
 
-	nn_flattenLayer_t* self = *_self;
+	nn_reshapeLayer_t* self = *_self;
 	if(self)
 	{
-		nn_flattenLayer_deleteCompute(self);
+		nn_reshapeLayer_deleteCompute(self);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
 }

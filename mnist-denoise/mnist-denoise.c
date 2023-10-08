@@ -161,18 +161,18 @@ static nn_tensor_t* mnist_load(nn_arch_t* arch)
 
 static void
 mnist_noise(cc_rngNormal_t* rng, uint32_t bs,
-            nn_tensor_t* X, nn_tensor_t* Y)
+            nn_tensor_t* X, nn_tensor_t* Yt)
 {
 	ASSERT(rng);
 	ASSERT(X);
-	ASSERT(Y);
+	ASSERT(Yt);
 
 	nn_dim_t* dimX = nn_tensor_dim(X);
 	uint32_t  xh   = dimX->height;
 	uint32_t  xw   = dimX->width;
 
 	float    x;
-	float    y;
+	float    yt;
 	float    n;
 	uint32_t m;
 	uint32_t i;
@@ -183,9 +183,9 @@ mnist_noise(cc_rngNormal_t* rng, uint32_t bs,
 		{
 			for(j = 0; j < xw; ++j)
 			{
-				y = nn_tensor_get(Y, m, i, j, 0);
-				n = cc_rngNormal_rand1F(rng);
-				x = cc_clamp(y + n, 0.0f, 1.0f);
+				yt = nn_tensor_get(Yt, m, i, j, 0);
+				n  = cc_rngNormal_rand1F(rng);
+				x  = cc_clamp(yt + n, 0.0f, 1.0f);
 				nn_tensor_set(X, m, i, j, 0, x);
 			}
 		}
@@ -282,14 +282,19 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		goto fail_X;
 	}
 
+	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_RUNNING;
+
 	nn_dim_t* dim = nn_tensor_dim(X);
 
 	nn_batchNormLayer_t* bn0;
-	bn0 = nn_batchNormLayer_new(arch, dim);
+	bn0 = nn_batchNormLayer_new(arch, bn_mode, dim);
 	if(bn0 == NULL)
 	{
 		goto fail_bn0;
 	}
+
+	nn_coderBatchNormMode_e cbn_mode;
+	cbn_mode = NN_CODER_BATCH_NORM_MODE_RUNNING;
 
 	nn_coderLayerInfo_t info_enc1 =
 	{
@@ -298,7 +303,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		.fc          = fc,
 		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.bn_mode     = cbn_mode,
 		.repeat_mode = NN_CODER_CONV_MODE_NONE,
 		.op_mode     = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
@@ -318,7 +323,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		.fc          = fc,
 		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.bn_mode     = cbn_mode,
 		.repeat_mode = NN_CODER_CONV_MODE_NONE,
 		.op_mode     = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
@@ -338,7 +343,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		.fc          = fc,
 		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.bn_mode     = cbn_mode,
 		.repeat_mode = NN_CODER_CONV_MODE_NONE,
 		.op_mode     = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
@@ -358,7 +363,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		.fc          = fc,
 		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode   = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode     = NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE,
+		.bn_mode     = cbn_mode,
 		.repeat_mode = NN_CODER_CONV_MODE_NONE,
 		.op_mode     = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
@@ -401,6 +406,15 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	if(loss == NULL)
 	{
 		goto fail_loss;
+	}
+
+	nn_tensor_t* Yt;
+	Yt = nn_tensor_new(arch, dim,
+	                   NN_TENSOR_INIT_ZERO,
+	                   NN_TENSOR_MODE_IO);
+	if(Yt == NULL)
+	{
+		goto fail_Yt;
 	}
 
 	nn_tensor_t* Y;
@@ -456,7 +470,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	{
 		for(n = 0; n < dimXt->count; n += max_bs)
 		{
-			// initialize Y
+			// initialize Yt
 			bs = 0;
 			for(m = 0; m < max_bs; ++m)
 			{
@@ -465,13 +479,13 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 					break;
 				}
 
-				nn_tensor_blit(Xt, Y, 1, n + m, m);
+				nn_tensor_blit(Xt, Yt, 1, n + m, m);
 				++bs;
 			}
 
 			// add noise to X
 			// mnist_noise causes skip layers to perform poorly
-			mnist_noise(&rng, bs, X, Y);
+			mnist_noise(&rng, bs, X, Yt);
 
 			// export training images
 			if((n%1024 == 0) && (epoch == 0))
@@ -479,13 +493,13 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 				snprintf(fname, 256, "data/x%u.png", n);
 				mnist_savepng(fname, tex, X, 0);
 				snprintf(fname, 256, "data/yt%u.png", n);
-				mnist_savepng(fname, tex, Y, 0);
+				mnist_savepng(fname, tex, Yt, 0);
 			}
 
-			nn_arch_train(arch, bs, X, Y);
+			nn_arch_train(arch, NN_LAYER_MODE_TRAIN, bs, X, Yt, NULL);
 
 			// export prediction images
-			if((n%1024 == 0) && nn_arch_predict(arch, X, Y))
+			if((n%1024 == 0) && nn_arch_predict(arch, 1, X, Y))
 			{
 				snprintf(fname, 256, "data/y%u-%u-%u.png", n, epoch, step);
 				mnist_savepng(fname, tex, Y, 0);
@@ -602,6 +616,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	texgz_tex_delete(&tex);
 	nn_loss_delete(&loss);
 	nn_tensor_delete(&Y);
+	nn_tensor_delete(&Yt);
 	nn_factLayer_delete(&factO);
 	nn_convLayer_delete(&convO);
 	nn_coderLayer_delete(&dec4);
@@ -623,6 +638,8 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	fail_attach:
 		nn_tensor_delete(&Y);
 	fail_Y:
+		nn_tensor_delete(&Yt);
+	fail_Yt:
 		nn_loss_delete(&loss);
 	fail_loss:
 		nn_factLayer_delete(&factO);

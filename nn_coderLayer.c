@@ -43,7 +43,7 @@
 
 static nn_tensor_t*
 nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
-                              nn_layerMode_e mode,
+                              nn_layerMode_e layer_mode,
                               uint32_t bs,
                               nn_tensor_t* X)
 {
@@ -58,17 +58,18 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_forwardPass(&self->conv->base,
-		                            mode, bs, X);
+		                            layer_mode, bs, X);
 	}
 	else
 	{
 		return nn_layer_forwardPass(&self->pool->base,
-		                            mode, bs, X);
+		                            layer_mode, bs, X);
 	}
 }
 
 static nn_tensor_t*
 nn_coderOpLayer_backpropFn(nn_layer_t* base,
+                           nn_layerMode_e layer_mode,
                            uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
@@ -82,17 +83,19 @@ nn_coderOpLayer_backpropFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
-		return nn_layer_backprop(&self->conv->base, bs, dL_dY);
+		return nn_layer_backprop(&self->conv->base, layer_mode,
+		                         bs, dL_dY);
 	}
 	else
 	{
-		return nn_layer_backprop(&self->pool->base, bs, dL_dY);
+		return nn_layer_backprop(&self->pool->base, layer_mode,
+		                         bs, dL_dY);
 	}
 }
 
 static void
 nn_coderOpLayer_postFn(nn_layer_t* base,
-                       nn_layerMode_e mode)
+                       nn_layerMode_e layer_mode)
 {
 	ASSERT(base);
 
@@ -102,11 +105,11 @@ nn_coderOpLayer_postFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
-		return nn_layer_post(&self->conv->base, mode);
+		return nn_layer_post(&self->conv->base, layer_mode);
 	}
 	else
 	{
-		return nn_layer_post(&self->pool->base, mode);
+		return nn_layer_post(&self->pool->base, layer_mode);
 	}
 }
 
@@ -235,7 +238,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	else if(op_mode == NN_CODER_OP_MODE_POOL_AVG_S2)
 	{
 		self->pool = nn_poolingLayer_new(arch, dimX, 2,
-		                                 NN_POOLING_LAYER_MODE_AVERAGE);
+		                                 NN_POOLING_MODE_AVERAGE);
 		if(self->pool == NULL)
 		{
 			goto fail_op;
@@ -244,7 +247,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	else if(op_mode == NN_CODER_OP_MODE_POOL_MAX_S2)
 	{
 		self->pool = nn_poolingLayer_new(arch, dimX, 2,
-		                                 NN_POOLING_LAYER_MODE_MAX);
+		                                 NN_POOLING_MODE_MAX);
 		if(self->pool == NULL)
 		{
 			goto fail_op;
@@ -483,7 +486,7 @@ typedef struct nn_coderRepeaterLayer_s
 
 static nn_tensor_t*
 nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
-                                    nn_layerMode_e mode,
+                                    nn_layerMode_e layer_mode,
                                     uint32_t bs,
                                     nn_tensor_t* X)
 {
@@ -493,18 +496,20 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	X = nn_layer_forwardPass(&self->conv->base, mode, bs, X);
+	X = nn_layer_forwardPass(&self->conv->base, layer_mode,
+	                         bs, X);
 	if(X == NULL)
 	{
 		return NULL;
 	}
 
 	return nn_layer_forwardPass(&self->fact->base,
-	                            mode, bs, X);
+	                            layer_mode, bs, X);
 }
 
 static nn_tensor_t*
 nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
+                                 nn_layerMode_e layer_mode,
                                  uint32_t bs,
                                  nn_tensor_t* dL_dY)
 {
@@ -514,26 +519,28 @@ nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	dL_dY = nn_layer_backprop(&self->fact->base, bs, dL_dY);
+	dL_dY = nn_layer_backprop(&self->fact->base, layer_mode,
+	                          bs, dL_dY);
 	if(dL_dY == NULL)
 	{
 		return NULL;
 	}
 
-	return nn_layer_backprop(&self->conv->base, bs, dL_dY);
+	return nn_layer_backprop(&self->conv->base, layer_mode,
+	                         bs, dL_dY);
 }
 
 static void
 nn_coderRepeaterLayer_postFn(nn_layer_t* base,
-                             nn_layerMode_e mode)
+                             nn_layerMode_e layer_mode)
 {
 	ASSERT(base);
 
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	nn_layer_post(&self->conv->base, mode);
-	nn_layer_post(&self->fact->base, mode);
+	nn_layer_post(&self->conv->base, layer_mode);
+	nn_layer_post(&self->fact->base, layer_mode);
 }
 
 static nn_dim_t*
@@ -745,7 +752,7 @@ nn_coderRepeaterLayer_export(nn_coderRepeaterLayer_t* self,
 
 static nn_tensor_t*
 nn_coderLayer_forwardPassFn(nn_layer_t* base,
-                            nn_layerMode_e mode,
+                            nn_layerMode_e layer_mode,
                             uint32_t bs,
                             nn_tensor_t* X)
 {
@@ -756,7 +763,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->conv)
 	{
-		X = nn_layer_forwardPass(&self->conv->base, mode, bs, X);
+		X = nn_layer_forwardPass(&self->conv->base, layer_mode,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -765,7 +773,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->skip)
 	{
-		X = nn_layer_forwardPass(&self->skip->base, mode, bs, X);
+		X = nn_layer_forwardPass(&self->skip->base, layer_mode,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -774,7 +783,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->bn)
 	{
-		X = nn_layer_forwardPass(&self->bn->base, mode, bs, X);
+		X = nn_layer_forwardPass(&self->bn->base, layer_mode,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -783,7 +793,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->fact)
 	{
-		X = nn_layer_forwardPass(&self->fact->base, mode, bs, X);
+		X = nn_layer_forwardPass(&self->fact->base, layer_mode,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -800,7 +811,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 			r = (nn_coderRepeaterLayer_t*)
 			    cc_list_peekIter(iter);
 
-			X = nn_layer_forwardPass(&r->base, mode, bs, X);
+			X = nn_layer_forwardPass(&r->base, layer_mode, bs, X);
 			if(X == NULL)
 			{
 				return NULL;
@@ -812,7 +823,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->op)
 	{
-		X = nn_layer_forwardPass(&self->op->base, mode, bs, X);
+		X = nn_layer_forwardPass(&self->op->base, layer_mode, bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -824,6 +835,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 static nn_tensor_t*
 nn_coderLayer_backpropFn(nn_layer_t* base,
+                         nn_layerMode_e layer_mode,
                          uint32_t bs,
                          nn_tensor_t* dL_dY)
 {
@@ -834,7 +846,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->op)
 	{
-		dL_dY = nn_layer_backprop(&self->op->base, bs, dL_dY);
+		dL_dY = nn_layer_backprop(&self->op->base, layer_mode,
+		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -851,7 +864,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 			r = (nn_coderRepeaterLayer_t*)
 			    cc_list_peekIter(iter);
 
-			dL_dY = nn_layer_backprop(&r->base, bs, dL_dY);
+			dL_dY = nn_layer_backprop(&r->base, layer_mode,
+			                          bs, dL_dY);
 			if(dL_dY == NULL)
 			{
 				return NULL;
@@ -863,7 +877,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->fact)
 	{
-		dL_dY = nn_layer_backprop(&self->fact->base, bs, dL_dY);
+		dL_dY = nn_layer_backprop(&self->fact->base, layer_mode,
+		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -872,7 +887,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->bn)
 	{
-		dL_dY = nn_layer_backprop(&self->bn->base, bs, dL_dY);
+		dL_dY = nn_layer_backprop(&self->bn->base, layer_mode,
+		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -881,7 +897,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->skip)
 	{
-		dL_dY = nn_layer_backprop(&self->skip->base, bs, dL_dY);
+		dL_dY = nn_layer_backprop(&self->skip->base, layer_mode,
+		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -890,7 +907,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->conv)
 	{
-		dL_dY = nn_layer_backprop(&self->conv->base, bs, dL_dY);
+		dL_dY = nn_layer_backprop(&self->conv->base, layer_mode,
+		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -902,7 +920,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 static void
 nn_coderLayer_postFn(nn_layer_t* base,
-                     nn_layerMode_e mode)
+                     nn_layerMode_e layer_mode)
 {
 	ASSERT(base);
 
@@ -910,22 +928,22 @@ nn_coderLayer_postFn(nn_layer_t* base,
 
 	if(self->conv)
 	{
-		nn_layer_post(&self->conv->base, mode);
+		nn_layer_post(&self->conv->base, layer_mode);
 	}
 
 	if(self->skip)
 	{
-		nn_layer_post(&self->skip->base, mode);
+		nn_layer_post(&self->skip->base, layer_mode);
 	}
 
 	if(self->bn)
 	{
-		nn_layer_post(&self->bn->base, mode);
+		nn_layer_post(&self->bn->base, layer_mode);
 	}
 
 	if(self->fact)
 	{
-		nn_layer_post(&self->fact->base, mode);
+		nn_layer_post(&self->fact->base, layer_mode);
 	}
 
 	cc_listIter_t* iter;
@@ -937,7 +955,7 @@ nn_coderLayer_postFn(nn_layer_t* base,
 			nn_layer_t* layer;
 			layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-			nn_layer_post(layer, mode);
+			nn_layer_post(layer, layer_mode);
 
 			iter = cc_list_next(iter);
 		}
@@ -945,7 +963,7 @@ nn_coderLayer_postFn(nn_layer_t* base,
 
 	if(self->op)
 	{
-		nn_layer_post(&self->op->base, mode);
+		nn_layer_post(&self->op->base, layer_mode);
 	}
 }
 
@@ -1102,7 +1120,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		};
 
 		int flags = NN_CONV_LAYER_FLAG_HE;
-		if(info->bn_mode == NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE)
+		if(info->bn_mode > NN_CODER_BATCH_NORM_MODE_NONE)
 		{
 			flags |= NN_CONV_LAYER_FLAG_DISABLE_BIAS;
 		}
@@ -1143,9 +1161,10 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		dim = nn_layer_dimY(&self->skip->base);
 	}
 
-	if(info->bn_mode == NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE)
+	if(info->bn_mode > NN_CODER_BATCH_NORM_MODE_NONE)
 	{
-		self->bn = nn_batchNormLayer_new(info->arch, dim);
+		self->bn = nn_batchNormLayer_new(info->arch,
+		                                 info->bn_mode, dim);
 		if(self->bn == NULL)
 		{
 			goto fail_bn;

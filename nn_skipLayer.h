@@ -30,16 +30,16 @@
 
 typedef enum
 {
-	NN_SKIP_LAYER_MODE_FORK = 0,
-	NN_SKIP_LAYER_MODE_ADD  = 1,
-	NN_SKIP_LAYER_MODE_CAT  = 2,
-} nn_skipLayerMode_e;
+	NN_SKIP_MODE_FORK = 0,
+	NN_SKIP_MODE_ADD  = 1,
+	NN_SKIP_MODE_CAT  = 2,
+} nn_skipMode_e;
 
 typedef struct nn_skipLayer_s
 {
 	nn_layer_t base;
 
-	nn_skipLayerMode_e mode;
+	nn_skipMode_e skip_mode;
 
 	// fork/add/cat layer
 	nn_skipLayer_t* skip; // reference

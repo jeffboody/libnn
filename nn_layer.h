@@ -26,21 +26,16 @@
 
 #include "nn.h"
 
-typedef enum
-{
-	NN_LAYER_MODE_TRAIN   = 0,
-	NN_LAYER_MODE_PREDICT = 1,
-} nn_layerMode_e;
-
 typedef nn_tensor_t* (*nn_layer_forwardPassFn)
                      (nn_layer_t* base,
-                      nn_layerMode_e mode,
+                      nn_layerMode_e layer_mode,
                       uint32_t bs, nn_tensor_t* X);
 typedef nn_tensor_t* (*nn_layer_backpropFn)
-                     (nn_layer_t* base, uint32_t bs,
-                      nn_tensor_t* dL_dY);
+                     (nn_layer_t* base,
+                      nn_layerMode_e layer_mode,
+                      uint32_t bs, nn_tensor_t* dL_dY);
 typedef void (*nn_layer_postFn)(nn_layer_t* base,
-                                nn_layerMode_e mode);
+                                nn_layerMode_e layer_mode);
 typedef nn_dim_t* (*nn_layer_dimFn)
                   (nn_layer_t* base);
 
@@ -68,14 +63,15 @@ nn_layer_t*  nn_layer_new(size_t base_size,
                           nn_layerInfo_t* info);
 void         nn_layer_delete(nn_layer_t** _self);
 nn_tensor_t* nn_layer_forwardPass(nn_layer_t* self,
-                                  nn_layerMode_e mode,
+                                  nn_layerMode_e layer_mode,
                                   uint32_t bs,
                                   nn_tensor_t* X);
 nn_tensor_t* nn_layer_backprop(nn_layer_t* self,
+                               nn_layerMode_e layer_mode,
                                uint32_t bs,
                                nn_tensor_t* dL_dY);
 void         nn_layer_post(nn_layer_t* self,
-                           nn_layerMode_e mode);
+                           nn_layerMode_e layer_mode);
 nn_dim_t*    nn_layer_dimX(nn_layer_t* self);
 nn_dim_t*    nn_layer_dimY(nn_layer_t* self);
 

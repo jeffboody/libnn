@@ -1,0 +1,146 @@
+#version 450
+
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
+
+shared float bsum_work[64];
+shared float csum_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_clip_max_weight;
+	float state_clip_max_bias;
+	float state_clip_mu_inc;
+	float state_clip_mu_dec;
+	float state_clip_scale;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	nn_dim_t dimXhat;
+};
+
+layout(std430, set=0, binding=2) readonly buffer sb02
+{
+	float Xhat[];
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	nn_dim_t dim_dL_dXhat;
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	float dL_dXhat[];
+};
+
+layout(std430, set=2, binding=5) writeonly buffer sb25
+{
+	float Bsum[];
+};
+
+layout(std430, set=2, binding=7) writeonly buffer sb27
+{
+	float Csum[];
+};
+
+layout(std430, set=3, binding=0) readonly buffer sb30
+{
+	uint idx_k;
+};
+
+float getXhat(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimXhat.height*dimXhat.width*dimXhat.depth;
+	uint sy = dimXhat.width*dimXhat.depth;
+	uint sx = dimXhat.depth;
+	return Xhat[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dXhat(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dXhat.height*dim_dL_dXhat.width*
+	          dim_dL_dXhat.depth;
+	uint sy = dim_dL_dXhat.width*dim_dL_dXhat.depth;
+	uint sx = dim_dL_dXhat.depth;
+	return dL_dXhat[n*sn + i*sy + j*sx + k];
+}
+
+void setBsum(uint n, float v)
+{
+	Bsum[n] = v;
+}
+
+void setCsum(uint n, float v)
+{
+	Csum[n] = v;
+}
+
+void main()
+{
+	// dispatch required for each k
+	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+	uint p   = gl_GlobalInvocationID.x;
+	uint q   = gl_GlobalInvocationID.y;
+	uint xh  = dimXhat.height;
+	uint xw  = dimXhat.width;
+	uint idx = 8*p + q;
+	uint k   = idx_k;
+
+	// initialize working sums
+	bsum_work[idx] = 0.0;
+	csum_work[idx] = 0.0;
+
+	// compute working sums
+	uint  m;
+	uint  i;
+	uint  j;
+	float xhat;
+	float dl_dxhat;
+	for(m = 0; m < state_bs; ++m)
+	{
+		for(i = p; i < xh; i += 8)
+		{
+			for(j = q; j < xw; j += 8)
+			{
+				xhat             = getXhat(m, i, j, k);
+				dl_dxhat         = get_dL_dXhat(m, i, j, k);
+				bsum_work[idx]  += dl_dxhat;
+				csum_work[idx]  += dl_dxhat*xhat;
+			}
+		}
+	}
+
+	// synchronize work
+	memoryBarrierShared();
+	barrier();
+
+	// compute final sums
+	if(idx == 0)
+	{
+		float bsum = 0.0;
+		float csum = 0.0;
+
+		uint n;
+		for(n = 0; n < 64; ++n)
+		{
+			bsum += bsum_work[n];
+			csum += csum_work[n];
+		}
+		setBsum(k, bsum);
+		setCsum(k, csum);
+	}
+}

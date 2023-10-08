@@ -53,7 +53,7 @@ typedef struct nn_tensor_s
 {
 	nn_arch_t* arch;
 
-	nn_tensorMode_e mode;
+	nn_tensorMode_e tensor_mode;
 
 	nn_dim_t dim;
 	float*   data;
@@ -66,7 +66,7 @@ typedef struct nn_tensor_s
 nn_tensor_t* nn_tensor_new(nn_arch_t* arch,
                            nn_dim_t* dim,
                            nn_tensorInit_e init,
-                           nn_tensorMode_e mode);
+                           nn_tensorMode_e tensor_mode);
 void         nn_tensor_delete(nn_tensor_t** _self);
 void         nn_tensor_print(nn_tensor_t* self,
                              const char* name);

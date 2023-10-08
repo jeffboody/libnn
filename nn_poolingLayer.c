@@ -33,9 +33,6 @@
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
-const char* NN_POOLING_LAYER_STRING_MAX     = "max";
-const char* NN_POOLING_LAYER_STRING_AVERAGE = "average";
-
 /***********************************************************
 * private                                                  *
 ***********************************************************/
@@ -61,7 +58,7 @@ typedef struct
 
 static nn_tensor_t*
 nn_poolingLayer_forwardPassFn(nn_layer_t* base,
-                              nn_layerMode_e mode,
+                              nn_layerMode_e layer_mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -73,14 +70,14 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 	nn_tensor_t*       dY_dX = self->dY_dX;
 	nn_dim_t*          dimY  = nn_tensor_dim(Y);
 
-	vkk_computePipeline_t* cp[NN_POOLING_LAYER_MODE_COUNT] =
+	vkk_computePipeline_t* cp[NN_POOLING_MODE_COUNT] =
 	{
 		arch->cp_pooling_forwardPassMax,
 		arch->cp_pooling_forwardPassAvg,
 	};
 
 	// clear forward gradients
-	if(self->mode == NN_POOLING_LAYER_MODE_MAX)
+	if(self->pooling_mode == NN_POOLING_MODE_MAX)
 	{
 		nn_tensor_clear(dY_dX, NN_TENSOR_HAZZARD_NONE);
 	}
@@ -149,7 +146,7 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_poolingLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	if(nn_arch_bind(arch, cp[self->mode]) == 0)
+	if(nn_arch_bind(arch, cp[self->pooling_mode]) == 0)
 	{
 		return NULL;
 	}
@@ -166,7 +163,9 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_poolingLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+nn_poolingLayer_backpropFn(nn_layer_t* base,
+                           nn_layerMode_e layer_mode,
+                           uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -316,28 +315,28 @@ nn_poolingLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(self->Y);
 }
 
-static nn_poolingLayerMode_e
+static nn_poolingMode_e
 nn_poolingLayer_mode(const char* str)
 {
 	ASSERT(str);
 
-	const char* mode_fn[NN_POOLING_LAYER_MODE_COUNT] =
+	const char* mode_fn[NN_POOLING_MODE_COUNT] =
 	{
-		NN_POOLING_LAYER_STRING_MAX,
-		NN_POOLING_LAYER_STRING_AVERAGE,
+		"MAX",
+		"AVERAGE",
 	};
 
 	int i;
-	for(i = 0; i < NN_POOLING_LAYER_MODE_COUNT; ++i)
+	for(i = 0; i < NN_POOLING_MODE_COUNT; ++i)
 	{
 		if(strcmp(str, mode_fn[i]) == 0)
 		{
-			return (nn_poolingLayerMode_e) i;
+			return (nn_poolingMode_e) i;
 		}
 	}
 
 	LOGE("invalid %s", str);
-	return NN_POOLING_LAYER_MODE_ERROR;
+	return NN_POOLING_MODE_ERROR;
 }
 
 /***********************************************************
@@ -347,15 +346,15 @@ nn_poolingLayer_mode(const char* str)
 nn_poolingLayer_t*
 nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
                     uint32_t stride,
-                    nn_poolingLayerMode_e mode)
+                    nn_poolingMode_e pooling_mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
 
-	if(((int) mode < 0) ||
-	   ((int) mode >= NN_POOLING_LAYER_MODE_COUNT))
+	if(((int) pooling_mode < 0) ||
+	   ((int) pooling_mode >= NN_POOLING_MODE_COUNT))
 	{
-		LOGE("invalid mode=%i", (int) mode);
+		LOGE("invalid pooling_mode=%i", (int) pooling_mode);
 	}
 
 	nn_layerInfo_t info =
@@ -375,8 +374,8 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	self->stride = stride;
-	self->mode   = mode;
+	self->stride       = stride;
+	self->pooling_mode = pooling_mode;
 
 	nn_dim_t dimY =
 	{
@@ -442,9 +441,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX   = NULL;
-	jsmn_val_t* val_stride = NULL;
-	jsmn_val_t* val_mode   = NULL;
+	jsmn_val_t* val_dimX         = NULL;
+	jsmn_val_t* val_stride       = NULL;
+	jsmn_val_t* val_pooling_mode = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -468,9 +467,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		}
 		else if(kv->val->type == JSMN_TYPE_STRING)
 		{
-			if(strcmp(kv->key, "mode") == 0)
+			if(strcmp(kv->key, "pooling_mode") == 0)
 			{
-				val_mode = kv->val;
+				val_pooling_mode = kv->val;
 			}
 		}
 
@@ -478,9 +477,9 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX   == NULL) ||
-	   (val_stride == NULL) ||
-	   (val_mode   == NULL))
+	if((val_dimX         == NULL) ||
+	   (val_stride       == NULL) ||
+	   (val_pooling_mode == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -495,9 +494,10 @@ nn_poolingLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	uint32_t stride;
 	stride = (uint32_t) strtol(val_stride->data, NULL, 0);
 
-	nn_poolingLayerMode_e mode;
-	mode = nn_poolingLayer_mode(val_mode->data);
-	return nn_poolingLayer_new(arch, &dimX, stride, mode);
+	nn_poolingMode_e pooling_mode;
+	pooling_mode = nn_poolingLayer_mode(val_pooling_mode->data);
+	return nn_poolingLayer_new(arch, &dimX, stride,
+	                           pooling_mode);
 }
 
 int nn_poolingLayer_export(nn_poolingLayer_t* self,
@@ -514,14 +514,14 @@ int nn_poolingLayer_export(nn_poolingLayer_t* self,
 	ret &= nn_dim_store(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "stride");
 	ret &= jsmn_stream_int(stream, (int) self->stride);
-	ret &= jsmn_stream_key(stream, "%s", "mode");
-	if(self->mode == NN_POOLING_LAYER_MODE_AVERAGE)
+	ret &= jsmn_stream_key(stream, "%s", "pooling_mode");
+	if(self->pooling_mode == NN_POOLING_MODE_AVERAGE)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "average");
+		ret &= jsmn_stream_string(stream, "%s", "AVERAGE");
 	}
 	else
 	{
-		ret &= jsmn_stream_string(stream, "%s", "max");
+		ret &= jsmn_stream_string(stream, "%s", "MAX");
 	}
 	ret &= jsmn_stream_end(stream);
 

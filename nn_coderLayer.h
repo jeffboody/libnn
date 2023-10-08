@@ -48,11 +48,13 @@ typedef enum
 
 #define NN_CODER_SKIP_MODE_COUNT 4
 
+// see nn_batchNormMode_e
 typedef enum
 {
-	NN_CODER_BATCH_NORMALIZATION_MODE_DISABLE = 0,
-	NN_CODER_BATCH_NORMALIZATION_MODE_ENABLE  = 1,
-} nn_coderBatchNormalizationMode_e;
+	NN_CODER_BATCH_NORM_MODE_NONE     = -1,
+	NN_CODER_BATCH_NORM_MODE_RUNNING  = 0,
+	NN_CODER_BATCH_NORM_MODE_INSTANCE = 1,
+} nn_coderBatchNormMode_e;
 
 #define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 2
 
@@ -84,7 +86,7 @@ typedef struct nn_coderLayerInfo_s
 	nn_coderLayer_t*   skip_coder;
 
 	// bn layer
-	nn_coderBatchNormalizationMode_e bn_mode;
+	nn_coderBatchNormMode_e bn_mode;
 
 	// repeater layers
 	nn_coderConvMode_e repeat_mode;

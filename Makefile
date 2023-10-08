@@ -6,10 +6,10 @@ CLASSES = \
 	nn_coderLayer     \
 	nn_dim            \
 	nn_factLayer      \
-	nn_flattenLayer   \
 	nn_layer          \
 	nn_loss           \
 	nn_poolingLayer   \
+	nn_reshapeLayer   \
 	nn_skipLayer      \
 	nn_tensor         \
 	nn_weightLayer

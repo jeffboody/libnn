@@ -21,32 +21,33 @@
  *
  */
 
-#ifndef nn_flattenLayer_H
-#define nn_flattenLayer_H
+#ifndef nn_reshapeLayer_H
+#define nn_reshapeLayer_H
 
 #include "nn_dim.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
-typedef struct nn_flattenLayer_s
+typedef struct nn_reshapeLayer_s
 {
 	nn_layer_t base;
 
-	nn_dim_t dimX; // dim(bs,xh,xw,xd)
+	nn_dim_t dimX; // dim(xbs,xh,xw,xd)
 
 	// output
-	// dim is flattened
+	// dim is reshaped
 	// data and sb_data are references to X
-	// sb_dim is owned by flattenLayer
-	nn_tensor_t Y; // dim(bs,1,1,xh*xw*xd)
-} nn_flattenLayer_t;
+	// sb_dim is owned by reshapeLayer
+	nn_tensor_t Y; // dim(ybs,yh,yw,yd)
+} nn_reshapeLayer_t;
 
-nn_flattenLayer_t* nn_flattenLayer_new(nn_arch_t* arch,
-                                       nn_dim_t* dimX);
-nn_flattenLayer_t* nn_flattenLayer_import(nn_arch_t* arch,
+nn_reshapeLayer_t* nn_reshapeLayer_new(nn_arch_t* arch,
+                                       nn_dim_t* dimX,
+                                       nn_dim_t* dimY);
+nn_reshapeLayer_t* nn_reshapeLayer_import(nn_arch_t* arch,
                                           jsmn_val_t* val);
-int                nn_flattenLayer_export(nn_flattenLayer_t* self,
+int                nn_reshapeLayer_export(nn_reshapeLayer_t* self,
                                           jsmn_stream_t* stream);
-void               nn_flattenLayer_delete(nn_flattenLayer_t** _self);
+void               nn_reshapeLayer_delete(nn_reshapeLayer_t** _self);
 
 #endif

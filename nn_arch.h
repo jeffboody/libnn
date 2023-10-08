@@ -52,8 +52,11 @@ typedef struct nn_arch_s
 	nn_archState_t state;
 
 	// neural network (references)
+	// loss is for normal NN
+	// D is discriminator for GAN generator NN
 	cc_list_t* layers;
 	nn_loss_t* loss;
+	nn_arch_t* D;
 
 	// random number generators
 	cc_rngUniform_t rng_uniform;
@@ -103,6 +106,7 @@ typedef struct nn_arch_s
 	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dX;
 	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dXhat;
 	vkk_computePipeline_t* cp_batchNorm_backpropSum;
+	vkk_computePipeline_t* cp_batchNorm_backpropSumNOP;
 	vkk_computePipeline_t* cp_conv_forwardPass;
 	vkk_computePipeline_t* cp_conv_forwardPassT;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
@@ -156,26 +160,31 @@ typedef struct nn_arch_s
 	cc_map_t* map_convIdx;
 } nn_arch_t;
 
-nn_arch_t* nn_arch_new(void* _engine,
-                       size_t base_size,
-                       nn_archState_t* state);
-nn_arch_t* nn_arch_import(void* _engine,
-                          size_t base_size,
-                          jsmn_val_t* val);
-int        nn_arch_export(nn_arch_t* self,
-                          jsmn_stream_t* stream);
-void       nn_arch_delete(nn_arch_t** _self);
-int        nn_arch_attachLayer(nn_arch_t* self,
-                               nn_layer_t* layer);
-int        nn_arch_attachLoss(nn_arch_t* self,
-                              nn_loss_t* loss);
-int        nn_arch_train(nn_arch_t* self,
-                         uint32_t bs,
-                         nn_tensor_t* X,
-                         nn_tensor_t* Yt);
-float      nn_arch_loss(nn_arch_t* self);
-int        nn_arch_predict(nn_arch_t* self,
+nn_arch_t*   nn_arch_new(void* _engine,
+                         size_t base_size,
+                         nn_archState_t* state);
+nn_arch_t*   nn_arch_import(void* _engine,
+                            size_t base_size,
+                            jsmn_val_t* val);
+int          nn_arch_export(nn_arch_t* self,
+                            jsmn_stream_t* stream);
+void         nn_arch_delete(nn_arch_t** _self);
+int          nn_arch_attachLayer(nn_arch_t* self,
+                                 nn_layer_t* layer);
+int          nn_arch_attachLoss(nn_arch_t* self,
+                                nn_loss_t* loss);
+int          nn_arch_attachD(nn_arch_t* self,
+                             nn_arch_t* D);
+nn_tensor_t* nn_arch_train(nn_arch_t* self,
+                           nn_layerMode_e layer_mode,
+                           uint32_t bs,
                            nn_tensor_t* X,
+                           nn_tensor_t* Yt,
                            nn_tensor_t* Y);
+float        nn_arch_loss(nn_arch_t* self);
+int          nn_arch_predict(nn_arch_t* self,
+                             uint32_t bs,
+                             nn_tensor_t* X,
+                             nn_tensor_t* Y);
 
 #endif

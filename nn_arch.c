@@ -48,7 +48,7 @@
 ***********************************************************/
 
 static void
-nn_arch_post(nn_arch_t* self, nn_layerMode_e mode)
+nn_arch_post(nn_arch_t* self, nn_layerMode_e layer_mode)
 {
 	ASSERT(self);
 
@@ -58,12 +58,15 @@ nn_arch_post(nn_arch_t* self, nn_layerMode_e mode)
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_post(layer, mode);
+		nn_layer_post(layer, layer_mode);
 
 		iter = cc_list_next(iter);
 	}
 
-	nn_loss_post(self->loss);
+	if(self->loss)
+	{
+		nn_loss_post(self->loss);
+	}
 }
 
 typedef struct
@@ -173,6 +176,7 @@ static void nn_arch_deleteCompute(nn_arch_t* self)
 	vkk_computePipeline_delete(&self->cp_conv_forwardPassT);
 	vkk_computePipeline_delete(&self->cp_conv_forwardPass);
 	vkk_computePipeline_delete(&self->cp_batchNorm_backpropSum);
+	vkk_computePipeline_delete(&self->cp_batchNorm_backpropSumNOP);
 	vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dXhat);
 	vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dX);
 	vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassY);
@@ -553,6 +557,17 @@ nn_arch_newCompute(nn_arch_t* self, void* _engine)
 	self->cp_batchNorm_backpropSum =
 		vkk_computePipeline_new(engine,
 		                        &cpi_batchNorm_backpropSum);
+
+	vkk_computePipelineInfo_t cpi_batchNorm_backpropSumNOP =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_batchNorm,
+		.cs      = "nn/shaders/nn_batchNormLayer_backpropSumNOP_comp.spv",
+	};
+
+	self->cp_batchNorm_backpropSumNOP =
+		vkk_computePipeline_new(engine,
+		                        &cpi_batchNorm_backpropSumNOP);
 
 	vkk_computePipelineInfo_t cpi_conv_forwardPass =
 	{
@@ -1023,6 +1038,7 @@ nn_arch_newCompute(nn_arch_t* self, void* _engine)
 	   (self->cp_batchNorm_backprop_dL_dX        == NULL) ||
 	   (self->cp_batchNorm_backprop_dL_dXhat     == NULL) ||
 	   (self->cp_batchNorm_backpropSum           == NULL) ||
+	   (self->cp_batchNorm_backpropSumNOP        == NULL) ||
 	   (self->cp_conv_forwardPass                == NULL) ||
 	   (self->cp_conv_forwardPassT               == NULL) ||
 	   (self->cp_conv_backprop_dL_dX             == NULL) ||
@@ -1123,47 +1139,53 @@ nn_arch_beginCompute(nn_arch_t* self,
 	ASSERT(self);
 	ASSERT(X);
 
-	// resize X
-	if(self->X)
+	// optionally resize X
+	if(X->tensor_mode == NN_TENSOR_MODE_IO)
 	{
-		if(nn_dim_equals(nn_tensor_dim(self->X),
-		                 nn_tensor_dim(X)) == 0)
+		if(self->X)
 		{
-			nn_tensor_delete(&self->X);
+			if(nn_dim_equals(nn_tensor_dim(self->X),
+			                 nn_tensor_dim(X)) == 0)
+			{
+				nn_tensor_delete(&self->X);
+			}
 		}
-	}
 
-	// resize Yt
-	if(Yt && self->Yt)
-	{
-		if(nn_dim_equals(nn_tensor_dim(self->Yt),
-		                 nn_tensor_dim(Yt)) == 0)
-		{
-			nn_tensor_delete(&self->Yt);
-		}
-	}
-
-	// allocate X on demand
-	if(self->X == NULL)
-	{
-		self->X = nn_tensor_new(self, nn_tensor_dim(X),
-		                        NN_TENSOR_INIT_ZERO,
-		                        NN_TENSOR_MODE_COMPUTE);
+		// allocate X on demand
 		if(self->X == NULL)
 		{
-			return 0;
+			self->X = nn_tensor_new(self, nn_tensor_dim(X),
+			                        NN_TENSOR_INIT_ZERO,
+			                        NN_TENSOR_MODE_COMPUTE);
+			if(self->X == NULL)
+			{
+				return 0;
+			}
 		}
 	}
 
-	// allocate Yt on demand
-	if(Yt && (self->Yt == NULL))
+	// optionally resize Yt
+	if(Yt && (Yt->tensor_mode == NN_TENSOR_MODE_IO))
 	{
-		self->Yt = nn_tensor_new(self, nn_tensor_dim(Yt),
-		                         NN_TENSOR_INIT_ZERO,
-		                         NN_TENSOR_MODE_COMPUTE);
+		if(self->Yt)
+		{
+			if(nn_dim_equals(nn_tensor_dim(self->Yt),
+			                 nn_tensor_dim(Yt)) == 0)
+			{
+				nn_tensor_delete(&self->Yt);
+			}
+		}
+
+		// allocate Yt on demand
 		if(self->Yt == NULL)
 		{
-			return 0;
+			self->Yt = nn_tensor_new(self, nn_tensor_dim(Yt),
+			                         NN_TENSOR_INIT_ZERO,
+			                         NN_TENSOR_MODE_COMPUTE);
+			if(self->Yt == NULL)
+			{
+				return 0;
+			}
 		}
 	}
 
@@ -1172,14 +1194,22 @@ nn_arch_beginCompute(nn_arch_t* self,
 		return 0;
 	}
 
-	if(nn_tensor_blit(X, self->X, bs, 0, 0) == 0)
+	// optionally blit X
+	if(X->tensor_mode == NN_TENSOR_MODE_IO)
 	{
-		goto fail_blit;
+		if(nn_tensor_blit(X, self->X, bs, 0, 0) == 0)
+		{
+			goto fail_blit;
+		}
 	}
 
-	if(Yt && (nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0))
+	// optionally blit Yt
+	if(Yt && (Yt->tensor_mode == NN_TENSOR_MODE_IO))
 	{
-		goto fail_blit;
+		if(nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0)
+		{
+			goto fail_blit;
+		}
 	}
 
 	// update global state
@@ -1213,6 +1243,24 @@ static void nn_arch_endCompute(nn_arch_t* self)
 
 		vkk_compute_end(self->compute);
 	}
+}
+
+static int nn_arch_resumeCompute(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	if(self->computing == 0)
+	{
+		if(vkk_compute_begin(self->compute) == 0)
+		{
+			LOGE("invalid");
+			return 0;
+		}
+
+		self->computing = 1;
+	}
+
+	return 1;
 }
 
 /***********************************************************
@@ -1684,7 +1732,7 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	ASSERT(self);
 	ASSERT(loss);
 
-	if(self->loss)
+	if(self->loss || self->D)
 	{
 		LOGE("invalid");
 		return 0;
@@ -1706,23 +1754,53 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	return 1;
 }
 
-int nn_arch_train(nn_arch_t* self,
-                  uint32_t bs,
-                  nn_tensor_t* X,
-                  nn_tensor_t* Yt)
+int nn_arch_attachD(nn_arch_t* self, nn_arch_t* D)
 {
+	ASSERT(self);
+	ASSERT(D);
+
+	if(self->loss || self->D)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	self->D = D;
+
+	return 1;
+}
+
+nn_tensor_t*
+nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
+              uint32_t bs, nn_tensor_t* X,
+              nn_tensor_t* Yt, nn_tensor_t* Y)
+{
+	// Y may be NULL
 	ASSERT(self);
 	ASSERT(X);
 	ASSERT(Yt);
 
-	if(nn_arch_beginCompute(self, bs, X, Yt) == 0)
+	// check if a loss function was specified
+	if((self->loss == NULL) && (self->D == NULL))
 	{
+		LOGE("invalid");
 		return 0;
 	}
 
-	// replace X and Yt with compute tensors
-	X  = self->X;
-	Yt = self->Yt;
+	if(nn_arch_beginCompute(self, bs, X, Yt) == 0)
+	{
+		return NULL;
+	}
+
+	// optionally replace X and Yt with compute tensors
+	if(X->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		X = self->X;
+	}
+	if(Yt->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		Yt = self->Yt;
+	}
 
 	// perform forward pass for each batch
 	cc_listIter_t* iter = cc_list_head(self->layers);
@@ -1731,9 +1809,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		X = nn_layer_forwardPass(layer,
-		                         NN_LAYER_MODE_TRAIN,
-		                         bs, X);
+		X = nn_layer_forwardPass(layer, layer_mode, bs, X);
 		if(X == NULL)
 		{
 			goto fail_forwardPass;
@@ -1744,12 +1820,30 @@ int nn_arch_train(nn_arch_t* self,
 
 	// backpropagate loss
 	nn_tensor_t* dL_dY = NULL;
+	if(self->loss)
 	{
 		dL_dY = nn_loss_loss(self->loss, bs, X, Yt);
-		if(dL_dY == NULL)
+	}
+	else if(self->D)
+	{
+		// finish generator forward pass
+		nn_arch_endCompute(self);
+
+		// discriminator loss
+		dL_dY = nn_arch_train(self->D,
+		                      NN_LAYER_MODE_TRAIN_NOP,
+		                      bs, X, Yt, NULL);
+
+		// resume generator backprop
+		if(nn_arch_resumeCompute(self) == 0)
 		{
 			goto fail_loss;
 		}
+	}
+
+	if(dL_dY == NULL)
+	{
+		goto fail_loss;
 	}
 
 	// perform backpropagation
@@ -1759,7 +1853,7 @@ int nn_arch_train(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		dL_dY = nn_layer_backprop(layer, bs, dL_dY);
+		dL_dY = nn_layer_backprop(layer, layer_mode, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			goto fail_backprop;
@@ -1769,27 +1863,46 @@ int nn_arch_train(nn_arch_t* self,
 	}
 
 	nn_arch_endCompute(self);
-	nn_arch_post(self, NN_LAYER_MODE_TRAIN);
+	nn_arch_post(self, layer_mode);
+
+	// optionally blit Y
+	if(Y)
+	{
+		if(nn_tensor_blit(X, Y, bs, 0, 0) == 0)
+		{
+			return NULL;
+		}
+	}
 
 	// success
-	return 1;
+	return dL_dY;
 
 	// failure
 	fail_backprop:
 	fail_loss:
 	fail_forwardPass:
 		nn_arch_endCompute(self);
-	return 0;
+	return NULL;
 }
 
 float nn_arch_loss(nn_arch_t* self)
 {
 	ASSERT(self);
 
-	return self->loss->loss;
+	if(self->loss)
+	{
+		return self->loss->loss;
+	}
+	else if(self->D)
+	{
+		return nn_arch_loss(self->D);
+	}
+
+	return 0.0f;
 }
 
 int nn_arch_predict(nn_arch_t* self,
+                    uint32_t bs,
                     nn_tensor_t* X,
                     nn_tensor_t* Y)
 {
@@ -1797,13 +1910,16 @@ int nn_arch_predict(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Y);
 
-	if(nn_arch_beginCompute(self, 1, X, NULL) == 0)
+	if(nn_arch_beginCompute(self, bs, X, NULL) == 0)
 	{
 		return 0;
 	}
 
 	// replace X with compute tensor
-	X = self->X;
+	if(X->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		X = self->X;
+	}
 
 	cc_listIter_t* iter = cc_list_head(self->layers);
 	while(iter)
@@ -1813,7 +1929,7 @@ int nn_arch_predict(nn_arch_t* self,
 
 		X = nn_layer_forwardPass(layer,
 		                         NN_LAYER_MODE_PREDICT,
-		                         1, X);
+		                         bs, X);
 		if(X == NULL)
 		{
 			goto fail_forwardPass;
@@ -1826,7 +1942,7 @@ int nn_arch_predict(nn_arch_t* self,
 	nn_arch_post(self, NN_LAYER_MODE_PREDICT);
 
 	// success
-	return nn_tensor_blit(X, Y, 1, 0, 0);
+	return nn_tensor_blit(X, Y, bs, 0, 0);
 
 	// failure
 	fail_forwardPass:

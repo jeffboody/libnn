@@ -39,7 +39,7 @@
 
 static nn_tensor_t*
 nn_skipLayer_forwardPassForkFn(nn_layer_t* base,
-                               nn_layerMode_e mode,
+                               nn_layerMode_e layer_mode,
                                uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -53,7 +53,9 @@ nn_skipLayer_forwardPassForkFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropAddFn(nn_layer_t* base, uint32_t bs,
+nn_skipLayer_backpropAddFn(nn_layer_t* base,
+                           nn_layerMode_e layer_mode,
+                           uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -82,7 +84,7 @@ nn_arch_bind(nn_arch_t* self,
 
 static nn_tensor_t*
 nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
-                              nn_layerMode_e mode,
+                              nn_layerMode_e layer_mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -167,7 +169,7 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
 
 static nn_tensor_t*
 nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
-                              nn_layerMode_e mode,
+                              nn_layerMode_e layer_mode,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -251,7 +253,9 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
+nn_skipLayer_backpropForkFn(nn_layer_t* base,
+                            nn_layerMode_e layer_mode,
+                            uint32_t bs,
                             nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -347,7 +351,9 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, uint32_t bs,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropCatFn(nn_layer_t* base, uint32_t bs,
+nn_skipLayer_backpropCatFn(nn_layer_t* base,
+                           nn_layerMode_e layer_mode,
+                           uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -491,7 +497,7 @@ nn_skipLayer_dimYFn(nn_layer_t* base)
 
 	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
 
-	if(self->mode == NN_SKIP_LAYER_MODE_FORK)
+	if(self->skip_mode == NN_SKIP_MODE_FORK)
 	{
 		return &self->dimX;
 	}
@@ -526,7 +532,7 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 		return NULL;
 	}
 
-	self->mode = NN_SKIP_LAYER_MODE_FORK;
+	self->skip_mode = NN_SKIP_MODE_FORK;
 
 	// skip is set by add/cat
 
@@ -593,8 +599,8 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 		return NULL;
 	}
 
-	self->mode = NN_SKIP_LAYER_MODE_ADD;
-	self->skip = skip_fork;
+	self->skip_mode = NN_SKIP_MODE_ADD;
+	self->skip      = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
 
@@ -670,8 +676,8 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 		return NULL;
 	}
 
-	self->mode = NN_SKIP_LAYER_MODE_CAT;
-	self->skip = skip_fork;
+	self->skip_mode = NN_SKIP_MODE_CAT;
+	self->skip      = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
 
@@ -744,8 +750,8 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX = NULL;
-	jsmn_val_t* val_mode = NULL;
+	jsmn_val_t* val_dimX      = NULL;
+	jsmn_val_t* val_skip_mode = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -755,9 +761,9 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 
 		if(kv->val->type == JSMN_TYPE_STRING)
 		{
-			if(strcmp(kv->key, "mode") == 0)
+			if(strcmp(kv->key, "skip_mode") == 0)
 			{
-				val_mode = kv->val;
+				val_skip_mode = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -772,8 +778,8 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	}
 
 	// check for required parameters
-	if((val_dimX == NULL) ||
-	   (val_mode == NULL))
+	if((val_dimX      == NULL) ||
+	   (val_skip_mode == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -785,21 +791,21 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		return NULL;
 	}
 
-	if(strcmp(val_mode->data, "fork") == 0)
+	if(strcmp(val_skip_mode->data, "FORK") == 0)
 	{
 		return nn_skipLayer_newFork(arch, &dimX);
 	}
-	else if(strcmp(val_mode->data, "add") == 0)
+	else if(strcmp(val_skip_mode->data, "ADD") == 0)
 	{
 		return nn_skipLayer_newAdd(arch, &dimX, skip_fork);
 	}
-	else if(strcmp(val_mode->data, "cat") == 0)
+	else if(strcmp(val_skip_mode->data, "CAT") == 0)
 	{
 		return nn_skipLayer_newCat(arch, &dimX, skip_fork);
 	}
 	else
 	{
-		LOGE("invalid mode=%s", val_mode->data);
+		LOGE("invalid skip_mode=%s", val_skip_mode->data);
 		return NULL;
 	}
 }
@@ -816,18 +822,18 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "mode");
-	if(self->mode == NN_SKIP_LAYER_MODE_ADD)
+	ret &= jsmn_stream_key(stream, "%s", "skip_mode");
+	if(self->skip_mode == NN_SKIP_MODE_ADD)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "add");
+		ret &= jsmn_stream_string(stream, "%s", "ADD");
 	}
-	else if(self->mode == NN_SKIP_LAYER_MODE_CAT)
+	else if(self->skip_mode == NN_SKIP_MODE_CAT)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "cat");
+		ret &= jsmn_stream_string(stream, "%s", "CAT");
 	}
 	else
 	{
-		ret &= jsmn_stream_string(stream, "%s", "fork");
+		ret &= jsmn_stream_string(stream, "%s", "FORK");
 	}
 	ret &= jsmn_stream_end(stream);
 
@@ -843,13 +849,13 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 	{
 		nn_skipLayer_deleteCompute(self);
 
-		if(self->mode == NN_SKIP_LAYER_MODE_CAT)
+		if(self->skip_mode == NN_SKIP_MODE_CAT)
 		{
 			nn_tensor_delete(&self->dL_dX2);
 			nn_tensor_delete(&self->dL_dX1);
 			nn_tensor_delete(&self->Y);
 		}
-		else if(self->mode == NN_SKIP_LAYER_MODE_ADD)
+		else if(self->skip_mode == NN_SKIP_MODE_ADD)
 		{
 			nn_tensor_delete(&self->Y);
 		}

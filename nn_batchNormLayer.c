@@ -56,7 +56,7 @@ nn_arch_bind(nn_arch_t* self,
 
 static nn_tensor_t*
 nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
-                                nn_layerMode_e mode,
+                                nn_layerMode_e layer_mode,
                                 uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -79,10 +79,11 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	uint32_t     xd       = dim->depth;
 
 	// prediction (running average) or
-	// training (mini-batch)
+	// training (mini-batch) or instance normalization
 	nn_tensor_t* Xmean = self->Xmean_ra;
 	nn_tensor_t* Xvar  = self->Xvar_ra;
-	if(mode == NN_LAYER_MODE_TRAIN)
+	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
 	{
 		Xmean = self->Xmean_mb;
 		Xvar  = self->Xvar_mb;
@@ -246,7 +247,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	uint32_t k;
 	vkk_computePipeline_t* cp;
 	vkk_uniformSet_t*      us3;
-	if(mode == NN_LAYER_MODE_TRAIN)
+	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
 	{
 		// nn_batchNormLayer_forwardPassXmean
 		// dispatch required for each k
@@ -348,7 +350,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+nn_batchNormLayer_backpropFn(nn_layer_t* base,
+                             nn_layerMode_e layer_mode,
+                             uint32_t bs,
                              nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -424,7 +428,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		self->us2,
 	};
 
-	// nn_batchNormLayer_dL_dXhat
+	// nn_batchNormLayer_backprop_dL_dXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = arch->cp_batchNorm_backprop_dL_dXhat;
@@ -438,12 +442,21 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
 	                 bs, xh, xw, 1, 8, 8);
 
-	// nn_batchNormLayer_backpropSum
+	// optionally skip parameter update
+	// nn_batchNormLayer_backpropSum or
+	// nn_batchNormLayer_backpropSumNOP
 	// dispatch required for each k
 	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t k;
 	vkk_uniformSet_t* us3;
-	cp = arch->cp_batchNorm_backpropSum;
+	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	{
+		cp = arch->cp_batchNorm_backpropSumNOP;
+	}
+	else
+	{
+		cp = arch->cp_batchNorm_backpropSum;
+	}
 	if(nn_arch_bind(arch, cp) == 0)
 	{
 		return NULL;
@@ -579,7 +592,9 @@ nn_batchNormLayer_dimYFn(nn_layer_t* base)
 ***********************************************************/
 
 nn_batchNormLayer_t*
-nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
+nn_batchNormLayer_new(nn_arch_t* arch,
+                      nn_batchNormMode_e bn_mode,
+                      nn_dim_t* dimX)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -610,6 +625,8 @@ nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	{
 		return NULL;
 	}
+
+	self->bn_mode = bn_mode;
 
 	self->G = nn_tensor_new(arch, &dim_111d,
 	                        NN_TENSOR_INIT_ZERO,
@@ -753,6 +770,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
+	jsmn_val_t* val_bn_mode  = NULL;
 	jsmn_val_t* val_dimX     = NULL;
 	jsmn_val_t* val_G        = NULL;
 	jsmn_val_t* val_B        = NULL;
@@ -767,7 +785,11 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 		if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
-			if(strcmp(kv->key, "dimX") == 0)
+			if(strcmp(kv->key, "bn_mode") == 0)
+			{
+				val_bn_mode = kv->val;
+			}
+			else if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}
@@ -793,13 +815,29 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX     == NULL) ||
+	if((val_bn_mode  == NULL) ||
+	   (val_dimX     == NULL) ||
 	   (val_G        == NULL) ||
 	   (val_B        == NULL) ||
 	   (val_Xmean_ra == NULL) ||
 	   (val_Xvar_ra  == NULL))
 	{
 		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_batchNormMode_e bn_mode;
+	if(strcmp(val_bn_mode->data, "RUNNING") == 0)
+	{
+		bn_mode = NN_BATCH_NORM_MODE_RUNNING;
+	}
+	else if(strcmp(val_bn_mode->data, "INSTANCE") == 0)
+	{
+		bn_mode = NN_BATCH_NORM_MODE_INSTANCE;
+	}
+	else
+	{
+		LOGE("invalid bn_mode=%s", val_bn_mode->data);
 		return NULL;
 	}
 
@@ -810,7 +848,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_batchNormLayer_t* self;
-	self = nn_batchNormLayer_new(arch, &dimX);
+	self = nn_batchNormLayer_new(arch, bn_mode, &dimX);
 	if(self == NULL)
 	{
 		return NULL;
@@ -844,6 +882,20 @@ int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
 
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "bn_mode");
+	if(self->bn_mode == NN_BATCH_NORM_MODE_RUNNING)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "RUNNING");
+	}
+	else if(self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "INSTANCE");
+	}
+	else
+	{
+		LOGE("invalid bn_mode=%i", (int) self->bn_mode);
+		return 0;
+	}
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "G");

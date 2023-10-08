@@ -66,7 +66,7 @@ typedef struct
 
 static nn_tensor_t*
 nn_convLayer_forwardPassFn(nn_layer_t* base,
-                           nn_layerMode_e mode,
+                           nn_layerMode_e layer_mode,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -178,7 +178,9 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
+nn_convLayer_backpropFn(nn_layer_t* base,
+                        nn_layerMode_e layer_mode,
+                        uint32_t bs,
                         nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -386,6 +388,12 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 		}
 	}
 
+	// optionally skip parameter update
+	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	{
+		return dL_dX;
+	}
+
 	// initialize gc but keep running averages
 	gc->gcw        = 1.0f;
 	gc->gcb        = 1.0f;
@@ -436,7 +444,7 @@ nn_convLayer_backpropFn(nn_layer_t* base, uint32_t bs,
 
 static void
 nn_convLayer_postFn(nn_layer_t* base,
-                    nn_layerMode_e mode)
+                    nn_layerMode_e layer_mode)
 {
 	ASSERT(base);
 
@@ -445,8 +453,8 @@ nn_convLayer_postFn(nn_layer_t* base,
 	nn_arch_t*        arch  = base->arch;
 	nn_archState_t*   state = &arch->state;
 
-	if((mode == NN_LAYER_MODE_TRAIN)   &&
-	   (state->clip_max_weight > 0.0f) &&
+	if((layer_mode == NN_LAYER_MODE_TRAIN) &&
+	   (state->clip_max_weight > 0.0f)     &&
 	   (state->clip_max_bias   > 0.0f))
 	{
 		vkk_compute_readBuffer(arch->compute, self->sb20_gc,
@@ -463,7 +471,7 @@ nn_convLayer_postFn(nn_layer_t* base,
 
 static nn_tensor_t*
 nn_convLayer_forwardPassTFn(nn_layer_t* base,
-                            nn_layerMode_e mode,
+                            nn_layerMode_e layer_mode,
                             uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -575,8 +583,9 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
-                         nn_tensor_t* dL_dY)
+nn_convLayer_backpropTFn(nn_layer_t* base,
+                         nn_layerMode_e layer_mode,
+                         uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
@@ -781,6 +790,12 @@ nn_convLayer_backpropTFn(nn_layer_t* base, uint32_t bs,
 			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
 			                 1, 1, 1, 8, 8, 1);
 		}
+	}
+
+	// optionally skip parameter update
+	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	{
+		return dL_dX;
 	}
 
 	// initialize gc but keep running averages

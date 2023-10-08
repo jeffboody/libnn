@@ -40,17 +40,17 @@
 ***********************************************************/
 
 static void
-fillXY(uint32_t m,
-       cc_rngNormal_t* rng1, cc_rngNormal_t* rng2,
-       nn_tensor_t* X, nn_tensor_t* Y)
+fillXYt(uint32_t m,
+        cc_rngNormal_t* rng1, cc_rngNormal_t* rng2,
+        nn_tensor_t* X, nn_tensor_t* Yt)
 {
 	ASSERT(rng1);
 	ASSERT(rng2);
 	ASSERT(X);
-	ASSERT(Y);
+	ASSERT(Yt);
 
-	nn_dim_t* dimX = nn_tensor_dim(X);
-	nn_dim_t* dimY = nn_tensor_dim(Y);
+	nn_dim_t* dimX  = nn_tensor_dim(X);
+	nn_dim_t* dimYt = nn_tensor_dim(Yt);
 
 	// fill X
 	float    x;
@@ -68,7 +68,7 @@ fillXY(uint32_t m,
 		}
 	}
 
-	// fill Y
+	// fill Yt
 	float sobel[] =
 	{
 		 0.25f,  0.5f,  0.25f,
@@ -81,8 +81,8 @@ fillXY(uint32_t m,
 	uint32_t fj;
 	uint32_t fh = 3;
 	uint32_t fw = 3;
-	uint32_t yh = dimY->height;
-	uint32_t yw = dimY->width;;
+	uint32_t yh = dimYt->height;
+	uint32_t yw = dimYt->width;;
 	int      ii;
 	int      jj;
 	for(i = 0; i < yh; ++i)
@@ -114,7 +114,7 @@ fillXY(uint32_t m,
 					y += s*x;
 				}
 			}
-			nn_tensor_set(Y, m, i, j, k, y);
+			nn_tensor_set(Yt, m, i, j, k, y);
 		}
 	}
 
@@ -171,10 +171,12 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		goto fail_X;
 	}
 
+	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_RUNNING;
+
 	nn_dim_t* dim = nn_tensor_dim(X);
 
 	nn_batchNormLayer_t* bn;
-	bn = nn_batchNormLayer_new(arch, dim);
+	bn = nn_batchNormLayer_new(arch, bn_mode, dim);
 	if(bn == NULL)
 	{
 		goto fail_bn;
@@ -197,13 +199,13 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	}
 	dim = nn_layer_dimY(&conv->base);
 
-	nn_tensor_t* Y;
-	Y = nn_tensor_new(arch, dim,
-	                  NN_TENSOR_INIT_ZERO,
-	                  NN_TENSOR_MODE_IO);
-	if(Y == NULL)
+	nn_tensor_t* Yt;
+	Yt = nn_tensor_new(arch, dim,
+	                   NN_TENSOR_INIT_ZERO,
+	                   NN_TENSOR_MODE_IO);
+	if(Yt == NULL)
 	{
-		goto fail_Y;
+		goto fail_Yt;
 	}
 
 	nn_loss_t* loss;
@@ -236,18 +238,19 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	{
 		for(m = 0; m < bs; ++m)
 		{
-			fillXY(m, &rng1, &rng2, X, Y);
+			fillXYt(m, &rng1, &rng2, X, Yt);
 		}
 
-		nn_arch_train(arch, bs, X, Y);
+		nn_arch_train(arch, NN_LAYER_MODE_TRAIN, bs,
+		              X, Yt, NULL);
 
 		if(idx%10 == 0)
 		{
 			LOGI("train-%u, loss=%f",
 			     idx, nn_arch_loss(arch));
 			#if 0
-			nn_tensor_print(X, "X");
-			nn_tensor_print(Y, "Y");
+			nn_tensor_print(X,"X");
+			nn_tensor_print(Yt, "Yt");
 			nn_tensor_print(bn->G, "bn->G");
 			nn_tensor_print(bn->B, "bn->B");
 			nn_tensor_print(bn->Xhat, "bn->Xhat");
@@ -278,7 +281,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	}
 
 	nn_loss_delete(&loss);
-	nn_tensor_delete(&Y);
+	nn_tensor_delete(&Yt);
 	nn_convLayer_delete(&conv);
 	nn_batchNormLayer_delete(&bn);
 	nn_tensor_delete(&X);
@@ -291,8 +294,8 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	fail_attach:
 		nn_loss_delete(&loss);
 	fail_loss:
-		nn_tensor_delete(&Y);
-	fail_Y:
+		nn_tensor_delete(&Yt);
+	fail_Yt:
 		nn_convLayer_delete(&conv);
 	fail_conv:
 		nn_batchNormLayer_delete(&bn);
