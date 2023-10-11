@@ -77,6 +77,9 @@ typedef struct nn_coderLayerInfo_s
 	nn_dim_t* dimX;
 	uint32_t  fc;
 
+	// pre operation layer
+	nn_coderOpMode_e pre_op_mode;
+
 	// conv layer
 	nn_coderConvMode_e conv_mode;
 
@@ -92,8 +95,8 @@ typedef struct nn_coderLayerInfo_s
 	nn_coderConvMode_e repeat_mode;
 	uint32_t           repeat;
 
-	// operation layer
-	nn_coderOpMode_e op_mode;
+	// post operation layer
+	nn_coderOpMode_e post_op_mode;
 } nn_coderLayerInfo_t;
 
 typedef struct nn_coderOpLayer_s
@@ -130,6 +133,9 @@ typedef struct nn_coderLayer_s
 
 	// layers may be NULL depending on the desired modes
 
+	// pre operation layer
+	nn_coderOpLayer_t* pre_op;
+
 	// main layer
 	// disable_bias, he, relu
 	// W : dim(fc,3,3,xd)
@@ -146,8 +152,8 @@ typedef struct nn_coderLayer_s
 	// repeater layers
 	cc_list_t* repeater;
 
-	// operation layer
-	nn_coderOpLayer_t* op;
+	// post operation layer
+	nn_coderOpLayer_t* post_op;
 } nn_coderLayer_t;
 
 nn_coderLayer_t* nn_coderLayer_new(nn_coderLayerInfo_t* info);
