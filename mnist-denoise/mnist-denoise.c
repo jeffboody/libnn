@@ -29,6 +29,7 @@
 #include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
+#include "libnn/mnist/nn_mnist.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn_batchNormLayer.h"
 #include "libnn/nn_coderLayer.h"
@@ -44,120 +45,6 @@
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-static int mnist_readU32(FILE* f, uint32_t* _data)
-{
-	ASSERT(f);
-	ASSERT(_data);
-
-	uint32_t data;
-	if(fread((void*) &data, sizeof(uint32_t), 1, f) != 1)
-	{
-		LOGE("fread failed");
-		return 0;
-	}
-
-	// swap endian
-	*_data = ((data << 24) & 0xFF000000) |
-	         ((data << 8)  & 0x00FF0000) |
-	         ((data >> 8)  & 0x0000FF00) |
-	         ((data >> 24) & 0x000000FF);
-
-	return 1;
-}
-
-static nn_tensor_t* mnist_load(nn_arch_t* arch)
-{
-	ASSERT(arch);
-
-	FILE* f = fopen("data/train-images-idx3-ubyte", "r");
-	if(f == NULL)
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	// read header
-	uint32_t magic = 0;
-	nn_dim_t dim =
-	{
-		.depth = 1,
-	};
-	if((mnist_readU32(f, &magic)      == 0) ||
-	   (mnist_readU32(f, &dim.count)  == 0) ||
-	   (mnist_readU32(f, &dim.width)  == 0) ||
-	   (mnist_readU32(f, &dim.height) == 0))
-	{
-		goto fail_header;
-	}
-
-	// check header
-	size_t size = dim.count*dim.height*dim.width;
-	if((magic != 0x00000803) || (size == 0))
-	{
-		LOGE("invalid magic=0x%X, size=%u",
-		     magic, (uint32_t) size);
-		goto fail_check;
-	}
-
-	// allocate ubyte data
-	uint8_t* data = (uint8_t*) CALLOC(1, size);
-	if(data == NULL)
-	{
-		LOGE("CALLOC failed");
-		goto fail_allocate;
-	}
-
-	// read ubyte data
-	if(fread((void*) data, size, 1, f) != 1)
-	{
-		LOGE("fread failed");
-		goto fail_read;
-	}
-
-	nn_tensor_t* T;
-	T = nn_tensor_new(arch, &dim,
-	                  NN_TENSOR_INIT_ZERO,
-	                  NN_TENSOR_MODE_IO);
-	if(T == NULL)
-	{
-		goto fail_T;
-	}
-
-	// convert data
-	float    t;
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	uint32_t idx = 0;
-	for(m = 0; m < dim.count; ++m)
-	{
-		for(i = 0; i < dim.height; ++i)
-		{
-			for(j = 0; j < dim.width; ++j)
-			{
-				t = ((float) data[idx++])/255.0f;
-				nn_tensor_set(T, m, i, j, 1, t);
-			}
-		}
-	}
-
-	FREE(data);
-	fclose(f);
-
-	// success
-	return T;
-
-	// failure
-	fail_T:
-	fail_read:
-		FREE(data);
-	fail_allocate:
-	fail_check:
-	fail_header:
-		fclose(f);
-	return NULL;
-}
 
 static void
 mnist_noise(cc_rngNormal_t* rng, uint32_t bs,
@@ -256,7 +143,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_tensor_t* Xt = mnist_load(arch);
+	nn_tensor_t* Xt = nn_mnist_load(arch);
 	if(Xt == NULL)
 	{
 		goto fail_Xt;
