@@ -871,15 +871,12 @@ int nn_tensor_blit(nn_tensor_t* src,
 	size_t dst_stride = nn_tensor_stride(dst);
 	size_t size       = count*src_stride;
 	if((count == 0)                          ||
-	   (src->arch  != dst->arch)             ||
 	   (src_stride != dst_stride)            ||
 	   (src_offset + count > src->dim.count) ||
 	   (dst_offset + count > dst->dim.count))
 	{
-		LOGE("invalid count=%u, arch=%p:%p, "
-		     "offset=%u:%u, stride=%u:%u",
-		     count, src->arch, dst->arch,
-		     src_offset, dst_offset,
+		LOGE("invalid count=%u, offset=%u:%u, stride=%u:%u",
+		     count, src_offset, dst_offset,
 		     (uint32_t) src_stride,
 		     (uint32_t) dst_stride);
 		return 0;
@@ -904,8 +901,9 @@ int nn_tensor_blit(nn_tensor_t* src,
 	else if((src->tensor_mode == NN_TENSOR_MODE_COMPUTE) &&
 	        (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
 	{
-		LOGE("unsupported");
-		return 0;
+		vkk_compute_blitBuffer(compute, src->sb_data,
+		                       dst->sb_data, size,
+		                       src_offset, dst_offset);
 	}
 	else
 	{
