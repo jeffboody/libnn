@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LOG_TAG "nn"
+#define LOG_TAG "mnist-denoise"
 #include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"

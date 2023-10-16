@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LOG_TAG "nn"
+#define LOG_TAG "regression-test"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
