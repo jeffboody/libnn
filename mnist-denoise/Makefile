@@ -3,7 +3,7 @@ export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 
 TARGET   = mnist-denoise
-CLASSES  = libnn/mnist/nn_mnist
+CLASSES  = libnn/mnist/nn_mnist mnist_denoise
 SOURCE   = $(TARGET).c $(CLASSES:%=%.c)
 OBJECTS  = $(TARGET).o $(CLASSES:%=%.o)
 HFILES   = $(CLASSES:%=%.h)
