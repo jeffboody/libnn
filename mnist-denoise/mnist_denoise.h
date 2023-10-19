@@ -69,10 +69,8 @@ int              mnist_denoise_exportYt(mnist_denoise_t* self,
 int              mnist_denoise_exportY(mnist_denoise_t* self,
                                        const char* fname,
                                        uint32_t n);
-void             mnist_denoise_sampleXt(mnist_denoise_t* self,
-                                        uint32_t bs);
+void             mnist_denoise_sampleXt(mnist_denoise_t* self);
 int              mnist_denoise_train(mnist_denoise_t* self,
-                                     uint32_t bs,
                                      float* _loss);
 int              mnist_denoise_predict(mnist_denoise_t* self,
                                        uint32_t bs);

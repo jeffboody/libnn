@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LOG_TAG "mnist-denoise"
+#define LOG_TAG "mnist-disc"
 #include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
@@ -41,20 +41,20 @@
 #include "libnn/nn_tensor.h"
 #include "libvkk/vkk_platform.h"
 #include "texgz/texgz_png.h"
-#include "mnist_denoise.h"
+#include "mnist_disc.h"
 
 /***********************************************************
 * callbacks                                                *
 ***********************************************************/
 
 static int
-mnist_denoise_onMain(vkk_engine_t* engine, int argc,
-                     char** argv)
+mnist_disc_onMain(vkk_engine_t* engine, int argc,
+                  char** argv)
 {
 	ASSERT(engine);
 
-	mnist_denoise_t* self;
-	self = mnist_denoise_new(engine, 32, 32);
+	mnist_disc_t* self;
+	self = mnist_disc_new(engine, 32, 32, "data/dn.json");
 	if(self == NULL)
 	{
 		return EXIT_FAILURE;
@@ -70,8 +70,9 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	uint32_t epoch;
 	uint32_t step = 0;
 	uint32_t n;
-	uint32_t count = mnist_denoise_countXt(self);
-	uint32_t bs    = mnist_denoise_bs(self);
+	uint32_t count = mnist_disc_countXt(self);
+	uint32_t bs    = mnist_disc_bs(self);
+	uint32_t bs2   = bs/2;
 	char     fname[256];
 	float    loss;
 	float    sum_loss = 0.0f;
@@ -81,8 +82,8 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	{
 		for(n = 0; n < count; n += bs)
 		{
-			mnist_denoise_sampleXt(self);
-			mnist_denoise_train(self, &loss);
+			mnist_disc_sampleXt(self);
+			mnist_disc_train(self, &loss);
 
 			// update loss
 			sum_loss += loss;
@@ -96,24 +97,30 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 			}
 
 			// export images
-			uint32_t export_interval = 10;
+			uint32_t export_interval = 100;
 			if((step%export_interval) == (export_interval - 1))
 			{
-				snprintf(fname, 256, "data/x%u-%u-%u.png",
-				         n, epoch, step);
-				mnist_denoise_exportX(self, fname, 0);
-				snprintf(fname, 256, "data/yt%u-%u-%u.png",
-				         n, epoch, step);
-				mnist_denoise_exportYt(self, fname, 0);
-				snprintf(fname, 256, "data/y%u-%u-%u.png",
-				         n, epoch, step);
-				mnist_denoise_exportY(self, fname, 0);
+				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
+				         n, epoch, step, 0);
+				mnist_disc_exportX(self, fname, 0);
+				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
+				         n, epoch, step, bs2);
+				mnist_disc_exportX(self, fname, bs2);
+				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
+				         n, epoch, step, 0);
+				mnist_disc_exportY(self, fname, 0);
+				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
+				         n, epoch, step, bs2);
+				mnist_disc_exportY(self, fname, bs2);
 
-				if(mnist_denoise_predict(self, 1))
+				if(mnist_disc_predict(self, bs))
 				{
-					snprintf(fname, 256, "data/yp%u-%u-%u.png",
-					         n, epoch, step);
-					mnist_denoise_exportY(self, fname, 0);
+					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
+					         n, epoch, step, 0);
+					mnist_disc_exportY(self, fname, 0);
+					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
+					         n, epoch, step, bs2);
+					mnist_disc_exportY(self, fname, bs2);
 				}
 			}
 
@@ -139,31 +146,31 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 
 		snprintf(fname, 256, "data/arch-%i-%i.json",
 		         epoch, step - 1);
-		mnist_denoise_export(self, fname);
+		mnist_disc_export(self, fname);
 	}
 
 	// cleanup
 	fclose(fplot);
-	mnist_denoise_delete(&self);
+	mnist_disc_delete(&self);
 
 	// success
 	return EXIT_SUCCESS;
 
 	// failure
 	fail_fplot:
-		mnist_denoise_delete(&self);
+		mnist_disc_delete(&self);
 	return EXIT_FAILURE;
 }
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "MNIST-Denoise",
+	.app_name    = "MNIST-Disc",
 	.app_version =
 	{
 		.major = 1,
 		.minor = 0,
 		.patch = 0,
 	},
-	.app_dir = "mnist-denoise",
-	.onMain  = mnist_denoise_onMain,
+	.app_dir = "mnist-disc",
+	.onMain  = mnist_disc_onMain,
 };

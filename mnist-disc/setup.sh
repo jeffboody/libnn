@@ -1,0 +1,10 @@
+ln -s ../../jsmn
+ln -s ../../libbfs
+ln -s ../../libcc
+ln -s ../../libnn
+ln -s ../../libsqlite3
+ln -s ../../libvkk
+ln -s ../../pcg-c-basic
+ln -s ../../texgz
+ln -s ../mnist-denoise/mnist_denoise.h
+ln -s ../mnist-denoise/mnist_denoise.c

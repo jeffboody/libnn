@@ -28,8 +28,6 @@
 #define LOG_TAG "mnist-denoise"
 #include "jsmn/wrapper/jsmn_stream.h"
 #include "libcc/math/cc_float.h"
-#include "libcc/rng/cc_rngNormal.h"
-#include "libcc/rng/cc_rngUniform.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/mnist/nn_mnist.h"
@@ -43,53 +41,23 @@
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "texgz/texgz_png.h"
-#include "mnist_denoise.h"
+#include "mnist_disc.h"
 
 /***********************************************************
 * private                                                  *
 ***********************************************************/
 
-static void
-mnist_denoise_addNoise(mnist_denoise_t* self)
-{
-	ASSERT(self);
-
-	nn_dim_t* dimX = nn_tensor_dim(self->X);
-	uint32_t  xh   = dimX->height;
-	uint32_t  xw   = dimX->width;
-
-	float    x;
-	float    yt;
-	float    n;
-	uint32_t m;
-	uint32_t i;
-	uint32_t j;
-	for(m = 0; m < self->bs; ++m)
-	{
-		for(i = 0; i < xh; ++i)
-		{
-			for(j = 0; j < xw; ++j)
-			{
-				yt = nn_tensor_get(self->Yt, m, i, j, 0);
-				n  = cc_rngNormal_rand1F(&self->rngN);
-				x  = cc_clamp(yt + n, 0.0f, 1.0f);
-				nn_tensor_set(self->X, m, i, j, 0, x);
-			}
-		}
-	}
-}
-
 static int
-mnist_denoise_exportPng(mnist_denoise_t* self,
-                        const char* fname,
-                        uint32_t n,
-                        nn_tensor_t* T)
+mnist_disc_exportPng(mnist_disc_t* self,
+                     const char* fname,
+                     uint32_t n,
+                     nn_tensor_t* T)
 {
 	ASSERT(self);
 	ASSERT(fname);
 	ASSERT(T);
 
-	if(n >= mnist_denoise_bs(self))
+	if(n >= mnist_disc_bs(self))
 	{
 		LOGE("invalid n=%u", n);
 		return 0;
@@ -134,11 +102,49 @@ mnist_denoise_exportPng(mnist_denoise_t* self,
 	return 1;
 }
 
-static mnist_denoise_t*
-mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
+static void mnist_disc_initYt(mnist_disc_t* self)
+{
+	ASSERT(self);
+
+	nn_tensor_t* Yt  = self->Yt;
+	nn_dim_t*    dim = nn_tensor_dim(Yt);
+	uint32_t     n2  = dim->count/2;
+
+	// real samples
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	for(n = 0; n < n2; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				nn_tensor_set(Yt, n, i, j, 0, 1.0f);
+			}
+		}
+	}
+
+	// generated samples
+	for(n = n2; n < dim->count; ++n)
+	{
+		for(i = 0; i < dim->height; ++i)
+		{
+			for(j = 0; j < dim->width; ++j)
+			{
+				nn_tensor_set(Yt, n, i, j, 0, 0.0f);
+			}
+		}
+	}
+}
+
+static mnist_disc_t*
+mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
+                 const char* fname_dn)
 {
 	ASSERT(engine);
 	ASSERT(val);
+	ASSERT(fname_dn);
 
 	if(val->type != JSMN_TYPE_OBJECT)
 	{
@@ -146,17 +152,16 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_base  = NULL;
-	jsmn_val_t* val_bs    = NULL;
-	jsmn_val_t* val_fc    = NULL;
-	jsmn_val_t* val_bn0   = NULL;
-	jsmn_val_t* val_enc1  = NULL;
-	jsmn_val_t* val_enc2  = NULL;
-	jsmn_val_t* val_dec3  = NULL;
-	jsmn_val_t* val_dec4  = NULL;
-	jsmn_val_t* val_convO = NULL;
-	jsmn_val_t* val_factO = NULL;
-	jsmn_val_t* val_loss  = NULL;
+	jsmn_val_t* val_base   = NULL;
+	jsmn_val_t* val_bs     = NULL;
+	jsmn_val_t* val_fc     = NULL;
+	jsmn_val_t* val_bn0    = NULL;
+	jsmn_val_t* val_coder1 = NULL;
+	jsmn_val_t* val_coder2 = NULL;
+	jsmn_val_t* val_coder3 = NULL;
+	jsmn_val_t* val_convO  = NULL;
+	jsmn_val_t* val_factO  = NULL;
+	jsmn_val_t* val_loss   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -174,21 +179,17 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 			{
 				val_bn0 = kv->val;
 			}
-			else if(strcmp(kv->key, "enc1") == 0)
+			else if(strcmp(kv->key, "coder1") == 0)
 			{
-				val_enc1 = kv->val;
+				val_coder1 = kv->val;
 			}
-			else if(strcmp(kv->key, "enc2") == 0)
+			else if(strcmp(kv->key, "coder2") == 0)
 			{
-				val_enc2 = kv->val;
+				val_coder2 = kv->val;
 			}
-			else if(strcmp(kv->key, "dec3") == 0)
+			else if(strcmp(kv->key, "coder3") == 0)
 			{
-				val_dec3 = kv->val;
-			}
-			else if(strcmp(kv->key, "dec4") == 0)
-			{
-				val_dec4 = kv->val;
+				val_coder3 = kv->val;
 			}
 			else if(strcmp(kv->key, "convO") == 0)
 			{
@@ -219,25 +220,24 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_base  == NULL) ||
-	   (val_bs    == NULL) ||
-	   (val_fc    == NULL) ||
-	   (val_bn0   == NULL) ||
-	   (val_enc1  == NULL) ||
-	   (val_enc2  == NULL) ||
-	   (val_dec3  == NULL) ||
-	   (val_dec4  == NULL) ||
-	   (val_convO == NULL) ||
-	   (val_factO == NULL) ||
-	   (val_loss  == NULL))
+	if((val_base   == NULL) ||
+	   (val_bs     == NULL) ||
+	   (val_fc     == NULL) ||
+	   (val_bn0    == NULL) ||
+	   (val_coder1 == NULL) ||
+	   (val_coder2 == NULL) ||
+	   (val_coder3 == NULL) ||
+	   (val_convO  == NULL) ||
+	   (val_factO  == NULL) ||
+	   (val_loss   == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	mnist_denoise_t* self;
-	self = (mnist_denoise_t*)
-	       nn_arch_import(engine, sizeof(mnist_denoise_t),
+	mnist_disc_t* self;
+	self = (mnist_disc_t*)
+	       nn_arch_import(engine, sizeof(mnist_disc_t),
 	                      val_base);
 	if(self == NULL)
 	{
@@ -247,20 +247,28 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 	self->bs = strtol(val_bs->data, NULL, 0);
 	self->fc = strtol(val_fc->data, NULL, 0);
 
-	self->Xt = nn_mnist_load(&self->base);
-	if(self->Xt == NULL)
+	self->dn = mnist_denoise_import(engine, fname_dn);
+	if(self->dn == NULL)
 	{
-		goto fail_Xt;
+		goto fail_dn;
 	}
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
+	if(self->bs > mnist_denoise_bs(self->dn))
+	{
+		LOGE("invalid %u > %u",
+		     self->bs, mnist_denoise_bs(self->dn));
+		goto fail_bs;
+	}
 
+	nn_dim_t* dimXt = nn_tensor_dim(self->dn->Xt);
+
+	// depth is 2 for real/generated and noisy inputs
 	nn_dim_t dim =
 	{
 		.count  = self->bs,
 		.height = dimXt->height,
 		.width  = dimXt->width,
-		.depth  = 1,
+		.depth  = 2,
 	};
 
 	self->X = nn_tensor_new(&self->base, &dim,
@@ -278,32 +286,25 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		goto fail_bn0;
 	}
 
-	self->enc1 = nn_coderLayer_import(&self->base,
-	                                  val_enc1, NULL);
-	if(self->enc1 == NULL)
+	self->coder1 = nn_coderLayer_import(&self->base,
+	                                    val_coder1, NULL);
+	if(self->coder1 == NULL)
 	{
-		goto fail_enc1;
+		goto fail_coder1;
 	}
 
-	self->enc2 = nn_coderLayer_import(&self->base,
-	                                  val_enc2, NULL);
-	if(self->enc2 == NULL)
+	self->coder2 = nn_coderLayer_import(&self->base,
+	                                    val_coder2, NULL);
+	if(self->coder2 == NULL)
 	{
-		goto fail_enc2;
+		goto fail_coder2;
 	}
 
-	self->dec3 = nn_coderLayer_import(&self->base,
-	                                  val_dec3, self->enc1);
-	if(self->dec3 == NULL)
+	self->coder3 = nn_coderLayer_import(&self->base,
+	                                    val_coder3, NULL);
+	if(self->coder3 == NULL)
 	{
-		goto fail_dec3;
-	}
-
-	self->dec4 = nn_coderLayer_import(&self->base,
-	                                  val_dec4, self->enc1);
-	if(self->dec4 == NULL)
-	{
-		goto fail_dec4;
+		goto fail_coder3;
 	}
 
 	self->convO = nn_convLayer_import(&self->base,
@@ -335,6 +336,8 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		goto fail_Yt;
 	}
 
+	mnist_disc_initYt(self);
+
 	self->Y = nn_tensor_new(&self->base, &dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
@@ -343,20 +346,16 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		goto fail_Y;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc1->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc2->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0) ||
-	   (nn_arch_attachLoss(&self->base,  self->loss)         == 0))
+	if((nn_arch_attachLayer(&self->base, &self->bn0->base)    == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder3->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->convO->base)  == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->factO->base)  == 0) ||
+	   (nn_arch_attachLoss(&self->base,  self->loss)          == 0))
 	{
 		goto fail_attach;
 	}
-
-	cc_rngNormal_init(&self->rngN, 0.5f, 0.5f);
-	cc_rngUniform_init(&self->rngU);
 
 	// success
 	return self;
@@ -373,20 +372,19 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 	fail_factO:
 		nn_convLayer_delete(&self->convO);
 	fail_convO:
-		nn_coderLayer_delete(&self->dec4);
-	fail_dec4:
-		nn_coderLayer_delete(&self->dec3);
-	fail_dec3:
-		nn_coderLayer_delete(&self->enc2);
-	fail_enc2:
-		nn_coderLayer_delete(&self->enc1);
-	fail_enc1:
+		nn_coderLayer_delete(&self->coder3);
+	fail_coder3:
+		nn_coderLayer_delete(&self->coder2);
+	fail_coder2:
+		nn_coderLayer_delete(&self->coder1);
+	fail_coder1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
 		nn_tensor_delete(&self->X);
 	fail_X:
-		nn_tensor_delete(&self->Xt);
-	fail_Xt:
+	fail_bs:
+		mnist_denoise_delete(&self->dn);
+	fail_dn:
 		nn_arch_delete((nn_arch_t**) &self);
 	return 0;
 }
@@ -395,28 +393,29 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 * public                                                   *
 ***********************************************************/
 
-mnist_denoise_t*
-mnist_denoise_new(vkk_engine_t* engine,
-                  uint32_t bs, uint32_t fc)
+mnist_disc_t*
+mnist_disc_new(vkk_engine_t* engine, uint32_t bs,
+               uint32_t fc, const char* fname_dn)
 {
 	ASSERT(engine);
+	ASSERT(fname_dn);
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate   = 0.01f,
+		.learning_rate   = 0.00005f,
 		.momentum_decay  = 0.5f,
 		.batch_momentum  = 0.99f,
 		.l2_lambda       = 0.01f,
-		.clip_max_weight = 10.0f,
-		.clip_max_bias   = 10.0f,
-		.clip_mu_inc     = 0.99f,
-		.clip_mu_dec     = 0.90f,
-		.clip_scale      = 0.1f,
+		.clip_max_weight = 1000000.0f,
+		.clip_max_bias   = 1000000.0f,
+		.clip_mu_inc     = 0.0f,
+		.clip_mu_dec     = 0.0f,
+		.clip_scale      = 1.0f,
 	};
 
-	mnist_denoise_t* self;
-	self = (mnist_denoise_t*)
-	       nn_arch_new(engine, sizeof(mnist_denoise_t),
+	mnist_disc_t* self;
+	self = (mnist_disc_t*)
+	       nn_arch_new(engine, sizeof(mnist_disc_t),
 	                   &arch_state);
 	if(self == NULL)
 	{
@@ -426,20 +425,28 @@ mnist_denoise_new(vkk_engine_t* engine,
 	self->bs = bs;
 	self->fc = fc;
 
-	self->Xt = nn_mnist_load(&self->base);
-	if(self->Xt == NULL)
+	self->dn = mnist_denoise_import(engine, fname_dn);
+	if(self->dn == NULL)
 	{
-		goto fail_Xt;
+		goto fail_dn;
 	}
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
+	if(self->bs > mnist_denoise_bs(self->dn))
+	{
+		LOGE("invalid %u > %u",
+		     self->bs, mnist_denoise_bs(self->dn));
+		goto fail_bs;
+	}
 
+	nn_dim_t* dimXt = nn_tensor_dim(self->dn->Xt);
+
+	// depth is 2 for real/generated and noisy inputs
 	nn_dim_t dimX  =
 	{
 		.count  = bs,
 		.height = dimXt->height,
 		.width  = dimXt->width,
-		.depth  = 1,
+		.depth  = 2,
 	};
 
 	self->X = nn_tensor_new(&self->base, &dimX,
@@ -464,7 +471,7 @@ mnist_denoise_new(vkk_engine_t* engine,
 	nn_coderBatchNormMode_e cbn_mode;
 	cbn_mode = NN_CODER_BATCH_NORM_MODE_RUNNING;
 
-	nn_coderLayerInfo_t info_enc1 =
+	nn_coderLayerInfo_t info_coder1 =
 	{
 		.arch         = &self->base,
 		.dimX         = dim,
@@ -473,17 +480,17 @@ mnist_denoise_new(vkk_engine_t* engine,
 		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
 		.bn_mode      = cbn_mode,
 		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
-	self->enc1 = nn_coderLayer_new(&info_enc1);
-	if(self->enc1 == NULL)
+	self->coder1 = nn_coderLayer_new(&info_coder1);
+	if(self->coder1 == NULL)
 	{
-		goto fail_enc1;
+		goto fail_coder1;
 	}
-	dim = nn_layer_dimY(&self->enc1->base);
+	dim = nn_layer_dimY(&self->coder1->base);
 
-	nn_coderLayerInfo_t info_enc2 =
+	nn_coderLayerInfo_t info_coder2 =
 	{
 		.arch         = &self->base,
 		.dimX         = dim,
@@ -492,17 +499,17 @@ mnist_denoise_new(vkk_engine_t* engine,
 		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
 		.bn_mode      = cbn_mode,
 		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
-	self->enc2 = nn_coderLayer_new(&info_enc2);
-	if(self->enc2 == NULL)
+	self->coder2 = nn_coderLayer_new(&info_coder2);
+	if(self->coder2 == NULL)
 	{
-		goto fail_enc2;
+		goto fail_coder2;
 	}
-	dim = nn_layer_dimY(&self->enc2->base);
+	dim = nn_layer_dimY(&self->coder2->base);
 
-	nn_coderLayerInfo_t info_dec3 =
+	nn_coderLayerInfo_t info_coder3 =
 	{
 		.arch         = &self->base,
 		.dimX         = dim,
@@ -511,34 +518,15 @@ mnist_denoise_new(vkk_engine_t* engine,
 		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
 		.bn_mode      = cbn_mode,
 		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2,
+		.post_op_mode = NN_CODER_OP_MODE_NONE,
 	};
 
-	self->dec3 = nn_coderLayer_new(&info_dec3);
-	if(self->dec3 == NULL)
+	self->coder3 = nn_coderLayer_new(&info_coder3);
+	if(self->coder3 == NULL)
 	{
-		goto fail_dec3;
+		goto fail_coder3;
 	}
-	dim = nn_layer_dimY(&self->dec3->base);
-
-	nn_coderLayerInfo_t info_dec4 =
-	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2,
-	};
-
-	self->dec4 = nn_coderLayer_new(&info_dec4);
-	if(self->dec4 == NULL)
-	{
-		goto fail_dec4;
-	}
-	dim = nn_layer_dimY(&self->dec4->base);
+	dim = nn_layer_dimY(&self->coder3->base);
 
 	nn_dim_t dimWO =
 	{
@@ -577,6 +565,8 @@ mnist_denoise_new(vkk_engine_t* engine,
 		goto fail_Yt;
 	}
 
+	mnist_disc_initYt(self);
+
 	self->Y = nn_tensor_new(&self->base, dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
@@ -585,20 +575,16 @@ mnist_denoise_new(vkk_engine_t* engine,
 		goto fail_Y;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc1->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc2->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0) ||
-	   (nn_arch_attachLoss(&self->base,  self->loss)         == 0))
+	if((nn_arch_attachLayer(&self->base, &self->bn0->base)    == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder3->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->convO->base)  == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->factO->base)  == 0) ||
+	   (nn_arch_attachLoss(&self->base,  self->loss)          == 0))
 	{
 		goto fail_attach;
 	}
-
-	cc_rngNormal_init(&self->rngN, 0.5f, 0.5f);
-	cc_rngUniform_init(&self->rngU);
 
 	// success
 	return self;
@@ -615,29 +601,28 @@ mnist_denoise_new(vkk_engine_t* engine,
 	fail_factO:
 		nn_convLayer_delete(&self->convO);
 	fail_convO:
-		nn_coderLayer_delete(&self->dec4);
-	fail_dec4:
-		nn_coderLayer_delete(&self->dec3);
-	fail_dec3:
-		nn_coderLayer_delete(&self->enc2);
-	fail_enc2:
-		nn_coderLayer_delete(&self->enc1);
-	fail_enc1:
+		nn_coderLayer_delete(&self->coder3);
+	fail_coder3:
+		nn_coderLayer_delete(&self->coder2);
+	fail_coder2:
+		nn_coderLayer_delete(&self->coder1);
+	fail_coder1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
 		nn_tensor_delete(&self->X);
 	fail_X:
-		nn_tensor_delete(&self->Xt);
-	fail_Xt:
+	fail_bs:
+		mnist_denoise_delete(&self->dn);
+	fail_dn:
 		nn_arch_delete((nn_arch_t**) &self);
 	return NULL;
 }
 
-void mnist_denoise_delete(mnist_denoise_t** _self)
+void mnist_disc_delete(mnist_disc_t** _self)
 {
 	ASSERT(_self);
 
-	mnist_denoise_t* self = *_self;
+	mnist_disc_t* self = *_self;
 	if(self)
 	{
 		nn_tensor_delete(&self->Y);
@@ -645,23 +630,24 @@ void mnist_denoise_delete(mnist_denoise_t** _self)
 		nn_loss_delete(&self->loss);
 		nn_factLayer_delete(&self->factO);
 		nn_convLayer_delete(&self->convO);
-		nn_coderLayer_delete(&self->dec4);
-		nn_coderLayer_delete(&self->dec3);
-		nn_coderLayer_delete(&self->enc2);
-		nn_coderLayer_delete(&self->enc1);
+		nn_coderLayer_delete(&self->coder3);
+		nn_coderLayer_delete(&self->coder2);
+		nn_coderLayer_delete(&self->coder1);
 		nn_batchNormLayer_delete(&self->bn0);
 		nn_tensor_delete(&self->X);
-		nn_tensor_delete(&self->Xt);
+		mnist_denoise_delete(&self->dn);
 		nn_arch_delete((nn_arch_t**) &self);
 	}
 }
 
-mnist_denoise_t*
-mnist_denoise_import(vkk_engine_t* engine,
-                     const char* fname)
+mnist_disc_t*
+mnist_disc_import(vkk_engine_t* engine,
+                  const char* fname,
+                  const char* fname_dn)
 {
 	ASSERT(engine);
 	ASSERT(fname);
+	ASSERT(fname_dn);
 
 	FILE* f = fopen(fname, "r");
 	if(f == NULL)
@@ -706,8 +692,8 @@ mnist_denoise_import(vkk_engine_t* engine,
 		goto fail_val;
 	}
 
-	mnist_denoise_t* self;
-	self = mnist_denoise_parse(engine, val);
+	mnist_disc_t* self;
+	self = mnist_disc_parse(engine, val, fname_dn);
 	if(self == NULL)
 	{
 		goto fail_parse;
@@ -733,8 +719,8 @@ mnist_denoise_import(vkk_engine_t* engine,
 	return NULL;
 }
 
-int mnist_denoise_export(mnist_denoise_t* self,
-                         const char* fname)
+int mnist_disc_export(mnist_disc_t* self,
+                      const char* fname)
 {
 	ASSERT(self);
 	ASSERT(fname);
@@ -754,14 +740,12 @@ int mnist_denoise_export(mnist_denoise_t* self,
 	jsmn_stream_int(stream, (int) self->fc);
 	jsmn_stream_key(stream, "%s", "bn0");
 	nn_batchNormLayer_export(self->bn0, stream);
-	jsmn_stream_key(stream, "%s", "enc1");
-	nn_coderLayer_export(self->enc1, stream);
-	jsmn_stream_key(stream, "%s", "enc2");
-	nn_coderLayer_export(self->enc2, stream);
-	jsmn_stream_key(stream, "%s", "dec3");
-	nn_coderLayer_export(self->dec3, stream);
-	jsmn_stream_key(stream, "%s", "dec4");
-	nn_coderLayer_export(self->dec4, stream);
+	jsmn_stream_key(stream, "%s", "coder1");
+	nn_coderLayer_export(self->coder1, stream);
+	jsmn_stream_key(stream, "%s", "coder2");
+	nn_coderLayer_export(self->coder2, stream);
+	jsmn_stream_key(stream, "%s", "coder3");
+	nn_coderLayer_export(self->coder3, stream);
 	jsmn_stream_key(stream, "%s", "convO");
 	nn_convLayer_export(self->convO, stream);
 	jsmn_stream_key(stream, "%s", "factO");
@@ -798,67 +782,103 @@ int mnist_denoise_export(mnist_denoise_t* self,
 	return 0;
 }
 
-int mnist_denoise_exportX(mnist_denoise_t* self,
-                          const char* fname,
-                          uint32_t n)
+int mnist_disc_exportX(mnist_disc_t* self,
+                       const char* fname,
+                       uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->X);
+	return mnist_disc_exportPng(self, fname,
+	                            n, self->X);
 }
 
-int mnist_denoise_exportYt(mnist_denoise_t* self,
-                           const char* fname,
-                           uint32_t n)
+int mnist_disc_exportYt(mnist_disc_t* self,
+                        const char* fname,
+                        uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->Yt);
+	return mnist_disc_exportPng(self, fname,
+	                            n, self->Yt);
 }
 
-int mnist_denoise_exportY(mnist_denoise_t* self,
-                          const char* fname,
-                          uint32_t n)
+int mnist_disc_exportY(mnist_disc_t* self,
+                       const char* fname,
+                       uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->Y);
+	return mnist_disc_exportPng(self, fname,
+	                            n, self->Y);
 }
 
-void mnist_denoise_sampleXt(mnist_denoise_t* self)
+void mnist_disc_sampleXt(mnist_disc_t* self)
 {
 	ASSERT(self);
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
-
-	uint32_t m;
-	uint32_t n;
-	uint32_t max = dimXt->count - 1;
-	for(m = 0; m < self->bs; ++m)
+	mnist_denoise_sampleXt(self->dn);
+	if(mnist_denoise_predict(self->dn, self->bs) == 0)
 	{
-		n = cc_rngUniform_rand2U(&self->rngU, 0, max);
-		nn_tensor_blit(self->Xt, self->Yt, 1, n, m);
+		return;
 	}
 
-	// skip layers to perform poorly when noise is added
-	mnist_denoise_addNoise(self);
+	nn_tensor_t* dnX  = self->dn->X;
+	nn_tensor_t* dnYt = self->dn->Yt;
+	nn_tensor_t* dnY  = self->dn->Y;
+
+	// depth is 2 for real/generated and noisy inputs
+	nn_tensor_t* X    = self->X;
+	nn_dim_t*    dimX = nn_tensor_dim(X);
+	uint32_t     n2   = dimX->count/2;
+
+	// real samples
+	float    x;
+	float    y;
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	for(n = 0; n < n2; ++n)
+	{
+		for(i = 0; i < dimX->height; ++i)
+		{
+			for(j = 0; j < dimX->width; ++j)
+			{
+				x = nn_tensor_get(dnX, n, i, j, 0);
+				y = nn_tensor_get(dnYt, n, i, j, 0);
+				nn_tensor_set(X, n, i, j, 0, y);
+				nn_tensor_set(X, n, i, j, 1, x);
+			}
+		}
+	}
+
+	// generated samples
+	for(n = n2; n < dimX->count; ++n)
+	{
+		for(i = 0; i < dimX->height; ++i)
+		{
+			for(j = 0; j < dimX->width; ++j)
+			{
+				x = nn_tensor_get(dnX, n, i, j, 0);
+				y = nn_tensor_get(dnY, n, i, j, 0);
+				nn_tensor_set(X, n, i, j, 0, y);
+				nn_tensor_set(X, n, i, j, 1, x);
+			}
+		}
+	}
 }
 
-int mnist_denoise_train(mnist_denoise_t* self,
-                        float* _loss)
+int mnist_disc_train(mnist_disc_t* self,
+                     float* _loss)
 {
 	// _loss may be NULL
 	ASSERT(self);
 
 	if(nn_arch_train(&self->base, NN_LAYER_MODE_TRAIN,
 	                 self->bs, self->X, self->Yt,
-	                 self->Y) == NULL)
+	                 NULL) == NULL)
 	{
 		return 0;
 	}
@@ -871,12 +891,12 @@ int mnist_denoise_train(mnist_denoise_t* self,
 	return 1;
 }
 
-int mnist_denoise_predict(mnist_denoise_t* self,
-                          uint32_t bs)
+int mnist_disc_predict(mnist_disc_t* self,
+                       uint32_t bs)
 {
 	ASSERT(self);
 
-	if(bs > mnist_denoise_bs(self))
+	if(bs > mnist_disc_bs(self))
 	{
 		LOGE("invalid bs=%u", bs);
 		return 0;
@@ -886,16 +906,14 @@ int mnist_denoise_predict(mnist_denoise_t* self,
 	                       self->X, self->Y);
 }
 
-uint32_t mnist_denoise_countXt(mnist_denoise_t* self)
+uint32_t mnist_disc_countXt(mnist_disc_t* self)
 {
 	ASSERT(self);
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
-
-	return dimXt->count;
+	return mnist_denoise_countXt(self->dn);
 }
 
-uint32_t mnist_denoise_bs(mnist_denoise_t* self)
+uint32_t mnist_disc_bs(mnist_disc_t* self)
 {
 	ASSERT(self);
 
