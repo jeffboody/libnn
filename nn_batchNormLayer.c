@@ -783,13 +783,16 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		jsmn_keyval_t* kv;
 		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == JSMN_TYPE_STRING)
 		{
 			if(strcmp(kv->key, "bn_mode") == 0)
 			{
 				val_bn_mode = kv->val;
 			}
-			else if(strcmp(kv->key, "dimX") == 0)
+		}
+		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}
