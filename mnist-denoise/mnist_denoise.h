@@ -24,6 +24,8 @@
 #ifndef mnist_denoise_H
 #define mnist_denoise_H
 
+#include "libcc/rng/cc_rngNormal.h"
+#include "libcc/rng/cc_rngUniform.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn.h"
 #include "libvkk/vkk_platform.h"
@@ -52,11 +54,11 @@ typedef struct
 	cc_rngUniform_t rngU;
 } mnist_denoise_t;
 
-mnist_denoise_t* mnist_denoise_new(vkk_engine_t* engine,
+mnist_denoise_t* mnist_denoise_new(nn_engine_t* engine,
                                    uint32_t bs,
                                    uint32_t fc);
 void             mnist_denoise_delete(mnist_denoise_t** _self);
-mnist_denoise_t* mnist_denoise_import(vkk_engine_t* engine,
+mnist_denoise_t* mnist_denoise_import(nn_engine_t* engine,
                                       const char* fname);
 int              mnist_denoise_export(mnist_denoise_t* self,
                                       const char* fname);

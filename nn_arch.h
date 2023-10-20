@@ -25,11 +25,7 @@
 #define nn_arch_H
 
 #include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "../libcc/rng/cc_rngNormal.h"
-#include "../libcc/rng/cc_rngUniform.h"
 #include "../libcc/cc_list.h"
-#include "../libcc/cc_map.h"
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
@@ -49,121 +45,27 @@ typedef struct nn_archState_s
 
 typedef struct nn_arch_s
 {
-	nn_archState_t state;
+	nn_engine_t* engine;
 
-	// neural network (references)
+	nn_archState_t state;
+	vkk_buffer_t*  sb_state;
+
+	// references to layer, loss and discriminator
 	// loss is for normal NN
 	// D is discriminator for GAN generator NN
 	cc_list_t* layers;
 	nn_loss_t* loss;
 	nn_arch_t* D;
 
-	// random number generators
-	cc_rngUniform_t rng_uniform;
-	cc_rngNormal_t  rng_normal;
-
-	vkk_engine_t*  engine;
-	vkk_compute_t* compute;
-
-	int computing;
-	int dispatch;
-
-	vkk_uniformSetFactory_t* usf0_batchNorm;
-	vkk_uniformSetFactory_t* usf1_batchNorm;
-	vkk_uniformSetFactory_t* usf2_batchNorm;
-	vkk_uniformSetFactory_t* usf3_batchNorm;
-	vkk_uniformSetFactory_t* usf0_conv;
-	vkk_uniformSetFactory_t* usf1_conv;
-	vkk_uniformSetFactory_t* usf2_conv;
-	vkk_uniformSetFactory_t* usf3_conv;
-	vkk_uniformSetFactory_t* usf0_fact;
-	vkk_uniformSetFactory_t* usf1_fact;
-	vkk_uniformSetFactory_t* usf2_fact;
-	vkk_uniformSetFactory_t* usf0_pooling;
-	vkk_uniformSetFactory_t* usf1_pooling;
-	vkk_uniformSetFactory_t* usf2_pooling;
-	vkk_uniformSetFactory_t* usf0_skip;
-	vkk_uniformSetFactory_t* usf1_skip;
-	vkk_uniformSetFactory_t* usf0_weight;
-	vkk_uniformSetFactory_t* usf1_weight;
-	vkk_uniformSetFactory_t* usf2_weight;
-	vkk_uniformSetFactory_t* usf0_loss;
-	vkk_uniformSetFactory_t* usf0_tensor;
-
-	vkk_pipelineLayout_t* pl_batchNorm;
-	vkk_pipelineLayout_t* pl_conv;
-	vkk_pipelineLayout_t* pl_fact;
-	vkk_pipelineLayout_t* pl_pooling;
-	vkk_pipelineLayout_t* pl_skip;
-	vkk_pipelineLayout_t* pl_weight;
-	vkk_pipelineLayout_t* pl_loss;
-	vkk_pipelineLayout_t* pl_tensor;
-
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXmean;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXvar;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXhat;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassY;
-	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dX;
-	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dXhat;
-	vkk_computePipeline_t* cp_batchNorm_backpropSum;
-	vkk_computePipeline_t* cp_batchNorm_backpropSumNOP;
-	vkk_computePipeline_t* cp_conv_forwardPass;
-	vkk_computePipeline_t* cp_conv_forwardPassT;
-	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
-	vkk_computePipeline_t* cp_conv_backprop_dL_dW;
-	vkk_computePipeline_t* cp_conv_backprop_dL_dB;
-	vkk_computePipeline_t* cp_conv_backpropT_dL_dX;
-	vkk_computePipeline_t* cp_conv_backpropT_dL_dW;
-	vkk_computePipeline_t* cp_conv_backpropGradientClipping;
-	vkk_computePipeline_t* cp_conv_backpropUpdateW;
-	vkk_computePipeline_t* cp_conv_backpropUpdateB;
-	vkk_computePipeline_t* cp_fact_forwardPassLinear;
-	vkk_computePipeline_t* cp_fact_forwardPassLogistic;
-	vkk_computePipeline_t* cp_fact_forwardPassReLU;
-	vkk_computePipeline_t* cp_fact_forwardPassPReLU;
-	vkk_computePipeline_t* cp_fact_forwardPassTanh;
-	vkk_computePipeline_t* cp_fact_backpropLinear;
-	vkk_computePipeline_t* cp_fact_backpropLogistic;
-	vkk_computePipeline_t* cp_fact_backpropReLU;
-	vkk_computePipeline_t* cp_fact_backpropPReLU;
-	vkk_computePipeline_t* cp_fact_backpropTanh;
-	vkk_computePipeline_t* cp_pooling_forwardPassAvg;
-	vkk_computePipeline_t* cp_pooling_forwardPassMax;
-	vkk_computePipeline_t* cp_pooling_backprop;
-	vkk_computePipeline_t* cp_skip_forwardPassAdd;
-	vkk_computePipeline_t* cp_skip_forwardPassCat;
-	vkk_computePipeline_t* cp_skip_backpropCat;
-	vkk_computePipeline_t* cp_skip_backpropFork;
-	vkk_computePipeline_t* cp_weight_forwardPass;
-	vkk_computePipeline_t* cp_weight_backpropGradientClipping;
-	vkk_computePipeline_t* cp_weight_backpropUpdateW;
-	vkk_computePipeline_t* cp_weight_backpropUpdateB;
-	vkk_computePipeline_t* cp_weight_backprop_dL_dX;
-	vkk_computePipeline_t* cp_weight_backprop_dL_dW;
-	vkk_computePipeline_t* cp_weight_backprop_dL_dB;
-	vkk_computePipeline_t* cp_loss_dL_dY_mse;
-	vkk_computePipeline_t* cp_loss_dL_dY_mae;
-	vkk_computePipeline_t* cp_loss_dL_dY_bce;
-	vkk_computePipeline_t* cp_loss_mse;
-	vkk_computePipeline_t* cp_loss_mae;
-	vkk_computePipeline_t* cp_loss_bce;
-	vkk_computePipeline_t* cp_tensor_clear;
-	vkk_computePipeline_t* cp_tensor_clearAligned;
-
-	vkk_buffer_t* sb_state;
-
-	nn_tensor_t* Null;
+	// compute tensors (allocated on demand)
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
-
-	cc_map_t* map_batchNormIdx;
-	cc_map_t* map_convIdx;
 } nn_arch_t;
 
-nn_arch_t*   nn_arch_new(void* _engine,
+nn_arch_t*   nn_arch_new(nn_engine_t* engine,
                          size_t base_size,
                          nn_archState_t* state);
-nn_arch_t*   nn_arch_import(void* _engine,
+nn_arch_t*   nn_arch_import(nn_engine_t* engine,
                             size_t base_size,
                             jsmn_val_t* val);
 int          nn_arch_export(nn_arch_t* self,

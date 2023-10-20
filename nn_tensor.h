@@ -51,7 +51,7 @@ typedef enum
 
 typedef struct nn_tensor_s
 {
-	nn_arch_t* arch;
+	nn_engine_t* engine;
 
 	nn_tensorMode_e tensor_mode;
 
@@ -63,7 +63,7 @@ typedef struct nn_tensor_s
 	vkk_buffer_t*     sb_data;
 } nn_tensor_t;
 
-nn_tensor_t* nn_tensor_new(nn_arch_t* arch,
+nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
                            nn_dim_t* dim,
                            nn_tensorInit_e init,
                            nn_tensorMode_e tensor_mode);

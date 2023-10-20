@@ -29,6 +29,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_reshapeLayer.h"
 #include "nn_tensor.h"
 
@@ -97,13 +98,14 @@ nn_reshapeLayer_newCompute(nn_reshapeLayer_t* self,
 {
 	ASSERT(self);
 
-	nn_arch_t*   arch = self->base.arch;
-	nn_tensor_t* Y    = &self->Y;
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
+	nn_tensor_t* Y      = &self->Y;
 
 	vkk_updateMode_e um;
-	um = vkk_compute_updateMode(arch->compute);
+	um = vkk_compute_updateMode(engine->compute);
 
-	Y->sb_dim = vkk_buffer_new(arch->engine, um,
+	Y->sb_dim = vkk_buffer_new(engine->engine, um,
 	                           VKK_BUFFER_USAGE_STORAGE,
 	                           sizeof(nn_dim_t),
 	                           dimY);

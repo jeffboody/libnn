@@ -31,6 +31,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_loss.h"
 #include "nn_tensor.h"
 
@@ -42,38 +43,25 @@ const char* NN_LOSS_STRING_BCE = "bce";
 * private                                                  *
 ***********************************************************/
 
-// protected
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
-
 static int nn_loss_newCompute(nn_loss_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->arch;
+	nn_arch_t*   arch   = self->arch;
+	nn_engine_t* engine = arch->engine;
 
-	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
-	                               arch->usf0_loss);
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_loss);
 	if(self->us0 == NULL)
 	{
 		return 0;
 	}
 
 	vkk_updateMode_e um;
-	um = vkk_compute_updateMode(arch->compute);
+	um = vkk_compute_updateMode(engine->compute);
 
 	float loss = 0.0f;
-	self->sb07_loss = vkk_buffer_new(arch->engine, um,
+	self->sb07_loss = vkk_buffer_new(engine->engine, um,
 	                                 VKK_BUFFER_USAGE_STORAGE,
 	                                 sizeof(float), &loss);
 	if(self->sb07_loss == NULL)
@@ -152,6 +140,8 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	ASSERT(arch);
 	ASSERT(dimY);
 
+	nn_engine_t* engine = arch->engine;
+
 	if(((int) loss_fn < 0) ||
 	   ((int) loss_fn >= NN_LOSS_FN_COUNT))
 	{
@@ -170,7 +160,7 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	self->arch    = arch;
 	self->loss_fn = loss_fn;
 
-	self->dL_dY = nn_tensor_new(arch, dimY,
+	self->dL_dY = nn_tensor_new(engine, dimY,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dY == NULL)
@@ -299,26 +289,27 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	ASSERT(Y);
 	ASSERT(Yt);
 
-	nn_arch_t*   arch  = self->arch;
-	nn_tensor_t* dL_dY = self->dL_dY;
-	nn_dim_t*    dimY  = nn_tensor_dim(Y);
+	nn_arch_t*   arch   = self->arch;
+	nn_engine_t* engine = arch->engine;
+	nn_tensor_t* dL_dY  = self->dL_dY;
+	nn_dim_t*    dimY   = nn_tensor_dim(Y);
 
 	vkk_computePipeline_t* cp;
 	vkk_computePipeline_t* cp_dL_dY;
 	if(self->loss_fn == NN_LOSS_FN_MSE)
 	{
-		cp       = arch->cp_loss_mse;
-		cp_dL_dY = arch->cp_loss_dL_dY_mse;
+		cp       = engine->cp_loss_mse;
+		cp_dL_dY = engine->cp_loss_dL_dY_mse;
 	}
 	else if(self->loss_fn == NN_LOSS_FN_MAE)
 	{
-		cp       = arch->cp_loss_mae;
-		cp_dL_dY = arch->cp_loss_dL_dY_mae;
+		cp       = engine->cp_loss_mae;
+		cp_dL_dY = engine->cp_loss_dL_dY_mae;
 	}
 	else if(self->loss_fn == NN_LOSS_FN_BCE)
 	{
-		cp       = arch->cp_loss_bce;
-		cp_dL_dY = arch->cp_loss_dL_dY_bce;
+		cp       = engine->cp_loss_bce;
+		cp_dL_dY = engine->cp_loss_dL_dY_bce;
 	}
 	else
 	{
@@ -385,26 +376,26 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 
 	// nn_loss
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	if(nn_arch_bind(arch, cp) == 0)
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 8, ua0_array);
-	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 1, 1, 1, 8, 8, 1);
+	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   1, 1, 1, 8, 8, 1);
 
 	// nn_loss_dL_dY
 	// RAW hazzard handled by nn_loss
 	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
-	if(nn_arch_bind(arch, cp_dL_dY) == 0)
+	if(nn_engine_bind(engine, cp_dL_dY) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-	                 bs, dimY->height, dimY->width,
-	                 1, 8, 8);
+	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+	                   bs, dimY->height, dimY->width,
+	                   1, 8, 8);
 
 	return dL_dY;
 }
@@ -413,9 +404,10 @@ void nn_loss_post(nn_loss_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->arch;
+	nn_arch_t*   arch   = self->arch;
+	nn_engine_t* engine = arch->engine;
 
-	vkk_compute_readBuffer(arch->compute, self->sb07_loss,
+	vkk_compute_readBuffer(engine->compute, self->sb07_loss,
 	                       sizeof(float), 0, &self->loss);
 }
 

@@ -35,6 +35,7 @@
 #include "libnn/nn_coderLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
+#include "libnn/nn_engine.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
@@ -48,16 +49,22 @@
 ***********************************************************/
 
 static int
-mnist_disc_onMain(vkk_engine_t* engine, int argc,
+mnist_disc_onMain(vkk_engine_t* ve, int argc,
                   char** argv)
 {
-	ASSERT(engine);
+	ASSERT(ve);
+
+	nn_engine_t* engine = nn_engine_new(ve);
+	if(engine == NULL)
+	{
+		return EXIT_FAILURE;
+	}
 
 	mnist_disc_t* self;
 	self = mnist_disc_new(engine, 32, 32, "data/dn.json");
 	if(self == NULL)
 	{
-		return EXIT_FAILURE;
+		goto fail_disc;
 	}
 
 	FILE* fplot = fopen("data/plot.dat", "w");
@@ -152,6 +159,7 @@ mnist_disc_onMain(vkk_engine_t* engine, int argc,
 	// cleanup
 	fclose(fplot);
 	mnist_disc_delete(&self);
+	nn_engine_delete(&engine);
 
 	// success
 	return EXIT_SUCCESS;
@@ -159,6 +167,8 @@ mnist_disc_onMain(vkk_engine_t* engine, int argc,
 	// failure
 	fail_fplot:
 		mnist_disc_delete(&self);
+	fail_disc:
+		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }
 

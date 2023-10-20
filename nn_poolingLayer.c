@@ -29,6 +29,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_poolingLayer.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
@@ -36,20 +37,6 @@
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-// protected
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
 
 typedef struct
 {
@@ -64,16 +51,17 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_poolingLayer_t* self  = (nn_poolingLayer_t*) base;
-	nn_arch_t*         arch  = base->arch;
-	nn_tensor_t*       Y     = self->Y;
-	nn_tensor_t*       dY_dX = self->dY_dX;
-	nn_dim_t*          dimY  = nn_tensor_dim(Y);
+	nn_poolingLayer_t* self   = (nn_poolingLayer_t*) base;
+	nn_arch_t*         arch   = base->arch;
+	nn_engine_t*       engine = arch->engine;
+	nn_tensor_t*       Y      = self->Y;
+	nn_tensor_t*       dY_dX  = self->dY_dX;
+	nn_dim_t*          dimY   = nn_tensor_dim(Y);
 
 	vkk_computePipeline_t* cp[NN_POOLING_MODE_COUNT] =
 	{
-		arch->cp_pooling_forwardPassMax,
-		arch->cp_pooling_forwardPassAvg,
+		engine->cp_pooling_forwardPassMax,
+		engine->cp_pooling_forwardPassAvg,
 	};
 
 	// clear forward gradients
@@ -146,18 +134,18 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_poolingLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	if(nn_arch_bind(arch, cp[self->pooling_mode]) == 0)
+	if(nn_engine_bind(engine, cp[self->pooling_mode]) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 4, ua0_array);
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 4, ua1_array);
-	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimY->height, dimY->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimY->height, dimY->width,
+	                   1, 8, 8);
 
 	return Y;
 }
@@ -171,10 +159,11 @@ nn_poolingLayer_backpropFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,xd)
 
-	nn_poolingLayer_t* self  = (nn_poolingLayer_t*) base;
-	nn_arch_t*         arch  = base->arch;
-	nn_tensor_t*       dL_dX = self->dL_dX;
-	nn_dim_t*          dimX  = nn_tensor_dim(dL_dX);
+	nn_poolingLayer_t* self   = (nn_poolingLayer_t*) base;
+	nn_arch_t*         arch   = base->arch;
+	nn_engine_t*       engine = arch->engine;
+	nn_tensor_t*       dL_dX  = self->dL_dX;
+	nn_dim_t*          dimX   = nn_tensor_dim(dL_dX);
 
 	// sb20: dim_dL_dY
 	// sb21: dL_dY
@@ -214,17 +203,17 @@ nn_poolingLayer_backpropFn(nn_layer_t* base,
 	// nn_poolingLayer_backprop
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_pooling_backprop;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_pooling_backprop;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 4, ua2_array);
-	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimX->height, dimX->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
 
 	return dL_dX;
 }
@@ -234,24 +223,25 @@ nn_poolingLayer_newCompute(nn_poolingLayer_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->base.arch;
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
 
-	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
-	                               arch->usf0_pooling);
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_pooling);
 	if(self->us0 == NULL)
 	{
 		return 0;
 	}
 
-	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
-	                               arch->usf1_pooling);
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_pooling);
 	if(self->us1 == NULL)
 	{
 		goto fail_us1;
 	}
 
-	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
-	                               arch->usf2_pooling);
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_pooling);
 	if(self->us2 == NULL)
 	{
 		goto fail_us2;
@@ -261,7 +251,7 @@ nn_poolingLayer_newCompute(nn_poolingLayer_t* self)
 	{
 		.stride = self->stride,
 	};
-	self->sb01_param = vkk_buffer_new(arch->engine,
+	self->sb01_param = vkk_buffer_new(engine->engine,
 	                                  VKK_UPDATE_MODE_STATIC,
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_poolingLayerParam_t),
@@ -351,6 +341,8 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	ASSERT(arch);
 	ASSERT(dimX);
 
+	nn_engine_t* engine = arch->engine;
+
 	if(((int) pooling_mode < 0) ||
 	   ((int) pooling_mode >= NN_POOLING_MODE_COUNT))
 	{
@@ -385,7 +377,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.depth  = dimX->depth,
 	};
 
-	self->Y = nn_tensor_new(arch, &dimY,
+	self->Y = nn_tensor_new(engine, &dimY,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -393,7 +385,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
-	self->dY_dX = nn_tensor_new(arch, dimX,
+	self->dY_dX = nn_tensor_new(engine, dimX,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dY_dX == NULL)
@@ -401,7 +393,7 @@ nn_poolingLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dY_dX;
 	}
 
-	self->dL_dX = nn_tensor_new(arch, dimX,
+	self->dL_dX = nn_tensor_new(engine, dimX,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)

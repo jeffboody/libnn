@@ -135,7 +135,7 @@ mnist_denoise_exportPng(mnist_denoise_t* self,
 }
 
 static mnist_denoise_t*
-mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
+mnist_denoise_parse(nn_engine_t* engine, jsmn_val_t* val)
 {
 	ASSERT(engine);
 	ASSERT(val);
@@ -247,7 +247,7 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 	self->bs = strtol(val_bs->data, NULL, 0);
 	self->fc = strtol(val_fc->data, NULL, 0);
 
-	self->Xt = nn_mnist_load(&self->base);
+	self->Xt = nn_mnist_load(engine);
 	if(self->Xt == NULL)
 	{
 		goto fail_Xt;
@@ -263,7 +263,7 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		.depth  = 1,
 	};
 
-	self->X = nn_tensor_new(&self->base, &dim,
+	self->X = nn_tensor_new(engine, &dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->X == NULL)
@@ -327,7 +327,7 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		goto fail_loss;
 	}
 
-	self->Yt = nn_tensor_new(&self->base, &dim,
+	self->Yt = nn_tensor_new(engine, &dim,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_IO);
 	if(self->Yt == NULL)
@@ -335,7 +335,7 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 		goto fail_Yt;
 	}
 
-	self->Y = nn_tensor_new(&self->base, &dim,
+	self->Y = nn_tensor_new(engine, &dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->Y == NULL)
@@ -396,7 +396,7 @@ mnist_denoise_parse(vkk_engine_t* engine, jsmn_val_t* val)
 ***********************************************************/
 
 mnist_denoise_t*
-mnist_denoise_new(vkk_engine_t* engine,
+mnist_denoise_new(nn_engine_t* engine,
                   uint32_t bs, uint32_t fc)
 {
 	ASSERT(engine);
@@ -426,7 +426,7 @@ mnist_denoise_new(vkk_engine_t* engine,
 	self->bs = bs;
 	self->fc = fc;
 
-	self->Xt = nn_mnist_load(&self->base);
+	self->Xt = nn_mnist_load(engine);
 	if(self->Xt == NULL)
 	{
 		goto fail_Xt;
@@ -442,7 +442,7 @@ mnist_denoise_new(vkk_engine_t* engine,
 		.depth  = 1,
 	};
 
-	self->X = nn_tensor_new(&self->base, &dimX,
+	self->X = nn_tensor_new(engine, &dimX,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->X == NULL)
@@ -569,7 +569,7 @@ mnist_denoise_new(vkk_engine_t* engine,
 		goto fail_loss;
 	}
 
-	self->Yt = nn_tensor_new(&self->base, dim,
+	self->Yt = nn_tensor_new(engine, dim,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_IO);
 	if(self->Yt == NULL)
@@ -577,7 +577,7 @@ mnist_denoise_new(vkk_engine_t* engine,
 		goto fail_Yt;
 	}
 
-	self->Y = nn_tensor_new(&self->base, dim,
+	self->Y = nn_tensor_new(engine, dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->Y == NULL)
@@ -657,7 +657,7 @@ void mnist_denoise_delete(mnist_denoise_t** _self)
 }
 
 mnist_denoise_t*
-mnist_denoise_import(vkk_engine_t* engine,
+mnist_denoise_import(nn_engine_t* engine,
                      const char* fname)
 {
 	ASSERT(engine);

@@ -25,12 +25,14 @@
 #include <stdlib.h>
 
 #define LOG_TAG "cnn-test"
+#include "libcc/rng/cc_rngNormal.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn_batchNormLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_dim.h"
+#include "libnn/nn_engine.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_tensor.h"
 #include "libvkk/vkk_platform.h"
@@ -134,11 +136,17 @@ fillXYt(uint32_t m,
 ***********************************************************/
 
 static int
-cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
+cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 {
-	ASSERT(engine);
+	ASSERT(ve);
 
 	uint32_t bs = 16;
+
+	nn_engine_t* engine = nn_engine_new(ve);
+	if(engine == NULL)
+	{
+		return EXIT_FAILURE;
+	}
 
 	nn_archState_t arch_state =
 	{
@@ -151,7 +159,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);
 	if(arch == NULL)
 	{
-		return EXIT_FAILURE;
+		goto fail_arch;
 	}
 
 	nn_dim_t dimX =
@@ -163,7 +171,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	};
 
 	nn_tensor_t* X;
-	X = nn_tensor_new(arch, &dimX,
+	X = nn_tensor_new(engine, &dimX,
 	                  NN_TENSOR_INIT_ZERO,
 	                  NN_TENSOR_MODE_IO);
 	if(X == NULL)
@@ -200,7 +208,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	dim = nn_layer_dimY(&conv->base);
 
 	nn_tensor_t* Yt;
-	Yt = nn_tensor_new(arch, dim,
+	Yt = nn_tensor_new(engine, dim,
 	                   NN_TENSOR_INIT_ZERO,
 	                   NN_TENSOR_MODE_IO);
 	if(Yt == NULL)
@@ -286,6 +294,7 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 	nn_batchNormLayer_delete(&bn);
 	nn_tensor_delete(&X);
 	nn_arch_delete(&arch);
+	nn_engine_delete(&engine);
 
 	// success
 	return EXIT_SUCCESS;
@@ -303,6 +312,8 @@ cnn_test_onMain(vkk_engine_t* engine, int argc, char** argv)
 		nn_tensor_delete(&X);
 	fail_X:
 		nn_arch_delete(&arch);
+	fail_arch:
+		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }
 

@@ -33,30 +33,13 @@
 #include "../libvkk/vkk.h"
 #include "nn_arch.h"
 #include "nn_convLayer.h"
+#include "nn_engine.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-// protected
-extern vkk_uniformSet_t*
-nn_arch_getConvIdx(nn_arch_t* self,
-                   uint32_t f, uint32_t fi,
-                   uint32_t fj, uint32_t k);
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
 
 typedef struct
 {
@@ -72,8 +55,9 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_convLayer_t* self = (nn_convLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_convLayer_t* self   = (nn_convLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	nn_tensor_t* W    = self->W;
 	nn_tensor_t* B    = self->B;
@@ -157,19 +141,19 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 	// nn_convLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_conv_forwardPass;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_forwardPass;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 8, ua0_array);
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
-	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimY->height, dimY->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimY->height, dimY->width,
+	                   1, 8, 8);
 
 	// store reference
 	self->X = X;
@@ -186,10 +170,11 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc    = &self->gc;
-	nn_arch_t*        arch  = base->arch;
-	nn_archState_t*   state = &arch->state;
+	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc     = &self->gc;
+	nn_arch_t*        arch   = base->arch;
+	nn_archState_t*   state  = &arch->state;
+	nn_engine_t*      engine = arch->engine;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -307,27 +292,27 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	uint fj;
 	vkk_computePipeline_t* cp;
 	vkk_uniformSet_t*      us3;
-	cp = arch->cp_conv_backprop_dL_dX;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backprop_dL_dX;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 13, ua2_array);
-	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us3 = nn_arch_getConvIdx(arch, 0, fi, fj, 0);
+			us3 = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-			                 bs, dimY->height, dimY->width,
-			                 1, 8, 8);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			                   bs, dimY->height, dimY->width,
+			                   1, 8, 8);
 		}
 	}
 
@@ -337,10 +322,10 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
-	cp = arch->cp_conv_backprop_dL_dW;
+	cp = engine->cp_conv_backprop_dL_dW;
 	for(f = 0; f < fc; ++f)
 	{
-		if(nn_arch_bind(arch, cp) == 0)
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
@@ -351,14 +336,14 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us3 = nn_arch_getConvIdx(arch, f, fi, fj, k);
+					us3 = nn_engine_getConvIdx(engine, f, fi, fj, k);
 					if(us3 == NULL)
 					{
 						return NULL;
 					}
-					vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-					nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-					                 1, 1, 1, 8, 8, 1);
+					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+					nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+					                   1, 1, 1, 8, 8, 1);
 				}
 			}
 		}
@@ -370,21 +355,21 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		cp = arch->cp_conv_backprop_dL_dB;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_conv_backprop_dL_dB;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
 		for(f = 0; f < fc; ++f)
 		{
-			us3 = nn_arch_getConvIdx(arch, f, 0, 0, 0);
+			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-			                 1, 1, 1, 8, 8, 1);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			                   1, 1, 1, 8, 8, 1);
 		}
 	}
 
@@ -401,7 +386,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	gc->norm_b     = 0.0f;
 	gc->norm_dl_dw = 0.0f;
 	gc->norm_dl_db = 0.0f;
-	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
+	vkk_compute_writeBuffer(engine->compute, self->sb20_gc,
 	                        sizeof(nn_convLayerGc_t), 0, gc);
 
 	// nn_convLayer_backpropGradientClipping
@@ -409,35 +394,35 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	if((state->clip_max_weight > 0.0f) &&
 	   (state->clip_max_bias   > 0.0f))
 	{
-		cp = arch->cp_conv_backpropGradientClipping;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_conv_backpropGradientClipping;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-		nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-		                 1, 1, 1, 4, 4, 4);
+		nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+		                   1, 1, 1, 4, 4, 4);
 	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
-	cp = arch->cp_conv_backpropUpdateW;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backpropUpdateW;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 fc, fh, fw, 4, 4, 4);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
 	// RAW hazzard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	cp = arch->cp_conv_backpropUpdateB;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backpropUpdateB;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-	                 fc, 1, 1, 64, 1, 1);
+	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+	                   fc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
 }
@@ -448,16 +433,17 @@ nn_convLayer_postFn(nn_layer_t* base,
 {
 	ASSERT(base);
 
-	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc    = &self->gc;
-	nn_arch_t*        arch  = base->arch;
-	nn_archState_t*   state = &arch->state;
+	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc     = &self->gc;
+	nn_arch_t*        arch   = base->arch;
+	nn_archState_t*   state  = &arch->state;
+	nn_engine_t*      engine = arch->engine;
 
 	if((layer_mode == NN_LAYER_MODE_TRAIN) &&
 	   (state->clip_max_weight > 0.0f)     &&
 	   (state->clip_max_bias   > 0.0f))
 	{
-		vkk_compute_readBuffer(arch->compute, self->sb20_gc,
+		vkk_compute_readBuffer(engine->compute, self->sb20_gc,
 		                       sizeof(nn_convLayerGc_t), 0, gc);
 
 		#ifdef NN_GC_DEBUG
@@ -477,8 +463,9 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_convLayer_t* self = (nn_convLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_convLayer_t* self   = (nn_convLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	nn_tensor_t* W    = self->W;
 	nn_tensor_t* B    = self->B;
@@ -562,19 +549,19 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base,
 	// nn_convLayer_forwardPassT
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_conv_forwardPassT;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_forwardPassT;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 8, ua0_array);
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
-	vkk_compute_bindUniformSets(arch->compute, 2, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimY->height, dimY->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimY->height, dimY->width,
+	                   1, 8, 8);
 
 	// store reference
 	self->X = X;
@@ -590,10 +577,11 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t*   self  = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc    = &self->gc;
-	nn_arch_t*        arch  = base->arch;
-	nn_archState_t*   state = &arch->state;
+	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
+	nn_convLayerGc_t* gc     = &self->gc;
+	nn_arch_t*        arch   = base->arch;
+	nn_archState_t*   state  = &arch->state;
+	nn_engine_t*      engine = arch->engine;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -711,27 +699,27 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	uint fj;
 	vkk_computePipeline_t* cp;
 	vkk_uniformSet_t*      us3;
-	cp = arch->cp_conv_backpropT_dL_dX;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backpropT_dL_dX;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 13, ua2_array);
-	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us3 = nn_arch_getConvIdx(arch, 0, fi, fj, 0);
+			us3 = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-			                 bs, dimY->height, dimY->width,
-			                 1, 8, 8);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			                   bs, dimY->height, dimY->width,
+			                   1, 8, 8);
 		}
 	}
 
@@ -741,10 +729,10 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
-	cp = arch->cp_conv_backpropT_dL_dW;
+	cp = engine->cp_conv_backpropT_dL_dW;
 	for(f = 0; f < fc; ++f)
 	{
-		if(nn_arch_bind(arch, cp) == 0)
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
@@ -755,14 +743,14 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us3 = nn_arch_getConvIdx(arch, f, fi, fj, k);
+					us3 = nn_engine_getConvIdx(engine, f, fi, fj, k);
 					if(us3 == NULL)
 					{
 						return NULL;
 					}
-					vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-					nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-					                 1, 1, 1, 8, 8, 1);
+					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+					nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+					                   1, 1, 1, 8, 8, 1);
 				}
 			}
 		}
@@ -774,21 +762,21 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		cp = arch->cp_conv_backprop_dL_dB;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_conv_backprop_dL_dB;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
 		for(f = 0; f < fc; ++f)
 		{
-			us3 = nn_arch_getConvIdx(arch, f, 0, 0, 0);
+			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
-			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-			                 1, 1, 1, 8, 8, 1);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			                   1, 1, 1, 8, 8, 1);
 		}
 	}
 
@@ -805,7 +793,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	gc->norm_b     = 0.0f;
 	gc->norm_dl_dw = 0.0f;
 	gc->norm_dl_db = 0.0f;
-	vkk_compute_writeBuffer(arch->compute, self->sb20_gc,
+	vkk_compute_writeBuffer(engine->compute, self->sb20_gc,
 	                        sizeof(nn_convLayerGc_t), 0, gc);
 
 	// nn_convLayer_backpropGradientClipping
@@ -813,35 +801,35 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	if((state->clip_max_weight > 0.0f) &&
 	   (state->clip_max_bias   > 0.0f))
 	{
-		cp = arch->cp_conv_backpropGradientClipping;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_conv_backpropGradientClipping;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-		nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-		                 1, 1, 1, 4, 4, 4);
+		nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+		                   1, 1, 1, 4, 4, 4);
 	}
 
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
-	cp = arch->cp_conv_backpropUpdateW;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backpropUpdateW;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 fc, fh, fw, 4, 4, 4);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
 	// RAW hazzard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	cp = arch->cp_conv_backpropUpdateB;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_conv_backpropUpdateB;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-	                 fc, 1, 1, 64, 1, 1);
+	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+	                   fc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
 }
@@ -851,24 +839,25 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->base.arch;
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
 
-	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
-	                               arch->usf0_conv);
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_conv);
 	if(self->us0 == NULL)
 	{
 		return 0;
 	}
 
-	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
-	                               arch->usf1_conv);
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_conv);
 	if(self->us1 == NULL)
 	{
 		goto fail_us1;
 	}
 
-	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
-	                               arch->usf2_conv);
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_conv);
 	if(self->us2 == NULL)
 	{
 		goto fail_us2;
@@ -879,7 +868,7 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 		.disable_bias = (self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
 		.stride       = self->stride,
 	};
-	self->sb01_param = vkk_buffer_new(arch->engine,
+	self->sb01_param = vkk_buffer_new(engine->engine,
 	                                  VKK_UPDATE_MODE_STATIC,
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_convLayerParam_t),
@@ -889,7 +878,7 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 		goto fail_sb01_param;
 	}
 
-	self->sb20_gc = vkk_buffer_new(arch->engine,
+	self->sb20_gc = vkk_buffer_new(engine->engine,
 	                               VKK_UPDATE_MODE_SYNCHRONOUS,
 	                               VKK_BUFFER_USAGE_STORAGE,
 	                               sizeof(nn_convLayerGc_t), NULL);
@@ -958,6 +947,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	ASSERT(dimX);
 	ASSERT(dimW);
 
+	nn_engine_t* engine = arch->engine;
+
 	uint32_t fc = dimW->count;
 	uint32_t bs = dimX->count;
 	uint32_t xh = dimX->height;
@@ -1006,13 +997,13 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	// XAVIER is default
 	if(flags & NN_CONV_LAYER_FLAG_HE)
 	{
-		self->W = nn_tensor_new(arch, dimW,
+		self->W = nn_tensor_new(engine, dimW,
 		                        NN_TENSOR_INIT_HE,
 		                        NN_TENSOR_MODE_COMPUTE);
 	}
 	else
 	{
-		self->W = nn_tensor_new(arch, dimW,
+		self->W = nn_tensor_new(engine, dimW,
 		                        NN_TENSOR_INIT_XAVIER,
 		                        NN_TENSOR_MODE_COMPUTE);
 	}
@@ -1030,7 +1021,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.depth  = 1,
 	};
 
-	self->B = nn_tensor_new(arch, &dimB,
+	self->B = nn_tensor_new(engine, &dimB,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
@@ -1059,7 +1050,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.depth  = fc,
 	};
 
-	self->Y = nn_tensor_new(arch, &dimY,
+	self->Y = nn_tensor_new(engine, &dimY,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -1067,7 +1058,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
-	self->VW = nn_tensor_new(arch, dimW,
+	self->VW = nn_tensor_new(engine, dimW,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VW == NULL)
@@ -1075,7 +1066,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_VW;
 	}
 
-	self->VB = nn_tensor_new(arch, &dimB,
+	self->VB = nn_tensor_new(engine, &dimB,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VB == NULL)
@@ -1083,7 +1074,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_VB;
 	}
 
-	self->dL_dW = nn_tensor_new(arch, dimW,
+	self->dL_dW = nn_tensor_new(engine, dimW,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dW == NULL)
@@ -1091,7 +1082,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dW;
 	}
 
-	self->dL_dB = nn_tensor_new(arch, &dimB,
+	self->dL_dB = nn_tensor_new(engine, &dimB,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dB == NULL)
@@ -1099,7 +1090,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dB;
 	}
 
-	self->dL_dX = nn_tensor_new(arch, dimX,
+	self->dL_dX = nn_tensor_new(engine, dimX,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX == NULL)

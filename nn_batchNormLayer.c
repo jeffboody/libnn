@@ -30,6 +30,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_batchNormLayer.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
@@ -37,22 +38,6 @@
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-// protected
-extern vkk_uniformSet_t*
-nn_arch_getBatchNormIdx(nn_arch_t* self, uint32_t k);
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
 
 static nn_tensor_t*
 nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
@@ -62,8 +47,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_batchNormLayer_t* self = (nn_batchNormLayer_t*) base;
-	nn_arch_t*           arch = base->arch;
+	nn_batchNormLayer_t* self   = (nn_batchNormLayer_t*) base;
+	nn_arch_t*           arch   = base->arch;
+	nn_engine_t*         engine = arch->engine;
 
 	nn_tensor_t* G        = self->G;
 	nn_tensor_t* B        = self->B;
@@ -254,64 +240,64 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 
-		cp = arch->cp_batchNorm_forwardPassXmean;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_batchNorm_forwardPassXmean;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-		vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+		vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 		                                 9, ua0_array);
-		vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 		                                 14, ua1_array);
-		vkk_compute_bindUniformSets(arch->compute, 2, us_array);
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		update = 0;
 
 		for(k = 0; k < xd; ++k)
 		{
-			us3 = nn_arch_getBatchNormIdx(arch, k);
+			us3 = nn_engine_getBatchNormIdx(engine, k);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 			if(k == 0)
 			{
-				nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-				                 1, 1, 1, 8, 8, 1);
+				nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+				                   1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-				                 1, 1, 1, 8, 8, 1);
+				nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+				                   1, 1, 1, 8, 8, 1);
 			}
 		}
 
 		// nn_batchNormLayer_forwardPassXvar
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
-		cp = arch->cp_batchNorm_forwardPassXvar;
-		if(nn_arch_bind(arch, cp) == 0)
+		cp = engine->cp_batchNorm_forwardPassXvar;
+		if(nn_engine_bind(engine, cp) == 0)
 		{
 			return NULL;
 		}
 
 		for(k = 0; k < xd; ++k)
 		{
-			us3 = nn_arch_getBatchNormIdx(arch, k);
+			us3 = nn_engine_getBatchNormIdx(engine, k);
 			if(us3 == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(arch->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 			if(k == 0)
 			{
-				nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-				                 1, 1, 1, 8, 8, 1);
+				nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+				                   1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-				                 1, 1, 1, 8, 8, 1);
+				nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+				                   1, 1, 1, 8, 8, 1);
 			}
 		}
 	}
@@ -319,32 +305,32 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 
 	// nn_batchNormLayer_forwardPassXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	cp = arch->cp_batchNorm_forwardPassXhat;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_batchNorm_forwardPassXhat;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	if(update)
 	{
-		vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+		vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 		                                 9, ua0_array);
-		vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 		                                 14, ua1_array);
-		vkk_compute_bindUniformSets(arch->compute, 2, us_array);
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		update = 0;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, xh, xw, 1, 8, 8);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, xh, xw, 1, 8, 8);
 
 	// nn_batchNormLayer_forwardPassY
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	cp = arch->cp_batchNorm_forwardPassY;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_batchNorm_forwardPassY;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, xh, xw, 1, 8, 8);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, xh, xw, 1, 8, 8);
 
 	return Y;
 }
@@ -358,8 +344,9 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
-	nn_batchNormLayer_t* self  = (nn_batchNormLayer_t*) base;
-	nn_arch_t*           arch  = base->arch;
+	nn_batchNormLayer_t* self   = (nn_batchNormLayer_t*) base;
+	nn_arch_t*           arch   = base->arch;
+	nn_engine_t*         engine = arch->engine;
 
 	nn_tensor_t* dL_dXhat = self->dL_dXhat;
 	nn_tensor_t* Bsum     = self->Bsum;
@@ -431,16 +418,16 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	// nn_batchNormLayer_backprop_dL_dXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_batchNorm_backprop_dL_dXhat;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_batchNorm_backprop_dL_dXhat;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us2,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 8, ua2_array);
-	vkk_compute_bindUniformSets(arch->compute, 3, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, xh, xw, 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, xh, xw, 1, 8, 8);
 
 	// optionally skip parameter update
 	// nn_batchNormLayer_backpropSum or
@@ -451,45 +438,45 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	vkk_uniformSet_t* us3;
 	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
 	{
-		cp = arch->cp_batchNorm_backpropSumNOP;
+		cp = engine->cp_batchNorm_backpropSumNOP;
 	}
 	else
 	{
-		cp = arch->cp_batchNorm_backpropSum;
+		cp = engine->cp_batchNorm_backpropSum;
 	}
-	if(nn_arch_bind(arch, cp) == 0)
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	for(k = 0; k < xd; ++k)
 	{
-		us3 = nn_arch_getBatchNormIdx(arch, k);
+		us3 = nn_engine_getBatchNormIdx(engine, k);
 		if(us3 == NULL)
 		{
 			return NULL;
 		}
-		vkk_compute_bindUniformSets(arch->compute, 1, &us3);
+		vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 		if(k == 0)
 		{
-			nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-			                 1, 1, 1, 8, 8, 1);
+			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			                   1, 1, 1, 8, 8, 1);
 		}
 		else
 		{
-			nn_arch_dispatch(arch, VKK_HAZZARD_NONE,
-			                 1, 1, 1, 8, 8, 1);
+			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			                   1, 1, 1, 8, 8, 1);
 		}
 	}
 
 	// nn_batchNorm_backprop_dL_dX
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	cp = arch->cp_batchNorm_backprop_dL_dX;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_batchNorm_backprop_dL_dX;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, xh, xw, 1, 8, 8);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, xh, xw, 1, 8, 8);
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;
@@ -500,10 +487,11 @@ nn_batchNormLayer_newCompute(nn_batchNormLayer_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->base.arch;
-	nn_dim_t*  dimG = nn_tensor_dim(self->G);
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
+	nn_dim_t*    dimG   = nn_tensor_dim(self->G);
 
-	self->Bsum = nn_tensor_new(arch, dimG,
+	self->Bsum = nn_tensor_new(engine, dimG,
 	                           NN_TENSOR_INIT_ZERO,
 	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Bsum == NULL)
@@ -511,7 +499,7 @@ nn_batchNormLayer_newCompute(nn_batchNormLayer_t* self)
 		return 0;
 	}
 
-	self->Csum = nn_tensor_new(arch, dimG,
+	self->Csum = nn_tensor_new(engine, dimG,
 	                           NN_TENSOR_INIT_ZERO,
 	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Csum == NULL)
@@ -519,22 +507,22 @@ nn_batchNormLayer_newCompute(nn_batchNormLayer_t* self)
 		goto fail_Csum;
 	}
 
-	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
-	                               arch->usf0_batchNorm);
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_batchNorm);
 	if(self->us0 == NULL)
 	{
 		goto fail_us0;
 	}
 
-	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
-	                               arch->usf1_batchNorm);
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_batchNorm);
 	if(self->us1 == NULL)
 	{
 		goto fail_us1;
 	}
 
-	self->us2 = vkk_uniformSet_new(arch->engine, 2, 0, NULL,
-	                               arch->usf2_batchNorm);
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_batchNorm);
 	if(self->us2 == NULL)
 	{
 		goto fail_us2;
@@ -599,6 +587,8 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	ASSERT(arch);
 	ASSERT(dimX);
 
+	nn_engine_t* engine = arch->engine;
+
 	uint32_t xd = dimX->depth;
 
 	nn_dim_t dim_111d =
@@ -628,7 +618,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 
 	self->bn_mode = bn_mode;
 
-	self->G = nn_tensor_new(arch, &dim_111d,
+	self->G = nn_tensor_new(engine, &dim_111d,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->G == NULL)
@@ -637,7 +627,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	}
 
 	nn_tensor_t* tmpG;
-	tmpG = nn_tensor_new(arch, &dim_111d,
+	tmpG = nn_tensor_new(engine, &dim_111d,
 	                     NN_TENSOR_INIT_ZERO,
 	                     NN_TENSOR_MODE_IO);
 	if(tmpG == NULL)
@@ -657,7 +647,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_blitG;
 	}
 
-	self->B = nn_tensor_new(arch, &dim_111d,
+	self->B = nn_tensor_new(engine, &dim_111d,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->B == NULL)
@@ -665,7 +655,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_B;
 	}
 
-	self->Xhat = nn_tensor_new(arch, dimX,
+	self->Xhat = nn_tensor_new(engine, dimX,
 	                           NN_TENSOR_INIT_ZERO,
 	                           NN_TENSOR_MODE_COMPUTE);
 	if(self->Xhat == NULL)
@@ -673,7 +663,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Xhat;
 	}
 
-	self->Y = nn_tensor_new(arch, dimX,
+	self->Y = nn_tensor_new(engine, dimX,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -681,7 +671,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Y;
 	}
 
-	self->Xmean_mb = nn_tensor_new(arch, &dim_111d,
+	self->Xmean_mb = nn_tensor_new(engine, &dim_111d,
 	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_mb == NULL)
@@ -689,7 +679,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Xmean_mb;
 	}
 
-	self->Xvar_mb = nn_tensor_new(arch, &dim_111d,
+	self->Xvar_mb = nn_tensor_new(engine, &dim_111d,
 	                              NN_TENSOR_INIT_ZERO,
 	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_mb == NULL)
@@ -697,7 +687,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Xvar_mb;
 	}
 
-	self->Xmean_ra = nn_tensor_new(arch, &dim_111d,
+	self->Xmean_ra = nn_tensor_new(engine, &dim_111d,
 	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->Xmean_ra == NULL)
@@ -705,7 +695,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Xmean_ra;
 	}
 
-	self->Xvar_ra = nn_tensor_new(arch, &dim_111d,
+	self->Xvar_ra = nn_tensor_new(engine, &dim_111d,
 	                              NN_TENSOR_INIT_ZERO,
 	                              NN_TENSOR_MODE_COMPUTE);
 	if(self->Xvar_ra == NULL)
@@ -713,7 +703,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Xvar_ra;
 	}
 
-	self->dL_dXhat = nn_tensor_new(arch, dimX,
+	self->dL_dXhat = nn_tensor_new(engine, dimX,
 	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dXhat == NULL)

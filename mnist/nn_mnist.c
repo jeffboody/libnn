@@ -60,9 +60,9 @@ static int nn_mnist_readU32(FILE* f, uint32_t* _data)
 * public                                                   *
 ***********************************************************/
 
-nn_tensor_t* nn_mnist_load(nn_arch_t* arch)
+nn_tensor_t* nn_mnist_load(nn_engine_t* engine)
 {
-	ASSERT(arch);
+	ASSERT(engine);
 
 	FILE* f = fopen("libnn/mnist/train-images-idx3-ubyte", "r");
 	if(f == NULL)
@@ -110,7 +110,7 @@ nn_tensor_t* nn_mnist_load(nn_arch_t* arch)
 	}
 
 	nn_tensor_t* T;
-	T = nn_tensor_new(arch, &dim,
+	T = nn_tensor_new(engine, &dim,
 	                  NN_TENSOR_INIT_ZERO,
 	                  NN_TENSOR_MODE_IO);
 	if(T == NULL)

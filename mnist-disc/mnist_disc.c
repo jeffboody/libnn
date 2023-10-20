@@ -139,7 +139,7 @@ static void mnist_disc_initYt(mnist_disc_t* self)
 }
 
 static mnist_disc_t*
-mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
+mnist_disc_parse(nn_engine_t* engine, jsmn_val_t* val,
                  const char* fname_dn)
 {
 	ASSERT(engine);
@@ -271,7 +271,7 @@ mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
 		.depth  = 2,
 	};
 
-	self->X = nn_tensor_new(&self->base, &dim,
+	self->X = nn_tensor_new(engine, &dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->X == NULL)
@@ -328,7 +328,7 @@ mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
 		goto fail_loss;
 	}
 
-	self->Yt = nn_tensor_new(&self->base, &dim,
+	self->Yt = nn_tensor_new(engine, &dim,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_IO);
 	if(self->Yt == NULL)
@@ -338,7 +338,7 @@ mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
 
 	mnist_disc_initYt(self);
 
-	self->Y = nn_tensor_new(&self->base, &dim,
+	self->Y = nn_tensor_new(engine, &dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->Y == NULL)
@@ -394,7 +394,7 @@ mnist_disc_parse(vkk_engine_t* engine, jsmn_val_t* val,
 ***********************************************************/
 
 mnist_disc_t*
-mnist_disc_new(vkk_engine_t* engine, uint32_t bs,
+mnist_disc_new(nn_engine_t* engine, uint32_t bs,
                uint32_t fc, const char* fname_dn)
 {
 	ASSERT(engine);
@@ -449,7 +449,7 @@ mnist_disc_new(vkk_engine_t* engine, uint32_t bs,
 		.depth  = 2,
 	};
 
-	self->X = nn_tensor_new(&self->base, &dimX,
+	self->X = nn_tensor_new(engine, &dimX,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->X == NULL)
@@ -557,7 +557,7 @@ mnist_disc_new(vkk_engine_t* engine, uint32_t bs,
 		goto fail_loss;
 	}
 
-	self->Yt = nn_tensor_new(&self->base, dim,
+	self->Yt = nn_tensor_new(engine, dim,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_IO);
 	if(self->Yt == NULL)
@@ -567,7 +567,7 @@ mnist_disc_new(vkk_engine_t* engine, uint32_t bs,
 
 	mnist_disc_initYt(self);
 
-	self->Y = nn_tensor_new(&self->base, dim,
+	self->Y = nn_tensor_new(engine, dim,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->Y == NULL)
@@ -641,7 +641,7 @@ void mnist_disc_delete(mnist_disc_t** _self)
 }
 
 mnist_disc_t*
-mnist_disc_import(vkk_engine_t* engine,
+mnist_disc_import(nn_engine_t* engine,
                   const char* fname,
                   const char* fname_dn)
 {

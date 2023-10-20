@@ -35,6 +35,7 @@
 #include "libnn/nn_coderLayer.h"
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
+#include "libnn/nn_engine.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
@@ -48,16 +49,22 @@
 ***********************************************************/
 
 static int
-mnist_denoise_onMain(vkk_engine_t* engine, int argc,
+mnist_denoise_onMain(vkk_engine_t* ve, int argc,
                      char** argv)
 {
-	ASSERT(engine);
+	ASSERT(ve);
+
+	nn_engine_t* engine = nn_engine_new(ve);
+	if(engine == NULL)
+	{
+		return EXIT_FAILURE;
+	}
 
 	mnist_denoise_t* self;
 	self = mnist_denoise_new(engine, 32, 32);
 	if(self == NULL)
 	{
-		return EXIT_FAILURE;
+		goto fail_dn;
 	}
 
 	FILE* fplot = fopen("data/plot.dat", "w");
@@ -145,6 +152,7 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	// cleanup
 	fclose(fplot);
 	mnist_denoise_delete(&self);
+	nn_engine_delete(&engine);
 
 	// success
 	return EXIT_SUCCESS;
@@ -152,6 +160,8 @@ mnist_denoise_onMain(vkk_engine_t* engine, int argc,
 	// failure
 	fail_fplot:
 		mnist_denoise_delete(&self);
+	fail_dn:
+		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }
 

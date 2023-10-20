@@ -29,6 +29,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_skipLayer.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
@@ -68,20 +69,6 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base,
 	return dL_dY;
 }
 
-// protected
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
-
 static nn_tensor_t*
 nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
                               nn_layerMode_e layer_mode,
@@ -90,8 +77,9 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	if((self->skip == NULL) || (self->skip->Y == NULL))
 	{
@@ -152,17 +140,17 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
 	// nn_skipLayer_forwardPassAdd
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_skip_forwardPassAdd;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_skip_forwardPassAdd;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 6, ua0_array);
-	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimX->height, dimX->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
 
 	return Y;
 }
@@ -175,8 +163,9 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	if((self->skip == NULL) || (self->skip->Y == NULL))
 	{
@@ -237,17 +226,17 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
 	// nn_skipLayer_forwardPassCat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_skip_forwardPassCat;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_skip_forwardPassCat;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us0,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
 	                                 6, ua0_array);
-	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimX->height, dimX->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
 
 	return Y;
 }
@@ -261,8 +250,9 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	if((self->skip == NULL) || (self->skip->dL_dX2 == NULL))
 	{
@@ -270,7 +260,7 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base,
 		return NULL;
 	}
 
-	nn_tensor_t* Null   = arch->Null;
+	nn_tensor_t* Null   = engine->Null;
 	nn_tensor_t* dL_dY2 = self->skip->dL_dX2;
 	nn_dim_t*    dimX   = &self->dimX;
 
@@ -334,17 +324,17 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base,
 	// nn_skipLayer_backpropFork
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_skip_backpropFork;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_skip_backpropFork;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 8, ua1_array);
-	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimX->height, dimX->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
 
 	// dL_dY replaced by dL_dY1 + dL_dY2
 	return dL_dY;
@@ -359,10 +349,11 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,x1d + x2d)
 
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch = base->arch;
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
-	nn_tensor_t* Null   = arch->Null;
+	nn_tensor_t* Null   = engine->Null;
 	nn_tensor_t* dL_dX1 = self->dL_dX1;
 	nn_tensor_t* dL_dX2 = self->dL_dX2;
 	nn_dim_t*    dimX   = &self->dimX;
@@ -427,17 +418,17 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base,
 	// nn_skipLayer_backpropCat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = arch->cp_skip_backpropCat;
-	if(nn_arch_bind(arch, cp) == 0)
+	cp = engine->cp_skip_backpropCat;
+	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(arch->compute, self->us1,
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 8, ua1_array);
-	vkk_compute_bindUniformSets(arch->compute, 1, us_array);
-	nn_arch_dispatch(arch, VKK_HAZZARD_RAW,
-	                 bs, dimX->height, dimX->width,
-	                 1, 8, 8);
+	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
 
 	return dL_dX1;
 }
@@ -446,17 +437,18 @@ static int nn_skipLayer_newCompute(nn_skipLayer_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->base.arch;
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
 
-	self->us0 = vkk_uniformSet_new(arch->engine, 0, 0, NULL,
-	                               arch->usf0_skip);
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_skip);
 	if(self->us0 == NULL)
 	{
 		return 0;
 	}
 
-	self->us1 = vkk_uniformSet_new(arch->engine, 1, 0, NULL,
-	                               arch->usf1_skip);
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_skip);
 	if(self->us1 == NULL)
 	{
 		goto fail_us1;
@@ -563,6 +555,8 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	ASSERT(dimX1);
 	ASSERT(skip_fork);
 
+	nn_engine_t* engine = arch->engine;
+
 	// check required dimensions
 	// x1h==x2h, x1w==x2w, x1d==x2d
 	nn_dim_t* dimX2 = nn_layer_dimY(&skip_fork->base);
@@ -604,7 +598,7 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 
 	nn_dim_copy(dimX1, &self->dimX);
 
-	self->Y = nn_tensor_new(arch, dimX1,
+	self->Y = nn_tensor_new(engine, dimX1,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -640,6 +634,8 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 {
 	ASSERT(arch);
 	ASSERT(skip_fork);
+
+	nn_engine_t* engine = arch->engine;
 
 	// check required dimensions
 	// x1h==x2h, x1w==x2w
@@ -689,7 +685,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 		.depth  = dimX1->depth + dimX2->depth,
 	};
 
-	self->Y = nn_tensor_new(arch, &dimY,
+	self->Y = nn_tensor_new(engine, &dimY,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -697,7 +693,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 		goto fail_Y;
 	}
 
-	self->dL_dX1 = nn_tensor_new(arch, dimX1,
+	self->dL_dX1 = nn_tensor_new(engine, dimX1,
 	                             NN_TENSOR_INIT_ZERO,
 	                             NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX1 == NULL)
@@ -705,7 +701,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 		goto fail_dL_dX1;
 	}
 
-	self->dL_dX2 = nn_tensor_new(arch, dimX2,
+	self->dL_dX2 = nn_tensor_new(engine, dimX2,
 	                             NN_TENSOR_INIT_ZERO,
 	                             NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dX2 == NULL)

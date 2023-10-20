@@ -30,25 +30,12 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
+#include "nn_engine.h"
 #include "nn_tensor.h"
 
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-// protected
-extern void
-nn_arch_dispatch(nn_arch_t* self,
-                 vkk_hazzard_e hazzard,
-                 uint32_t count_x,
-                 uint32_t count_y,
-                 uint32_t count_z,
-                 uint32_t local_size_x,
-                 uint32_t local_size_y,
-                 uint32_t local_size_z);
-extern int
-nn_arch_bind(nn_arch_t* self,
-             vkk_computePipeline_t* cp);
 
 static int
 nn_tensor_isModeIO(nn_tensor_t* self)
@@ -103,7 +90,7 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 	nn_tensor_t* tmp = NULL;
 	if(self->tensor_mode == NN_TENSOR_MODE_COMPUTE)
 	{
-		tmp = nn_tensor_new(self->arch, dim,
+		tmp = nn_tensor_new(self->engine, dim,
 		                    NN_TENSOR_INIT_ZERO,
 		                    NN_TENSOR_MODE_IO);
 		if(tmp == NULL)
@@ -167,7 +154,7 @@ nn_tensor_initXavierWeights(nn_tensor_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->arch;
+	nn_engine_t* engine = self->engine;
 
 	nn_dim_t* dim = nn_tensor_dim(self);
 	uint32_t  fc  = dim->count;
@@ -191,7 +178,7 @@ nn_tensor_initXavierWeights(nn_tensor_t* self)
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					w = cc_rngUniform_rand2F(&arch->rng_uniform,
+					w = cc_rngUniform_rand2F(&engine->rng_uniform,
 					                         min, max);
 					nn_tensor_set(self, n, i, j, k, w);
 				}
@@ -205,7 +192,7 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 {
 	ASSERT(self);
 
-	nn_arch_t* arch = self->arch;
+	nn_engine_t* engine = self->engine;
 
 	nn_dim_t* dim = nn_tensor_dim(self);
 	uint32_t  fc  = dim->count;
@@ -216,7 +203,7 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 
 	double mu    = 0.0;
 	double sigma = sqrt(2.0/((double) hwd));
-	cc_rngNormal_reset(&arch->rng_normal, mu, sigma);
+	cc_rngNormal_reset(&engine->rng_normal, mu, sigma);
 
 	float    w;
 	uint32_t n;
@@ -231,7 +218,7 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					w = cc_rngNormal_rand1F(&arch->rng_normal);
+					w = cc_rngNormal_rand1F(&engine->rng_normal);
 					nn_tensor_set(self, n, i, j, k, w);
 				}
 			}
@@ -244,11 +231,11 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 ***********************************************************/
 
 nn_tensor_t*
-nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
+nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
               nn_tensorInit_e init,
               nn_tensorMode_e tensor_mode)
 {
-	ASSERT(arch);
+	ASSERT(engine);
 	ASSERT(dim);
 
 	nn_tensor_t* self;
@@ -260,33 +247,34 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 		return NULL;
 	}
 
-	self->arch        = arch;
+	self->engine      = engine;
 	self->tensor_mode = tensor_mode;
 
 	nn_dim_copy(dim, &self->dim);
 
 	vkk_updateMode_e um;
-	um = vkk_compute_updateMode(arch->compute);
+	um = vkk_compute_updateMode(engine->compute);
 
 	if(tensor_mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		nn_tensor_t* tmp;
-		tmp = nn_tensor_new(arch, dim, init, NN_TENSOR_MODE_IO);
+		tmp = nn_tensor_new(engine, dim, init,
+		                    NN_TENSOR_MODE_IO);
 		if(tmp == NULL)
 		{
 			goto fail_data;
 		}
 
-		self->us0_clear = vkk_uniformSet_new(arch->engine,
+		self->us0_clear = vkk_uniformSet_new(engine->engine,
 		                                     0, 0, NULL,
-		                                     arch->usf0_tensor);
+		                                     engine->usf0_tensor);
 		if(self->us0_clear == NULL)
 		{
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
 
-		self->sb_dim = vkk_buffer_new(arch->engine, um,
+		self->sb_dim = vkk_buffer_new(engine->engine, um,
 		                              VKK_BUFFER_USAGE_STORAGE,
 		                              sizeof(nn_dim_t),
 		                              dim);
@@ -297,7 +285,7 @@ nn_tensor_new(nn_arch_t* arch, nn_dim_t* dim,
 			goto fail_data;
 		}
 
-		self->sb_data = vkk_buffer_new(arch->engine, um,
+		self->sb_data = vkk_buffer_new(engine->engine, um,
 		                               VKK_BUFFER_USAGE_STORAGE,
 		                               nn_dim_sizeof(dim),
 		                               tmp->data);
@@ -447,7 +435,7 @@ int nn_tensor_store(nn_tensor_t* self,
 	nn_tensor_t* tmp = NULL;
 	if(self->tensor_mode == NN_TENSOR_MODE_COMPUTE)
 	{
-		tmp = nn_tensor_new(self->arch, dim,
+		tmp = nn_tensor_new(self->engine, dim,
 		                    NN_TENSOR_INIT_ZERO,
 		                    NN_TENSOR_MODE_IO);
 		if(tmp == NULL)
@@ -510,10 +498,10 @@ void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		nn_arch_t* arch = self->arch;
+		nn_engine_t* engine = self->engine;
 
 		// compute tensors may only be cleared while computing
-		if(arch->computing == 0)
+		if(engine->computing == 0)
 		{
 			LOGE("invalid");
 			return;
@@ -539,21 +527,21 @@ void nn_tensor_clear(nn_tensor_t* self, int hazzard)
 		vkk_computePipeline_t* cp;
 		if(count%64 == 0)
 		{
-			cp = arch->cp_tensor_clearAligned;
+			cp = engine->cp_tensor_clearAligned;
 		}
 		else
 		{
-			cp = arch->cp_tensor_clear;
+			cp = engine->cp_tensor_clear;
 		}
-		nn_arch_bind(arch, cp);
-		vkk_compute_updateUniformSetRefs(arch->compute,
+		nn_engine_bind(engine, cp);
+		vkk_compute_updateUniformSetRefs(engine->compute,
 		                                 self->us0_clear,
 		                                 2, ua0_array);
-		vkk_compute_bindUniformSets(arch->compute, 1,
+		vkk_compute_bindUniformSets(engine->compute, 1,
 		                            &self->us0_clear);
-		nn_arch_dispatch(arch,
-		                 (vkk_hazzard_e) hazzard,
-		                 count, 1, 1, 64, 1, 1);
+		nn_engine_dispatch(engine,
+		                   (vkk_hazzard_e) hazzard,
+		                   count, 1, 1, 64, 1, 1);
 	}
 	else
 	{
@@ -885,7 +873,7 @@ int nn_tensor_blit(nn_tensor_t* src,
 	float* src_data = nn_tensor_data(src, src_offset);
 	float* dst_data = nn_tensor_data(dst, dst_offset);
 
-	vkk_compute_t* compute = src->arch->compute;
+	vkk_compute_t* compute = src->engine->compute;
 	if((src->tensor_mode == NN_TENSOR_MODE_IO) &&
 	   (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
 	{

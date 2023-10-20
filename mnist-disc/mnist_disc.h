@@ -50,12 +50,12 @@ typedef struct
 	nn_tensor_t*         Y;
 } mnist_disc_t;
 
-mnist_disc_t* mnist_disc_new(vkk_engine_t* engine,
+mnist_disc_t* mnist_disc_new(nn_engine_t* engine,
                              uint32_t bs,
                              uint32_t fc,
                              const char* fname_dn);
 void          mnist_disc_delete(mnist_disc_t** _self);
-mnist_disc_t* mnist_disc_import(vkk_engine_t* engine,
+mnist_disc_t* mnist_disc_import(nn_engine_t* engine,
                                 const char* fname,
                                 const char* fname_dn);
 int           mnist_disc_export(mnist_disc_t* self,
