@@ -50,12 +50,9 @@ typedef struct nn_arch_s
 	nn_archState_t state;
 	vkk_buffer_t*  sb_state;
 
-	// references to layer, loss and discriminator
-	// loss is for normal NN
-	// D is discriminator for GAN generator NN
+	// references
 	cc_list_t* layers;
 	nn_loss_t* loss;
-	nn_arch_t* D;
 
 	// compute tensors (allocated on demand)
 	nn_tensor_t* X;
@@ -75,8 +72,6 @@ int          nn_arch_attachLayer(nn_arch_t* self,
                                  nn_layer_t* layer);
 int          nn_arch_attachLoss(nn_arch_t* self,
                                 nn_loss_t* loss);
-int          nn_arch_attachD(nn_arch_t* self,
-                             nn_arch_t* D);
 nn_tensor_t* nn_arch_train(nn_arch_t* self,
                            nn_layerMode_e layer_mode,
                            uint32_t bs,

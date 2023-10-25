@@ -180,26 +180,6 @@ static void nn_arch_endCompute(nn_arch_t* self)
 	}
 }
 
-static int nn_arch_resumeCompute(nn_arch_t* self)
-{
-	ASSERT(self);
-
-	nn_engine_t* engine = self->engine;
-
-	if(engine->computing == 0)
-	{
-		if(vkk_compute_begin(engine->compute) == 0)
-		{
-			LOGE("invalid");
-			return 0;
-		}
-
-		engine->computing = 1;
-	}
-
-	return 1;
-}
-
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -456,7 +436,7 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	ASSERT(self);
 	ASSERT(loss);
 
-	if(self->loss || self->D)
+	if(self->loss)
 	{
 		LOGE("invalid");
 		return 0;
@@ -478,22 +458,6 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	return 1;
 }
 
-int nn_arch_attachD(nn_arch_t* self, nn_arch_t* D)
-{
-	ASSERT(self);
-	ASSERT(D);
-
-	if(self->loss || self->D)
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	self->D = D;
-
-	return 1;
-}
-
 nn_tensor_t*
 nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
               uint32_t bs, nn_tensor_t* X,
@@ -505,7 +469,7 @@ nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
 	ASSERT(Yt);
 
 	// check if a loss function was specified
-	if((self->loss == NULL) && (self->D == NULL))
+	if(self->loss == NULL)
 	{
 		LOGE("invalid");
 		return 0;
@@ -547,22 +511,6 @@ nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
 	if(self->loss)
 	{
 		dL_dY = nn_loss_loss(self->loss, bs, X, Yt);
-	}
-	else if(self->D)
-	{
-		// finish generator forward pass
-		nn_arch_endCompute(self);
-
-		// discriminator loss
-		dL_dY = nn_arch_train(self->D,
-		                      NN_LAYER_MODE_TRAIN_NOP,
-		                      bs, X, Yt, NULL);
-
-		// resume generator backprop
-		if(nn_arch_resumeCompute(self) == 0)
-		{
-			goto fail_loss;
-		}
 	}
 
 	if(dL_dY == NULL)
@@ -616,10 +564,6 @@ float nn_arch_loss(nn_arch_t* self)
 	if(self->loss)
 	{
 		return self->loss->loss;
-	}
-	else if(self->D)
-	{
-		return nn_arch_loss(self->D);
 	}
 
 	return 0.0f;
