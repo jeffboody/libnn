@@ -88,7 +88,6 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_conv_backprop_dL_dB;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dX;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dW;
-	vkk_computePipeline_t* cp_conv_backpropGradientClipping;
 	vkk_computePipeline_t* cp_conv_backpropUpdateW;
 	vkk_computePipeline_t* cp_conv_backpropUpdateB;
 	vkk_computePipeline_t* cp_fact_forwardPassLinear;
@@ -109,7 +108,6 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_skip_backpropCat;
 	vkk_computePipeline_t* cp_skip_backpropFork;
 	vkk_computePipeline_t* cp_weight_forwardPass;
-	vkk_computePipeline_t* cp_weight_backpropGradientClipping;
 	vkk_computePipeline_t* cp_weight_backpropUpdateW;
 	vkk_computePipeline_t* cp_weight_backpropUpdateB;
 	vkk_computePipeline_t* cp_weight_backprop_dL_dX;

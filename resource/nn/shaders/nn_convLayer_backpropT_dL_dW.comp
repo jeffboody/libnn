@@ -42,32 +42,32 @@ layout(std430, set=0, binding=3) readonly buffer sb03
 	float X[];
 };
 
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=2, binding=2) readonly buffer sb22
+layout(std430, set=2, binding=1) readonly buffer sb21
 {
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=3) readonly buffer sb23
+layout(std430, set=2, binding=2) readonly buffer sb22
 {
 	nn_dim_t dim_dL_dW;
 };
 
-layout(std430, set=2, binding=4) writeonly buffer sb24
+layout(std430, set=2, binding=3) writeonly buffer sb23
 {
 	float dL_dW[];
 };
 
-layout(std430, set=2, binding=7) readonly buffer sb27
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	nn_dim_t dim_dL_dX;
 };
 
-layout(std430, set=2, binding=8) readonly buffer sb28
+layout(std430, set=2, binding=7) readonly buffer sb27
 {
 	float dL_dX[];
 };

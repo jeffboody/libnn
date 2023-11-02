@@ -82,19 +82,18 @@ Forward Pass Uniforms
 
 Backprop Uniforms
 
-* sb20:  gc
-* sb21:  dim_dL_dY
-* sb22:  dL_dY
-* sb23:  dim_dL_dW
-* sb24:  dL_dW
-* sb25:  dim_dL_dB
-* sb26:  dL_dB
-* sb27:  dim_dL_dX
-* sb28:  dL_dX
-* sb29:  dimVW
-* sb210: VW
-* sb211: dimVB
-* sb212: VB
+* sb20:  dim_dL_dY
+* sb21:  dL_dY
+* sb22:  dim_dL_dW
+* sb23:  dL_dW
+* sb24:  dim_dL_dB
+* sb25:  dL_dB
+* sb26:  dim_dL_dX
+* sb27:  dL_dX
+* sb28:  dimVW
+* sb29:  VW
+* sb210: dimVB
+* sb211: VB
 
 Dispatch Uniforms
 
@@ -108,7 +107,6 @@ Backprop Dispatch Order
 * nn_convLayer_backprop_dL_dX (for each fi,fj)
 * nn_convLayer_backprop_dL_dW (for each f,fi,fj,k)
 * nn_convLayer_backprop_dL_dB (for each f)
-* nn_convLayer_backpropGradientClipping
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 
@@ -120,7 +118,6 @@ Backprop Dispatch Order (Transpose)
 * nn_convLayer_backpropT_dL_dX (for each fi,fj)
 * nn_convLayer_backpropT_dL_dW (for each f,fi,fj,k)
 * nn_convLayer_backprop_dL_dB  (for each f)
-* nn_convLayer_backpropGradientClipping
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 
@@ -210,19 +207,18 @@ Forward Pass Uniforms
 
 Backprop Uniforms
 
-* sb20:  gc
-* sb21:  dim_dL_dY
-* sb22:  dL_dY
-* sb23:  dim_dL_dW
-* sb24:  dL_dW
-* sb25:  dim_dL_dB
-* sb26:  dL_dB
-* sb27:  dim_dL_dX
-* sb28:  dL_dX
-* sb29:  dimVW
-* sb210: VW
-* sb211: dimVB
-* sb212: VB
+* sb20:  dim_dL_dY
+* sb21:  dL_dY
+* sb22:  dim_dL_dW
+* sb23:  dL_dW
+* sb24:  dim_dL_dB
+* sb25:  dL_dB
+* sb26:  dim_dL_dX
+* sb27:  dL_dX
+* sb28:  dimVW
+* sb29:  VW
+* sb210: dimVB
+* sb211: VB
 
 Backprop Dispatch Order
 
@@ -232,7 +228,6 @@ Backprop Dispatch Order
 * nn_weightLayer_backprop_dL_dX
 * nn_weightLayer_backprop_dL_dW
 * nn_weightLayer_backprop_dL_dB
-* nn_weightLayer_backpropGradientClipping
 * nn_weightLayer_backpropUpdateW
 * nn_weightLayer_backpropUpdateB
 

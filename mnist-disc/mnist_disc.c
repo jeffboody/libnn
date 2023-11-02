@@ -402,15 +402,10 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate   = 0.00005f,
-		.momentum_decay  = 0.5f,
-		.batch_momentum  = 0.99f,
-		.l2_lambda       = 0.01f,
-		.clip_max_weight = 1000000.0f,
-		.clip_max_bias   = 1000000.0f,
-		.clip_mu_inc     = 0.0f,
-		.clip_mu_dec     = 0.0f,
-		.clip_scale      = 1.0f,
+		.learning_rate  = 0.00005f,
+		.momentum_decay = 0.5f,
+		.batch_momentum = 0.99f,
+		.l2_lambda      = 0.01f,
 	};
 
 	mnist_disc_t* self;

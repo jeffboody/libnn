@@ -34,34 +34,22 @@ layout(std430, set=0, binding=5) buffer sb05
 	float W[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	float gc_gcw;
-	float gc_gcb;
-	float gc_norm_w;
-	float gc_norm_b;
-	float gc_norm_dl_dw;
-	float gc_norm_dl_db;
-	float gc_norm_dl_dw_ra;
-	float gc_norm_dl_db_ra;
-};
-
-layout(std430, set=2, binding=3) readonly buffer sb23
+layout(std430, set=2, binding=2) readonly buffer sb22
 {
 	nn_dim_t dim_dL_dW;
 };
 
-layout(std430, set=2, binding=4) readonly buffer sb24
+layout(std430, set=2, binding=3) readonly buffer sb23
 {
 	float dL_dW[];
 };
 
-layout(std430, set=2, binding=9) readonly buffer sb29
+layout(std430, set=2, binding=8) readonly buffer sb28
 {
 	nn_dim_t dimVW;
 };
 
-layout(std430, set=2, binding=10) buffer sb210
+layout(std430, set=2, binding=9) buffer sb29
 {
 	float VW[];
 };
@@ -134,7 +122,7 @@ void main()
 
 		// Nesterov Momentum Update and L2 Regularization
 		float v0  = getVW(f, fi, fj, k);
-		float v1  = mu*v0 - lr*(gc_gcw*dl_dw + 2.0*lambda*w);
+		float v1  = mu*v0 - lr*(dl_dw + 2.0*lambda*w);
 		setVW(f, fi, fj, k, v1);
 		addW(f, fi, fj, k, -mu*v0 + (1.0 + mu)*v1);
 	}

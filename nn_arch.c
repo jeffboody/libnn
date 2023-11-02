@@ -255,11 +255,6 @@ nn_arch_import(nn_engine_t* engine,
 	jsmn_val_t* val_momentum_decay  = NULL;
 	jsmn_val_t* val_batch_momentum  = NULL;
 	jsmn_val_t* val_l2_lambda       = NULL;
-	jsmn_val_t* val_clip_max_weight = NULL;
-	jsmn_val_t* val_clip_max_bias   = NULL;
-	jsmn_val_t* val_clip_mu_inc     = NULL;
-	jsmn_val_t* val_clip_mu_dec     = NULL;
-	jsmn_val_t* val_clip_scale      = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -285,26 +280,6 @@ nn_arch_import(nn_engine_t* engine,
 			{
 				val_l2_lambda = kv->val;
 			}
-			else if(strcmp(kv->key, "clip_max_weight") == 0)
-			{
-				val_clip_max_weight = kv->val;
-			}
-			else if(strcmp(kv->key, "clip_max_bias") == 0)
-			{
-				val_clip_max_bias = kv->val;
-			}
-			else if(strcmp(kv->key, "clip_mu_inc") == 0)
-			{
-				val_clip_mu_inc = kv->val;
-			}
-			else if(strcmp(kv->key, "clip_mu_dec") == 0)
-			{
-				val_clip_mu_dec = kv->val;
-			}
-			else if(strcmp(kv->key, "clip_scale") == 0)
-			{
-				val_clip_scale = kv->val;
-			}
 		}
 
 		iter = cc_list_next(iter);
@@ -314,12 +289,7 @@ nn_arch_import(nn_engine_t* engine,
 	if((val_learning_rate   == NULL) ||
 	   (val_momentum_decay  == NULL) ||
 	   (val_batch_momentum  == NULL) ||
-	   (val_l2_lambda       == NULL) ||
-	   (val_clip_max_weight == NULL) ||
-	   (val_clip_max_bias   == NULL) ||
-	   (val_clip_mu_inc     == NULL) ||
-	   (val_clip_mu_dec     == NULL) ||
-	   (val_clip_scale      == NULL))
+	   (val_l2_lambda       == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -327,15 +297,10 @@ nn_arch_import(nn_engine_t* engine,
 
 	nn_archState_t state =
 	{
-		.learning_rate   = strtof(val_learning_rate->data,   NULL),
-		.momentum_decay  = strtof(val_momentum_decay->data,  NULL),
-		.batch_momentum  = strtof(val_batch_momentum->data,  NULL),
-		.l2_lambda       = strtof(val_l2_lambda->data,       NULL),
-		.clip_max_weight = strtof(val_clip_max_weight->data, NULL),
-		.clip_max_bias   = strtof(val_clip_max_bias->data,   NULL),
-		.clip_mu_inc     = strtof(val_clip_mu_inc->data,     NULL),
-		.clip_mu_dec     = strtof(val_clip_mu_dec->data,     NULL),
-		.clip_scale      = strtof(val_clip_scale->data,     NULL),
+		.learning_rate  = strtof(val_learning_rate->data,  NULL),
+		.momentum_decay = strtof(val_momentum_decay->data, NULL),
+		.batch_momentum = strtof(val_batch_momentum->data, NULL),
+		.l2_lambda      = strtof(val_l2_lambda->data,      NULL),
 	};
 
 	return nn_arch_new(engine, base_size, &state);
@@ -359,16 +324,6 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_float(stream, state->batch_momentum);
 	ret &= jsmn_stream_key(stream, "%s", "l2_lambda");
 	ret &= jsmn_stream_float(stream, state->l2_lambda);
-	ret &= jsmn_stream_key(stream, "%s", "clip_max_weight");
-	ret &= jsmn_stream_float(stream, state->clip_max_weight);
-	ret &= jsmn_stream_key(stream, "%s", "clip_max_bias");
-	ret &= jsmn_stream_float(stream, state->clip_max_bias);
-	ret &= jsmn_stream_key(stream, "%s", "clip_mu_inc");
-	ret &= jsmn_stream_float(stream, state->clip_mu_inc);
-	ret &= jsmn_stream_key(stream, "%s", "clip_mu_dec");
-	ret &= jsmn_stream_float(stream, state->clip_mu_dec);
-	ret &= jsmn_stream_key(stream, "%s", "clip_scale");
-	ret &= jsmn_stream_float(stream, state->clip_scale);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

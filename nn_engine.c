@@ -156,11 +156,11 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_conv = vkk_uniformSetFactory_new(engine, um,
 	                                            2, ub_array);
 
-	// sb20:  gc
+	// sb20:  dim_dL_dY
 	// ...
-	// sb212: VB
+	// sb211: VB
 	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
-	                                            13, ub_array);
+	                                            12, ub_array);
 
 	// sb30:  idx
 	self->usf3_conv = vkk_uniformSetFactory_new(engine, um,
@@ -222,11 +222,11 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_weight = vkk_uniformSetFactory_new(engine, um,
 	                                              2, ub_array);
 
-	// sb20:  gc
+	// sb20:  dim_dL_dY
 	// ...
-	// sb212: VB
+	// sb211: VB
 	self->usf2_weight = vkk_uniformSetFactory_new(engine, um,
-	                                              13, ub_array);
+	                                              12, ub_array);
 
 	// sb00: state
 	// ...
@@ -510,17 +510,6 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_conv_backpropT_dL_dW);
 
-	vkk_computePipelineInfo_t cpi_conv_backpropGradientClipping =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_conv,
-		.cs      = "nn/shaders/nn_convLayer_backpropGradientClipping_comp.spv",
-	};
-
-	self->cp_conv_backpropGradientClipping =
-		vkk_computePipeline_new(engine,
-		                        &cpi_conv_backpropGradientClipping);
-
 	vkk_computePipelineInfo_t cpi_conv_backpropUpdateW =
 	{
 		.compute = self->compute,
@@ -741,17 +730,6 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_weight_forwardPass);
 
-	vkk_computePipelineInfo_t cpi_weight_backpropGradientClipping =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_weight,
-		.cs      = "nn/shaders/nn_weightLayer_backpropGradientClipping_comp.spv",
-	};
-
-	self->cp_weight_backpropGradientClipping =
-		vkk_computePipeline_new(engine,
-		                        &cpi_weight_backpropGradientClipping);
-
 	vkk_computePipelineInfo_t cpi_weight_backpropUpdateW =
 	{
 		.compute = self->compute,
@@ -910,7 +888,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_conv_backprop_dL_dB             == NULL) ||
 	   (self->cp_conv_backpropT_dL_dX            == NULL) ||
 	   (self->cp_conv_backpropT_dL_dW            == NULL) ||
-	   (self->cp_conv_backpropGradientClipping   == NULL) ||
 	   (self->cp_conv_backpropUpdateW            == NULL) ||
 	   (self->cp_conv_backpropUpdateB            == NULL) ||
 	   (self->cp_fact_forwardPassLinear          == NULL) ||
@@ -931,7 +908,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_skip_backpropCat                == NULL) ||
 	   (self->cp_skip_backpropFork               == NULL) ||
 	   (self->cp_weight_forwardPass              == NULL) ||
-	   (self->cp_weight_backpropGradientClipping == NULL) ||
 	   (self->cp_weight_backpropUpdateW          == NULL) ||
 	   (self->cp_weight_backpropUpdateB          == NULL) ||
 	   (self->cp_weight_backprop_dL_dX           == NULL) ||
@@ -1037,7 +1013,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_weight_backprop_dL_dX);
 		vkk_computePipeline_delete(&self->cp_weight_backpropUpdateB);
 		vkk_computePipeline_delete(&self->cp_weight_backpropUpdateW);
-		vkk_computePipeline_delete(&self->cp_weight_backpropGradientClipping);
 		vkk_computePipeline_delete(&self->cp_weight_forwardPass);
 		vkk_computePipeline_delete(&self->cp_skip_backpropFork);
 		vkk_computePipeline_delete(&self->cp_skip_backpropCat);
@@ -1058,7 +1033,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassLinear);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateB);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateW);
-		vkk_computePipeline_delete(&self->cp_conv_backpropGradientClipping);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dX);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dB);

@@ -26,22 +26,22 @@ layout(std430, set=0, binding=5) readonly buffer sb05
 	float W[];
 };
 
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=2, binding=2) readonly buffer sb22
+layout(std430, set=2, binding=1) readonly buffer sb21
 {
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=7) readonly buffer sb27
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	nn_dim_t dim_dL_dX;
 };
 
-layout(std430, set=2, binding=8) buffer sb28
+layout(std430, set=2, binding=7) buffer sb27
 {
 	float dL_dX[];
 };

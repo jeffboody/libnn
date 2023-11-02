@@ -34,24 +34,12 @@ layout(std430, set=0, binding=7) buffer sb07
 	float B[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	float gc_gcw;
-	float gc_gcb;
-	float gc_norm_w;
-	float gc_norm_b;
-	float gc_norm_dl_dw;
-	float gc_norm_dl_db;
-	float gc_norm_dl_dw_ra;
-	float gc_norm_dl_db_ra;
-};
-
-layout(std430, set=2, binding=6) readonly buffer sb26
+layout(std430, set=2, binding=5) readonly buffer sb25
 {
 	float dL_dB[];
 };
 
-layout(std430, set=2, binding=12) buffer sb212
+layout(std430, set=2, binding=11) buffer sb211
 {
 	float VB[];
 };
@@ -95,7 +83,7 @@ void main()
 
 	// Nesterov Momentum Update
 	float v0  = getVB(f);
-	float v1  = mu*v0 - lr*gc_gcb*dl_db;
+	float v1  = mu*v0 - lr*dl_db;
 	setVB(f, v1);
 	addB(f, -mu*v0 + (1.0 + mu)*v1);
 }

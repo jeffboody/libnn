@@ -170,11 +170,9 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc     = &self->gc;
-	nn_arch_t*        arch   = base->arch;
-	nn_archState_t*   state  = &arch->state;
-	nn_engine_t*      engine = arch->engine;
+	nn_convLayer_t* self   = (nn_convLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -196,83 +194,77 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	}
 	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
-	// sb20:  gc
-	// sb21:  dim_dL_dY
-	// sb22:  dL_dY
-	// sb23:  dim_dL_dW
-	// sb24:  dL_dW
-	// sb25:  dim_dL_dB
-	// sb26:  dL_dB
-	// sb27:  dim_dL_dX
-	// sb28:  dL_dX
-	// sb29:  dimVW
-	// sb210: VW
-	// sb211: dimVB
-	// sb212: VB
+	// sb20:  dim_dL_dY
+	// sb21:  dL_dY
+	// sb22:  dim_dL_dW
+	// sb23:  dL_dW
+	// sb24:  dim_dL_dB
+	// sb25:  dL_dB
+	// sb26:  dim_dL_dX
+	// sb27:  dL_dX
+	// sb28:  dimVW
+	// sb29:  VW
+	// sb210: dimVB
+	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb20_gc,
+			.buffer  = dL_dY->sb_dim,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
+			.buffer  = dL_dY->sb_data,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_data,
+			.buffer  = dL_dW->sb_dim,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
+			.buffer  = dL_dW->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
+			.buffer  = dL_dB->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_dim,
+			.buffer  = dL_dB->sb_data,
 		},
 		{
 			.binding = 6,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_data,
+			.buffer  = dL_dX->sb_dim,
 		},
 		{
 			.binding = 7,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
+			.buffer  = dL_dX->sb_data,
 		},
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
+			.buffer  = VW->sb_dim,
 		},
 		{
 			.binding = 9,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_dim,
+			.buffer  = VW->sb_data,
 		},
 		{
 			.binding = 10,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_data,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_dim,
 		},
 		{
-			.binding = 12,
+			.binding = 11,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_data,
 		},
@@ -298,7 +290,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 13, ua2_array);
+	                                 12, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
@@ -379,30 +371,6 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		return dL_dX;
 	}
 
-	// initialize gc but keep running averages
-	gc->gcw        = 1.0f;
-	gc->gcb        = 1.0f;
-	gc->norm_w     = 0.0f;
-	gc->norm_b     = 0.0f;
-	gc->norm_dl_dw = 0.0f;
-	gc->norm_dl_db = 0.0f;
-	vkk_compute_writeBuffer(engine->compute, self->sb20_gc,
-	                        sizeof(nn_convLayerGc_t), 0, gc);
-
-	// nn_convLayer_backpropGradientClipping
-	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
-	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f))
-	{
-		cp = engine->cp_conv_backpropGradientClipping;
-		if(nn_engine_bind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-		nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
-		                   1, 1, 1, 4, 4, 4);
-	}
-
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
 	cp = engine->cp_conv_backpropUpdateW;
@@ -425,34 +393,6 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	                   fc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
-}
-
-static void
-nn_convLayer_postFn(nn_layer_t* base,
-                    nn_layerMode_e layer_mode)
-{
-	ASSERT(base);
-
-	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc     = &self->gc;
-	nn_arch_t*        arch   = base->arch;
-	nn_archState_t*   state  = &arch->state;
-	nn_engine_t*      engine = arch->engine;
-
-	if((layer_mode == NN_LAYER_MODE_TRAIN) &&
-	   (state->clip_max_weight > 0.0f)     &&
-	   (state->clip_max_bias   > 0.0f))
-	{
-		vkk_compute_readBuffer(engine->compute, self->sb20_gc,
-		                       sizeof(nn_convLayerGc_t), 0, gc);
-
-		#ifdef NN_GC_DEBUG
-		LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
-		     gc->norm_w, gc->norm_b,
-		     gc->norm_dl_dw, gc->norm_dl_dw_ra,
-		     gc->norm_dl_db, gc->norm_dl_db_ra);
-		#endif
-	}
 }
 
 static nn_tensor_t*
@@ -577,11 +517,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
 
-	nn_convLayer_t*   self   = (nn_convLayer_t*) base;
-	nn_convLayerGc_t* gc     = &self->gc;
-	nn_arch_t*        arch   = base->arch;
-	nn_archState_t*   state  = &arch->state;
-	nn_engine_t*      engine = arch->engine;
+	nn_convLayer_t* self   = (nn_convLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -603,83 +541,77 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	}
 	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
-	// sb20:  gc
-	// sb21:  dim_dL_dY
-	// sb22:  dL_dY
-	// sb23:  dim_dL_dW
-	// sb24:  dL_dW
-	// sb25:  dim_dL_dB
-	// sb26:  dL_dB
-	// sb27:  dim_dL_dX
-	// sb28:  dL_dX
-	// sb29:  dimVW
-	// sb210: VW
-	// sb211: dimVB
-	// sb212: VB
+	// sb20:  dim_dL_dY
+	// sb21:  dL_dY
+	// sb22:  dim_dL_dW
+	// sb23:  dL_dW
+	// sb24:  dim_dL_dB
+	// sb25:  dL_dB
+	// sb26:  dim_dL_dX
+	// sb27:  dL_dX
+	// sb28:  dimVW
+	// sb29:  VW
+	// sb210: dimVB
+	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb20_gc,
+			.buffer  = dL_dY->sb_dim,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
+			.buffer  = dL_dY->sb_data,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_data,
+			.buffer  = dL_dW->sb_dim,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
+			.buffer  = dL_dW->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
+			.buffer  = dL_dB->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_dim,
+			.buffer  = dL_dB->sb_data,
 		},
 		{
 			.binding = 6,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_data,
+			.buffer  = dL_dX->sb_dim,
 		},
 		{
 			.binding = 7,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
+			.buffer  = dL_dX->sb_data,
 		},
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
+			.buffer  = VW->sb_dim,
 		},
 		{
 			.binding = 9,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_dim,
+			.buffer  = VW->sb_data,
 		},
 		{
 			.binding = 10,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_data,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_dim,
 		},
 		{
-			.binding = 12,
+			.binding = 11,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_data,
 		},
@@ -705,7 +637,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 13, ua2_array);
+	                                 12, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
@@ -786,30 +718,6 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 		return dL_dX;
 	}
 
-	// initialize gc but keep running averages
-	gc->gcw        = 1.0f;
-	gc->gcb        = 1.0f;
-	gc->norm_w     = 0.0f;
-	gc->norm_b     = 0.0f;
-	gc->norm_dl_dw = 0.0f;
-	gc->norm_dl_db = 0.0f;
-	vkk_compute_writeBuffer(engine->compute, self->sb20_gc,
-	                        sizeof(nn_convLayerGc_t), 0, gc);
-
-	// nn_convLayer_backpropGradientClipping
-	// dispatch(RAW, 1, 1, 1, 4, 4, 4)
-	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f))
-	{
-		cp = engine->cp_conv_backpropGradientClipping;
-		if(nn_engine_bind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-		nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
-		                   1, 1, 1, 4, 4, 4);
-	}
-
 	// nn_convLayer_backpropUpdateW
 	// dispatch(RAW, fc, fh, fw, 4, 4, 4)
 	cp = engine->cp_conv_backpropUpdateW;
@@ -878,21 +786,10 @@ nn_convLayer_newCompute(nn_convLayer_t* self)
 		goto fail_sb01_param;
 	}
 
-	self->sb20_gc = vkk_buffer_new(engine->engine,
-	                               VKK_UPDATE_MODE_SYNCHRONOUS,
-	                               VKK_BUFFER_USAGE_STORAGE,
-	                               sizeof(nn_convLayerGc_t), NULL);
-	if(self->sb20_gc == NULL)
-	{
-		goto fail_sb20_gc;
-	}
-
 	// success
 	return 1;
 
 	// failure
-	fail_sb20_gc:
-		vkk_buffer_delete(&self->sb01_param);
 	fail_sb01_param:
 		vkk_uniformSet_delete(&self->us2);
 	fail_us2:
@@ -907,7 +804,6 @@ nn_convLayer_deleteCompute(nn_convLayer_t* self)
 {
 	ASSERT(self);
 
-	vkk_buffer_delete(&self->sb20_gc);
 	vkk_buffer_delete(&self->sb01_param);
 	vkk_uniformSet_delete(&self->us2);
 	vkk_uniformSet_delete(&self->us1);
@@ -972,7 +868,6 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_convLayer_forwardPassFn,
 		.backprop_fn     = nn_convLayer_backpropFn,
-		.post_fn         = nn_convLayer_postFn,
 		.dimX_fn         = nn_convLayer_dimXFn,
 		.dimY_fn         = nn_convLayer_dimYFn,
 	};
@@ -1140,16 +1035,14 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX          = NULL;
-	jsmn_val_t* val_dimW          = NULL;
-	jsmn_val_t* val_flags         = NULL;
-	jsmn_val_t* val_stride        = NULL;
-	jsmn_val_t* val_W             = NULL;
-	jsmn_val_t* val_B             = NULL;
-	jsmn_val_t* val_VW            = NULL;
-	jsmn_val_t* val_VB            = NULL;
-	jsmn_val_t* val_norm_dl_dw_ra = NULL;
-	jsmn_val_t* val_norm_dl_db_ra = NULL;
+	jsmn_val_t* val_dimX   = NULL;
+	jsmn_val_t* val_dimW   = NULL;
+	jsmn_val_t* val_flags  = NULL;
+	jsmn_val_t* val_stride = NULL;
+	jsmn_val_t* val_W      = NULL;
+	jsmn_val_t* val_B      = NULL;
+	jsmn_val_t* val_VW     = NULL;
+	jsmn_val_t* val_VB     = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -1166,14 +1059,6 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			else if(strcmp(kv->key, "stride") == 0)
 			{
 				val_stride = kv->val;
-			}
-			else if(strcmp(kv->key, "norm_dl_dw_ra") == 0)
-			{
-				val_norm_dl_dw_ra = kv->val;
-			}
-			else if(strcmp(kv->key, "norm_dl_db_ra") == 0)
-			{
-				val_norm_dl_db_ra = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -1215,9 +1100,7 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	   (val_W             == NULL) ||
 	   (val_B             == NULL) ||
 	   (val_VW            == NULL) ||
-	   (val_VB            == NULL) ||
-	   (val_norm_dl_dw_ra == NULL) ||
-	   (val_norm_dl_db_ra == NULL))
+	   (val_VB            == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -1241,10 +1124,6 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	{
 		return NULL;
 	}
-
-	// initialize running averages
-	self->gc.norm_dl_dw_ra = strtof(val_norm_dl_dw_ra->data, NULL);
-	self->gc.norm_dl_db_ra = strtof(val_norm_dl_db_ra->data, NULL);
 
 	// load tensors
 	if((nn_tensor_load(self->W,  val_W)  == 0) ||
@@ -1291,10 +1170,6 @@ int nn_convLayer_export(nn_convLayer_t* self,
 	ret &= nn_tensor_store(self->VW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
 	ret &= nn_tensor_store(self->VB, stream);
-	ret &= jsmn_stream_key(stream, "%s", "norm_dl_dw_ra");
-	ret &= jsmn_stream_float(stream, self->gc.norm_dl_dw_ra);
-	ret &= jsmn_stream_key(stream, "%s", "norm_dl_db_ra");
-	ret &= jsmn_stream_float(stream, self->gc.norm_dl_db_ra);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

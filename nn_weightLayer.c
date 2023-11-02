@@ -168,11 +168,9 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,1,1,nc)
 
-	nn_weightLayer_t*   self   = (nn_weightLayer_t*) base;
-	nn_weightLayerGc_t* gc     = &self->gc;
-	nn_arch_t*          arch   = base->arch;
-	nn_archState_t*     state  = &arch->state;
-	nn_engine_t*        engine = arch->engine;
+	nn_weightLayer_t* self   = (nn_weightLayer_t*) base;
+	nn_arch_t*        arch   = base->arch;
+	nn_engine_t*      engine = arch->engine;
 
 	nn_tensor_t* VW   = self->VW;
 	nn_tensor_t* VB   = self->VB;
@@ -191,83 +189,77 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	}
 	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
 
-	// sb20:  gc
-	// sb21:  dim_dL_dY
-	// sb22:  dL_dY
-	// sb23:  dim_dL_dW
-	// sb24:  dL_dW
-	// sb25:  dim_dL_dB
-	// sb26:  dL_dB
-	// sb27:  dim_dL_dX
-	// sb28:  dL_dX
-	// sb29:  dimVW
-	// sb210: VW
-	// sb211: dimVB
-	// sb212: VB
+	// sb20:  dim_dL_dY
+	// sb21:  dL_dY
+	// sb22:  dim_dL_dW
+	// sb23:  dL_dW
+	// sb24:  dim_dL_dB
+	// sb25:  dL_dB
+	// sb26:  dim_dL_dX
+	// sb27:  dL_dX
+	// sb28:  dimVW
+	// sb29:  VW
+	// sb210: dimVB
+	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb20_gc,
+			.buffer  = dL_dY->sb_dim,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
+			.buffer  = dL_dY->sb_data,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_data,
+			.buffer  = dL_dW->sb_dim,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
+			.buffer  = dL_dW->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
+			.buffer  = dL_dB->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_dim,
+			.buffer  = dL_dB->sb_data,
 		},
 		{
 			.binding = 6,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_data,
+			.buffer  = dL_dX->sb_dim,
 		},
 		{
 			.binding = 7,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
+			.buffer  = dL_dX->sb_data,
 		},
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
+			.buffer  = VW->sb_dim,
 		},
 		{
 			.binding = 9,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_dim,
+			.buffer  = VW->sb_data,
 		},
 		{
 			.binding = 10,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_data,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_dim,
 		},
 		{
-			.binding = 12,
+			.binding = 11,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = VB->sb_data,
 		},
@@ -325,30 +317,6 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 		return dL_dX;
 	}
 
-	// initialize gc but keep running averages
-	gc->gcw        = 1.0f;
-	gc->gcb        = 1.0f;
-	gc->norm_w     = 0.0f;
-	gc->norm_b     = 0.0f;
-	gc->norm_dl_dw = 0.0f;
-	gc->norm_dl_db = 0.0f;
-	vkk_compute_writeBuffer(engine->compute, self->sb20_gc,
-	                        sizeof(nn_weightLayerGc_t), 0, gc);
-
-	// nn_weightLayer_backpropGradientClipping
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	if((state->clip_max_weight > 0.0f) &&
-	   (state->clip_max_bias   > 0.0f))
-	{
-		cp = engine->cp_weight_backpropGradientClipping;
-		if(nn_engine_bind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-		nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
-		                   1, 1, 1, 8, 8, 1);
-	}
-
 	// nn_weightLayer_backpropUpdateW
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
 	cp = engine->cp_weight_backpropUpdateW;
@@ -371,34 +339,6 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	                   nc, 1, 1, 64, 1, 1);
 
 	return dL_dX;
-}
-
-static void
-nn_weightLayer_postFn(nn_layer_t* base,
-                      nn_layerMode_e layer_mode)
-{
-	ASSERT(base);
-
-	nn_weightLayer_t*   self   = (nn_weightLayer_t*) base;
-	nn_weightLayerGc_t* gc     = &self->gc;
-	nn_arch_t*          arch   = base->arch;
-	nn_archState_t*     state  = &arch->state;
-	nn_engine_t*        engine = arch->engine;
-
-	if((layer_mode == NN_LAYER_MODE_TRAIN) &&
-	   (state->clip_max_weight > 0.0f)     &&
-	   (state->clip_max_bias   > 0.0f))
-	{
-		vkk_compute_readBuffer(engine->compute, self->sb20_gc,
-		                       sizeof(nn_weightLayerGc_t), 0, gc);
-
-		#ifdef NN_GC_DEBUG
-		LOGI("norm: w=%f, b=%f, dl_dw=%f, dl_dw_ra=%f, dl_db=%f, dl_db_ra=%f",
-		     gc->norm_w, gc->norm_b,
-		     gc->norm_dl_dw, gc->norm_dl_dw_ra,
-		     gc->norm_dl_db, gc->norm_dl_db_ra);
-		#endif
-	}
 }
 
 static int
@@ -444,21 +384,10 @@ nn_weightLayer_newCompute(nn_weightLayer_t* self)
 		goto fail_sb01_param;
 	}
 
-	self->sb20_gc = vkk_buffer_new(engine->engine,
-	                               VKK_UPDATE_MODE_SYNCHRONOUS,
-	                               VKK_BUFFER_USAGE_STORAGE,
-	                               0, NULL);
-	if(self->sb20_gc == NULL)
-	{
-		goto fail_sb20_gc;
-	}
-
 	// success
 	return 1;
 
 	// failure
-	fail_sb20_gc:
-		vkk_buffer_delete(&self->sb01_param);
 	fail_sb01_param:
 		vkk_uniformSet_delete(&self->us2);
 	fail_us2:
@@ -473,7 +402,6 @@ nn_weightLayer_deleteCompute(nn_weightLayer_t* self)
 {
 	ASSERT(self);
 
-	vkk_buffer_delete(&self->sb20_gc);
 	vkk_buffer_delete(&self->sb01_param);
 	vkk_uniformSet_delete(&self->us2);
 	vkk_uniformSet_delete(&self->us1);
@@ -527,7 +455,6 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_weightLayer_forwardPassFn,
 		.backprop_fn     = nn_weightLayer_backpropFn,
-		.post_fn         = nn_weightLayer_postFn,
 		.dimX_fn         = nn_weightLayer_dimXFn,
 		.dimY_fn         = nn_weightLayer_dimYFn,
 	};
@@ -770,10 +697,6 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	// initialize running averages
-	self->gc.norm_dl_dw_ra = strtof(val_norm_dl_dw_ra->data, NULL);
-	self->gc.norm_dl_db_ra = strtof(val_norm_dl_db_ra->data, NULL);
-
 	// load tensors
 	if((nn_tensor_load(self->W,  val_W)  == 0) ||
 	   (nn_tensor_load(self->B,  val_B)  == 0) ||
@@ -817,10 +740,6 @@ int nn_weightLayer_export(nn_weightLayer_t* self,
 	ret &= nn_tensor_store(self->VW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
 	ret &= nn_tensor_store(self->VB, stream);
-	ret &= jsmn_stream_key(stream, "%s", "norm_dl_dw_ra");
-	ret &= jsmn_stream_float(stream, self->gc.norm_dl_dw_ra);
-	ret &= jsmn_stream_key(stream, "%s", "norm_dl_db_ra");
-	ret &= jsmn_stream_float(stream, self->gc.norm_dl_db_ra);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
