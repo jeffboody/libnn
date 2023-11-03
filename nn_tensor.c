@@ -486,7 +486,8 @@ int nn_tensor_store(nn_tensor_t* self,
 	return 0;
 }
 
-void nn_tensor_clear(nn_tensor_t* self, int hazzard)
+void nn_tensor_clear(nn_tensor_t* self,
+                     nn_tensorHazzard_e hazzard)
 {
 	ASSERT(self);
 

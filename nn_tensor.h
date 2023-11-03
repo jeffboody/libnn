@@ -47,6 +47,8 @@ typedef enum
 {
 	NN_TENSOR_HAZZARD_NONE = 0,
 	NN_TENSOR_HAZZARD_WAR  = 1,
+	NN_TENSOR_HAZZARD_RAW  = 2,
+	NN_TENSOR_HAZZARD_ANY  = 3,
 } nn_tensorHazzard_e;
 
 typedef struct nn_tensor_s
@@ -75,7 +77,7 @@ int          nn_tensor_load(nn_tensor_t* self,
 int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
 void         nn_tensor_clear(nn_tensor_t* self,
-                             int hazzard);
+                             nn_tensorHazzard_e hazzard);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k);
