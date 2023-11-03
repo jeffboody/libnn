@@ -33,6 +33,7 @@
 #include "nn_arch.h"
 #include "nn_engine.h"
 #include "nn_loss.h"
+#include "nn_tensorStats.h"
 #include "nn_tensor.h"
 
 const char* NN_LOSS_STRING_MSE = "mse";
@@ -42,49 +43,6 @@ const char* NN_LOSS_STRING_BCE = "bce";
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-static int nn_loss_newCompute(nn_loss_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t*   arch   = self->arch;
-	nn_engine_t* engine = arch->engine;
-
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_loss);
-	if(self->us0 == NULL)
-	{
-		return 0;
-	}
-
-	vkk_updateMode_e um;
-	um = vkk_compute_updateMode(engine->compute);
-
-	float loss = 0.0f;
-	self->sb07_loss = vkk_buffer_new(engine->engine, um,
-	                                 VKK_BUFFER_USAGE_STORAGE,
-	                                 sizeof(float), &loss);
-	if(self->sb07_loss == NULL)
-	{
-		goto fail_sb07_loss;
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_sb07_loss:
-		vkk_uniformSet_delete(&self->us0);
-	return 0;
-}
-
-static void nn_loss_deleteCompute(nn_loss_t* self)
-{
-	ASSERT(self);
-
-	vkk_buffer_delete(&self->sb07_loss);
-	vkk_uniformSet_delete(&self->us0);
-}
 
 static const char* nn_loss_string(nn_lossFn_e fn)
 {
@@ -126,10 +84,6 @@ static nn_lossFn_e nn_loss_function(const char* str)
 }
 
 /***********************************************************
-* public - loss functions                                  *
-***********************************************************/
-
-/***********************************************************
 * public                                                   *
 ***********************************************************/
 
@@ -168,16 +122,40 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 		goto fail_dL_dY;
 	}
 
-	if(nn_loss_newCompute(self) == 0)
+	self->stats_dL_dY = nn_tensorStats_new(engine);
+	if(self->stats_dL_dY == NULL)
 	{
-		goto fail_compute;
+		goto fail_stats_dL_dY;
+	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_loss);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(engine->compute);
+
+	float loss = 0.0f;
+	self->sb07_loss = vkk_buffer_new(engine->engine, um,
+	                                 VKK_BUFFER_USAGE_STORAGE,
+	                                 sizeof(float), &loss);
+	if(self->sb07_loss == NULL)
+	{
+		goto fail_sb07_loss;
 	}
 
 	// success
 	return self;
 
 	// failure
-	fail_compute:
+	fail_sb07_loss:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		nn_tensorStats_delete(&self->stats_dL_dY);
+	fail_stats_dL_dY:
 		nn_tensor_delete(&self->dL_dY);
 	fail_dL_dY:
 		FREE(self);
@@ -274,7 +252,9 @@ void nn_loss_delete(nn_loss_t** _self)
 	nn_loss_t* self = *_self;
 	if(self)
 	{
-		nn_loss_deleteCompute(self);
+		vkk_buffer_delete(&self->sb07_loss);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensorStats_delete(&self->stats_dL_dY);
 		nn_tensor_delete(&self->dL_dY);
 		FREE(self);
 		*_self = self;
@@ -397,10 +377,18 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	                   bs, dimY->height, dimY->width,
 	                   1, 8, 8);
 
+	if(nn_tensor_computeStats(dL_dY, bs,
+	                          NN_TENSOR_HAZZARD_RAW,
+	                          self->stats_dL_dY) == 0)
+	{
+		return NULL;
+	}
+
 	return dL_dY;
 }
 
-void nn_loss_post(nn_loss_t* self)
+void nn_loss_post(nn_loss_t* self,
+                  nn_layerMode_e layer_mode)
 {
 	ASSERT(self);
 
@@ -409,6 +397,17 @@ void nn_loss_post(nn_loss_t* self)
 
 	vkk_compute_readBuffer(engine->compute, self->sb07_loss,
 	                       sizeof(float), 0, &self->loss);
+
+	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	   (layer_mode == NN_LAYER_MODE_TRAIN_NOP))
+	{
+		LOGI("dL_dY min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_dL_dY),
+		     nn_tensorStats_max(self->stats_dL_dY),
+		     nn_tensorStats_mean(self->stats_dL_dY),
+		     nn_tensorStats_stddev(self->stats_dL_dY),
+		     nn_tensorStats_norm(self->stats_dL_dY));
+	}
 }
 
 nn_dim_t* nn_loss_dimY(nn_loss_t* self)

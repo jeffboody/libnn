@@ -302,7 +302,6 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 		}
 	}
 
-
 	// nn_batchNormLayer_forwardPassXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	cp = engine->cp_batchNorm_forwardPassXhat;
@@ -448,6 +447,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
+
 	for(k = 0; k < xd; ++k)
 	{
 		us3 = nn_engine_getBatchNormIdx(engine, k);
@@ -639,7 +639,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	uint32_t k;
 	for(k = 0; k < xd; ++k)
 	{
-		nn_tensor_setv(tmpG, k, 1.0f);
+		nn_tensor_set(tmpG, 0, 0, 0, k, 1.0f);
 	}
 
 	if(nn_tensor_blit(tmpG, self->G, 1, 0, 0) == 0)

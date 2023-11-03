@@ -34,7 +34,6 @@ typedef struct nn_engine_s
 {
 	vkk_engine_t* engine;
 
-	int computing;
 	int dispatch;
 
 	cc_rngUniform_t rng_uniform;
@@ -63,6 +62,7 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf2_weight;
 	vkk_uniformSetFactory_t* usf0_loss;
 	vkk_uniformSetFactory_t* usf0_tensor;
+	vkk_uniformSetFactory_t* usf1_tensor;
 
 	vkk_pipelineLayout_t* pl_batchNorm;
 	vkk_pipelineLayout_t* pl_conv;
@@ -121,6 +121,7 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_loss_bce;
 	vkk_computePipeline_t* cp_tensor_clear;
 	vkk_computePipeline_t* cp_tensor_clearAligned;
+	vkk_computePipeline_t* cp_tensor_stats;
 
 	nn_tensor_t* Null;
 

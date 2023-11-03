@@ -35,6 +35,7 @@
 #include "nn_convLayer.h"
 #include "nn_engine.h"
 #include "nn_layer.h"
+#include "nn_tensorStats.h"
 #include "nn_tensor.h"
 
 /***********************************************************
@@ -187,12 +188,23 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
+	if(nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
+
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
+		if(nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE) == 0)
+		{
+			return NULL;
+		}
 	}
-	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
+
+	if(nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
 
 	// sb20:  dim_dL_dY
 	// sb21:  dL_dY
@@ -352,6 +364,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		{
 			return NULL;
 		}
+
 		for(f = 0; f < fc; ++f)
 		{
 			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
@@ -391,6 +404,13 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	}
 	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
+
+	if(nn_tensor_computeStats(dL_dX, bs,
+	                          NN_TENSOR_HAZZARD_RAW,
+	                          self->stats_dL_dX) == 0)
+	{
+		return NULL;
+	}
 
 	return dL_dX;
 }
@@ -534,12 +554,23 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
+	if(nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
+
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
+		if(nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE) == 0)
+		{
+			return NULL;
+		}
 	}
-	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
+
+	if(nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
 
 	// sb20:  dim_dL_dY
 	// sb21:  dL_dY
@@ -699,6 +730,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 		{
 			return NULL;
 		}
+
 		for(f = 0; f < fc; ++f)
 		{
 			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
@@ -739,75 +771,34 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
 
+	if(nn_tensor_computeStats(dL_dX, bs,
+	                          NN_TENSOR_HAZZARD_RAW,
+	                          self->stats_dL_dX) == 0)
+	{
+		return NULL;
+	}
+
 	return dL_dX;
 }
 
-static int
-nn_convLayer_newCompute(nn_convLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t*   arch   = self->base.arch;
-	nn_engine_t* engine = arch->engine;
-
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_conv);
-	if(self->us0 == NULL)
-	{
-		return 0;
-	}
-
-	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                               engine->usf1_conv);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_conv);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	nn_convLayerParam_t param =
-	{
-		.disable_bias = (self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
-		.stride       = self->stride,
-	};
-	self->sb01_param = vkk_buffer_new(engine->engine,
-	                                  VKK_UPDATE_MODE_STATIC,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(nn_convLayerParam_t),
-	                                  &param);
-	if(self->sb01_param == NULL)
-	{
-		goto fail_sb01_param;
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_sb01_param:
-		vkk_uniformSet_delete(&self->us2);
-	fail_us2:
-		vkk_uniformSet_delete(&self->us1);
-	fail_us1:
-		vkk_uniformSet_delete(&self->us0);
-	return 0;
-}
-
 static void
-nn_convLayer_deleteCompute(nn_convLayer_t* self)
+nn_convLayer_postFn(nn_layer_t* base,
+                    nn_layerMode_e layer_mode)
 {
-	ASSERT(self);
+	ASSERT(base);
 
-	vkk_buffer_delete(&self->sb01_param);
-	vkk_uniformSet_delete(&self->us2);
-	vkk_uniformSet_delete(&self->us1);
-	vkk_uniformSet_delete(&self->us0);
+	nn_convLayer_t* self = (nn_convLayer_t*) base;
+
+	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	   (layer_mode == NN_LAYER_MODE_TRAIN_NOP))
+	{
+		LOGI("dL_dX min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_dL_dX),
+		     nn_tensorStats_max(self->stats_dL_dX),
+		     nn_tensorStats_mean(self->stats_dL_dX),
+		     nn_tensorStats_stddev(self->stats_dL_dX),
+		     nn_tensorStats_norm(self->stats_dL_dX));
+	}
 }
 
 static nn_dim_t*
@@ -868,6 +859,7 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch            = arch,
 		.forward_pass_fn = nn_convLayer_forwardPassFn,
 		.backprop_fn     = nn_convLayer_backpropFn,
+		.post_fn         = nn_convLayer_postFn,
 		.dimX_fn         = nn_convLayer_dimXFn,
 		.dimY_fn         = nn_convLayer_dimYFn,
 	};
@@ -993,16 +985,61 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dX;
 	}
 
-	if(nn_convLayer_newCompute(self) == 0)
+	self->stats_dL_dX = nn_tensorStats_new(engine);
+	if(self->stats_dL_dX == NULL)
 	{
-		goto fail_compute;
+		goto fail_stats_dL_dX;
+	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_conv);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_conv);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_conv);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	nn_convLayerParam_t param =
+	{
+		.disable_bias = (self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
+		.stride       = self->stride,
+	};
+	self->sb01_param = vkk_buffer_new(engine->engine,
+	                                  VKK_UPDATE_MODE_STATIC,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_convLayerParam_t),
+	                                  &param);
+	if(self->sb01_param == NULL)
+	{
+		goto fail_sb01_param;
 	}
 
 	// success
 	return self;
 
 	// failure
-	fail_compute:
+	fail_sb01_param:
+		vkk_uniformSet_delete(&self->us2);
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		nn_tensorStats_delete(&self->stats_dL_dX);
+	fail_stats_dL_dX:
 		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dL_dB);
@@ -1182,7 +1219,11 @@ void nn_convLayer_delete(nn_convLayer_t** _self)
 	nn_convLayer_t* self = *_self;
 	if(self)
 	{
-		nn_convLayer_deleteCompute(self);
+		vkk_buffer_delete(&self->sb01_param);
+		vkk_uniformSet_delete(&self->us2);
+		vkk_uniformSet_delete(&self->us1);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensorStats_delete(&self->stats_dL_dX);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);

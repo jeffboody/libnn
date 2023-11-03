@@ -125,8 +125,8 @@ fillXYt(uint32_t m,
 	{
 		for(j = 0; j < xw; ++j)
 		{
-			nn_tensor_mul(X, m, i, j, k, 100.0f);
-			nn_tensor_add(X, m, i, j, k, 10.0f);
+			x = nn_tensor_get(X, m, i, j, k);
+			nn_tensor_set(X, m, i, j, k, 100.0f*x + 10.0f);
 		}
 	}
 }

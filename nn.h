@@ -47,6 +47,7 @@ typedef struct nn_layer_s              nn_layer_t;
 typedef struct nn_loss_s               nn_loss_t;
 typedef struct nn_poolingLayer_s       nn_poolingLayer_t;
 typedef struct nn_skipLayer_s          nn_skipLayer_t;
+typedef struct nn_tensorStats_s        nn_tensorStats_t;
 typedef struct nn_tensor_s             nn_tensor_t;
 typedef struct nn_weightLayer_s        nn_weightLayer_t;
 

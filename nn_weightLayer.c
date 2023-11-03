@@ -182,12 +182,23 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE);
+	if(nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
+
 	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE);
+		if(nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE) == 0)
+		{
+			return NULL;
+		}
 	}
-	nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE);
+
+	if(nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+	{
+		return NULL;
+	}
 
 	// sb20:  dim_dL_dY
 	// sb21:  dL_dY

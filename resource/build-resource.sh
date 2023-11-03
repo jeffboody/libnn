@@ -35,6 +35,7 @@ glslangValidator -V nn_skipLayer_backpropCat.comp -o nn_skipLayer_backpropCat_co
 glslangValidator -V nn_skipLayer_backpropFork.comp -o nn_skipLayer_backpropFork_comp.spv
 glslangValidator -V nn_tensor_clear.comp -o nn_tensor_clear_comp.spv
 glslangValidator -V nn_tensor_clearAligned.comp -o nn_tensor_clearAligned_comp.spv
+glslangValidator -V nn_tensor_stats.comp -o nn_tensor_stats_comp.spv
 glslangValidator -V nn_weightLayer_forwardPass.comp -o nn_weightLayer_forwardPass_comp.spv
 glslangValidator -V nn_weightLayer_backpropUpdateW.comp -o nn_weightLayer_backpropUpdateW_comp.spv
 glslangValidator -V nn_weightLayer_backpropUpdateB.comp -o nn_weightLayer_backpropUpdateB_comp.spv
@@ -86,6 +87,7 @@ bfs $1 blobSet nn/shaders/nn_skipLayer_backpropCat_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_backpropFork_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_clear_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_clearAligned_comp.spv
+bfs $1 blobSet nn/shaders/nn_tensor_stats_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_forwardPass_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backpropUpdateW_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backpropUpdateB_comp.spv

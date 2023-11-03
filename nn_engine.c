@@ -239,6 +239,10 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf0_tensor = vkk_uniformSetFactory_new(engine, um,
 	                                              2, ub_array);
 
+	// sb10: stats
+	self->usf1_tensor = vkk_uniformSetFactory_new(engine, um,
+	                                              1, ub_array);
+
 	if((self->usf0_batchNorm == NULL) ||
 	   (self->usf1_batchNorm == NULL) ||
 	   (self->usf2_batchNorm == NULL) ||
@@ -259,7 +263,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_weight    == NULL) ||
 	   (self->usf2_weight    == NULL) ||
 	   (self->usf0_loss      == NULL) ||
-	   (self->usf0_tensor    == NULL))
+	   (self->usf0_tensor    == NULL) ||
+	   (self->usf1_tensor    == NULL))
 	{
 		goto failure;
 	}
@@ -329,8 +334,9 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_uniformSetFactory_t* usf_array_tensor[] =
 	{
 		self->usf0_tensor,
+		self->usf1_tensor,
 	};
-	self->pl_tensor = vkk_pipelineLayout_new(engine, 1,
+	self->pl_tensor = vkk_pipelineLayout_new(engine, 2,
 	                                         usf_array_tensor);
 
 	if((self->pl_batchNorm == NULL) ||
@@ -873,6 +879,17 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_clearAligned);
 
+	vkk_computePipelineInfo_t cpi_tensor_stats =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor,
+		.cs      = "nn/shaders/nn_tensor_stats_comp.spv",
+	};
+
+	self->cp_tensor_stats =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_stats);
+
 	if((self->cp_batchNorm_forwardPassXmean      == NULL) ||
 	   (self->cp_batchNorm_forwardPassXvar       == NULL) ||
 	   (self->cp_batchNorm_forwardPassXhat       == NULL) ||
@@ -920,7 +937,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_loss_mae                        == NULL) ||
 	   (self->cp_loss_bce                        == NULL) ||
 	   (self->cp_tensor_clear                    == NULL) ||
-	   (self->cp_tensor_clearAligned             == NULL))
+	   (self->cp_tensor_clearAligned             == NULL) ||
+	   (self->cp_tensor_stats                    == NULL))
 	{
 		goto failure;
 	}
@@ -1000,6 +1018,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		}
 
 		nn_tensor_delete(&self->Null);
+		vkk_computePipeline_delete(&self->cp_tensor_stats);
 		vkk_computePipeline_delete(&self->cp_tensor_clearAligned);
 		vkk_computePipeline_delete(&self->cp_tensor_clear);
 		vkk_computePipeline_delete(&self->cp_loss_bce);
@@ -1056,6 +1075,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_fact);
 		vkk_pipelineLayout_delete(&self->pl_conv);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm);
+		vkk_uniformSetFactory_delete(&self->usf1_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_loss);
 		vkk_uniformSetFactory_delete(&self->usf2_weight);
@@ -1273,12 +1293,6 @@ nn_engine_bind(nn_engine_t* self,
 	ASSERT(self);
 	ASSERT(cp);
 
-	if(self->computing == 0)
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
 	// split dispatch to improve UI responsiveness
 	if(self->dispatch >= NN_ENGINE_DISPATCH_HINT)
 	{
@@ -1289,8 +1303,6 @@ nn_engine_bind(nn_engine_t* self,
 		vkk_compute_end(self->compute);
 		if(vkk_compute_begin(self->compute) == 0)
 		{
-			LOGE("invalid");
-			self->computing = 0;
 			return 0;
 		}
 	}

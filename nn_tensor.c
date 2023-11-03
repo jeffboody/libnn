@@ -31,6 +31,7 @@
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
 #include "nn_engine.h"
+#include "nn_tensorStats.h"
 #include "nn_tensor.h"
 
 /***********************************************************
@@ -265,10 +266,10 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 			goto fail_data;
 		}
 
-		self->us0_clear = vkk_uniformSet_new(engine->engine,
-		                                     0, 0, NULL,
-		                                     engine->usf0_tensor);
-		if(self->us0_clear == NULL)
+		self->us0 = vkk_uniformSet_new(engine->engine,
+		                               0, 0, NULL,
+		                               engine->usf0_tensor);
+		if(self->us0 == NULL)
 		{
 			nn_tensor_delete(&tmp);
 			goto fail_data;
@@ -280,7 +281,7 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 		                              dim);
 		if(self->sb_dim == NULL)
 		{
-			vkk_uniformSet_delete(&self->us0_clear);
+			vkk_uniformSet_delete(&self->us0);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -292,7 +293,7 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 		if(self->sb_data == NULL)
 		{
 			vkk_buffer_delete(&self->sb_dim);
-			vkk_uniformSet_delete(&self->us0_clear);
+			vkk_uniformSet_delete(&self->us0);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -337,7 +338,7 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	{
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
-		vkk_uniformSet_delete(&self->us0_clear);
+		vkk_uniformSet_delete(&self->us0);
 		FREE(self->data);
 		FREE(self);
 		*_self = NULL;
@@ -486,8 +487,8 @@ int nn_tensor_store(nn_tensor_t* self,
 	return 0;
 }
 
-void nn_tensor_clear(nn_tensor_t* self,
-                     nn_tensorHazzard_e hazzard)
+int nn_tensor_clear(nn_tensor_t* self,
+                    nn_tensorHazzard_e hazzard)
 {
 	ASSERT(self);
 
@@ -500,13 +501,6 @@ void nn_tensor_clear(nn_tensor_t* self,
 	if(nn_tensor_isModeIO(self) == 0)
 	{
 		nn_engine_t* engine = self->engine;
-
-		// compute tensors may only be cleared while computing
-		if(engine->computing == 0)
-		{
-			LOGE("invalid");
-			return;
-		}
 
 		// sb00: dimX
 		// sb01: X
@@ -534,12 +528,16 @@ void nn_tensor_clear(nn_tensor_t* self,
 		{
 			cp = engine->cp_tensor_clear;
 		}
-		nn_engine_bind(engine, cp);
+
+		if(nn_engine_bind(engine, cp) == 0)
+		{
+			return 0;
+		}
 		vkk_compute_updateUniformSetRefs(engine->compute,
-		                                 self->us0_clear,
+		                                 self->us0,
 		                                 2, ua0_array);
 		vkk_compute_bindUniformSets(engine->compute, 1,
-		                            &self->us0_clear);
+		                            &self->us0);
 		nn_engine_dispatch(engine,
 		                   (vkk_hazzard_e) hazzard,
 		                   count, 1, 1, 64, 1, 1);
@@ -548,6 +546,164 @@ void nn_tensor_clear(nn_tensor_t* self,
 	{
 		memset(self->data, 0, count*sizeof(float));
 	}
+
+	return 1;
+}
+
+int nn_tensor_computeStats(nn_tensor_t* self,
+                           uint32_t count,
+                           nn_tensorHazzard_e hazzard,
+                           nn_tensorStats_t* stats)
+{
+	ASSERT(self);
+	ASSERT(stats);
+
+	nn_engine_t* engine = self->engine;
+	nn_dim_t*    dim    = nn_tensor_dim(self);
+	uint32_t     h      = dim->height;
+	uint32_t     w      = dim->width;
+	uint32_t     d      = dim->depth;
+
+	if((count == 0) || (count > dim->count))
+	{
+		LOGE("invalid count=%u:%u", count, dim->count);
+		return 0;
+	}
+
+	if(nn_tensor_isModeIO(self))
+	{
+		float t;
+		float tm;
+		float min    = nn_tensor_get(self, 0, 0, 0, 0);
+		float max    = min;
+		float mean   = 0.0f;
+		float stddev = 0.0f;
+		float norm   = 0.0f;
+		float var    = 0.0f;
+		float sumt   = 0.0f;
+		float sumtt  = 0.0f;
+		float sumtm2 = 0.0f;
+
+		// compute min, max, mean, norm
+		uint32_t n;
+		uint32_t i;
+		uint32_t j;
+		uint32_t k;
+		for(n = 0; n < count; ++n)
+		{
+			for(i = 0; i < h; ++i)
+			{
+				for(j = 0; j < w; ++j)
+				{
+					for(k = 0; k < d; ++k)
+					{
+						t = nn_tensor_get(self, n, i, j, k);
+
+						sumt  += t;
+						sumtt += t*t;
+						if(t < min)
+						{
+							min = t;
+						}
+						if(t > max)
+						{
+							max = t;
+						}
+					}
+				}
+			}
+		}
+		mean = sumt/((float) (count*h*w*d));
+		norm = sqrtf(sumtt);
+
+		// compute stddev
+		for(n = 0; n < count; ++n)
+		{
+			for(i = 0; i < h; ++i)
+			{
+				for(j = 0; j < w; ++j)
+				{
+					for(k = 0; k < d; ++k)
+					{
+						tm = nn_tensor_get(self, n, i, j, k) - mean;
+
+						sumtm2 += tm*tm;
+					}
+				}
+			}
+		}
+		var    = sumtm2/((float) (count*h*w*d));
+		stddev = sqrtf(var);
+
+		// update stats
+		stats->data.count  = count;
+		stats->data.min    = min;
+		stats->data.max    = max;
+		stats->data.mean   = mean;
+		stats->data.stddev = stddev;
+		stats->data.norm   = norm;
+
+		return 1;
+	}
+
+	stats->data.count = count;
+	vkk_compute_writeBuffer(engine->compute,
+	                        stats->sb_stats,
+	                        sizeof(nn_tensorStatsData_t),
+	                        0, &stats->data);
+
+	// sb00: dimX
+	// sb01: X
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb_data,
+		},
+	};
+
+	// sb10: stats
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = stats->sb_stats,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		stats->us1,
+	};
+
+	// dispatch(hazzard, 1, 1, 1, 8, 8, 1)
+	vkk_computePipeline_t* cp = engine->cp_tensor_stats;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0,
+	                                 2, ua0_array);
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 stats->us1,
+	                                 1, ua1_array);
+	vkk_compute_bindUniformSets(engine->compute, 2,
+	                            us_array);
+	nn_engine_dispatch(engine, (vkk_hazzard_e) hazzard,
+	                   1, 1, 1, 8, 8, 1);
+
+	stats->dirty = 1;
+
+	return 1;
 }
 
 float nn_tensor_get(nn_tensor_t* self,
@@ -589,255 +745,6 @@ void nn_tensor_set(nn_tensor_t* self,
 	uint32_t sy = self->dim.width*self->dim.depth;
 	uint32_t sx = self->dim.depth;
 	self->data[n*sn + i*sy + j*sx + k] = v;
-}
-
-void nn_tensor_add(nn_tensor_t* self,
-                   uint32_t n, uint32_t i,
-                   uint32_t j, uint32_t k,
-                   float v)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return;
-	}
-
-	uint32_t sn = self->dim.height*self->dim.width*
-	              self->dim.depth;
-	uint32_t sy = self->dim.width*self->dim.depth;
-	uint32_t sx = self->dim.depth;
-	self->data[n*sn + i*sy + j*sx + k] += v;
-}
-
-void nn_tensor_mul(nn_tensor_t* self,
-                   uint32_t n, uint32_t i,
-                   uint32_t j, uint32_t k,
-                   float v)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return;
-	}
-
-	uint32_t sn = self->dim.height*self->dim.width*
-	              self->dim.depth;
-	uint32_t sy = self->dim.width*self->dim.depth;
-	uint32_t sx = self->dim.depth;
-	self->data[n*sn + i*sy + j*sx + k] *= v;
-}
-
-float nn_tensor_getv(nn_tensor_t* self, uint32_t n)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return 0.0f;
-	}
-
-	return self->data[n];
-}
-
-void
-nn_tensor_setv(nn_tensor_t* self, uint32_t n, float v)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return;
-	}
-
-	self->data[n] = v;
-}
-
-void
-nn_tensor_addv(nn_tensor_t* self, uint32_t n, float v)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return;
-	}
-
-	self->data[n] += v;
-}
-
-void
-nn_tensor_mulv(nn_tensor_t* self, uint32_t n, float v)
-{
-	ASSERT(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return;
-	}
-
-	self->data[n] *= v;
-}
-
-float nn_tensor_norm(nn_tensor_t* self, uint32_t count)
-{
-	ASSERT(self);
-
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return 0.0f;
-	}
-
-	float    xx = 0.0f;
-	float    x;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < count; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				for(k = 0; k < dim->depth; ++k)
-				{
-					x = nn_tensor_get(self, n, i, j, k);
-					xx += x*x;
-				}
-			}
-		}
-	}
-	return sqrtf(xx);
-}
-
-float nn_tensor_min(nn_tensor_t* self, uint32_t count)
-{
-	ASSERT(self);
-
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return 0.0f;
-	}
-
-	float    min = nn_tensor_get(self, 0, 0, 0, 0);
-	float    x;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < count; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				for(k = 0; k < dim->depth; ++k)
-				{
-					x = nn_tensor_get(self, n, i, j, k);
-					if(x < min)
-					{
-						min = x;
-					}
-				}
-			}
-		}
-	}
-	return min;
-}
-
-float nn_tensor_max(nn_tensor_t* self, uint32_t count)
-{
-	ASSERT(self);
-
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return 0.0f;
-	}
-
-	float    max = nn_tensor_get(self, 0, 0, 0, 0);
-	float    x;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < count; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				for(k = 0; k < dim->depth; ++k)
-				{
-					x = nn_tensor_get(self, n, i, j, k);
-					if(x > max)
-					{
-						max = x;
-					}
-				}
-			}
-		}
-	}
-	return max;
-}
-
-float nn_tensor_avg(nn_tensor_t* self, uint32_t count)
-{
-	ASSERT(self);
-
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	if(nn_tensor_isModeIO(self) == 0)
-	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
-		return 0.0f;
-	}
-
-	float    sum = 0.0f;
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	uint32_t k;
-	for(n = 0; n < count; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				for(k = 0; k < dim->depth; ++k)
-				{
-					sum += nn_tensor_get(self, n, i, j, k);
-				}
-			}
-		}
-	}
-	return sum/((float) (count*dim->height*dim->width));
 }
 
 nn_dim_t* nn_tensor_dim(nn_tensor_t* self)

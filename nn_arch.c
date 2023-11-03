@@ -56,7 +56,7 @@ nn_arch_post(nn_arch_t* self, nn_layerMode_e layer_mode)
 
 	if(self->loss)
 	{
-		nn_loss_post(self->loss);
+		nn_loss_post(self->loss, layer_mode);
 	}
 }
 
@@ -152,8 +152,6 @@ nn_arch_beginCompute(nn_arch_t* self,
 	                        sizeof(nn_archState_t),
 	                        0, &self->state);
 
-	engine->computing = 1;
-
 	// success
 	return 1;
 
@@ -169,15 +167,13 @@ static void nn_arch_endCompute(nn_arch_t* self)
 
 	nn_engine_t* engine = self->engine;
 
-	if(engine->computing)
+	if(engine->dispatch)
 	{
 		LOGD("DISPATCH %i", engine->dispatch);
-
-		engine->computing = 0;
-		engine->dispatch  = 0;
-
-		vkk_compute_end(engine->compute);
+		engine->dispatch = 0;
 	}
+
+	vkk_compute_end(engine->compute);
 }
 
 /***********************************************************

@@ -257,3 +257,7 @@ Uniforms
 
 * sb00: dimX
 * sb01: X
+
+Stats
+
+* sb10: stats

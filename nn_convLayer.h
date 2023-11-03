@@ -70,6 +70,9 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* dL_dB; // dim(fc,1,1,1)
 	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
 
+	// backprop stats
+	nn_tensorStats_t* stats_dL_dX;
+
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;

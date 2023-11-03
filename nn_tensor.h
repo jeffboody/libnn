@@ -60,7 +60,7 @@ typedef struct nn_tensor_s
 	nn_dim_t dim;
 	float*   data;
 
-	vkk_uniformSet_t* us0_clear;
+	vkk_uniformSet_t* us0;
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;
 } nn_tensor_t;
@@ -76,8 +76,12 @@ int          nn_tensor_load(nn_tensor_t* self,
                             jsmn_val_t* val);
 int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
-void         nn_tensor_clear(nn_tensor_t* self,
+int          nn_tensor_clear(nn_tensor_t* self,
                              nn_tensorHazzard_e hazzard);
+int          nn_tensor_computeStats(nn_tensor_t* self,
+                                    uint32_t count,
+                                    nn_tensorHazzard_e hazzard,
+                                    nn_tensorStats_t* stats);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k);
@@ -85,33 +89,6 @@ void         nn_tensor_set(nn_tensor_t* self,
                            uint32_t n, uint32_t i,
                            uint32_t j, uint32_t k,
                            float v);
-void         nn_tensor_add(nn_tensor_t* self,
-                           uint32_t n, uint32_t i,
-                           uint32_t j, uint32_t k,
-                           float v);
-void         nn_tensor_mul(nn_tensor_t* self,
-                           uint32_t n, uint32_t i,
-                           uint32_t j, uint32_t k,
-                           float v);
-float        nn_tensor_getv(nn_tensor_t* self,
-                            uint32_t n);
-void         nn_tensor_setv(nn_tensor_t* self,
-                            uint32_t n,
-                            float v);
-void         nn_tensor_addv(nn_tensor_t* self,
-                            uint32_t n,
-                            float v);
-void         nn_tensor_mulv(nn_tensor_t* self,
-                            uint32_t n,
-                            float v);
-float        nn_tensor_norm(nn_tensor_t* self,
-                            uint32_t count);
-float        nn_tensor_min(nn_tensor_t* self,
-                           uint32_t count);
-float        nn_tensor_max(nn_tensor_t* self,
-                           uint32_t count);
-float        nn_tensor_avg(nn_tensor_t* self,
-                           uint32_t count);
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
 int          nn_tensor_blit(nn_tensor_t* src,
                             nn_tensor_t* dst,
