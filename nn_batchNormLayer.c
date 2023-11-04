@@ -68,7 +68,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	// training (mini-batch) or instance normalization
 	nn_tensor_t* Xmean = self->Xmean_ra;
 	nn_tensor_t* Xvar  = self->Xvar_ra;
-	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	if((layer_mode    == NN_LAYER_MODE_TRAIN)     ||
+	   (layer_mode    == NN_LAYER_MODE_TRAIN_NOP) ||
 	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
 	{
 		Xmean = self->Xmean_mb;
@@ -233,7 +234,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base,
 	uint32_t k;
 	vkk_computePipeline_t* cp;
 	vkk_uniformSet_t*      us3;
-	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
+	if((layer_mode    == NN_LAYER_MODE_TRAIN)     ||
+	   (layer_mode    == NN_LAYER_MODE_TRAIN_NOP) ||
 	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
 	{
 		// nn_batchNormLayer_forwardPassXmean
