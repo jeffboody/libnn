@@ -136,6 +136,8 @@ vkk_uniformSet_t* nn_engine_getBatchNormIdx(nn_engine_t* self,
 vkk_uniformSet_t* nn_engine_getConvIdx(nn_engine_t* self,
                                        uint32_t f, uint32_t fi,
                                        uint32_t fj, uint32_t k);
+int               nn_engine_begin(nn_engine_t* self);
+void              nn_engine_end(nn_engine_t* self);
 void              nn_engine_dispatch(nn_engine_t* self,
                                      vkk_hazzard_e hazzard,
                                      uint32_t count_x,

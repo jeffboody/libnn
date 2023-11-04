@@ -1268,6 +1268,26 @@ nn_engine_getConvIdx(nn_engine_t* self,
 	return NULL;
 }
 
+int nn_engine_begin(nn_engine_t* self)
+{
+	ASSERT(self);
+
+	return vkk_compute_begin(self->compute);
+}
+
+void nn_engine_end(nn_engine_t* self)
+{
+	ASSERT(self);
+
+	if(self->dispatch)
+	{
+		LOGD("DISPATCH %i", self->dispatch);
+		self->dispatch = 0;
+	}
+
+	vkk_compute_end(self->compute);
+}
+
 void nn_engine_dispatch(nn_engine_t* self,
                         vkk_hazzard_e hazzard,
                         uint32_t count_x,

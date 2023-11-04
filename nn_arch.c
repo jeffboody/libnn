@@ -61,10 +61,10 @@ nn_arch_post(nn_arch_t* self, nn_layerMode_e layer_mode)
 }
 
 static int
-nn_arch_beginCompute(nn_arch_t* self,
-                     uint32_t bs,
-                     nn_tensor_t* X,
-                     nn_tensor_t* Yt)
+nn_arch_init(nn_arch_t* self,
+             uint32_t bs,
+             nn_tensor_t* X,
+             nn_tensor_t* Yt)
 {
 	// Yt may be NULL
 	ASSERT(self);
@@ -72,9 +72,10 @@ nn_arch_beginCompute(nn_arch_t* self,
 
 	nn_engine_t* engine = self->engine;
 
-	// optionally resize X
+	// create X
 	if(X->tensor_mode == NN_TENSOR_MODE_IO)
 	{
+		// check for X resize
 		if(self->X)
 		{
 			if(nn_dim_equals(nn_tensor_dim(self->X),
@@ -97,9 +98,10 @@ nn_arch_beginCompute(nn_arch_t* self,
 		}
 	}
 
-	// optionally resize Yt
+	// optionally create Yt
 	if(Yt && (Yt->tensor_mode == NN_TENSOR_MODE_IO))
 	{
+		// check for Yt resize
 		if(self->Yt)
 		{
 			if(nn_dim_equals(nn_tensor_dim(self->Yt),
@@ -122,17 +124,12 @@ nn_arch_beginCompute(nn_arch_t* self,
 		}
 	}
 
-	if(vkk_compute_begin(engine->compute) == 0)
-	{
-		return 0;
-	}
-
 	// optionally blit X
 	if(X->tensor_mode == NN_TENSOR_MODE_IO)
 	{
 		if(nn_tensor_blit(X, self->X, bs, 0, 0) == 0)
 		{
-			goto fail_blit;
+			return 0;
 		}
 	}
 
@@ -141,7 +138,7 @@ nn_arch_beginCompute(nn_arch_t* self,
 	{
 		if(nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0)
 		{
-			goto fail_blit;
+			return 0;
 		}
 	}
 
@@ -152,28 +149,7 @@ nn_arch_beginCompute(nn_arch_t* self,
 	                        sizeof(nn_archState_t),
 	                        0, &self->state);
 
-	// success
-	return 1;
-
-	// failure
-	fail_blit:
-		vkk_compute_end(engine->compute);
-	return 0;
-}
-
-static void nn_arch_endCompute(nn_arch_t* self)
-{
-	ASSERT(self);
-
-	nn_engine_t* engine = self->engine;
-
-	if(engine->dispatch)
-	{
-		LOGD("DISPATCH %i", engine->dispatch);
-		engine->dispatch = 0;
-	}
-
-	vkk_compute_end(engine->compute);
+	return nn_engine_begin(engine);
 }
 
 /***********************************************************
@@ -426,7 +402,7 @@ nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
 		return 0;
 	}
 
-	if(nn_arch_beginCompute(self, bs, X, Yt) == 0)
+	if(nn_arch_init(self, bs, X, Yt) == 0)
 	{
 		return NULL;
 	}
@@ -485,7 +461,7 @@ nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
 		iter = cc_list_prev(iter);
 	}
 
-	nn_arch_endCompute(self);
+	nn_engine_end(self->engine);
 	nn_arch_post(self, layer_mode);
 
 	// optionally blit Y
@@ -504,7 +480,7 @@ nn_arch_train(nn_arch_t* self, nn_layerMode_e layer_mode,
 	fail_backprop:
 	fail_loss:
 	fail_forwardPass:
-		nn_arch_endCompute(self);
+		nn_engine_end(self->engine);
 	return NULL;
 }
 
@@ -529,7 +505,7 @@ int nn_arch_predict(nn_arch_t* self,
 	ASSERT(X);
 	ASSERT(Y);
 
-	if(nn_arch_beginCompute(self, bs, X, NULL) == 0)
+	if(nn_arch_init(self, bs, X, NULL) == 0)
 	{
 		return 0;
 	}
@@ -557,7 +533,7 @@ int nn_arch_predict(nn_arch_t* self,
 		iter = cc_list_next(iter);
 	}
 
-	nn_arch_endCompute(self);
+	nn_engine_end(self->engine);
 	nn_arch_post(self, NN_LAYER_MODE_PREDICT);
 
 	// success
@@ -565,6 +541,6 @@ int nn_arch_predict(nn_arch_t* self,
 
 	// failure
 	fail_forwardPass:
-		nn_arch_endCompute(self);
+		nn_engine_end(self->engine);
 	return 0;
 }
