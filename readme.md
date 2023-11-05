@@ -1214,6 +1214,67 @@ References
 * [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
 * [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
 
+Fair cGAN Training Procedure
+----------------------------
+
+The fair cGAN training procedure below has the following
+benefits compared to the original procedure.
+
+The fairness of the adversarial game is improved by ensuring
+that both generator and discriminator are trained using the
+same data. To understand this point better, consider the
+following corner case which is created by the original cGAN
+training procedure. During training, a bank ATM (e.g. the
+discriminator) detect fakes bills by comparing them directly
+with real bills. Perhaps, the tint of the real and fake
+bills is slightly different making it easy to detect
+fake bills. However, the counterfitter can tilt the game in
+its favor by stuffing the bank ATM with only fake bills thus
+making the bill tint an undiscernable feature. As a result,
+the bank ATM can successfully detect fake bills during
+training and the counterfitter can succcessfully generate
+fake bills that will fool the bank ATM in practice. One way
+this problem manifests in the neural network architecture is
+with the discriminator batch normalization layers which
+produce poor statistics when all samples are fake.
+
+Additionally, compute performance is improved by eliminating
+a forward pass and by reducing the generator minibatch size
+to m/2.
+
+The fair cGAN training procedure consists of a four step
+process that is repeated for each iteration.
+
+Generator forward pass.
+
+1. Select a minibatch of m/2 conditional samples Cg
+2. Perform the forward pass to compute Yg=G(Cg)
+
+Discriminator forward pass.
+
+1. Select a minibatch of m/2 conditional samples Cr
+2. Select a minibatch of m/2 corresponding real samples Yr
+3. Form a single minibatch of m samples Xd=(Yr|Cr,Yg|Cg)
+4. Perform the forward pass to compute Yd=D(Xd)
+
+Where '|' is a channelwise concatenation.
+
+Discriminator training.
+
+1. Form the training tensor Ytd with m/2 ones and m/2 zeros
+2. Compute the loss using Yd and Ytd
+3. Perform backprop using the discriminator
+
+Generator training.
+
+1. Form the training tensor Ytg with m ones
+2. Compute the loss using Yd and Ytg
+3. Perform backprop (NOP) using the discriminator
+4. Filter the samples/channels of dL_dY corresponding to Yg
+5. Perform backprop using the generator and filtered dL_dY
+
+Where NOP means to disable the parameter update.
+
 License
 =======
 
