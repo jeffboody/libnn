@@ -419,8 +419,8 @@ The perceptron bias on the other hand are typically
 initialized to zero as they are not impacted by the symmetry
 problem.
 
-Other parameter types may exist within the neural network
-however each may have its own unique initialization
+Other parameter types may exist within the neural network,
+however, each may have its own unique initialization
 requirements.
 
 References
@@ -601,7 +601,7 @@ Be sure to add a small epsilon to avoid divide-by-zero
 problems.
 
 Weight Normalization and Layer Normalization are additional
-related techniques however these won't be covered at this
+related techniques, however, these won't be covered at this
 time since it's unclear when or if these techniques are
 better.
 
@@ -811,8 +811,8 @@ affects the following example.
 	W1 = [1,0,0,0]
 	W2 = [0.25,0.25,0.25,0.25]
 
-The perceptron output is the same for each parameter vector
-however the regularization term prefers W2.
+The perceptron output is the same for each parameter vector,
+however, the regularization term prefers W2.
 
 	SUM(xi*w1i) == SUM(xi*w2i) = 1.0
 	SUM(w1i^2)  = 1.0
@@ -1217,9 +1217,6 @@ References
 Fair cGAN Training Procedure
 ----------------------------
 
-The fair cGAN training procedure below has the following
-benefits compared to the original procedure.
-
 The fairness of the adversarial game is improved by ensuring
 that both generator and discriminator are trained using the
 same data. To understand this point better, consider the
@@ -1238,42 +1235,79 @@ this problem manifests in the neural network architecture is
 with the discriminator batch normalization layers which
 produce poor statistics when all samples are fake.
 
-Additionally, compute performance is improved by eliminating
-a forward pass and by reducing the generator minibatch size
-to m/2.
-
-The fair cGAN training procedure consists of a four step
+The Fair cGAN training procedure consists of a four step
 process that is repeated for each iteration.
 
 Generator forward pass.
 
 1. Select a minibatch of m/2 conditional samples Cg
-2. Perform the forward pass to compute Yg=G(Cg)
+2. Select a minibatch of m/2 corresponding real samples Ytg
+3. Perform the forward pass to compute Yg=G(Cg)
+4. Compute the loss and dL_dYg using Yg and Ytg
 
 Discriminator forward pass.
 
 1. Select a minibatch of m/2 conditional samples Cr
-2. Select a minibatch of m/2 corresponding real samples Yr
-3. Form a single minibatch of m samples Xd=(Yr|Cr,Yg|Cg)
+2. Select a minibatch of m/2 corresponding real samples Ytr
+3. Form a single minibatch of m samples Xd=(Ytr|Cr,Yg|Cg)
 4. Perform the forward pass to compute Yd=D(Xd)
 
 Where '|' is a channelwise concatenation.
 
 Discriminator training.
 
-1. Form the training tensor Ytd with m/2 ones and m/2 zeros
-2. Compute the loss using Yd and Ytd
+1. Form the training tensor Yt10 with half ones and half zeros
+2. Compute the loss using Yd and Yt10
 3. Perform backprop using the discriminator
 
 Generator training.
 
-1. Form the training tensor Ytg with m ones
-2. Compute the loss using Yd and Ytg
+1. Form the training tensor Yt11 with all ones
+2. Compute the loss using Yd and Yt11
 3. Perform backprop (NOP) using the discriminator
-4. Filter the samples/channels of dL_dY corresponding to Yg
-5. Perform backprop using the generator and filtered dL_dY
+4. Compute dL_dY=blend(dL_dYg, filter(dL_dYd))
+5. Perform backprop using the generator and dL_dY
 
 Where NOP means to disable the parameter update.
+
+The compuation of dL_dY requires additional explaination.
+The backprop gradient dL_dYd was for the input
+Xd=(Ytr|Cr,Yg|Cg) so we must filter a subset of dL_dYd for
+the minibatch and channels corresponding to Yg. The
+Pix-To-Pix GAN also uses a lambda=100 coefficient to scale
+the L1 objective loss (a stabilizing loss), however, this
+doesn't feel mathematically sound. Therefore, I recommend
+replacing lambda with a blend_factor as follows.
+
+	dL_dY = (1 - blend_factor)*dL_dYg + blend_factor*dL_dYd
+
+Preliminary experimentations using MNIST suggest that
+initializing the blend_factor to 0.5 while increasing the
+blend_factor to 0.9 over time using a blend_scalar of 1.0005
+works well.
+
+	blend_factor *= blend_scalar
+	blend_factor = clamp(blend_factor, blend_min, blend_max)
+
+It is important to note that the inclusion of the
+stabilizing loss fundamentially changes the GAN game such
+that the discriminator is able to detect generated samples
+through the error introduced by the stabilizing loss with
+a very high accuracy. However, the expectation is that the
+generator is still able to produce more realistic samples
+using the blended gradients when compared to the stabilizing
+loss alone. Experiments were performed to blend away the
+stabilizing loss entirely over time to address this issue,
+however, this ultimately resulted in poorly generated
+samples which were also easily detectable by the
+discriminator.
+
+Compute performance is improved by eliminating a forward
+pass and by reducing the generator minibatch size to m/2.
+The larger minibatch size of the discriminator results in
+smoother gradients which is somewhat equivalent to the
+Pix-To-Pix training policy which divides the objective by
+two while optimizing the discriminator.
 
 License
 =======

@@ -26,13 +26,6 @@
 
 #include <stdint.h>
 
-typedef enum
-{
-	NN_LAYER_MODE_PREDICT   = 0,
-	NN_LAYER_MODE_TRAIN     = 1,
-	NN_LAYER_MODE_TRAIN_NOP = 2, // no parameter update for GANs
-} nn_layerMode_e;
-
 typedef struct nn_arch_s               nn_arch_t;
 typedef struct nn_batchNormLayer_s     nn_batchNormLayer_t;
 typedef struct nn_convLayer_s          nn_convLayer_t;

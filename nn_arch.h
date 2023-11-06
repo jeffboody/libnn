@@ -36,6 +36,10 @@ typedef struct nn_archState_s
 	float    momentum_decay;
 	float    batch_momentum;
 	float    l2_lambda;
+	float    gan_blend_factor;
+	float    gan_blend_scalar;
+	float    gan_blend_min;
+	float    gan_blend_max;
 } nn_archState_t;
 
 typedef struct nn_arch_s
@@ -49,9 +53,27 @@ typedef struct nn_arch_s
 	cc_list_t* layers;
 	nn_loss_t* loss;
 
-	// compute tensors (allocated on demand)
+	// cached output reference
+	// see NN_LAYER_FLAG_BACKPROP_NOP
+	nn_tensor_t* O;
+
+	// compute tensors below are allocated on demand
+
+	// default NN
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
+
+	// Fair cGAN
+	nn_tensor_t* Xd;
+	nn_tensor_t* Cg;
+	nn_tensor_t* Cr;
+	nn_tensor_t* Ytg;
+	nn_tensor_t* Ytr;
+	nn_tensor_t* dL_dY;
+
+	vkk_uniformSet_t* us0;
+	vkk_uniformSet_t* us1;
+	vkk_uniformSet_t* us2;
 } nn_arch_t;
 
 nn_arch_t*   nn_arch_new(nn_engine_t* engine,
@@ -68,11 +90,25 @@ int          nn_arch_attachLayer(nn_arch_t* self,
 int          nn_arch_attachLoss(nn_arch_t* self,
                                 nn_loss_t* loss);
 nn_tensor_t* nn_arch_train(nn_arch_t* self,
-                           nn_layerMode_e layer_mode,
+                           int flags,
                            uint32_t bs,
                            nn_tensor_t* X,
                            nn_tensor_t* Yt,
                            nn_tensor_t* Y);
+nn_tensor_t* nn_arch_trainFairCGAN(nn_arch_t* G,
+                                   nn_arch_t* D,
+                                   uint32_t bs,
+                                   nn_tensor_t* Cg,
+                                   nn_tensor_t* Cr,
+                                   nn_tensor_t* Ytg,
+                                   nn_tensor_t* Ytr,
+                                   nn_tensor_t* Yt11,
+                                   nn_tensor_t* Yt10,
+                                   nn_tensor_t* Yg,
+                                   nn_tensor_t* Yd,
+                                   float* loss,
+                                   float* g_loss,
+                                   float* d_loss);
 float        nn_arch_loss(nn_arch_t* self);
 int          nn_arch_predict(nn_arch_t* self,
                              uint32_t bs,

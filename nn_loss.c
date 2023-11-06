@@ -32,6 +32,7 @@
 #include "../libcc/cc_memory.h"
 #include "nn_arch.h"
 #include "nn_engine.h"
+#include "nn_layer.h"
 #include "nn_loss.h"
 #include "nn_tensorStats.h"
 #include "nn_tensor.h"
@@ -387,8 +388,7 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	return dL_dY;
 }
 
-void nn_loss_post(nn_loss_t* self,
-                  nn_layerMode_e layer_mode)
+void nn_loss_post(nn_loss_t* self, int flags)
 {
 	ASSERT(self);
 
@@ -398,8 +398,7 @@ void nn_loss_post(nn_loss_t* self,
 	vkk_compute_readBuffer(engine->compute, self->sb07_loss,
 	                       sizeof(float), 0, &self->loss);
 
-	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
-	   (layer_mode == NN_LAYER_MODE_TRAIN_NOP))
+	if(flags & NN_LAYER_FLAG_BACKPROP)
 	{
 		LOGI("dL_dY min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
 		     nn_tensorStats_min(self->stats_dL_dY),

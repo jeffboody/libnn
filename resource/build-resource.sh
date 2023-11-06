@@ -1,4 +1,6 @@
 cd nn/shaders
+glslangValidator -V nn_arch_forwardPassFairCGAN.comp -o nn_arch_forwardPassFairCGAN_comp.spv
+glslangValidator -V nn_arch_backpropFairCGAN.comp -o nn_arch_backpropFairCGAN_comp.spv
 glslangValidator -V nn_batchNormLayer_forwardPassXmean.comp -o nn_batchNormLayer_forwardPassXmean_comp.spv
 glslangValidator -V nn_batchNormLayer_forwardPassXvar.comp -o nn_batchNormLayer_forwardPassXvar_comp.spv
 glslangValidator -V nn_batchNormLayer_forwardPassXhat.comp -o nn_batchNormLayer_forwardPassXhat_comp.spv
@@ -51,6 +53,8 @@ glslangValidator -V nn_loss_bce.comp -o nn_loss_bce_comp.spv
 cd ../..
 
 # shaders
+bfs $1 blobSet nn/shaders/nn_arch_forwardPassFairCGAN_comp.spv
+bfs $1 blobSet nn/shaders/nn_arch_backpropFairCGAN_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_forwardPassXmean_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_forwardPassXvar_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_forwardPassXhat_comp.spv

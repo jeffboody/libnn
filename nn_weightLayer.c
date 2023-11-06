@@ -46,8 +46,7 @@ typedef struct
 } nn_weightLayerParam_t;
 
 static nn_tensor_t*
-nn_weightLayer_forwardPassFn(nn_layer_t* base,
-                             nn_layerMode_e layer_mode,
+nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
                              uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -160,8 +159,7 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_weightLayer_backpropFn(nn_layer_t* base,
-                          nn_layerMode_e layer_mode,
+nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
                           uint32_t bs,
                           nn_tensor_t* dL_dY)
 {
@@ -323,7 +321,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base,
 	}
 
 	// optionally skip parameter update
-	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	if(flags & NN_LAYER_FLAG_NOP)
 	{
 		return dL_dX;
 	}

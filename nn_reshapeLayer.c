@@ -38,8 +38,7 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_reshapeLayer_forwardPassFn(nn_layer_t* base,
-                              nn_layerMode_e layer_mode,
+nn_reshapeLayer_forwardPassFn(nn_layer_t* base, int flags,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -61,10 +60,8 @@ nn_reshapeLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_reshapeLayer_backpropFn(nn_layer_t* base,
-                           nn_layerMode_e layer_mode,
-                           uint32_t bs,
-                           nn_tensor_t* dL_dY)
+nn_reshapeLayer_backpropFn(nn_layer_t* base, int flags,
+                           uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY);

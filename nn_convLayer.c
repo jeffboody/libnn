@@ -49,8 +49,7 @@ typedef struct
 } nn_convLayerParam_t;
 
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base,
-                           nn_layerMode_e layer_mode,
+nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -164,7 +163,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base,
 
 static nn_tensor_t*
 nn_convLayer_backpropFn(nn_layer_t* base,
-                        nn_layerMode_e layer_mode,
+                        int flags,
                         uint32_t bs,
                         nn_tensor_t* dL_dY)
 {
@@ -379,7 +378,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	}
 
 	// optionally skip parameter update
-	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	if(flags & NN_LAYER_FLAG_NOP)
 	{
 		return dL_dX;
 	}
@@ -416,8 +415,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_convLayer_forwardPassTFn(nn_layer_t* base,
-                            nn_layerMode_e layer_mode,
+nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
                             uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -530,8 +528,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropTFn(nn_layer_t* base,
-                         nn_layerMode_e layer_mode,
+nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
                          uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -745,7 +742,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 	}
 
 	// optionally skip parameter update
-	if(layer_mode == NN_LAYER_MODE_TRAIN_NOP)
+	if(flags & NN_LAYER_FLAG_NOP)
 	{
 		return dL_dX;
 	}
@@ -782,15 +779,13 @@ nn_convLayer_backpropTFn(nn_layer_t* base,
 }
 
 static void
-nn_convLayer_postFn(nn_layer_t* base,
-                    nn_layerMode_e layer_mode)
+nn_convLayer_postFn(nn_layer_t* base, int flags)
 {
 	ASSERT(base);
 
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
 
-	if((layer_mode == NN_LAYER_MODE_TRAIN) ||
-	   (layer_mode == NN_LAYER_MODE_TRAIN_NOP))
+	if(flags & NN_LAYER_FLAG_BACKPROP)
 	{
 		LOGI("dL_dX min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
 		     nn_tensorStats_min(self->stats_dL_dX),

@@ -1,0 +1,121 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	uint  state_bs;
+	float state_learning_rate;
+	float state_momentum_decay;
+	float state_batch_momentum;
+	float state_l2_lambda;
+	float state_gan_blend_factor;
+	float state_gan_blend_scalar;
+	float state_gan_blend_min;
+	float state_gan_blend_max;
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb12
+{
+	nn_dim_t dimCg;
+};
+
+layout(std430, set=1, binding=6) readonly buffer sb16
+{
+	nn_dim_t dimYg;
+};
+
+layout(std430, set=2, binding=0) readonly buffer sb20
+{
+	nn_dim_t dim_dL_dYg;
+};
+
+layout(std430, set=2, binding=1) readonly buffer sb21
+{
+	float dL_dYg[];
+};
+
+layout(std430, set=2, binding=2) readonly buffer sb22
+{
+	nn_dim_t dim_dL_dYd;
+};
+
+layout(std430, set=2, binding=3) readonly buffer sb23
+{
+	float dL_dYd[];
+};
+
+layout(std430, set=2, binding=4) readonly buffer sb24
+{
+	nn_dim_t dim_dL_dY;
+};
+
+layout(std430, set=2, binding=5) writeonly buffer sb25
+{
+	float dL_dY[];
+};
+
+float get_dL_dYg(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dYg.height*dim_dL_dYg.width*
+	          dim_dL_dYg.depth;
+	uint sy = dim_dL_dYg.width*dim_dL_dYg.depth;
+	uint sx = dim_dL_dYg.depth;
+	return dL_dYg[n*sn + i*sy + j*sx + k];
+}
+
+float get_dL_dYd(uint n, uint i, uint j, uint k)
+{
+	uint sn = dim_dL_dYd.height*dim_dL_dYd.width*
+	          dim_dL_dYd.depth;
+	uint sy = dim_dL_dYd.width*dim_dL_dYd.depth;
+	uint sx = dim_dL_dYd.depth;
+	return dL_dYd[n*sn + i*sy + j*sx + k];
+}
+
+void set_dL_dY(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dim_dL_dY.height*dim_dL_dY.width*
+	          dim_dL_dY.depth;
+	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
+	uint sx = dim_dL_dY.depth;
+	dL_dY[n*sn + i*sy + j*sx + k] = v;
+}
+
+void main()
+{
+	// dL_dY = blend(dL_dYg + filter(dL_dYd))
+	// dispatch(RAW, bs/2, xh, xw, 1, 8, 8)
+	uint  m   = gl_GlobalInvocationID.x;
+	uint  i   = gl_GlobalInvocationID.y;
+	uint  j   = gl_GlobalInvocationID.z;
+	uint  xh  = dimCg.height;
+	uint  xw  = dimCg.width;
+	uint  yd  = dimYg.depth;
+	uint  bs2 = state_bs; // G state_bs is bs2
+	float s   = state_gan_blend_factor;
+
+	if((i >= xh) || (j >= xw))
+	{
+		return;
+	}
+
+	float dL_dYg;
+	float dL_dYd;
+	uint  k;
+	for(k = 0; k < yd; ++k)
+	{
+		// filter dL_dYd given Xd=(Ytr|Cr,Yg|Cg)
+		dL_dYg = get_dL_dYg(m, i, j, k);
+		dL_dYd = s*get_dL_dYd(m + bs2, i, j, k);
+		set_dL_dY(m, i, j, k, (1.0 - s)*dL_dYg + s*dL_dYd);
+	}
+}

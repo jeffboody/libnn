@@ -26,16 +26,23 @@
 
 #include "nn.h"
 
+// basic flags
+#define NN_LAYER_FLAG_FORWARD_PASS 1
+#define NN_LAYER_FLAG_BACKPROP     2
+#define NN_LAYER_FLAG_NOP          4
+
+// combined flags
+#define NN_LAYER_FLAG_TRAIN        3
+#define NN_LAYER_FLAG_BACKPROP_NOP 6
+
 typedef nn_tensor_t* (*nn_layer_forwardPassFn)
-                     (nn_layer_t* base,
-                      nn_layerMode_e layer_mode,
+                     (nn_layer_t* base, int flags,
                       uint32_t bs, nn_tensor_t* X);
 typedef nn_tensor_t* (*nn_layer_backpropFn)
-                     (nn_layer_t* base,
-                      nn_layerMode_e layer_mode,
+                     (nn_layer_t* base, int flags,
                       uint32_t bs, nn_tensor_t* dL_dY);
 typedef void (*nn_layer_postFn)(nn_layer_t* base,
-                                nn_layerMode_e layer_mode);
+                                int flags);
 typedef nn_dim_t* (*nn_layer_dimFn)
                   (nn_layer_t* base);
 
@@ -63,15 +70,15 @@ nn_layer_t*  nn_layer_new(size_t base_size,
                           nn_layerInfo_t* info);
 void         nn_layer_delete(nn_layer_t** _self);
 nn_tensor_t* nn_layer_forwardPass(nn_layer_t* self,
-                                  nn_layerMode_e layer_mode,
+                                  int flags,
                                   uint32_t bs,
                                   nn_tensor_t* X);
 nn_tensor_t* nn_layer_backprop(nn_layer_t* self,
-                               nn_layerMode_e layer_mode,
+                               int flags,
                                uint32_t bs,
                                nn_tensor_t* dL_dY);
 void         nn_layer_post(nn_layer_t* self,
-                           nn_layerMode_e layer_mode);
+                           int flags);
 nn_dim_t*    nn_layer_dimX(nn_layer_t* self);
 nn_dim_t*    nn_layer_dimY(nn_layer_t* self);
 

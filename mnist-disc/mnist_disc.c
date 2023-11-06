@@ -871,7 +871,7 @@ int mnist_disc_train(mnist_disc_t* self,
 	// _loss may be NULL
 	ASSERT(self);
 
-	if(nn_arch_train(&self->base, NN_LAYER_MODE_TRAIN,
+	if(nn_arch_train(&self->base, NN_LAYER_FLAG_TRAIN,
 	                 self->bs, self->X, self->Yt,
 	                 NULL) == NULL)
 	{

@@ -42,10 +42,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
-                              nn_layerMode_e layer_mode,
-                              uint32_t bs,
-                              nn_tensor_t* X)
+nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
+                              uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -58,19 +56,18 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
 		return nn_layer_forwardPass(&self->conv->base,
-		                            layer_mode, bs, X);
+		                            flags, bs, X);
 	}
 	else
 	{
 		return nn_layer_forwardPass(&self->pool->base,
-		                            layer_mode, bs, X);
+		                            flags, bs, X);
 	}
 }
 
 static nn_tensor_t*
 nn_coderOpLayer_backpropFn(nn_layer_t* base,
-                           nn_layerMode_e layer_mode,
-                           uint32_t bs,
+                           int flags, uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -83,19 +80,18 @@ nn_coderOpLayer_backpropFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
-		return nn_layer_backprop(&self->conv->base, layer_mode,
+		return nn_layer_backprop(&self->conv->base, flags,
 		                         bs, dL_dY);
 	}
 	else
 	{
-		return nn_layer_backprop(&self->pool->base, layer_mode,
+		return nn_layer_backprop(&self->pool->base, flags,
 		                         bs, dL_dY);
 	}
 }
 
 static void
-nn_coderOpLayer_postFn(nn_layer_t* base,
-                       nn_layerMode_e layer_mode)
+nn_coderOpLayer_postFn(nn_layer_t* base, int flags)
 {
 	ASSERT(base);
 
@@ -105,11 +101,11 @@ nn_coderOpLayer_postFn(nn_layer_t* base,
 	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
-		return nn_layer_post(&self->conv->base, layer_mode);
+		return nn_layer_post(&self->conv->base, flags);
 	}
 	else
 	{
-		return nn_layer_post(&self->pool->base, layer_mode);
+		return nn_layer_post(&self->pool->base, flags);
 	}
 }
 
@@ -486,8 +482,7 @@ typedef struct nn_coderRepeaterLayer_s
 
 static nn_tensor_t*
 nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
-                                    nn_layerMode_e layer_mode,
-                                    uint32_t bs,
+                                    int flags, uint32_t bs,
                                     nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -496,7 +491,7 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	X = nn_layer_forwardPass(&self->conv->base, layer_mode,
+	X = nn_layer_forwardPass(&self->conv->base, flags,
 	                         bs, X);
 	if(X == NULL)
 	{
@@ -504,13 +499,12 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 	}
 
 	return nn_layer_forwardPass(&self->fact->base,
-	                            layer_mode, bs, X);
+	                            flags, bs, X);
 }
 
 static nn_tensor_t*
 nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
-                                 nn_layerMode_e layer_mode,
-                                 uint32_t bs,
+                                 int flags, uint32_t bs,
                                  nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -519,28 +513,27 @@ nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	dL_dY = nn_layer_backprop(&self->fact->base, layer_mode,
+	dL_dY = nn_layer_backprop(&self->fact->base, flags,
 	                          bs, dL_dY);
 	if(dL_dY == NULL)
 	{
 		return NULL;
 	}
 
-	return nn_layer_backprop(&self->conv->base, layer_mode,
+	return nn_layer_backprop(&self->conv->base, flags,
 	                         bs, dL_dY);
 }
 
 static void
-nn_coderRepeaterLayer_postFn(nn_layer_t* base,
-                             nn_layerMode_e layer_mode)
+nn_coderRepeaterLayer_postFn(nn_layer_t* base, int flags)
 {
 	ASSERT(base);
 
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
 
-	nn_layer_post(&self->conv->base, layer_mode);
-	nn_layer_post(&self->fact->base, layer_mode);
+	nn_layer_post(&self->conv->base, flags);
+	nn_layer_post(&self->fact->base, flags);
 }
 
 static nn_dim_t*
@@ -751,10 +744,8 @@ nn_coderRepeaterLayer_export(nn_coderRepeaterLayer_t* self,
 ***********************************************************/
 
 static nn_tensor_t*
-nn_coderLayer_forwardPassFn(nn_layer_t* base,
-                            nn_layerMode_e layer_mode,
-                            uint32_t bs,
-                            nn_tensor_t* X)
+nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -763,7 +754,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->pre_op)
 	{
-		X = nn_layer_forwardPass(&self->pre_op->base, layer_mode, bs, X);
+		X = nn_layer_forwardPass(&self->pre_op->base, flags,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -772,7 +764,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->conv)
 	{
-		X = nn_layer_forwardPass(&self->conv->base, layer_mode,
+		X = nn_layer_forwardPass(&self->conv->base, flags,
 		                         bs, X);
 		if(X == NULL)
 		{
@@ -782,7 +774,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->skip)
 	{
-		X = nn_layer_forwardPass(&self->skip->base, layer_mode,
+		X = nn_layer_forwardPass(&self->skip->base, flags,
 		                         bs, X);
 		if(X == NULL)
 		{
@@ -792,7 +784,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->bn)
 	{
-		X = nn_layer_forwardPass(&self->bn->base, layer_mode,
+		X = nn_layer_forwardPass(&self->bn->base, flags,
 		                         bs, X);
 		if(X == NULL)
 		{
@@ -802,7 +794,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->fact)
 	{
-		X = nn_layer_forwardPass(&self->fact->base, layer_mode,
+		X = nn_layer_forwardPass(&self->fact->base, flags,
 		                         bs, X);
 		if(X == NULL)
 		{
@@ -820,7 +812,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 			r = (nn_coderRepeaterLayer_t*)
 			    cc_list_peekIter(iter);
 
-			X = nn_layer_forwardPass(&r->base, layer_mode, bs, X);
+			X = nn_layer_forwardPass(&r->base, flags, bs, X);
 			if(X == NULL)
 			{
 				return NULL;
@@ -832,7 +824,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 
 	if(self->post_op)
 	{
-		X = nn_layer_forwardPass(&self->post_op->base, layer_mode, bs, X);
+		X = nn_layer_forwardPass(&self->post_op->base, flags,
+		                         bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -843,10 +836,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_coderLayer_backpropFn(nn_layer_t* base,
-                         nn_layerMode_e layer_mode,
-                         uint32_t bs,
-                         nn_tensor_t* dL_dY)
+nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
+                         uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -855,7 +846,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->post_op)
 	{
-		dL_dY = nn_layer_backprop(&self->post_op->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->post_op->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -873,8 +864,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 			r = (nn_coderRepeaterLayer_t*)
 			    cc_list_peekIter(iter);
 
-			dL_dY = nn_layer_backprop(&r->base, layer_mode,
-			                          bs, dL_dY);
+			dL_dY = nn_layer_backprop(&r->base, flags, bs, dL_dY);
 			if(dL_dY == NULL)
 			{
 				return NULL;
@@ -886,7 +876,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->fact)
 	{
-		dL_dY = nn_layer_backprop(&self->fact->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->fact->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -896,7 +886,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->bn)
 	{
-		dL_dY = nn_layer_backprop(&self->bn->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->bn->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -906,7 +896,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->skip)
 	{
-		dL_dY = nn_layer_backprop(&self->skip->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->skip->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -916,7 +906,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->conv)
 	{
-		dL_dY = nn_layer_backprop(&self->conv->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->conv->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -926,7 +916,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 
 	if(self->pre_op)
 	{
-		dL_dY = nn_layer_backprop(&self->pre_op->base, layer_mode,
+		dL_dY = nn_layer_backprop(&self->pre_op->base, flags,
 		                          bs, dL_dY);
 		if(dL_dY == NULL)
 		{
@@ -938,8 +928,7 @@ nn_coderLayer_backpropFn(nn_layer_t* base,
 }
 
 static void
-nn_coderLayer_postFn(nn_layer_t* base,
-                     nn_layerMode_e layer_mode)
+nn_coderLayer_postFn(nn_layer_t* base, int flags)
 {
 	ASSERT(base);
 
@@ -947,27 +936,27 @@ nn_coderLayer_postFn(nn_layer_t* base,
 
 	if(self->pre_op)
 	{
-		nn_layer_post(&self->pre_op->base, layer_mode);
+		nn_layer_post(&self->pre_op->base, flags);
 	}
 
 	if(self->conv)
 	{
-		nn_layer_post(&self->conv->base, layer_mode);
+		nn_layer_post(&self->conv->base, flags);
 	}
 
 	if(self->skip)
 	{
-		nn_layer_post(&self->skip->base, layer_mode);
+		nn_layer_post(&self->skip->base, flags);
 	}
 
 	if(self->bn)
 	{
-		nn_layer_post(&self->bn->base, layer_mode);
+		nn_layer_post(&self->bn->base, flags);
 	}
 
 	if(self->fact)
 	{
-		nn_layer_post(&self->fact->base, layer_mode);
+		nn_layer_post(&self->fact->base, flags);
 	}
 
 	cc_listIter_t* iter;
@@ -979,7 +968,7 @@ nn_coderLayer_postFn(nn_layer_t* base,
 			nn_layer_t* layer;
 			layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-			nn_layer_post(layer, layer_mode);
+			nn_layer_post(layer, flags);
 
 			iter = cc_list_next(iter);
 		}
@@ -987,7 +976,7 @@ nn_coderLayer_postFn(nn_layer_t* base,
 
 	if(self->post_op)
 	{
-		nn_layer_post(&self->post_op->base, layer_mode);
+		nn_layer_post(&self->post_op->base, flags);
 	}
 }
 

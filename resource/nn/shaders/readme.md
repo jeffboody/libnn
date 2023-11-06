@@ -1,6 +1,35 @@
 Neural Network Compute Shader Notes
 ===================================
 
+Arch Layer
+----------
+
+Shared Uniforms
+
+* sb00: state
+
+Forward Pass Uniforms
+
+* sb10:  dimXd
+* sb11:  Xd
+* sb12:  dimCg
+* sb13:  Cg
+* sb14:  dimCr
+* sb15:  Cr
+* sb16:  dimYg
+* sb17:  Yg
+* sb18:  dimYtr
+* sb19:  Ytr
+
+Backprop Uniforms
+
+* sb20: dim_dL_dYg
+* sb21: dL_dYg
+* sb22: dim_dL_dYd
+* sb23: dL_dYd
+* sb24: dim_dL_dY
+* sb25: dL_dY
+
 Batch Normalization Layer
 -------------------------
 

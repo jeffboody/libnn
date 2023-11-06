@@ -39,8 +39,7 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassForkFn(nn_layer_t* base,
-                               nn_layerMode_e layer_mode,
+nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int flags,
                                uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -54,10 +53,8 @@ nn_skipLayer_forwardPassForkFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropAddFn(nn_layer_t* base,
-                           nn_layerMode_e layer_mode,
-                           uint32_t bs,
-                           nn_tensor_t* dL_dY)
+nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
+                           uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -70,8 +67,7 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
-                              nn_layerMode_e layer_mode,
+nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -156,8 +152,7 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
-                              nn_layerMode_e layer_mode,
+nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
                               uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
@@ -242,10 +237,8 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropForkFn(nn_layer_t* base,
-                            nn_layerMode_e layer_mode,
-                            uint32_t bs,
-                            nn_tensor_t* dL_dY)
+nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -341,10 +334,8 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropCatFn(nn_layer_t* base,
-                           nn_layerMode_e layer_mode,
-                           uint32_t bs,
-                           nn_tensor_t* dL_dY)
+nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
+                           uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,x1d + x2d)

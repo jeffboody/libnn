@@ -249,7 +249,7 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 			fillXYt(m, &rng1, &rng2, X, Yt);
 		}
 
-		nn_arch_train(arch, NN_LAYER_MODE_TRAIN, bs,
+		nn_arch_train(arch, NN_LAYER_FLAG_TRAIN, bs,
 		              X, Yt, NULL);
 
 		if(idx%10 == 0)

@@ -403,10 +403,14 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate  = 0.001f,
-		.momentum_decay = 0.5f,
-		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.01f,
+		.learning_rate    = 0.001f,
+		.momentum_decay   = 0.5f,
+		.batch_momentum   = 0.99f,
+		.l2_lambda        = 0.01f,
+		.gan_blend_factor = 0.5f,
+		.gan_blend_scalar = 1.0005f,
+		.gan_blend_min    = 0.5f,
+		.gan_blend_max    = 0.9f,
 	};
 
 	mnist_denoise_t* self;
@@ -851,7 +855,7 @@ int mnist_denoise_train(mnist_denoise_t* self,
 	// _loss may be NULL
 	ASSERT(self);
 
-	if(nn_arch_train(&self->base, NN_LAYER_MODE_TRAIN,
+	if(nn_arch_train(&self->base, NN_LAYER_FLAG_TRAIN,
 	                 self->bs, self->X, self->Yt,
 	                 self->Y) == NULL)
 	{
