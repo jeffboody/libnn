@@ -60,8 +60,20 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
+	nn_tensor_t* Xt = nn_mnist_load(engine);
+	if(Xt == NULL)
+	{
+		goto fail_Xt;
+	}
+
+	nn_dim_t* dimXt = nn_tensor_dim(Xt);
+	uint32_t  xh    = dimXt->height;
+	uint32_t  xw    = dimXt->width;
+	uint32_t  count = dimXt->count;
+
 	mnist_disc_t* self;
-	self = mnist_disc_new(engine, 32, 32, "data/dn.json");
+	self = mnist_disc_new(engine, 32, 32, xh, xw,
+	                      "data/dn.json");
 	if(self == NULL)
 	{
 		goto fail_disc;
@@ -77,7 +89,6 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	uint32_t epoch;
 	uint32_t step = 0;
 	uint32_t n;
-	uint32_t count = mnist_disc_countXt(self);
 	uint32_t bs    = mnist_disc_bs(self);
 	uint32_t bs2   = bs/2;
 	char     fname[256];
@@ -89,7 +100,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	{
 		for(n = 0; n < count; n += bs)
 		{
-			mnist_disc_sampleXt(self);
+			mnist_disc_sampleXt(self, Xt);
 			mnist_disc_train(self, &loss);
 
 			// update loss
@@ -159,6 +170,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	// cleanup
 	fclose(fplot);
 	mnist_disc_delete(&self);
+	nn_tensor_delete(&Xt);
 	nn_engine_delete(&engine);
 
 	// success
@@ -168,6 +180,8 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	fail_fplot:
 		mnist_disc_delete(&self);
 	fail_disc:
+		nn_tensor_delete(&Xt);
+	fail_Xt:
 		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }

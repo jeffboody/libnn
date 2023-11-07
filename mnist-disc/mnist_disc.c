@@ -83,8 +83,9 @@ static void mnist_disc_initYt(mnist_disc_t* self)
 }
 
 static mnist_disc_t*
-mnist_disc_parse(nn_engine_t* engine, jsmn_val_t* val,
-                 const char* fname_dn)
+mnist_disc_parse(nn_engine_t* engine,
+                 uint32_t xh, uint32_t xw,
+                 jsmn_val_t* val, const char* fname_dn)
 {
 	ASSERT(engine);
 	ASSERT(val);
@@ -191,7 +192,7 @@ mnist_disc_parse(nn_engine_t* engine, jsmn_val_t* val,
 	self->bs = strtol(val_bs->data, NULL, 0);
 	self->fc = strtol(val_fc->data, NULL, 0);
 
-	self->dn = mnist_denoise_import(engine, fname_dn);
+	self->dn = mnist_denoise_import(engine, xh, xw, fname_dn);
 	if(self->dn == NULL)
 	{
 		goto fail_dn;
@@ -204,14 +205,12 @@ mnist_disc_parse(nn_engine_t* engine, jsmn_val_t* val,
 		goto fail_bs;
 	}
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->dn->Xt);
-
 	// depth is 2 for real/generated and noisy inputs
 	nn_dim_t dim =
 	{
 		.count  = self->bs,
-		.height = dimXt->height,
-		.width  = dimXt->width,
+		.height = xh,
+		.width  = xw,
 		.depth  = 2,
 	};
 
@@ -339,7 +338,8 @@ mnist_disc_parse(nn_engine_t* engine, jsmn_val_t* val,
 
 mnist_disc_t*
 mnist_disc_new(nn_engine_t* engine, uint32_t bs,
-               uint32_t fc, const char* fname_dn)
+               uint32_t fc, uint32_t xh, uint32_t xw,
+               const char* fname_dn)
 {
 	ASSERT(engine);
 	ASSERT(fname_dn);
@@ -364,7 +364,7 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 	self->bs = bs;
 	self->fc = fc;
 
-	self->dn = mnist_denoise_import(engine, fname_dn);
+	self->dn = mnist_denoise_import(engine, xh, xw, fname_dn);
 	if(self->dn == NULL)
 	{
 		goto fail_dn;
@@ -377,14 +377,12 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 		goto fail_bs;
 	}
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->dn->Xt);
-
 	// depth is 2 for real/generated and noisy inputs
 	nn_dim_t dimX  =
 	{
 		.count  = bs,
-		.height = dimXt->height,
-		.width  = dimXt->width,
+		.height = xh,
+		.width  = xw,
 		.depth  = 2,
 	};
 
@@ -581,6 +579,8 @@ void mnist_disc_delete(mnist_disc_t** _self)
 
 mnist_disc_t*
 mnist_disc_import(nn_engine_t* engine,
+                  uint32_t xh,
+                  uint32_t xw,
                   const char* fname,
                   const char* fname_dn)
 {
@@ -632,7 +632,7 @@ mnist_disc_import(nn_engine_t* engine,
 	}
 
 	mnist_disc_t* self;
-	self = mnist_disc_parse(engine, val, fname_dn);
+	self = mnist_disc_parse(engine, xh, xw, val, fname_dn);
 	if(self == NULL)
 	{
 		goto fail_parse;
@@ -754,11 +754,13 @@ int mnist_disc_exportY(mnist_disc_t* self,
 	                           n, 0.0f, 1.0f);
 }
 
-void mnist_disc_sampleXt(mnist_disc_t* self)
+void
+mnist_disc_sampleXt(mnist_disc_t* self, nn_tensor_t* Xt)
 {
 	ASSERT(self);
+	ASSERT(Xt);
 
-	mnist_denoise_sampleXt(self->dn);
+	mnist_denoise_sampleXt(self->dn, Xt);
 	if(mnist_denoise_predict(self->dn, self->bs) == 0)
 	{
 		return;
@@ -843,13 +845,6 @@ int mnist_disc_predict(mnist_disc_t* self,
 
 	return nn_arch_predict(&self->base, bs,
 	                       self->X, self->Y);
-}
-
-uint32_t mnist_disc_countXt(mnist_disc_t* self)
-{
-	ASSERT(self);
-
-	return mnist_denoise_countXt(self->dn);
 }
 
 uint32_t mnist_disc_bs(mnist_disc_t* self)

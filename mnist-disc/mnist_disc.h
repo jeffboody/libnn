@@ -53,9 +53,13 @@ typedef struct
 mnist_disc_t* mnist_disc_new(nn_engine_t* engine,
                              uint32_t bs,
                              uint32_t fc,
+                             uint32_t xh,
+                             uint32_t xw,
                              const char* fname_dn);
 void          mnist_disc_delete(mnist_disc_t** _self);
 mnist_disc_t* mnist_disc_import(nn_engine_t* engine,
+                                uint32_t xh,
+                                uint32_t xw,
                                 const char* fname,
                                 const char* fname_dn);
 int           mnist_disc_export(mnist_disc_t* self,
@@ -66,12 +70,12 @@ int           mnist_disc_exportX(mnist_disc_t* self,
 int           mnist_disc_exportY(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);
-void          mnist_disc_sampleXt(mnist_disc_t* self);
+void          mnist_disc_sampleXt(mnist_disc_t* self,
+                                  nn_tensor_t* Xt);
 int           mnist_disc_train(mnist_disc_t* self,
                                float* _loss);
 int           mnist_disc_predict(mnist_disc_t* self,
                                  uint32_t bs);
-uint32_t      mnist_disc_countXt(mnist_disc_t* self);
 uint32_t      mnist_disc_bs(mnist_disc_t* self);
 
 #endif

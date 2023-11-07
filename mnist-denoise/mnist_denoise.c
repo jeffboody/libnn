@@ -79,7 +79,9 @@ mnist_denoise_addNoise(mnist_denoise_t* self)
 }
 
 static mnist_denoise_t*
-mnist_denoise_parse(nn_engine_t* engine, jsmn_val_t* val)
+mnist_denoise_parse(nn_engine_t* engine,
+                    uint32_t xh, uint32_t xw,
+                    jsmn_val_t* val)
 {
 	ASSERT(engine);
 	ASSERT(val);
@@ -191,19 +193,11 @@ mnist_denoise_parse(nn_engine_t* engine, jsmn_val_t* val)
 	self->bs = strtol(val_bs->data, NULL, 0);
 	self->fc = strtol(val_fc->data, NULL, 0);
 
-	self->Xt = nn_mnist_load(engine);
-	if(self->Xt == NULL)
-	{
-		goto fail_Xt;
-	}
-
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
-
 	nn_dim_t dim =
 	{
 		.count  = self->bs,
-		.height = dimXt->height,
-		.width  = dimXt->width,
+		.height = xh,
+		.width  = xw,
 		.depth  = 1,
 	};
 
@@ -329,8 +323,6 @@ mnist_denoise_parse(nn_engine_t* engine, jsmn_val_t* val)
 	fail_bn0:
 		nn_tensor_delete(&self->X);
 	fail_X:
-		nn_tensor_delete(&self->Xt);
-	fail_Xt:
 		nn_arch_delete((nn_arch_t**) &self);
 	return 0;
 }
@@ -341,7 +333,8 @@ mnist_denoise_parse(nn_engine_t* engine, jsmn_val_t* val)
 
 mnist_denoise_t*
 mnist_denoise_new(nn_engine_t* engine,
-                  uint32_t bs, uint32_t fc)
+                  uint32_t bs, uint32_t fc,
+                  uint32_t xh, uint32_t xw)
 {
 	ASSERT(engine);
 
@@ -369,19 +362,11 @@ mnist_denoise_new(nn_engine_t* engine,
 	self->bs = bs;
 	self->fc = fc;
 
-	self->Xt = nn_mnist_load(engine);
-	if(self->Xt == NULL)
-	{
-		goto fail_Xt;
-	}
-
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
-
 	nn_dim_t dimX  =
 	{
 		.count  = bs,
-		.height = dimXt->height,
-		.width  = dimXt->width,
+		.height = xh,
+		.width  = xw,
 		.depth  = 1,
 	};
 
@@ -570,8 +555,6 @@ mnist_denoise_new(nn_engine_t* engine,
 	fail_bn0:
 		nn_tensor_delete(&self->X);
 	fail_X:
-		nn_tensor_delete(&self->Xt);
-	fail_Xt:
 		nn_arch_delete((nn_arch_t**) &self);
 	return NULL;
 }
@@ -594,13 +577,13 @@ void mnist_denoise_delete(mnist_denoise_t** _self)
 		nn_coderLayer_delete(&self->enc1);
 		nn_batchNormLayer_delete(&self->bn0);
 		nn_tensor_delete(&self->X);
-		nn_tensor_delete(&self->Xt);
 		nn_arch_delete((nn_arch_t**) &self);
 	}
 }
 
 mnist_denoise_t*
 mnist_denoise_import(nn_engine_t* engine,
+                     uint32_t xh, uint32_t xw,
                      const char* fname)
 {
 	ASSERT(engine);
@@ -650,7 +633,7 @@ mnist_denoise_import(nn_engine_t* engine,
 	}
 
 	mnist_denoise_t* self;
-	self = mnist_denoise_parse(engine, val);
+	self = mnist_denoise_parse(engine, xh, xw, val);
 	if(self == NULL)
 	{
 		goto fail_parse;
@@ -774,11 +757,14 @@ int mnist_denoise_exportY(mnist_denoise_t* self,
 	                           n, 0.0f, 1.0f);
 }
 
-void mnist_denoise_sampleXt(mnist_denoise_t* self)
+void
+mnist_denoise_sampleXt(mnist_denoise_t* self,
+                       nn_tensor_t* Xt)
 {
 	ASSERT(self);
+	ASSERT(Xt);
 
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
+	nn_dim_t* dimXt = nn_tensor_dim(Xt);
 
 	uint32_t m;
 	uint32_t n;
@@ -786,7 +772,7 @@ void mnist_denoise_sampleXt(mnist_denoise_t* self)
 	for(m = 0; m < self->bs; ++m)
 	{
 		n = cc_rngUniform_rand2U(&self->rngU, 0, max);
-		nn_tensor_blit(self->Xt, self->Yt, 1, n, m);
+		nn_tensor_blit(Xt, self->Yt, 1, n, m);
 	}
 
 	// skip layers to perform poorly when noise is added
@@ -827,15 +813,6 @@ int mnist_denoise_predict(mnist_denoise_t* self,
 
 	return nn_arch_predict(&self->base, bs,
 	                       self->X, self->Y);
-}
-
-uint32_t mnist_denoise_countXt(mnist_denoise_t* self)
-{
-	ASSERT(self);
-
-	nn_dim_t* dimXt = nn_tensor_dim(self->Xt);
-
-	return dimXt->count;
 }
 
 uint32_t mnist_denoise_bs(mnist_denoise_t* self)

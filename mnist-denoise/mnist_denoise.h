@@ -37,7 +37,6 @@ typedef struct
 	uint32_t bs;
 	uint32_t fc;
 
-	nn_tensor_t*         Xt;
 	nn_tensor_t*         X;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     enc1;
@@ -56,9 +55,13 @@ typedef struct
 
 mnist_denoise_t* mnist_denoise_new(nn_engine_t* engine,
                                    uint32_t bs,
-                                   uint32_t fc);
+                                   uint32_t fc,
+                                   uint32_t xh,
+                                   uint32_t xw);
 void             mnist_denoise_delete(mnist_denoise_t** _self);
 mnist_denoise_t* mnist_denoise_import(nn_engine_t* engine,
+                                      uint32_t xh,
+                                      uint32_t xw,
                                       const char* fname);
 int              mnist_denoise_export(mnist_denoise_t* self,
                                       const char* fname);
@@ -71,12 +74,12 @@ int              mnist_denoise_exportYt(mnist_denoise_t* self,
 int              mnist_denoise_exportY(mnist_denoise_t* self,
                                        const char* fname,
                                        uint32_t n);
-void             mnist_denoise_sampleXt(mnist_denoise_t* self);
+void             mnist_denoise_sampleXt(mnist_denoise_t* self,
+                                        nn_tensor_t* Xt);
 int              mnist_denoise_train(mnist_denoise_t* self,
                                      float* _loss);
 int              mnist_denoise_predict(mnist_denoise_t* self,
                                        uint32_t bs);
-uint32_t         mnist_denoise_countXt(mnist_denoise_t* self);
 uint32_t         mnist_denoise_bs(mnist_denoise_t* self);
 
 #endif

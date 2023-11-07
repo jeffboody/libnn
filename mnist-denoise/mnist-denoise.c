@@ -60,8 +60,19 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
+	nn_tensor_t* Xt = nn_mnist_load(engine);
+	if(Xt == NULL)
+	{
+		goto fail_Xt;
+	}
+
+	nn_dim_t* dimXt = nn_tensor_dim(Xt);
+	uint32_t  xh    = dimXt->height;
+	uint32_t  xw    = dimXt->width;
+	uint32_t  count = dimXt->count;
+
 	mnist_denoise_t* self;
-	self = mnist_denoise_new(engine, 32, 32);
+	self = mnist_denoise_new(engine, 32, 32, xh, xw);
 	if(self == NULL)
 	{
 		goto fail_dn;
@@ -77,7 +88,6 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	uint32_t epoch;
 	uint32_t step = 0;
 	uint32_t n;
-	uint32_t count = mnist_denoise_countXt(self);
 	uint32_t bs    = mnist_denoise_bs(self);
 	char     fname[256];
 	float    loss;
@@ -88,7 +98,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	{
 		for(n = 0; n < count; n += bs)
 		{
-			mnist_denoise_sampleXt(self);
+			mnist_denoise_sampleXt(self, Xt);
 			mnist_denoise_train(self, &loss);
 
 			// update loss
@@ -152,6 +162,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	// cleanup
 	fclose(fplot);
 	mnist_denoise_delete(&self);
+	nn_tensor_delete(&Xt);
 	nn_engine_delete(&engine);
 
 	// success
@@ -161,6 +172,8 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	fail_fplot:
 		mnist_denoise_delete(&self);
 	fail_dn:
+		nn_tensor_delete(&Xt);
+	fail_Xt:
 		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }
