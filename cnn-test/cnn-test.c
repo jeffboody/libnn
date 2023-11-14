@@ -319,7 +319,7 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "CNN-Test",
+	.app_name    = "cnn-test",
 	.app_version =
 	{
 		.major = 1,

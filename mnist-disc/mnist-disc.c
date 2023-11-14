@@ -174,7 +174,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "MNIST-Disc",
+	.app_name    = "mnist-disc",
 	.app_version =
 	{
 		.major = 1,

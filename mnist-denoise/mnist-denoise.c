@@ -167,7 +167,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "MNIST-Denoise",
+	.app_name    = "mnist-denoise",
 	.app_version =
 	{
 		.major = 1,
