@@ -24,10 +24,10 @@
 #ifndef mnist_disc_H
 #define mnist_disc_H
 
+#include "libnn/mnist-denoise/mnist_denoise.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn.h"
 #include "libvkk/vkk_platform.h"
-#include "mnist_denoise.h"
 
 typedef struct
 {
@@ -35,8 +35,6 @@ typedef struct
 
 	uint32_t bs;
 	uint32_t fc;
-
-	mnist_denoise_t* dn;
 
 	nn_tensor_t*         X;
 	nn_batchNormLayer_t* bn0;
@@ -54,14 +52,12 @@ mnist_disc_t* mnist_disc_new(nn_engine_t* engine,
                              uint32_t bs,
                              uint32_t fc,
                              uint32_t xh,
-                             uint32_t xw,
-                             const char* fname_dn);
+                             uint32_t xw);
 void          mnist_disc_delete(mnist_disc_t** _self);
 mnist_disc_t* mnist_disc_import(nn_engine_t* engine,
                                 uint32_t xh,
                                 uint32_t xw,
-                                const char* fname,
-                                const char* fname_dn);
+                                const char* fname);
 int           mnist_disc_export(mnist_disc_t* self,
                                 const char* fname);
 int           mnist_disc_exportX(mnist_disc_t* self,
@@ -71,6 +67,7 @@ int           mnist_disc_exportY(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);
 void          mnist_disc_sampleXt(mnist_disc_t* self,
+                                  mnist_denoise_t* dn,
                                   nn_tensor_t* Xt);
 int           mnist_disc_train(mnist_disc_t* self,
                                float* _loss);

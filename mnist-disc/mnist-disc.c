@@ -70,13 +70,28 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	uint32_t  xh    = dimXt->height;
 	uint32_t  xw    = dimXt->width;
 	uint32_t  count = dimXt->count;
+	uint32_t  bs    = 32;
+	uint32_t  bs2   = bs/2;
 
-	mnist_disc_t* self;
-	self = mnist_disc_new(engine, 32, 32, xh, xw,
-	                      "data/dn.json");
-	if(self == NULL)
+	mnist_denoise_t* dn;
+	dn = mnist_denoise_import(engine, xh, xw, "data/dn.json");
+	if(dn == NULL)
+	{
+		goto fail_dn;
+	}
+
+	mnist_disc_t* disc;
+	disc = mnist_disc_new(engine, bs, 32, xh, xw);
+	if(disc == NULL)
 	{
 		goto fail_disc;
+	}
+
+	if(mnist_disc_bs(disc) != mnist_denoise_bs(dn))
+	{
+		LOGE("invalid bs=%u:%u",
+		     mnist_disc_bs(disc), mnist_denoise_bs(dn));
+		goto fail_bs;
 	}
 
 	FILE* fplot = fopen("data/plot.dat", "w");
@@ -89,8 +104,6 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	uint32_t epoch;
 	uint32_t step = 0;
 	uint32_t n;
-	uint32_t bs    = mnist_disc_bs(self);
-	uint32_t bs2   = bs/2;
 	char     fname[256];
 	float    loss;
 	float    sum_loss = 0.0f;
@@ -100,8 +113,8 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	{
 		for(n = 0; n < count; n += bs)
 		{
-			mnist_disc_sampleXt(self, Xt);
-			mnist_disc_train(self, &loss);
+			mnist_disc_sampleXt(disc, dn, Xt);
+			mnist_disc_train(disc, &loss);
 
 			// update loss
 			sum_loss += loss;
@@ -120,25 +133,25 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			{
 				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				mnist_disc_exportX(self, fname, 0);
+				mnist_disc_exportX(disc, fname, 0);
 				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
 				         n, epoch, step, bs2);
-				mnist_disc_exportX(self, fname, bs2);
+				mnist_disc_exportX(disc, fname, bs2);
 				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				mnist_disc_exportY(self, fname, 0);
+				mnist_disc_exportY(disc, fname, 0);
 				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
 				         n, epoch, step, bs2);
-				mnist_disc_exportY(self, fname, bs2);
+				mnist_disc_exportY(disc, fname, bs2);
 
-				if(mnist_disc_predict(self, bs))
+				if(mnist_disc_predict(disc, bs))
 				{
 					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
 					         n, epoch, step, 0);
-					mnist_disc_exportY(self, fname, 0);
+					mnist_disc_exportY(disc, fname, 0);
 					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
 					         n, epoch, step, bs2);
-					mnist_disc_exportY(self, fname, bs2);
+					mnist_disc_exportY(disc, fname, bs2);
 				}
 			}
 
@@ -164,12 +177,13 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 
 		snprintf(fname, 256, "data/arch-%i-%i.json",
 		         epoch, step - 1);
-		mnist_disc_export(self, fname);
+		mnist_disc_export(disc, fname);
 	}
 
 	// cleanup
 	fclose(fplot);
-	mnist_disc_delete(&self);
+	mnist_disc_delete(&disc);
+	mnist_denoise_delete(&dn);
 	nn_tensor_delete(&Xt);
 	nn_engine_delete(&engine);
 
@@ -178,8 +192,11 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 
 	// failure
 	fail_fplot:
-		mnist_disc_delete(&self);
+	fail_bs:
+		mnist_disc_delete(&disc);
 	fail_disc:
+		mnist_denoise_delete(&dn);
+	fail_dn:
 		nn_tensor_delete(&Xt);
 	fail_Xt:
 		nn_engine_delete(&engine);
