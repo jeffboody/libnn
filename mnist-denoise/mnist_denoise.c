@@ -49,11 +49,14 @@
 ***********************************************************/
 
 static void
-mnist_denoise_addNoise(mnist_denoise_t* self)
+mnist_denoise_addNoise(mnist_denoise_t* self,
+                       nn_tensor_t* X, nn_tensor_t* Yt)
 {
 	ASSERT(self);
+	ASSERT(X);
+	ASSERT(Yt);
 
-	nn_dim_t* dimX = nn_tensor_dim(self->X);
+	nn_dim_t* dimX = nn_tensor_dim(X);
 	uint32_t  xh   = dimX->height;
 	uint32_t  xw   = dimX->width;
 
@@ -69,10 +72,10 @@ mnist_denoise_addNoise(mnist_denoise_t* self)
 		{
 			for(j = 0; j < xw; ++j)
 			{
-				yt = nn_tensor_get(self->Yt, m, i, j, 0);
+				yt = nn_tensor_get(Yt, m, i, j, 0);
 				n  = cc_rngNormal_rand1F(&self->rngN);
 				x  = cc_clamp(yt + n, 0.0f, 1.0f);
-				nn_tensor_set(self->X, m, i, j, 0, x);
+				nn_tensor_set(X, m, i, j, 0, x);
 			}
 		}
 	}
@@ -764,7 +767,41 @@ mnist_denoise_sampleXt(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(Xt);
 
+	mnist_denoise_sampleXt2(self, Xt, self->X, self->Yt);
+}
+
+void mnist_denoise_sampleXt2(mnist_denoise_t* self,
+                             nn_tensor_t* Xt,
+                             nn_tensor_t* X,
+                             nn_tensor_t* Yt)
+{
+	ASSERT(self);
+	ASSERT(Xt);
+	ASSERT(X);
+	ASSERT(Yt);
+
 	nn_dim_t* dimXt = nn_tensor_dim(Xt);
+	nn_dim_t* dimX  = nn_tensor_dim(X);
+	nn_dim_t* dimYt = nn_tensor_dim(Yt);
+
+	if((dimX->count   != dimYt->count)  ||
+	   (dimXt->height != 28)            ||
+	   (dimXt->height != dimX->height)  ||
+	   (dimXt->height != dimYt->height) ||
+	   (dimXt->width  != 28)            ||
+	   (dimXt->width  != dimX->width)   ||
+	   (dimXt->width  != dimYt->width)  ||
+	   (dimXt->depth  != 1)             ||
+	   (dimX->depth   != 1)             ||
+	   (dimYt->depth  != 1))
+	{
+		LOGE("invalid count=%u:%u, height=%u:%u:%u, width=%u:%u:%u, depth=%u:%u:%u",
+		     dimX->count, dimYt->count,
+		     dimXt->height, dimX->height, dimYt->height,
+		     dimXt->width, dimX->width, dimYt->width,
+		     dimXt->depth, dimX->depth, dimYt->depth);
+		return;
+	}
 
 	uint32_t m;
 	uint32_t n;
@@ -772,11 +809,11 @@ mnist_denoise_sampleXt(mnist_denoise_t* self,
 	for(m = 0; m < self->bs; ++m)
 	{
 		n = cc_rngUniform_rand2U(&self->rngU, 0, max);
-		nn_tensor_blit(Xt, self->Yt, 1, n, m);
+		nn_tensor_blit(Xt, Yt, 1, n, m);
 	}
 
 	// skip layers to perform poorly when noise is added
-	mnist_denoise_addNoise(self);
+	mnist_denoise_addNoise(self, X, Yt);
 }
 
 int mnist_denoise_train(mnist_denoise_t* self,
