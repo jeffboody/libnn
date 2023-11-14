@@ -42,7 +42,6 @@
 #include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
-#include "texgz/texgz_png.h"
 #include "mnist_denoise.h"
 
 /***********************************************************
@@ -77,61 +76,6 @@ mnist_denoise_addNoise(mnist_denoise_t* self)
 			}
 		}
 	}
-}
-
-static int
-mnist_denoise_exportPng(mnist_denoise_t* self,
-                        const char* fname,
-                        uint32_t n,
-                        nn_tensor_t* T)
-{
-	ASSERT(self);
-	ASSERT(fname);
-	ASSERT(T);
-
-	if(n >= mnist_denoise_bs(self))
-	{
-		LOGE("invalid n=%u", n);
-		return 0;
-	}
-
-	nn_dim_t* dim = nn_tensor_dim(T);
-	uint32_t  h   = dim->height;
-	uint32_t  w   = dim->width;
-
-	texgz_tex_t* tex;
-	tex = texgz_tex_new(w, h, w, h,
-	                    TEXGZ_UNSIGNED_BYTE,
-	                    TEXGZ_RGBA, NULL);
-	if(tex == NULL)
-	{
-		return 0;
-	}
-
-	float    t;
-	uint32_t i;
-	uint32_t j;
-	unsigned char pixel[4] =
-	{
-		0x00, 0x00, 0x00, 0xFF,
-	};
-	for(i = 0; i < h; ++i)
-	{
-		for(j = 0; j < w; ++j)
-		{
-			t        = nn_tensor_get(T, n, i, j, 0);
-			pixel[0] = (unsigned char)
-			           cc_clamp(255.0f*t, 0.0f, 255.0f);
-			pixel[1] = pixel[0];
-			pixel[2] = pixel[0];
-			texgz_tex_setPixel(tex, j, i, pixel);
-		}
-	}
-
-	texgz_png_export(tex, fname);
-	texgz_tex_delete(&tex);
-
-	return 1;
 }
 
 static mnist_denoise_t*
@@ -804,8 +748,8 @@ int mnist_denoise_exportX(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->X);
+	return nn_tensor_exportPng(self->X, fname,
+	                           n, 0.0f, 1.0f);
 }
 
 int mnist_denoise_exportYt(mnist_denoise_t* self,
@@ -815,8 +759,8 @@ int mnist_denoise_exportYt(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->Yt);
+	return nn_tensor_exportPng(self->Yt, fname,
+	                           n, 0.0f, 1.0f);
 }
 
 int mnist_denoise_exportY(mnist_denoise_t* self,
@@ -826,8 +770,8 @@ int mnist_denoise_exportY(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return mnist_denoise_exportPng(self, fname,
-	                               n, self->Y);
+	return nn_tensor_exportPng(self->Y, fname,
+	                           n, 0.0f, 1.0f);
 }
 
 void mnist_denoise_sampleXt(mnist_denoise_t* self)

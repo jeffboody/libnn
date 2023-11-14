@@ -72,6 +72,11 @@ nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
 void         nn_tensor_delete(nn_tensor_t** _self);
 void         nn_tensor_print(nn_tensor_t* self,
                              const char* name);
+int          nn_tensor_exportPng(nn_tensor_t* self,
+                                 const char* fname,
+                                 uint32_t n,
+                                 float min,
+                                 float max);
 int          nn_tensor_load(nn_tensor_t* self,
                             jsmn_val_t* val);
 int          nn_tensor_store(nn_tensor_t* self,

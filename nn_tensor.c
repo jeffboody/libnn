@@ -27,8 +27,10 @@
 #include <string.h>
 
 #define LOG_TAG "nn"
+#include "../libcc/math/cc_float.h"
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
+#include "../texgz/texgz_png.h"
 #include "nn_arch.h"
 #include "nn_engine.h"
 #include "nn_tensorStats.h"
@@ -365,6 +367,90 @@ void nn_tensor_print(nn_tensor_t* self, const char* name)
 	}
 
 	jsmn_stream_delete(&stream);
+}
+
+int
+nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
+                    uint32_t n, float min, float max)
+{
+	ASSERT(self);
+	ASSERT(fname);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+	uint32_t  h   = dim->height;
+	uint32_t  w   = dim->width;
+
+	if((n >= dim->count) || (dim->depth > 4))
+	{
+		LOGE("invalid n=%u, count=%u, depth=%u",
+		     n, dim->count, dim->depth);
+		return 0;
+	}
+
+	texgz_tex_t* tex;
+	tex = texgz_tex_new(w, h, w, h,
+	                    TEXGZ_UNSIGNED_BYTE,
+	                    TEXGZ_RGBA, NULL);
+	if(tex == NULL)
+	{
+		return 0;
+	}
+
+	float    t;
+	uint32_t i;
+	uint32_t j;
+	uint32_t k;
+	unsigned char pixel[4] =
+	{
+		0x00, 0x00, 0x00, 0xFF,
+	};
+	if(dim->depth == 1)
+	{
+		for(i = 0; i < h; ++i)
+		{
+			for(j = 0; j < w; ++j)
+			{
+				t        = nn_tensor_get(self, n, i, j, 0);
+				pixel[0] = (unsigned char)
+				           cc_clamp(255.0f*(t - min)/(max - min),
+				                    0.0f, 255.0f);
+				pixel[1] = pixel[0];
+				pixel[2] = pixel[0];
+				texgz_tex_setPixel(tex, j, i, pixel);
+			}
+		}
+	}
+	else
+	{
+		for(i = 0; i < h; ++i)
+		{
+			for(j = 0; j < w; ++j)
+			{
+				for(k = 0; k < dim->depth; ++k)
+				{
+					t        = nn_tensor_get(self, n, i, j, k);
+					pixel[k] = (unsigned char)
+					           cc_clamp(255.0f*(t - min)/(max - min),
+					                    0.0f, 255.0f);
+				}
+				texgz_tex_setPixel(tex, j, i, pixel);
+			}
+		}
+	}
+
+	if(texgz_png_export(tex, fname) == 0)
+	{
+		goto fail_export;
+	}
+	texgz_tex_delete(&tex);
+
+	// success
+	return 1;
+
+	// failure
+	fail_export:
+		texgz_tex_delete(&tex);
+	return 0;
 }
 
 int nn_tensor_load(nn_tensor_t* self, jsmn_val_t* val)
