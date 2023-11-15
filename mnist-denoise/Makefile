@@ -1,4 +1,3 @@
-export NN_GC_DEBUG = 1
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 

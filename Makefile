@@ -20,9 +20,6 @@ OBJECTS = $(SOURCE:.c=.o)
 HFILES  = $(CLASSES:%=%.h)
 OPT     = -O2 -Wall
 CFLAGS  = $(OPT)
-ifeq ($(NN_GC_DEBUG),1)
-	CFLAGS += -DNN_GC_DEBUG
-endif
 LDFLAGS = -lm
 AR      = ar
 
