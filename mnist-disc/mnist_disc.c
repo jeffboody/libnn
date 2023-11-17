@@ -384,7 +384,8 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
 		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
+		.repeat_mode  = NN_CODER_CONV_MODE_3X3_RELU,
+		.repeat       = 2,
 		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
@@ -403,7 +404,8 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
 		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
 		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
+		.repeat_mode  = NN_CODER_CONV_MODE_3X3_RELU,
+		.repeat       = 2,
 		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
