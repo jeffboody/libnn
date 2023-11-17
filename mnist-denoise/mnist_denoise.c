@@ -62,7 +62,7 @@ mnist_denoise_addNoise(mnist_denoise_t* self,
 
 	float    x;
 	float    yt;
-	float    n;
+	float    n = 0.0f;
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
@@ -72,8 +72,11 @@ mnist_denoise_addNoise(mnist_denoise_t* self,
 		{
 			for(j = 0; j < xw; ++j)
 			{
+				if((self->mu != 0.0) && (self->sigma != 0.0))
+				{
+					n = cc_rngNormal_rand1F(&self->rngN);
+				}
 				yt = nn_tensor_get(Yt, m, i, j, 0);
-				n  = cc_rngNormal_rand1F(&self->rngN);
 				x  = cc_clamp(yt + n, 0.0f, 1.0f);
 				nn_tensor_set(X, m, i, j, 0, x);
 			}
@@ -98,6 +101,8 @@ mnist_denoise_parse(nn_engine_t* engine,
 	jsmn_val_t* val_base  = NULL;
 	jsmn_val_t* val_bs    = NULL;
 	jsmn_val_t* val_fc    = NULL;
+	jsmn_val_t* val_mu    = NULL;
+	jsmn_val_t* val_sigma = NULL;
 	jsmn_val_t* val_bn0   = NULL;
 	jsmn_val_t* val_enc1  = NULL;
 	jsmn_val_t* val_enc2  = NULL;
@@ -162,6 +167,14 @@ mnist_denoise_parse(nn_engine_t* engine,
 			{
 				val_fc = kv->val;
 			}
+			else if(strcmp(kv->key, "mu") == 0)
+			{
+				val_mu = kv->val;
+			}
+			else if(strcmp(kv->key, "sigma") == 0)
+			{
+				val_sigma = kv->val;
+			}
 		}
 
 		iter = cc_list_next(iter);
@@ -171,6 +184,8 @@ mnist_denoise_parse(nn_engine_t* engine,
 	if((val_base  == NULL) ||
 	   (val_bs    == NULL) ||
 	   (val_fc    == NULL) ||
+	   (val_mu    == NULL) ||
+	   (val_sigma == NULL) ||
 	   (val_bn0   == NULL) ||
 	   (val_enc1  == NULL) ||
 	   (val_enc2  == NULL) ||
@@ -193,8 +208,10 @@ mnist_denoise_parse(nn_engine_t* engine,
 		return NULL;
 	}
 
-	self->bs = strtol(val_bs->data, NULL, 0);
-	self->fc = strtol(val_fc->data, NULL, 0);
+	self->bs    = strtol(val_bs->data, NULL, 0);
+	self->fc    = strtol(val_fc->data, NULL, 0);
+	self->mu    = strtod(val_mu->data, NULL);
+	self->sigma = strtod(val_sigma->data, NULL);
 
 	nn_dim_t dim =
 	{
@@ -296,7 +313,7 @@ mnist_denoise_parse(nn_engine_t* engine,
 		goto fail_attach;
 	}
 
-	cc_rngNormal_init(&self->rngN, 0.5f, 0.5f);
+	cc_rngNormal_init(&self->rngN, self->mu, self->sigma);
 	cc_rngUniform_init(&self->rngU);
 
 	// success
@@ -337,7 +354,8 @@ mnist_denoise_parse(nn_engine_t* engine,
 mnist_denoise_t*
 mnist_denoise_new(nn_engine_t* engine,
                   uint32_t bs, uint32_t fc,
-                  uint32_t xh, uint32_t xw)
+                  uint32_t xh, uint32_t xw,
+                  double mu, double sigma)
 {
 	ASSERT(engine);
 
@@ -362,8 +380,10 @@ mnist_denoise_new(nn_engine_t* engine,
 		return NULL;
 	}
 
-	self->bs = bs;
-	self->fc = fc;
+	self->bs    = bs;
+	self->fc    = fc;
+	self->mu    = mu;
+	self->sigma = sigma;
 
 	nn_dim_t dimX  =
 	{
@@ -528,7 +548,7 @@ mnist_denoise_new(nn_engine_t* engine,
 		goto fail_attach;
 	}
 
-	cc_rngNormal_init(&self->rngN, 0.5f, 0.5f);
+	cc_rngNormal_init(&self->rngN, mu, sigma);
 	cc_rngUniform_init(&self->rngU);
 
 	// success
@@ -681,6 +701,10 @@ int mnist_denoise_export(mnist_denoise_t* self,
 	jsmn_stream_int(stream, (int) self->bs);
 	jsmn_stream_key(stream, "%s", "fc");
 	jsmn_stream_int(stream, (int) self->fc);
+	jsmn_stream_key(stream, "%s", "mu");
+	jsmn_stream_double(stream, self->mu);
+	jsmn_stream_key(stream, "%s", "sigma");
+	jsmn_stream_double(stream, self->sigma);
 	jsmn_stream_key(stream, "%s", "bn0");
 	nn_batchNormLayer_export(self->bn0, stream);
 	jsmn_stream_key(stream, "%s", "enc1");

@@ -37,6 +37,9 @@ typedef struct
 	uint32_t bs;
 	uint32_t fc;
 
+	double mu;
+	double sigma;
+
 	nn_tensor_t*         X;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     enc1;
@@ -57,7 +60,9 @@ mnist_denoise_t* mnist_denoise_new(nn_engine_t* engine,
                                    uint32_t bs,
                                    uint32_t fc,
                                    uint32_t xh,
-                                   uint32_t xw);
+                                   uint32_t xw,
+                                   double mu,
+                                   double sigma);
 void             mnist_denoise_delete(mnist_denoise_t** _self);
 mnist_denoise_t* mnist_denoise_import(nn_engine_t* engine,
                                       uint32_t xh,

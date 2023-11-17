@@ -72,7 +72,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	uint32_t  count = dimXt->count;
 
 	mnist_denoise_t* self;
-	self = mnist_denoise_new(engine, 32, 32, xh, xw);
+	self = mnist_denoise_new(engine, 32, 32, xh, xw, 0.5, 0.5);
 	if(self == NULL)
 	{
 		goto fail_dn;
