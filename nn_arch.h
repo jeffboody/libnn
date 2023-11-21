@@ -65,8 +65,10 @@ typedef struct nn_arch_s
 
 	// Fair cGAN
 	nn_tensor_t* Xd;
-	nn_tensor_t* Cg;
-	nn_tensor_t* Cr;
+	nn_tensor_t* Cg0;
+	nn_tensor_t* Cg1;
+	nn_tensor_t* Cr0;
+	nn_tensor_t* Cr1;
 	nn_tensor_t* Ytg;
 	nn_tensor_t* Ytr;
 	nn_tensor_t* dL_dY;
@@ -98,8 +100,10 @@ nn_tensor_t* nn_arch_train(nn_arch_t* self,
 nn_tensor_t* nn_arch_trainFairCGAN(nn_arch_t* G,
                                    nn_arch_t* D,
                                    uint32_t bs,
-                                   nn_tensor_t* Cg,
-                                   nn_tensor_t* Cr,
+                                   nn_tensor_t* Cg0,
+                                   nn_tensor_t* Cg1,
+                                   nn_tensor_t* Cr0,
+                                   nn_tensor_t* Cr1,
                                    nn_tensor_t* Ytg,
                                    nn_tensor_t* Ytr,
                                    nn_tensor_t* Yt11,

@@ -144,73 +144,142 @@ nn_arch_init(nn_arch_t* self,
 static int
 nn_arch_initFairCGAN(nn_arch_t* self,
                      uint32_t bs,
-                     nn_tensor_t* Cg,
-                     nn_tensor_t* Cr,
+                     nn_tensor_t* Cg0,
+                     nn_tensor_t* Cg1,
+                     nn_tensor_t* Cr0,
+                     nn_tensor_t* Cr1,
                      nn_tensor_t* Ytg,
                      nn_tensor_t* Ytr)
 {
+	// Cg1 and Cr1 are optional
 	ASSERT(self);
-	ASSERT(Cg);
-	ASSERT(Cr);
+	ASSERT(Cg0);
+	ASSERT(Cr0);
 	ASSERT(Ytg);
 	ASSERT(Ytr);
 
 	nn_engine_t* engine = self->engine;
 	uint32_t     bs2    = bs/2;
 
-	// create Cg
-	if(Cg->tensor_mode == NN_TENSOR_MODE_IO)
+	// create Cg0
+	if(Cg0->tensor_mode == NN_TENSOR_MODE_IO)
 	{
-		if(self->Cg)
+		if(self->Cg0)
 		{
-			if(nn_dim_equals(nn_tensor_dim(self->Cg),
-			                 nn_tensor_dim(Cg)) == 0)
+			if(nn_dim_equals(nn_tensor_dim(self->Cg0),
+			                 nn_tensor_dim(Cg0)) == 0)
 			{
-				nn_tensor_delete(&self->Cg);
+				nn_tensor_delete(&self->Cg0);
 			}
 		}
 
-		if(self->Cg == NULL)
+		if(self->Cg0 == NULL)
 		{
-			self->Cg = nn_tensor_new(engine, nn_tensor_dim(Cg),
-			                         NN_TENSOR_INIT_ZERO,
-			                         NN_TENSOR_MODE_COMPUTE);
-			if(self->Cg == NULL)
+			self->Cg0 = nn_tensor_new(engine, nn_tensor_dim(Cg0),
+			                          NN_TENSOR_INIT_ZERO,
+			                          NN_TENSOR_MODE_COMPUTE);
+			if(self->Cg0 == NULL)
 			{
 				return 0;
 			}
 		}
 
-		if(nn_tensor_blit(Cg, self->Cg, bs2, 0, 0) == 0)
+		if(nn_tensor_blit(Cg0, self->Cg0, bs2, 0, 0) == 0)
 		{
 			return 0;
 		}
 	}
 
-	// create Cr
-	if(Cr->tensor_mode == NN_TENSOR_MODE_IO)
+	// optionally create Cg1
+	if(Cg1 == NULL)
 	{
-		if(self->Cr)
+		Cg1 = Cg0;
+	}
+	else if(Cg1->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		if(self->Cg1)
 		{
-			if(nn_dim_equals(nn_tensor_dim(self->Cr),
-			                 nn_tensor_dim(Cr)) == 0)
+			if(nn_dim_equals(nn_tensor_dim(self->Cg1),
+			                 nn_tensor_dim(Cg1)) == 0)
 			{
-				nn_tensor_delete(&self->Cr);
+				nn_tensor_delete(&self->Cg1);
 			}
 		}
 
-		if(self->Cr == NULL)
+		if(self->Cg1 == NULL)
 		{
-			self->Cr = nn_tensor_new(engine, nn_tensor_dim(Cr),
-			                         NN_TENSOR_INIT_ZERO,
-			                         NN_TENSOR_MODE_COMPUTE);
-			if(self->Cr == NULL)
+			self->Cg1 = nn_tensor_new(engine, nn_tensor_dim(Cg1),
+			                          NN_TENSOR_INIT_ZERO,
+			                          NN_TENSOR_MODE_COMPUTE);
+			if(self->Cg1 == NULL)
 			{
 				return 0;
 			}
 		}
 
-		if(nn_tensor_blit(Cr, self->Cr, bs2, 0, 0) == 0)
+		if(nn_tensor_blit(Cg1, self->Cg1, bs2, 0, 0) == 0)
+		{
+			return 0;
+		}
+	}
+
+	// create Cr0
+	if(Cr0->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		if(self->Cr0)
+		{
+			if(nn_dim_equals(nn_tensor_dim(self->Cr0),
+			                 nn_tensor_dim(Cr0)) == 0)
+			{
+				nn_tensor_delete(&self->Cr0);
+			}
+		}
+
+		if(self->Cr0 == NULL)
+		{
+			self->Cr0 = nn_tensor_new(engine, nn_tensor_dim(Cr0),
+			                          NN_TENSOR_INIT_ZERO,
+			                          NN_TENSOR_MODE_COMPUTE);
+			if(self->Cr0 == NULL)
+			{
+				return 0;
+			}
+		}
+
+		if(nn_tensor_blit(Cr0, self->Cr0, bs2, 0, 0) == 0)
+		{
+			return 0;
+		}
+	}
+
+	// optionally create Cr1
+	if(Cr1 == NULL)
+	{
+		Cr1 = Cr0;
+	}
+	else if(Cr1->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		if(self->Cr1)
+		{
+			if(nn_dim_equals(nn_tensor_dim(self->Cr1),
+			                 nn_tensor_dim(Cr1)) == 0)
+			{
+				nn_tensor_delete(&self->Cr1);
+			}
+		}
+
+		if(self->Cr1 == NULL)
+		{
+			self->Cr1 = nn_tensor_new(engine, nn_tensor_dim(Cr1),
+			                          NN_TENSOR_INIT_ZERO,
+			                          NN_TENSOR_MODE_COMPUTE);
+			if(self->Cr1 == NULL)
+			{
+				return 0;
+			}
+		}
+
+		if(nn_tensor_blit(Cr1, self->Cr1, bs2, 0, 0) == 0)
 		{
 			return 0;
 		}
@@ -275,7 +344,7 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 	}
 
 	// create Xd
-	nn_dim_t* dimCr  = nn_tensor_dim(Cr);
+	nn_dim_t* dimCr  = nn_tensor_dim(Cr1);
 	nn_dim_t* dimYtr = nn_tensor_dim(Ytr);
 	nn_dim_t dimXd =
 	{
@@ -346,13 +415,19 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 
 static int
 nn_arch_forwardPassFairCGAN(nn_arch_t* self, uint32_t bs,
-                            nn_tensor_t* Yg)
+                            nn_tensor_t* Cg1,
+                            nn_tensor_t* Cr1,
+                            nn_tensor_t* Yg,
+                            nn_tensor_t* Ytr)
 {
 	ASSERT(self);
+	ASSERT(Cg1);
+	ASSERT(Cr1);
 	ASSERT(Yg);
+	ASSERT(Ytr);
 
 	nn_engine_t* engine = self->engine;
-	nn_dim_t*    dim    = nn_tensor_dim(self->Cg);
+	nn_dim_t*    dim    = nn_tensor_dim(Cg1);
 	uint32_t     bs2    = bs/2;
 
 	// sb00: state
@@ -390,22 +465,22 @@ nn_arch_forwardPassFairCGAN(nn_arch_t* self, uint32_t bs,
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Cg->sb_dim,
+			.buffer  = Cg1->sb_dim,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Cg->sb_data,
+			.buffer  = Cg1->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Cr->sb_dim,
+			.buffer  = Cr1->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Cr->sb_data,
+			.buffer  = Cr1->sb_data,
 		},
 		{
 			.binding = 6,
@@ -420,12 +495,12 @@ nn_arch_forwardPassFairCGAN(nn_arch_t* self, uint32_t bs,
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Ytr->sb_dim,
+			.buffer  = Ytr->sb_dim,
 		},
 		{
 			.binding = 9,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Ytr->sb_data,
+			.buffer  = Ytr->sb_data,
 		},
 	};
 
@@ -761,8 +836,10 @@ void nn_arch_delete(nn_arch_t** _self)
 		nn_tensor_delete(&self->dL_dY);
 		nn_tensor_delete(&self->Ytr);
 		nn_tensor_delete(&self->Ytg);
-		nn_tensor_delete(&self->Cr);
-		nn_tensor_delete(&self->Cg);
+		nn_tensor_delete(&self->Cr1);
+		nn_tensor_delete(&self->Cr0);
+		nn_tensor_delete(&self->Cg1);
+		nn_tensor_delete(&self->Cg0);
 		nn_tensor_delete(&self->Xd);
 		nn_tensor_delete(&self->Yt);
 		nn_tensor_delete(&self->X);
@@ -949,8 +1026,10 @@ nn_tensor_t*
 nn_arch_trainFairCGAN(nn_arch_t* G,
                       nn_arch_t* D,
                       uint32_t bs,
-                      nn_tensor_t* Cg,
-                      nn_tensor_t* Cr,
+                      nn_tensor_t* Cg0,
+                      nn_tensor_t* Cg1,
+                      nn_tensor_t* Cr0,
+                      nn_tensor_t* Cr1,
                       nn_tensor_t* Ytg,
                       nn_tensor_t* Ytr,
                       nn_tensor_t* Yt11,
@@ -962,10 +1041,13 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
                       float* d_loss)
 {
 	// Yg, Yd, loss, g_loss and d_loss are optional outputs
+	// Cg1 and Cr1 are optional
 	ASSERT(G);
 	ASSERT(D);
-	ASSERT(Cg);
-	ASSERT(Cr);
+	ASSERT(Cg0);
+	ASSERT(Cg0 != Cg1);
+	ASSERT(Cr0);
+	ASSERT(Cr0 != Cr1);
 	ASSERT(Ytg);
 	ASSERT(Ytr);
 	ASSERT(Yt11);
@@ -975,32 +1057,54 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 
 	uint32_t bs2 = bs/2;
 
-	if(nn_arch_initFairCGAN(G, bs, Cg, Cr, Ytg, Ytr) == 0)
+	if(nn_arch_initFairCGAN(G, bs, Cg0, Cg1, Cr0, Cr1,
+	                        Ytg, Ytr) == 0)
 	{
 		return NULL;
 	}
 
-	// optionally replace Cg, Cr, Ytg and Ytr
+	// optionally replace Cg0, Cg1, Cr0, Cr1, Ytg and Ytr
 	// with compute tensors
-	if(Cg->tensor_mode == NN_TENSOR_MODE_IO)
+	if(Cg0->tensor_mode == NN_TENSOR_MODE_IO)
 	{
-		Cg = G->Cg;
+		Cg0 = G->Cg0;
 	}
-	if(Cr->tensor_mode == NN_TENSOR_MODE_IO)
+
+	if(Cr0->tensor_mode == NN_TENSOR_MODE_IO)
 	{
-		Cr = G->Cr;
+		Cr0 = G->Cr0;
 	}
+
+	if(Cg1 == NULL)
+	{
+		Cg1 = Cg0;
+	}
+	else if(Cg1->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		Cg1 = G->Cg1;
+	}
+
+	if(Cr1 == NULL)
+	{
+		Cr1 = Cr0;
+	}
+	else if(Cr1->tensor_mode == NN_TENSOR_MODE_IO)
+	{
+		Cr1 = G->Cr1;
+	}
+
 	if(Ytg->tensor_mode == NN_TENSOR_MODE_IO)
 	{
 		Ytg = G->Ytg;
 	}
+
 	if(Ytr->tensor_mode == NN_TENSOR_MODE_IO)
 	{
 		Ytr = G->Ytr;
 	}
 
 	// perform the forward pass to compute Yg=G(Cg)
-	nn_tensor_t*   X    = Cg;
+	nn_tensor_t*   X    = Cg0;
 	cc_listIter_t* iter = cc_list_head(G->layers);
 	while(iter)
 	{
@@ -1030,8 +1134,9 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 		*loss = nn_arch_loss(G);
 	}
 
-	// compute Xd = cat(X, C)
-	if(nn_arch_forwardPassFairCGAN(G, bs, X) == 0)
+	// compute Xd=(Ytr|Cr,Yg|Cg) where Yg=X
+	if(nn_arch_forwardPassFairCGAN(G, bs, Cg1, Cr1,
+	                               X, Ytr) == 0)
 	{
 		goto fail_train;
 	}

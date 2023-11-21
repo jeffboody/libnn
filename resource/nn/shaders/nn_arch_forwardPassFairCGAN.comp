@@ -116,6 +116,7 @@ float getYtr(uint n, uint i, uint j, uint k)
 void main()
 {
 	// dispatch(RAW, bs/2, xh, xw, 1, 8, 8)
+	// compute Xd=(Ytr|Cr,Yg|Cg)
 	uint m   = gl_GlobalInvocationID.x;
 	uint i   = gl_GlobalInvocationID.y;
 	uint j   = gl_GlobalInvocationID.z;
@@ -129,8 +130,6 @@ void main()
 	{
 		return;
 	}
-
-	// Xd=(Ytr|Cr,Yg|Cg)
 
 	float v;
 	uint  k;

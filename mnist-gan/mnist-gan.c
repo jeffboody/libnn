@@ -261,7 +261,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			mnist_denoise_sampleXt2(dn, Xt, Cr, Ytr);
 
 			if(nn_arch_trainFairCGAN(&dn->base, &disc->base, bs,
-			                         Cg, Cr, Ytg, Ytr,
+			                         Cg, NULL, Cr, NULL, Ytg, Ytr,
 			                         Yt11, Yt10, Yg, Yd,
 			                         &loss, &g_loss,
 			                         &d_loss) == NULL)
