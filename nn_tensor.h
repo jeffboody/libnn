@@ -75,6 +75,8 @@ void         nn_tensor_print(nn_tensor_t* self,
 int          nn_tensor_exportPng(nn_tensor_t* self,
                                  const char* fname,
                                  uint32_t n,
+                                 uint32_t k0,
+                                 uint32_t k1,
                                  float min,
                                  float max);
 int          nn_tensor_load(nn_tensor_t* self,

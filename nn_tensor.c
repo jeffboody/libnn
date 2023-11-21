@@ -371,7 +371,8 @@ void nn_tensor_print(nn_tensor_t* self, const char* name)
 
 int
 nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
-                    uint32_t n, float min, float max)
+                    uint32_t n, uint32_t k0, uint32_t k1,
+                    float min, float max)
 {
 	ASSERT(self);
 	ASSERT(fname);
@@ -380,17 +381,19 @@ nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
 	uint32_t  h   = dim->height;
 	uint32_t  w   = dim->width;
 
-	if((n >= dim->count) || (dim->depth > 4))
+	if((n >= dim->count) ||
+	   (k1 < k0) || ((k1 - k0 + 1) > 4) || (k1 >= dim->depth))
 	{
-		LOGE("invalid n=%u, count=%u, depth=%u",
-		     n, dim->count, dim->depth);
+		LOGE("invalid n=%u, count=%u, k0=%u, k1=%u",
+		     n, dim->count, k0, k1);
 		return 0;
 	}
 
+	int format = (k0 == k1) ? TEXGZ_LUMINANCE : TEXGZ_RGBA;
+
 	texgz_tex_t* tex;
-	tex = texgz_tex_new(w, h, w, h,
-	                    TEXGZ_UNSIGNED_BYTE,
-	                    TEXGZ_RGBA, NULL);
+	tex = texgz_tex_new(w, h, w, h, TEXGZ_UNSIGNED_BYTE,
+	                    format, NULL);
 	if(tex == NULL)
 	{
 		return 0;
@@ -404,37 +407,18 @@ nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
 	{
 		0x00, 0x00, 0x00, 0xFF,
 	};
-	if(dim->depth == 1)
+	for(i = 0; i < h; ++i)
 	{
-		for(i = 0; i < h; ++i)
+		for(j = 0; j < w; ++j)
 		{
-			for(j = 0; j < w; ++j)
+			for(k = k0; k <= k1; ++k)
 			{
-				t        = nn_tensor_get(self, n, i, j, 0);
-				pixel[0] = (unsigned char)
-				           cc_clamp(255.0f*(t - min)/(max - min),
-				                    0.0f, 255.0f);
-				pixel[1] = pixel[0];
-				pixel[2] = pixel[0];
-				texgz_tex_setPixel(tex, j, i, pixel);
+				t = nn_tensor_get(self, n, i, j, k);
+				pixel[k - k0] = (unsigned char)
+				                cc_clamp(255.0f*(t - min)/(max - min),
+				                         0.0f, 255.0f);
 			}
-		}
-	}
-	else
-	{
-		for(i = 0; i < h; ++i)
-		{
-			for(j = 0; j < w; ++j)
-			{
-				for(k = 0; k < dim->depth; ++k)
-				{
-					t        = nn_tensor_get(self, n, i, j, k);
-					pixel[k] = (unsigned char)
-					           cc_clamp(255.0f*(t - min)/(max - min),
-					                    0.0f, 255.0f);
-				}
-				texgz_tex_setPixel(tex, j, i, pixel);
-			}
+			texgz_tex_setPixel(tex, j, i, pixel);
 		}
 	}
 

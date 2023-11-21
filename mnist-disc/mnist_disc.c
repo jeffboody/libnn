@@ -693,7 +693,7 @@ int mnist_disc_exportX(mnist_disc_t* self,
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->X, fname,
-	                           n, 0.0f, 1.0f);
+	                           n, 0, 0, 0.0f, 1.0f);
 }
 
 int mnist_disc_exportYt(mnist_disc_t* self,
@@ -704,7 +704,7 @@ int mnist_disc_exportYt(mnist_disc_t* self,
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->Yt, fname,
-	                           n, 0.0f, 1.0f);
+	                           n, 0, 0, 0.0f, 1.0f);
 }
 
 int mnist_disc_exportY(mnist_disc_t* self,
@@ -715,7 +715,7 @@ int mnist_disc_exportY(mnist_disc_t* self,
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->Y, fname,
-	                           n, 0.0f, 1.0f);
+	                           n, 0, 0, 0.0f, 1.0f);
 }
 
 void

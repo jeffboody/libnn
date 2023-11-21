@@ -308,28 +308,28 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			{
 				snprintf(fname, 256, "data/Cg%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Cg, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Cg, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Ytg%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Ytg, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Ytg, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Cr%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Cr, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Cr, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Ytr%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Ytr, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Ytr, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yg%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Yg, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Yg, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yg%u-%u-%u-%u.png",
 				         n, epoch, step, bs2);
-				nn_tensor_exportPng(Yg, fname, bs2, 0.0f, 1.0f);
+				nn_tensor_exportPng(Yg, fname, bs2, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yd%u-%u-%u-%u.png",
 				         n, epoch, step, 0);
-				nn_tensor_exportPng(Yd, fname, 0, 0.0f, 1.0f);
+				nn_tensor_exportPng(Yd, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yd%u-%u-%u-%u.png",
 				         n, epoch, step, bs2);
-				nn_tensor_exportPng(Yd, fname, bs2, 0.0f, 1.0f);
+				nn_tensor_exportPng(Yd, fname, bs2, 0, 0, 0.0f, 1.0f);
 			}
 
 			// plot loss
