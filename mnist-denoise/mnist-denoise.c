@@ -149,14 +149,19 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 				max_loss = 0.0f;
 			}
 
+			// export arch
+			uint32_t arch_interval = 100;
+			if((step%arch_interval) == (arch_interval - 1))
+			{
+				snprintf(fname, 256, "data/arch-%i-%i.json",
+				         epoch, step);
+				mnist_denoise_export(self, fname);
+			}
+
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
 			     epoch, step, n, loss);
 			++step;
 		}
-
-		snprintf(fname, 256, "data/arch-%i-%i.json",
-		         epoch, step - 1);
-		mnist_denoise_export(self, fname);
 	}
 
 	// cleanup

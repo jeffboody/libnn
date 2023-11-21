@@ -128,7 +128,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			}
 
 			// export images
-			uint32_t export_interval = 100;
+			uint32_t export_interval = 10;
 			if((step%export_interval) == (export_interval - 1))
 			{
 				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
@@ -170,14 +170,19 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 				max_loss = 0.0f;
 			}
 
+			// export arch
+			uint32_t arch_interval = 100;
+			if((step%arch_interval) == (arch_interval - 1))
+			{
+				snprintf(fname, 256, "data/arch-%i-%i.json",
+				         epoch, step);
+				mnist_disc_export(disc, fname);
+			}
+
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
 			     epoch, step, n, loss);
 			++step;
 		}
-
-		snprintf(fname, 256, "data/arch-%i-%i.json",
-		         epoch, step - 1);
-		mnist_disc_export(disc, fname);
 	}
 
 	// cleanup
