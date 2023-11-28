@@ -27,8 +27,10 @@ Backprop Uniforms
 * sb21: dL_dYg
 * sb22: dim_dL_dYd
 * sb23: dL_dYd
-* sb24: dim_dL_dY
-* sb25: dL_dY
+* sb24: dim_dL_dYdg
+* sb25: dL_dYdg
+* sb26: dim_dL_dYb
+* sb27: dL_dYb
 
 Batch Normalization Layer
 -------------------------

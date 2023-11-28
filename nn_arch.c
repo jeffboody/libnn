@@ -374,23 +374,44 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 		}
 	}
 
-	// create dL_dY
+	// create dL_dYb
 	nn_dim_t* dim_dL_dY = nn_tensor_dim(Ytg);
-	if(self->dL_dY)
+	if(self->dL_dYb)
 	{
-		if(nn_dim_equals(nn_tensor_dim(self->dL_dY),
+		if(nn_dim_equals(nn_tensor_dim(self->dL_dYb),
 		                 dim_dL_dY) == 0)
 		{
-			nn_tensor_delete(&self->dL_dY);
+			nn_tensor_delete(&self->dL_dYb);
 		}
 	}
 
-	if(self->dL_dY == NULL)
+	if(self->dL_dYb == NULL)
 	{
-		self->dL_dY = nn_tensor_new(engine, dim_dL_dY,
-		                            NN_TENSOR_INIT_ZERO,
-		                            NN_TENSOR_MODE_COMPUTE);
-		if(self->dL_dY == NULL)
+		self->dL_dYb = nn_tensor_new(engine, dim_dL_dY,
+		                             NN_TENSOR_INIT_ZERO,
+		                             NN_TENSOR_MODE_COMPUTE);
+		if(self->dL_dYb == NULL)
+		{
+			return 0;
+		}
+	}
+
+	// create dL_dYdg
+	if(self->dL_dYdg)
+	{
+		if(nn_dim_equals(nn_tensor_dim(self->dL_dYdg),
+		                 dim_dL_dY) == 0)
+		{
+			nn_tensor_delete(&self->dL_dYdg);
+		}
+	}
+
+	if(self->dL_dYdg == NULL)
+	{
+		self->dL_dYdg = nn_tensor_new(engine, dim_dL_dY,
+		                              NN_TENSOR_INIT_ZERO,
+		                              NN_TENSOR_MODE_COMPUTE);
+		if(self->dL_dYdg == NULL)
 		{
 			return 0;
 		}
@@ -540,17 +561,20 @@ nn_arch_backpropFairCGAN(nn_arch_t* self, uint32_t bs,
 	ASSERT(dL_dYg);
 	ASSERT(dL_dYd);
 
-	nn_engine_t* engine = self->engine;
-	nn_tensor_t* dL_dY  = self->dL_dY;
-	nn_dim_t*    dim    = nn_tensor_dim(dL_dYg);
-	uint32_t     bs2    = bs/2;
+	nn_engine_t* engine  = self->engine;
+	nn_tensor_t* dL_dYb  = self->dL_dYb;
+	nn_tensor_t* dL_dYdg = self->dL_dYdg;
+	nn_dim_t*    dim     = nn_tensor_dim(dL_dYg);
+	uint32_t     bs2     = bs/2;
 
 	// sb20: dim_dL_dYg
 	// sb21: dL_dYg
 	// sb22: dim_dL_dYd
 	// sb23: dL_dYd
-	// sb24: dim_dL_dY
-	// sb25: dL_dY
+	// sb24: dim_dL_dYdg
+	// sb25: dL_dYdg
+	// sb26: dim_dL_dYb
+	// sb27: dL_dYb
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
@@ -576,12 +600,22 @@ nn_arch_backpropFairCGAN(nn_arch_t* self, uint32_t bs,
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
+			.buffer  = dL_dYdg->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_data,
+			.buffer  = dL_dYdg->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dYb->sb_dim,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dYb->sb_data,
 		},
 	};
 
@@ -593,7 +627,7 @@ nn_arch_backpropFairCGAN(nn_arch_t* self, uint32_t bs,
 	};
 
 	// nn_arch_backpropFairCGAN
-	// dL_dY = blend(dL_dYg + filter(dL_dYd))
+	// dL_dYb = blend(dL_dYg + filter(dL_dYd))
 	// dispatch(RAW, bs/2, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_arch_backpropFairCGAN;
@@ -602,13 +636,13 @@ nn_arch_backpropFairCGAN(nn_arch_t* self, uint32_t bs,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 6, ua2_array);
+	                                 8, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs2, dim->height, dim->width,
 	                   1, 8, 8);
 
-	return dL_dY;
+	return dL_dYb;
 }
 
 /***********************************************************
@@ -833,7 +867,8 @@ void nn_arch_delete(nn_arch_t** _self)
 		vkk_uniformSet_delete(&self->us2);
 		vkk_uniformSet_delete(&self->us1);
 		vkk_uniformSet_delete(&self->us0);
-		nn_tensor_delete(&self->dL_dY);
+		nn_tensor_delete(&self->dL_dYdg);
+		nn_tensor_delete(&self->dL_dYb);
 		nn_tensor_delete(&self->Ytr);
 		nn_tensor_delete(&self->Ytg);
 		nn_tensor_delete(&self->Cr1);
@@ -1034,13 +1069,17 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
                       nn_tensor_t* Ytr,
                       nn_tensor_t* Yt11,
                       nn_tensor_t* Yt10,
+                      nn_tensor_t* dL_dYb,
+                      nn_tensor_t* dL_dYg,
+                      nn_tensor_t* dL_dYdg,
                       nn_tensor_t* Yg,
                       nn_tensor_t* Yd,
                       float* loss,
                       float* g_loss,
                       float* d_loss)
 {
-	// Yg, Yd, loss, g_loss and d_loss are optional outputs
+	// dL_dYb, dL_dYg, dL_dYdg, Yg, Yd,
+	// loss, g_loss and d_loss are optional outputs
 	// Cg1 and Cr1 are optional
 	ASSERT(G);
 	ASSERT(D);
@@ -1122,9 +1161,10 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 	G->O = X;
 
 	// compute loss
-	nn_tensor_t* dL_dYg;
-	dL_dYg = nn_loss_loss(G->loss, bs2, X, Ytg);
-	if(dL_dYg == NULL)
+	// avoid duplicate naming of dL_dYg compute tensor
+	nn_tensor_t* dL_dYg_ct;
+	dL_dYg_ct = nn_loss_loss(G->loss, bs2, X, Ytg);
+	if(dL_dYg_ct == NULL)
 	{
 		goto fail_train;
 	}
@@ -1178,10 +1218,30 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 	}
 
 	nn_tensor_t* dL_dY;
-	dL_dY = nn_arch_backpropFairCGAN(G, bs, dL_dYg, dL_dYd);
+	dL_dY = nn_arch_backpropFairCGAN(G, bs, dL_dYg_ct, dL_dYd);
 	if(dL_dY == NULL)
 	{
 		goto fail_train;
+	}
+
+	// optionally blit dL_dYb
+	// blit must be prior to backprop to avoid overwrite
+	if(dL_dYb)
+	{
+		// finish nn_arch_backpropFairCGAN
+		nn_engine_end(G->engine);
+
+		if(nn_tensor_blit(G->dL_dYb, dL_dYb, bs2, 0, 0) == 0)
+		{
+			return NULL;
+		}
+
+		// resume generator backprop
+		if(nn_engine_begin(G->engine) == 0)
+		{
+			// do not end
+			return NULL;
+		}
 	}
 
 	// perform backpropagation
@@ -1202,6 +1262,24 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 
 	nn_engine_end(G->engine);
 	nn_arch_post(G, flags);
+
+	// optionally blit dL_dYg
+	if(dL_dYg)
+	{
+		if(nn_tensor_blit(dL_dYg_ct, dL_dYg, bs2, 0, 0) == 0)
+		{
+			return NULL;
+		}
+	}
+
+	// optionally blit dL_dYdg
+	if(dL_dYdg)
+	{
+		if(nn_tensor_blit(G->dL_dYdg, dL_dYdg, bs2, 0, 0) == 0)
+		{
+			return NULL;
+		}
+	}
 
 	// optionally blit Yg
 	if(Yg)

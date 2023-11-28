@@ -1265,25 +1265,26 @@ Generator training.
 1. Form the training tensor Yt11 with all ones
 2. Compute the loss using Yd and Yt11
 3. Perform backprop (NOP) using the discriminator
-4. Compute dL_dY=blend(dL_dYg, filter(dL_dYd))
+4. Compute dL_dYb=blend(dL_dYg, dL_dYdg)
 5. Perform backprop using the generator and dL_dY
 
 Where NOP means to disable the parameter update.
 
-The compuation of dL_dY requires additional explaination.
-The backprop gradient dL_dYd was for the input
-Xd=(Ytr|Cr,Yg|Cg) so we must filter a subset of dL_dYd for
-the minibatch and channels corresponding to Yg. The
-Pix-To-Pix GAN also uses a lambda=100 coefficient to scale
+The compuation of dL_dYdg consists of filtering a subset
+of the discriminator backprop gradient dL_dYd which
+corresponds to the minibatch and channnels of Yg from
+Xd=(Ytr|Cr,Yg|Cg).
+
+The Pix-To-Pix GAN uses a lambda=100 coefficient to scale
 the L1 objective loss (a stabilizing loss), however, this
 doesn't feel mathematically sound. Therefore, I recommend
 replacing lambda with a blend_factor as follows.
 
-	dL_dY = (1 - blend_factor)*dL_dYg + blend_factor*dL_dYd
+	dL_dYb = (1 - blend_factor)*dL_dYg + blend_factor*dL_dYdg
 
 Preliminary experimentations using MNIST suggest that
-initializing the blend_factor to 0.5 while increasing the
-blend_factor to 0.9 over time using a blend_scalar of 1.0005
+initializing the blend_factor to 0.1 while increasing the
+blend_factor to 0.5 over time using a blend_scalar of 1.01
 works well.
 
 	blend_factor *= blend_scalar

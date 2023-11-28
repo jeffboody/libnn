@@ -71,7 +71,8 @@ typedef struct nn_arch_s
 	nn_tensor_t* Cr1;
 	nn_tensor_t* Ytg;
 	nn_tensor_t* Ytr;
-	nn_tensor_t* dL_dY;
+	nn_tensor_t* dL_dYb;
+	nn_tensor_t* dL_dYdg;
 
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
@@ -108,6 +109,9 @@ nn_tensor_t* nn_arch_trainFairCGAN(nn_arch_t* G,
                                    nn_tensor_t* Ytr,
                                    nn_tensor_t* Yt11,
                                    nn_tensor_t* Yt10,
+                                   nn_tensor_t* dL_dYb,
+                                   nn_tensor_t* dL_dYg,
+                                   nn_tensor_t* dL_dYdg,
                                    nn_tensor_t* Yg,
                                    nn_tensor_t* Yd,
                                    float* loss,
