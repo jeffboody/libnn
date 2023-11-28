@@ -41,6 +41,7 @@ typedef struct
 	double sigma;
 
 	nn_tensor_t*         X;
+	nn_tensor_t*         dL_dY;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     enc1;
 	nn_coderLayer_t*     enc2;
@@ -79,6 +80,9 @@ int              mnist_denoise_exportYt(mnist_denoise_t* self,
 int              mnist_denoise_exportY(mnist_denoise_t* self,
                                        const char* fname,
                                        uint32_t n);
+int              mnist_denoise_export_dL_dY(mnist_denoise_t* self,
+                                            const char* fname,
+                                            uint32_t n);
 void             mnist_denoise_sampleXt(mnist_denoise_t* self,
                                         nn_tensor_t* Xt);
 void             mnist_denoise_sampleXt2(mnist_denoise_t* self,

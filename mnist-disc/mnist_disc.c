@@ -208,6 +208,14 @@ mnist_disc_parse(nn_engine_t* engine,
 		goto fail_X;
 	}
 
+	self->dL_dY = nn_tensor_new(engine, &dim,
+	                            NN_TENSOR_INIT_ZERO,
+	                            NN_TENSOR_MODE_IO);
+	if(self->dL_dY == NULL)
+	{
+		goto fail_dL_dY;
+	}
+
 	self->bn0 = nn_batchNormLayer_import(&self->base,
 	                                     val_bn0);
 	if(self->bn0 == NULL)
@@ -309,6 +317,8 @@ mnist_disc_parse(nn_engine_t* engine,
 	fail_coder1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
+		nn_tensor_delete(&self->dL_dY);
+	fail_dL_dY:
 		nn_tensor_delete(&self->X);
 	fail_X:
 		nn_arch_delete((nn_arch_t**) &self);
@@ -327,10 +337,10 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate  = 0.00005f,
+		.learning_rate  = 0.0001f,
 		.momentum_decay = 0.5f,
 		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.01f,
+		.l2_lambda      = 0.0001f,
 	};
 
 	mnist_disc_t* self;
@@ -360,6 +370,14 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 	if(self->X == NULL)
 	{
 		goto fail_X;
+	}
+
+	self->dL_dY = nn_tensor_new(engine, &dimX,
+	                            NN_TENSOR_INIT_ZERO,
+	                            NN_TENSOR_MODE_IO);
+	if(self->dL_dY == NULL)
+	{
+		goto fail_dL_dY;
 	}
 
 	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_RUNNING;
@@ -516,6 +534,8 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 	fail_coder1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
+		nn_tensor_delete(&self->dL_dY);
+	fail_dL_dY:
 		nn_tensor_delete(&self->X);
 	fail_X:
 		nn_arch_delete((nn_arch_t**) &self);
@@ -538,6 +558,7 @@ void mnist_disc_delete(mnist_disc_t** _self)
 		nn_coderLayer_delete(&self->coder2);
 		nn_coderLayer_delete(&self->coder1);
 		nn_batchNormLayer_delete(&self->bn0);
+		nn_tensor_delete(&self->dL_dY);
 		nn_tensor_delete(&self->X);
 		nn_arch_delete((nn_arch_t**) &self);
 	}
@@ -696,6 +717,17 @@ int mnist_disc_exportX(mnist_disc_t* self,
 	                           n, 0, 0, 0.0f, 1.0f);
 }
 
+int mnist_disc_export_dL_dY(mnist_disc_t* self,
+                            const char* fname,
+                            uint32_t n)
+{
+	ASSERT(self);
+	ASSERT(fname);
+
+	return nn_tensor_exportPng(self->dL_dY, fname,
+	                           n, 0, 0, -1.0f, 1.0f);
+}
+
 int mnist_disc_exportYt(mnist_disc_t* self,
                         const char* fname,
                         uint32_t n)
@@ -784,9 +816,16 @@ int mnist_disc_train(mnist_disc_t* self,
 	// _loss may be NULL
 	ASSERT(self);
 
-	if(nn_arch_train(&self->base, NN_LAYER_FLAG_TRAIN,
-	                 self->bs, self->X, self->Yt,
-	                 NULL) == NULL)
+	nn_tensor_t* dL_dY;
+	dL_dY = nn_arch_train(&self->base, NN_LAYER_FLAG_TRAIN,
+	                      self->bs, self->X, self->Yt,
+	                      self->Y);
+	if(dL_dY == NULL)
+	{
+		return 0;
+	}
+
+	if(nn_tensor_blit(dL_dY, self->dL_dY, self->bs, 0, 0) == 0)
 	{
 		return 0;
 	}

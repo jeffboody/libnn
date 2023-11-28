@@ -37,6 +37,7 @@ typedef struct
 	uint32_t fc;
 
 	nn_tensor_t*         X;
+	nn_tensor_t*         dL_dY;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     coder1;
 	nn_coderLayer_t*     coder2;
@@ -63,6 +64,9 @@ int           mnist_disc_export(mnist_disc_t* self,
 int           mnist_disc_exportX(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);
+int           mnist_disc_export_dL_dY(mnist_disc_t* self,
+                                      const char* fname,
+                                      uint32_t n);
 int           mnist_disc_exportY(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);

@@ -72,7 +72,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	uint32_t  count = dimXt->count;
 
 	mnist_denoise_t* self;
-	self = mnist_denoise_new(engine, 32, 32, xh, xw, 0.5, 0.5);
+	self = mnist_denoise_new(engine, 32, 32, xh, xw, 0.1, 0.1);
 	if(self == NULL)
 	{
 		goto fail_dn;
@@ -99,7 +99,10 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 		for(n = 0; n < count; n += bs)
 		{
 			mnist_denoise_sampleXt(self, Xt);
-			mnist_denoise_train(self, &loss);
+			if(mnist_denoise_train(self, &loss) == 0)
+			{
+				goto fail_train;
+			}
 
 			// update loss
 			sum_loss += loss;
@@ -116,20 +119,23 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 			uint32_t export_interval = 10;
 			if((step%export_interval) == (export_interval - 1))
 			{
-				snprintf(fname, 256, "data/x%u-%u-%u.png",
-				         n, epoch, step);
+				snprintf(fname, 256, "data/X-%u-%u.png",
+				         epoch, step);
 				mnist_denoise_exportX(self, fname, 0);
-				snprintf(fname, 256, "data/yt%u-%u-%u.png",
-				         n, epoch, step);
+				snprintf(fname, 256, "data/Yt-%u-%u.png",
+				         epoch, step);
 				mnist_denoise_exportYt(self, fname, 0);
-				snprintf(fname, 256, "data/y%u-%u-%u.png",
-				         n, epoch, step);
+				snprintf(fname, 256, "data/Y-%u-%u.png",
+				         epoch, step);
 				mnist_denoise_exportY(self, fname, 0);
+				snprintf(fname, 256, "data/dL_dY-%u-%u.png",
+				         epoch, step);
+				mnist_denoise_export_dL_dY(self, fname, 0);
 
 				if(mnist_denoise_predict(self, 1))
 				{
-					snprintf(fname, 256, "data/yp%u-%u-%u.png",
-					         n, epoch, step);
+					snprintf(fname, 256, "data/Yp-%u-%u.png",
+					         epoch, step);
 					mnist_denoise_exportY(self, fname, 0);
 				}
 			}
@@ -174,6 +180,8 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	return EXIT_SUCCESS;
 
 	// failure
+	fail_train:
+		fclose(fplot);
 	fail_fplot:
 		mnist_denoise_delete(&self);
 	fail_dn:

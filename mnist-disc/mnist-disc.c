@@ -114,7 +114,10 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 		for(n = 0; n < count; n += bs)
 		{
 			mnist_disc_sampleXt(disc, dn, Xt);
-			mnist_disc_train(disc, &loss);
+			if(mnist_disc_train(disc, &loss) == 0)
+			{
+				goto fail_train;
+			}
 
 			// update loss
 			sum_loss += loss;
@@ -131,26 +134,32 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			uint32_t export_interval = 10;
 			if((step%export_interval) == (export_interval - 1))
 			{
-				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
-				         n, epoch, step, 0);
+				snprintf(fname, 256, "data/X-%u-%u-%u.png",
+				         epoch, step, 0);
 				mnist_disc_exportX(disc, fname, 0);
-				snprintf(fname, 256, "data/x%u-%u-%u-%u.png",
-				         n, epoch, step, bs2);
+				snprintf(fname, 256, "data/X-%u-%u-%u.png",
+				         epoch, step, bs2);
 				mnist_disc_exportX(disc, fname, bs2);
-				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
-				         n, epoch, step, 0);
+				snprintf(fname, 256, "data/Y-%u-%u-%u.png",
+				         epoch, step, 0);
 				mnist_disc_exportY(disc, fname, 0);
-				snprintf(fname, 256, "data/y%u-%u-%u-%u.png",
-				         n, epoch, step, bs2);
+				snprintf(fname, 256, "data/Y-%u-%u-%u.png",
+				         epoch, step, bs2);
 				mnist_disc_exportY(disc, fname, bs2);
+				snprintf(fname, 256, "data/dL_dY-%u-%u-%u.png",
+				         epoch, step, 0);
+				mnist_disc_export_dL_dY(disc, fname, 0);
+				snprintf(fname, 256, "data/dL_dY-%u-%u-%u.png",
+				         epoch, step, bs2);
+				mnist_disc_export_dL_dY(disc, fname, bs2);
 
 				if(mnist_disc_predict(disc, bs))
 				{
-					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
-					         n, epoch, step, 0);
+					snprintf(fname, 256, "data/Yp-%u-%u-%u.png",
+					         epoch, step, 0);
 					mnist_disc_exportY(disc, fname, 0);
-					snprintf(fname, 256, "data/yp%u-%u-%u-%u.png",
-					         n, epoch, step, bs2);
+					snprintf(fname, 256, "data/Yp-%u-%u-%u.png",
+					         epoch, step, bs2);
 					mnist_disc_exportY(disc, fname, bs2);
 				}
 			}
@@ -196,6 +205,8 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	return EXIT_SUCCESS;
 
 	// failure
+	fail_train:
+		fclose(fplot);
 	fail_fplot:
 	fail_bs:
 		mnist_disc_delete(&disc);
