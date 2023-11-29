@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LOG_TAG "mnist-denoise"
+#define LOG_TAG "cifar10-denoise"
 #include "jsmn/wrapper/jsmn_stream.h"
 #include "libcc/math/cc_float.h"
 #include "libcc/rng/cc_rngNormal.h"
@@ -41,15 +41,15 @@
 #include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
-#include "mnist_denoise.h"
+#include "cifar10_denoise.h"
 
 /***********************************************************
 * private                                                  *
 ***********************************************************/
 
 static void
-mnist_denoise_addNoise(mnist_denoise_t* self,
-                       nn_tensor_t* X, nn_tensor_t* Yt)
+cifar10_denoise_addNoise(cifar10_denoise_t* self,
+                         nn_tensor_t* X, nn_tensor_t* Yt)
 {
 	ASSERT(self);
 	ASSERT(X);
@@ -65,28 +65,32 @@ mnist_denoise_addNoise(mnist_denoise_t* self,
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
+	uint32_t k;
 	for(m = 0; m < self->bs; ++m)
 	{
 		for(i = 0; i < xh; ++i)
 		{
 			for(j = 0; j < xw; ++j)
 			{
-				if((self->mu != 0.0) && (self->sigma != 0.0))
+				for(k = 0; k < 3; ++k)
 				{
-					n = cc_rngNormal_rand1F(&self->rngN);
+					if((self->mu != 0.0) && (self->sigma != 0.0))
+					{
+						n = cc_rngNormal_rand1F(&self->rngN);
+					}
+					yt = nn_tensor_get(Yt, m, i, j, k);
+					x  = cc_clamp(yt + n, 0.0f, 1.0f);
+					nn_tensor_set(X, m, i, j, k, x);
 				}
-				yt = nn_tensor_get(Yt, m, i, j, 0);
-				x  = cc_clamp(yt + n, 0.0f, 1.0f);
-				nn_tensor_set(X, m, i, j, 0, x);
 			}
 		}
 	}
 }
 
-static mnist_denoise_t*
-mnist_denoise_parse(nn_engine_t* engine,
-                    uint32_t xh, uint32_t xw,
-                    jsmn_val_t* val)
+static cifar10_denoise_t*
+cifar10_denoise_parse(nn_engine_t* engine,
+                      uint32_t xh, uint32_t xw,
+                      jsmn_val_t* val)
 {
 	ASSERT(engine);
 	ASSERT(val);
@@ -198,9 +202,9 @@ mnist_denoise_parse(nn_engine_t* engine,
 		return NULL;
 	}
 
-	mnist_denoise_t* self;
-	self = (mnist_denoise_t*)
-	       nn_arch_import(engine, sizeof(mnist_denoise_t),
+	cifar10_denoise_t* self;
+	self = (cifar10_denoise_t*)
+	       nn_arch_import(engine, sizeof(cifar10_denoise_t),
 	                      val_base);
 	if(self == NULL)
 	{
@@ -217,7 +221,7 @@ mnist_denoise_parse(nn_engine_t* engine,
 		.count  = self->bs,
 		.height = xh,
 		.width  = xw,
-		.depth  = 1,
+		.depth  = 3,
 	};
 
 	self->X = nn_tensor_new(engine, &dim,
@@ -360,11 +364,11 @@ mnist_denoise_parse(nn_engine_t* engine,
 * public                                                   *
 ***********************************************************/
 
-mnist_denoise_t*
-mnist_denoise_new(nn_engine_t* engine,
-                  uint32_t bs, uint32_t fc,
-                  uint32_t xh, uint32_t xw,
-                  double mu, double sigma)
+cifar10_denoise_t*
+cifar10_denoise_new(nn_engine_t* engine,
+                    uint32_t bs, uint32_t fc,
+                    uint32_t xh, uint32_t xw,
+                    double mu, double sigma)
 {
 	ASSERT(engine);
 
@@ -380,9 +384,9 @@ mnist_denoise_new(nn_engine_t* engine,
 		.gan_blend_max    = 0.5f,
 	};
 
-	mnist_denoise_t* self;
-	self = (mnist_denoise_t*)
-	       nn_arch_new(engine, sizeof(mnist_denoise_t),
+	cifar10_denoise_t* self;
+	self = (cifar10_denoise_t*)
+	       nn_arch_new(engine, sizeof(cifar10_denoise_t),
 	                   &arch_state);
 	if(self == NULL)
 	{
@@ -399,7 +403,7 @@ mnist_denoise_new(nn_engine_t* engine,
 		.count  = bs,
 		.height = xh,
 		.width  = xw,
-		.depth  = 1,
+		.depth  = 3,
 	};
 
 	self->X = nn_tensor_new(engine, &dimX,
@@ -510,7 +514,7 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_dim_t dimWO =
 	{
-		.count  = 1,
+		.count  = 3,
 		.width  = 3,
 		.height = 3,
 		.depth  = dim->depth,
@@ -601,11 +605,11 @@ mnist_denoise_new(nn_engine_t* engine,
 	return NULL;
 }
 
-void mnist_denoise_delete(mnist_denoise_t** _self)
+void cifar10_denoise_delete(cifar10_denoise_t** _self)
 {
 	ASSERT(_self);
 
-	mnist_denoise_t* self = *_self;
+	cifar10_denoise_t* self = *_self;
 	if(self)
 	{
 		nn_tensor_delete(&self->Y);
@@ -624,10 +628,10 @@ void mnist_denoise_delete(mnist_denoise_t** _self)
 	}
 }
 
-mnist_denoise_t*
-mnist_denoise_import(nn_engine_t* engine,
-                     uint32_t xh, uint32_t xw,
-                     const char* fname)
+cifar10_denoise_t*
+cifar10_denoise_import(nn_engine_t* engine,
+                       uint32_t xh, uint32_t xw,
+                       const char* fname)
 {
 	ASSERT(engine);
 	ASSERT(fname);
@@ -675,8 +679,8 @@ mnist_denoise_import(nn_engine_t* engine,
 		goto fail_val;
 	}
 
-	mnist_denoise_t* self;
-	self = mnist_denoise_parse(engine, xh, xw, val);
+	cifar10_denoise_t* self;
+	self = cifar10_denoise_parse(engine, xh, xw, val);
 	if(self == NULL)
 	{
 		goto fail_parse;
@@ -702,8 +706,8 @@ mnist_denoise_import(nn_engine_t* engine,
 	return NULL;
 }
 
-int mnist_denoise_export(mnist_denoise_t* self,
-                         const char* fname)
+int cifar10_denoise_export(cifar10_denoise_t* self,
+                           const char* fname)
 {
 	ASSERT(self);
 	ASSERT(fname);
@@ -771,64 +775,64 @@ int mnist_denoise_export(mnist_denoise_t* self,
 	return 0;
 }
 
-int mnist_denoise_exportX(mnist_denoise_t* self,
-                          const char* fname,
-                          uint32_t n)
+int cifar10_denoise_exportX(cifar10_denoise_t* self,
+                            const char* fname,
+                            uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->X, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	                           n, 0, 2, 0.0f, 1.0f);
 }
 
-int mnist_denoise_export_dL_dY(mnist_denoise_t* self,
-                               const char* fname,
-                               uint32_t n)
+int cifar10_denoise_export_dL_dY(cifar10_denoise_t* self,
+                                 const char* fname,
+                                 uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->dL_dY, fname,
-	                           n, 0, 0, -1.0f, 1.0f);
+	                           n, 0, 2, -1.0f, 1.0f);
 }
 
-int mnist_denoise_exportYt(mnist_denoise_t* self,
-                           const char* fname,
-                           uint32_t n)
+int cifar10_denoise_exportYt(cifar10_denoise_t* self,
+                             const char* fname,
+                             uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->Yt, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	                           n, 0, 2, 0.0f, 1.0f);
 }
 
-int mnist_denoise_exportY(mnist_denoise_t* self,
-                          const char* fname,
-                          uint32_t n)
+int cifar10_denoise_exportY(cifar10_denoise_t* self,
+                            const char* fname,
+                            uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
 	return nn_tensor_exportPng(self->Y, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	                           n, 0, 2, 0.0f, 1.0f);
 }
 
 void
-mnist_denoise_sampleXt(mnist_denoise_t* self,
-                       nn_tensor_t* Xt)
+cifar10_denoise_sampleXt(cifar10_denoise_t* self,
+                         nn_tensor_t* Xt)
 {
 	ASSERT(self);
 	ASSERT(Xt);
 
-	mnist_denoise_sampleXt2(self, Xt, self->X, self->Yt);
+	cifar10_denoise_sampleXt2(self, Xt, self->X, self->Yt);
 }
 
-void mnist_denoise_sampleXt2(mnist_denoise_t* self,
-                             nn_tensor_t* Xt,
-                             nn_tensor_t* X,
-                             nn_tensor_t* Yt)
+void cifar10_denoise_sampleXt2(cifar10_denoise_t* self,
+                               nn_tensor_t* Xt,
+                               nn_tensor_t* X,
+                               nn_tensor_t* Yt)
 {
 	ASSERT(self);
 	ASSERT(Xt);
@@ -840,15 +844,15 @@ void mnist_denoise_sampleXt2(mnist_denoise_t* self,
 	nn_dim_t* dimYt = nn_tensor_dim(Yt);
 
 	if((dimX->count   != dimYt->count)  ||
-	   (dimXt->height != 28)            ||
+	   (dimXt->height != 32)            ||
 	   (dimXt->height != dimX->height)  ||
 	   (dimXt->height != dimYt->height) ||
-	   (dimXt->width  != 28)            ||
+	   (dimXt->width  != 32)            ||
 	   (dimXt->width  != dimX->width)   ||
 	   (dimXt->width  != dimYt->width)  ||
-	   (dimXt->depth  != 1)             ||
-	   (dimX->depth   != 1)             ||
-	   (dimYt->depth  != 1))
+	   (dimXt->depth  != 3)             ||
+	   (dimX->depth   != 3)             ||
+	   (dimYt->depth  != 3))
 	{
 		LOGE("invalid count=%u:%u, height=%u:%u:%u, width=%u:%u:%u, depth=%u:%u:%u",
 		     dimX->count, dimYt->count,
@@ -868,11 +872,11 @@ void mnist_denoise_sampleXt2(mnist_denoise_t* self,
 	}
 
 	// skip layers to perform poorly when noise is added
-	mnist_denoise_addNoise(self, X, Yt);
+	cifar10_denoise_addNoise(self, X, Yt);
 }
 
-int mnist_denoise_train(mnist_denoise_t* self,
-                        float* _loss)
+int cifar10_denoise_train(cifar10_denoise_t* self,
+                          float* _loss)
 {
 	// _loss may be NULL
 	ASSERT(self);
@@ -899,12 +903,12 @@ int mnist_denoise_train(mnist_denoise_t* self,
 	return 1;
 }
 
-int mnist_denoise_predict(mnist_denoise_t* self,
-                          uint32_t bs)
+int cifar10_denoise_predict(cifar10_denoise_t* self,
+                            uint32_t bs)
 {
 	ASSERT(self);
 
-	if(bs > mnist_denoise_bs(self))
+	if(bs > cifar10_denoise_bs(self))
 	{
 		LOGE("invalid bs=%u", bs);
 		return 0;
@@ -914,7 +918,7 @@ int mnist_denoise_predict(mnist_denoise_t* self,
 	                       self->X, self->Y);
 }
 
-uint32_t mnist_denoise_bs(mnist_denoise_t* self)
+uint32_t cifar10_denoise_bs(cifar10_denoise_t* self)
 {
 	ASSERT(self);
 

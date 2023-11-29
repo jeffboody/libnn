@@ -25,22 +25,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LOG_TAG "mnist-denoise"
+#define LOG_TAG "cifar10"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
-#include "libnn/mnist/nn_mnist.h"
+#include "libnn/cifar10/nn_cifar10.h"
 #include "libnn/nn_engine.h"
 #include "libnn/nn_tensor.h"
 #include "libvkk/vkk_platform.h"
-#include "mnist_denoise.h"
+#include "cifar10_denoise.h"
 
 /***********************************************************
 * callbacks                                                *
 ***********************************************************/
 
 static int
-mnist_denoise_onMain(vkk_engine_t* ve, int argc,
-                     char** argv)
+cifar10_denoise_onMain(vkk_engine_t* ve, int argc,
+                       char** argv)
 {
 	ASSERT(ve);
 
@@ -50,19 +50,20 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_tensor_t* Xt = nn_mnist_load(engine);
-	if(Xt == NULL)
+	nn_cifar10_t* cifar10 = nn_cifar10_load(engine, 1);
+	if(cifar10 == NULL)
 	{
-		goto fail_Xt;
+		goto fail_cifar10;
 	}
 
-	nn_dim_t* dimXt = nn_tensor_dim(Xt);
+	nn_dim_t* dimXt = nn_tensor_dim(cifar10->images);
 	uint32_t  xh    = dimXt->height;
 	uint32_t  xw    = dimXt->width;
 	uint32_t  count = dimXt->count;
 
-	mnist_denoise_t* self;
-	self = mnist_denoise_new(engine, 32, 32, xh, xw, 0.1, 0.1);
+	cifar10_denoise_t* self;
+	self = cifar10_denoise_new(engine, 32, 32,
+	                           xh, xw, 0.1, 0.1);
 	if(self == NULL)
 	{
 		goto fail_dn;
@@ -78,7 +79,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	uint32_t epoch;
 	uint32_t step = 0;
 	uint32_t n;
-	uint32_t bs    = mnist_denoise_bs(self);
+	uint32_t bs    = cifar10_denoise_bs(self);
 	char     fname[256];
 	float    loss;
 	float    sum_loss = 0.0f;
@@ -88,8 +89,8 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	{
 		for(n = 0; n < count; n += bs)
 		{
-			mnist_denoise_sampleXt(self, Xt);
-			if(mnist_denoise_train(self, &loss) == 0)
+			cifar10_denoise_sampleXt(self, cifar10->images);
+			if(cifar10_denoise_train(self, &loss) == 0)
 			{
 				goto fail_train;
 			}
@@ -111,22 +112,22 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 			{
 				snprintf(fname, 256, "data/X-%u-%u.png",
 				         epoch, step);
-				mnist_denoise_exportX(self, fname, 0);
+				cifar10_denoise_exportX(self, fname, 0);
 				snprintf(fname, 256, "data/Yt-%u-%u.png",
 				         epoch, step);
-				mnist_denoise_exportYt(self, fname, 0);
+				cifar10_denoise_exportYt(self, fname, 0);
 				snprintf(fname, 256, "data/Y-%u-%u.png",
 				         epoch, step);
-				mnist_denoise_exportY(self, fname, 0);
+				cifar10_denoise_exportY(self, fname, 0);
 				snprintf(fname, 256, "data/dL_dY-%u-%u.png",
 				         epoch, step);
-				mnist_denoise_export_dL_dY(self, fname, 0);
+				cifar10_denoise_export_dL_dY(self, fname, 0);
 
-				if(mnist_denoise_predict(self, 1))
+				if(cifar10_denoise_predict(self, 1))
 				{
 					snprintf(fname, 256, "data/Yp-%u-%u.png",
 					         epoch, step);
-					mnist_denoise_exportY(self, fname, 0);
+					cifar10_denoise_exportY(self, fname, 0);
 				}
 			}
 
@@ -151,7 +152,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 			{
 				snprintf(fname, 256, "data/arch-%i-%i.json",
 				         epoch, step);
-				mnist_denoise_export(self, fname);
+				cifar10_denoise_export(self, fname);
 			}
 
 			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
@@ -162,8 +163,8 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 
 	// cleanup
 	fclose(fplot);
-	mnist_denoise_delete(&self);
-	nn_tensor_delete(&Xt);
+	cifar10_denoise_delete(&self);
+	nn_cifar10_delete(&cifar10);
 	nn_engine_delete(&engine);
 
 	// success
@@ -173,23 +174,23 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	fail_train:
 		fclose(fplot);
 	fail_fplot:
-		mnist_denoise_delete(&self);
+		cifar10_denoise_delete(&self);
 	fail_dn:
-		nn_tensor_delete(&Xt);
-	fail_Xt:
+		nn_cifar10_delete(&cifar10);
+	fail_cifar10:
 		nn_engine_delete(&engine);
 	return EXIT_FAILURE;
 }
 
 vkk_platformInfo_t VKK_PLATFORM_INFO =
 {
-	.app_name    = "mnist-denoise",
+	.app_name    = "cifar10-denoise",
 	.app_version =
 	{
 		.major = 1,
 		.minor = 0,
 		.patch = 0,
 	},
-	.app_dir = "mnist-denoise",
-	.onMain  = mnist_denoise_onMain,
+	.app_dir = "cifar10-denoise",
+	.onMain  = cifar10_denoise_onMain,
 };
