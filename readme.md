@@ -1238,6 +1238,8 @@ produce poor statistics when all samples are fake.
 The Fair cGAN training procedure consists of a four step
 process that is repeated for each iteration.
 
+![Fair cGAN Network](docs/fair_cgan.jpg?raw=true "Fair cGAN Network")
+
 Generator forward pass.
 
 1. Select a minibatch of m/2 conditional samples Cg
@@ -1266,7 +1268,7 @@ Generator training.
 2. Compute the loss using Yd and Yt11
 3. Perform backprop (NOP) using the discriminator
 4. Compute dL_dYb=blend(dL_dYg, dL_dYdg)
-5. Perform backprop using the generator and dL_dY
+5. Perform backprop using the generator and dL_dYb
 
 Where NOP means to disable the parameter update.
 

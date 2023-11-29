@@ -1,0 +1,42 @@
+// sudo apt-get install graphviz
+// dot -Tpng fair_cgan.dot -o fair_cgan.png
+// xdot fair_cgan.dot
+digraph NN
+{
+	label="Fair cGAN Network";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+
+	Cg      [fillcolor=yellow, style=filled, shape=box, label="Cg"];
+	Ytg     [fillcolor=yellow, style=filled, shape=box, label="Ytg"];
+	Ytr     [fillcolor=yellow, style=filled, shape=box, label="Ytr"];
+	Cr      [fillcolor=yellow, style=filled, shape=box, label="Cr"];
+	Xd      [fillcolor=cyan, style=filled, label="3. Concatenate\nXd = (Yg|Cg,Ytr|Cr)"];
+	Yt10    [fillcolor=yellow, style=filled, shape=box, label="Yt10"];
+	Yt11    [fillcolor=yellow, style=filled, shape=box, label="Yt11"];
+	D       [fillcolor=skyblue, style=filled, label="Discriminator\n4. Forward Pass\nYd = D(Xd)\n6. Backprop dL_dYd10\n8. Backprop dL_dYd11 (NOP)"];
+	G       [fillcolor=palegreen, style=filled, label="Generator\n1. Forward Pass\nYg = G(Cg)\n11. Backprop dL_dYb"];
+	Lg      [fillcolor=palegreen, style=filled, label="2. Stabilizing Loss\ndL_dYg = Lg(Yg, Ytg)"];
+	Ld      [fillcolor=skyblue, style=filled, label="5. Discriminator Loss\ndL_dYd10 = Ld(Yd, Yt10)\n7. Generator Loss\ndL_dYd11 = Ld(Yd, Yt11)"];
+	dL_dYb  [fillcolor=cyan, style=filled, label="10. Blend\ndL_dYb = blend(dL_dYg, dL_dYdg)"];
+	dL_dYdg [fillcolor=cyan, style=filled, label="9. Filter\ndL_dYdg = filter(dL_dYd)"];
+
+	{ rank=same G -> Xd [label="Yg"]  };
+
+	Cg      -> G;
+	G       -> Lg [label="Yg"];
+	Cg      -> Xd;
+	Ytg     -> Lg;
+	Ytr     -> Xd;
+	Cr      -> Xd;
+	Xd      -> D  [label="Xd"];
+	Yt11    -> Ld;
+	Yt10    -> Ld;
+	D       -> Ld [label="Yd"];
+	Ld      -> D [fontcolor=red, color=red, label="dL_dYd10\ndL_dYd11"];
+	Lg      -> dL_dYb [fontcolor=red, color=red, label="dL_dYg"];
+	D       -> dL_dYdg [fontcolor=red, color=red, label="dL_dYd"];
+	dL_dYdg -> dL_dYb [fontcolor=red, color=red, label="dL_dYdg"];
+	dL_dYb  -> G [fontcolor=red, color=red, label="dL_dYb"];
+}
