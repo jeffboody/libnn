@@ -135,9 +135,9 @@ nn_engine_new(vkk_engine_t* engine)
 
 	// sb20: dim_dL_dYg
 	// ...
-	// sb27: dL_dYb
+	// sb25: dL_dYb
 	self->usf2_arch = vkk_uniformSetFactory_new(engine, um,
-	                                            8, ub_array);
+	                                            6, ub_array);
 
 	// sb00: state
 	// ...

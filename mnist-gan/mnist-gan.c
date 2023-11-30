@@ -148,6 +148,14 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 		.depth  = 1,
 	};
 
+	nn_dim_t dimXd =
+	{
+		.count  = bs,
+		.height = xh,
+		.width  = xw,
+		.depth  = 2,
+	};
+
 	nn_dim_t dimY =
 	{
 		.count  = bs,
@@ -230,13 +238,13 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 		goto fail_dL_dYg;
 	}
 
-	nn_tensor_t* dL_dYdg;
-	dL_dYdg = nn_tensor_new(engine, &dimX,
-	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_IO);
-	if(dL_dYdg == NULL)
+	nn_tensor_t* dL_dYd;
+	dL_dYd = nn_tensor_new(engine, &dimXd,
+	                       NN_TENSOR_INIT_ZERO,
+	                       NN_TENSOR_MODE_IO);
+	if(dL_dYd == NULL)
 	{
-		goto fail_dL_dYdg;
+		goto fail_dL_dYd;
 	}
 
 	nn_tensor_t* Yg;
@@ -291,7 +299,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			if(nn_arch_trainFairCGAN(&dn->base, &disc->base, bs,
 			                         Cg, NULL, Cr, NULL, Ytg, Ytr,
 			                         Yt11, Yt10, dL_dYb, dL_dYg,
-			                         dL_dYdg, Yg, Yd, &loss, &g_loss,
+			                         dL_dYd, Yg, Yd, &loss, &g_loss,
 			                         &d_loss) == NULL)
 			{
 				goto fail_train;
@@ -337,9 +345,15 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 				snprintf(fname, 256, "data/Cg-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(Cg, fname, 0, 0, 0, 0.0f, 1.0f);
+				snprintf(fname, 256, "data/Cr-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(Cr, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Ytg-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(Ytg, fname, 0, 0, 0, 0.0f, 1.0f);
+				snprintf(fname, 256, "data/Ytr-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(Ytr, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yg-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(Yg, fname, 0, 0, 0, 0.0f, 1.0f);
@@ -349,9 +363,18 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 				snprintf(fname, 256, "data/dL_dYg-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(dL_dYg, fname, 0, 0, 0, -1.0f, 1.0f);
+				snprintf(fname, 256, "data/dL_dYdr-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(dL_dYd, fname, 0, 0, 0, -1.0f, 1.0f);
+				snprintf(fname, 256, "data/dL_dYdCr-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(dL_dYd, fname, 0, 1, 1, -1.0f, 1.0f);
 				snprintf(fname, 256, "data/dL_dYdg-%u-%u.png",
 				         epoch, step);
-				nn_tensor_exportPng(dL_dYdg, fname, 0, 0, 0, -1.0f, 1.0f);
+				nn_tensor_exportPng(dL_dYd, fname, bs2, 0, 0, -1.0f, 1.0f);
+				snprintf(fname, 256, "data/dL_dYdCg-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(dL_dYd, fname, bs2, 1, 1, -1.0f, 1.0f);
 				snprintf(fname, 256, "data/Yd-%u-%u-%u.png",
 				         epoch, step, 0);
 				nn_tensor_exportPng(Yd, fname, 0, 0, 0, 0.0f, 1.0f);
@@ -414,7 +437,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	fclose(fplot);
 	nn_tensor_delete(&Yd);
 	nn_tensor_delete(&Yg);
-	nn_tensor_delete(&dL_dYdg);
+	nn_tensor_delete(&dL_dYd);
 	nn_tensor_delete(&dL_dYg);
 	nn_tensor_delete(&dL_dYb);
 	nn_tensor_delete(&Yt10);
@@ -439,8 +462,8 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	fail_Yd:
 		nn_tensor_delete(&Yg);
 	fail_Yg:
-		nn_tensor_delete(&dL_dYdg);
-	fail_dL_dYdg:
+		nn_tensor_delete(&dL_dYd);
+	fail_dL_dYd:
 		nn_tensor_delete(&dL_dYg);
 	fail_dL_dYg:
 		nn_tensor_delete(&dL_dYb);

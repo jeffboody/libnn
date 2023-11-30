@@ -55,20 +55,10 @@ layout(std430, set=2, binding=3) readonly buffer sb23
 
 layout(std430, set=2, binding=4) readonly buffer sb24
 {
-	nn_dim_t dim_dL_dYdg;
-};
-
-layout(std430, set=2, binding=5) writeonly buffer sb25
-{
-	float dL_dYdg[];
-};
-
-layout(std430, set=2, binding=6) readonly buffer sb26
-{
 	nn_dim_t dim_dL_dYb;
 };
 
-layout(std430, set=2, binding=7) writeonly buffer sb27
+layout(std430, set=2, binding=5) writeonly buffer sb25
 {
 	float dL_dYb[];
 };
@@ -89,15 +79,6 @@ float get_dL_dYd(uint n, uint i, uint j, uint k)
 	uint sy = dim_dL_dYd.width*dim_dL_dYd.depth;
 	uint sx = dim_dL_dYd.depth;
 	return dL_dYd[n*sn + i*sy + j*sx + k];
-}
-
-void set_dL_dYdg(uint n, uint i, uint j, uint k, float v)
-{
-	uint sn = dim_dL_dYdg.height*dim_dL_dYdg.width*
-	          dim_dL_dYdg.depth;
-	uint sy = dim_dL_dYdg.width*dim_dL_dYdg.depth;
-	uint sx = dim_dL_dYdg.depth;
-	dL_dYdg[n*sn + i*sy + j*sx + k] = v;
 }
 
 void set_dL_dYb(uint n, uint i, uint j, uint k, float v)
@@ -135,7 +116,6 @@ void main()
 		// filter dL_dYdg given Xd=(Ytr|Cr,Yg|Cg)
 		dL_dYg  = get_dL_dYg(m, i, j, k);
 		dL_dYdg = get_dL_dYd(m + bs2, i, j, k);
-		set_dL_dYdg(m, i, j, k, dL_dYdg);
 		set_dL_dYb(m, i, j, k, (1.0 - s)*dL_dYg + s*dL_dYdg);
 	}
 }
