@@ -101,17 +101,18 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	}
 
 	// training
-	uint32_t epoch;
-	uint32_t step = 0;
-	uint32_t n;
+	uint32_t epoch = 0;
+	uint32_t step  = 0;
+	uint32_t steps;
 	char     fname[256];
 	float    loss;
 	float    sum_loss = 0.0f;
 	float    min_loss = FLT_MAX;
 	float    max_loss = 0.0f;
-	for(epoch = 0; epoch < 20; ++epoch)
+	while(epoch < 20)
 	{
-		for(n = 0; n < count; n += bs)
+		steps = (epoch + 1)*count/bs;
+		while(step < steps)
 		{
 			mnist_disc_sampleXt(disc, dn, Xt);
 			if(mnist_disc_train(disc, &loss) == 0)
@@ -131,7 +132,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			}
 
 			// export images
-			uint32_t export_interval = 10;
+			uint32_t export_interval = 100;
 			if((step%export_interval) == (export_interval - 1))
 			{
 				snprintf(fname, 256, "data/X-%u-%u-%u.png",
@@ -165,7 +166,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			}
 
 			// plot loss
-			uint32_t plot_interval = 10;
+			uint32_t plot_interval = 100;
 			if((step%plot_interval) == (plot_interval - 1))
 			{
 				float avg_loss = sum_loss/((float) plot_interval);
@@ -180,7 +181,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			}
 
 			// export arch
-			uint32_t arch_interval = 100;
+			uint32_t arch_interval = 1000;
 			if((step%arch_interval) == (arch_interval - 1))
 			{
 				snprintf(fname, 256, "data/arch-%i-%i.json",
@@ -188,10 +189,12 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 				mnist_disc_export(disc, fname);
 			}
 
-			LOGI("epoch=%u, step=%u, n=%u, loss=%f",
-			     epoch, step, n, loss);
+			LOGI("epoch=%u, step=%u, loss=%f",
+			     epoch, step, loss);
 			++step;
 		}
+
+		++epoch;
 	}
 
 	// cleanup

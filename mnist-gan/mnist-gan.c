@@ -331,7 +331,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			}
 
 			// export images
-			uint32_t image_interval = 10;
+			uint32_t image_interval = 100;
 			if((step%image_interval) == (image_interval - 1))
 			{
 				snprintf(fname, 256, "data/Cg-%u-%u.png",
@@ -361,7 +361,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			}
 
 			// plot loss
-			uint32_t plot_interval = 10;
+			uint32_t plot_interval = 100;
 			if((step%plot_interval) == (plot_interval - 1))
 			{
 				// scale blend_factor range for visualization
@@ -389,7 +389,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			}
 
 			// export arch
-			uint32_t arch_interval = 100;
+			uint32_t arch_interval = 1000;
 			if((step%arch_interval) == (arch_interval - 1))
 			{
 				snprintf(fname, 256, "data/disc-%i-%i.json",
