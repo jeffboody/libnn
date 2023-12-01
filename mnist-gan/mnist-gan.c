@@ -41,6 +41,58 @@
 * callbacks                                                *
 ***********************************************************/
 
+static void
+mnist_gan_interpolateYt(cc_rngUniform_t* rng,
+                        nn_tensor_t* Yt11,
+                        nn_tensor_t* Yt10,
+                        nn_tensor_t* Ytr,
+                        nn_tensor_t* Yr)
+{
+	ASSERT(rng);
+	ASSERT(Yt11);
+	ASSERT(Yt10);
+	ASSERT(Ytr);
+	ASSERT(Yr);
+
+	nn_dim_t* dimYtXX = nn_tensor_dim(Yt10);
+	nn_dim_t* dimYr   = nn_tensor_dim(Yr);
+	uint32_t  bs      = dimYr->count;
+	uint32_t  bs2     = bs/2;
+
+	// interpolate real samples
+	uint32_t n;
+	uint32_t i;
+	uint32_t j;
+	float    s;
+	float    ss;
+	float    ytr;
+	float    yr;
+	for(n = 0; n < bs2; ++n)
+	{
+		s  = cc_rngUniform_rand2F(rng, 0.0f, 1.0f);
+		ss = s*s;
+
+		for(i = 0; i < dimYtXX->height; ++i)
+		{
+			for(j = 0; j < dimYtXX->width; ++j)
+			{
+				nn_tensor_set(Yt11, n, i, j, 0, ss);
+				nn_tensor_set(Yt10, n, i, j, 0, ss);
+			}
+		}
+
+		for(i = 0; i < dimYr->height; ++i)
+		{
+			for(j = 0; j < dimYr->width; ++j)
+			{
+				ytr = nn_tensor_get(Ytr, n, i, j, 0);
+				yr  = nn_tensor_get(Yr,  n, i, j, 0);
+				nn_tensor_set(Ytr, n, i, j, 0, s*ytr + (1.0f - s)*yr);
+			}
+		}
+	}
+}
+
 static void mnist_gan_initYt11(nn_tensor_t* Yt11)
 {
 	ASSERT(Yt11);
@@ -104,6 +156,9 @@ static int
 mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 {
 	ASSERT(ve);
+
+	cc_rngUniform_t rng;
+	cc_rngUniform_init(&rng);
 
 	nn_engine_t* engine = nn_engine_new(ve);
 	if(engine == NULL)
@@ -198,6 +253,15 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	if(Ytr == NULL)
 	{
 		goto fail_Ytr;
+	}
+
+	nn_tensor_t* Yr;
+	Yr = nn_tensor_new(engine, &dimX,
+	                   NN_TENSOR_INIT_ZERO,
+	                   NN_TENSOR_MODE_IO);
+	if(Yr == NULL)
+	{
+		goto fail_Yr;
 	}
 
 	nn_tensor_t* Yt11;
@@ -296,6 +360,13 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 			mnist_denoise_sampleXt2(dn, Xt, Cg, Ytg);
 			mnist_denoise_sampleXt2(dn, Xt, Cr, Ytr);
 
+			if(nn_arch_predict(&dn->base, bs2, Cr, Yr) == 0)
+			{
+				goto fail_train;
+			}
+
+			mnist_gan_interpolateYt(&rng, Yt11, Yt10, Ytr, Yr);
+
 			if(nn_arch_trainFairCGAN(&dn->base, &disc->base, bs,
 			                         Cg, NULL, Cr, NULL, Ytg, Ytr,
 			                         Yt11, Yt10, dL_dYb, dL_dYg,
@@ -354,6 +425,9 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 				snprintf(fname, 256, "data/Ytr-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(Ytr, fname, 0, 0, 0, 0.0f, 1.0f);
+				snprintf(fname, 256, "data/Yr-%u-%u.png",
+				         epoch, step);
+				nn_tensor_exportPng(Yr, fname, 0, 0, 0, 0.0f, 1.0f);
 				snprintf(fname, 256, "data/Yg-%u-%u.png",
 				         epoch, step);
 				nn_tensor_exportPng(Yg, fname, 0, 0, 0, 0.0f, 1.0f);
@@ -442,6 +516,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	nn_tensor_delete(&dL_dYb);
 	nn_tensor_delete(&Yt10);
 	nn_tensor_delete(&Yt11);
+	nn_tensor_delete(&Yr);
 	nn_tensor_delete(&Ytr);
 	nn_tensor_delete(&Ytg);
 	nn_tensor_delete(&Cr);
@@ -472,6 +547,8 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	fail_Yt10:
 		nn_tensor_delete(&Yt11);
 	fail_Yt11:
+		nn_tensor_delete(&Yr);
+	fail_Yr:
 		nn_tensor_delete(&Ytr);
 	fail_Ytr:
 		nn_tensor_delete(&Ytg);
