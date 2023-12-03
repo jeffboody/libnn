@@ -62,7 +62,7 @@ cifar10_disc_onMain(vkk_engine_t* ve, int argc,
 
 	nn_cifar10_t* cifar10;
 	cifar10 = nn_cifar10_load(engine,
-	                          NN_CIFAR10_MODE_LUMINANCE, 1);
+	                          NN_CIFAR10_MODE_COLOR, 1);
 	if(cifar10 == NULL)
 	{
 		goto fail_cifar10;
