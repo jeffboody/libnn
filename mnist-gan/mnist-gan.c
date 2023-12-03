@@ -93,60 +93,28 @@ mnist_gan_interpolateYt(cc_rngUniform_t* rng,
 	}
 }
 
-static void mnist_gan_initYt11(nn_tensor_t* Yt11)
+static void
+mnist_gan_initYt(nn_tensor_t* Yt, uint32_t n0,
+                 uint32_t count, float yt)
 {
-	ASSERT(Yt11);
+	ASSERT(Yt);
 
-	nn_dim_t* dim = nn_tensor_dim(Yt11);
-	uint32_t  bs  = dim->count;
+	nn_dim_t* dim = nn_tensor_dim(Yt);
 
-	// all ones
 	uint32_t n;
 	uint32_t i;
 	uint32_t j;
-	for(n = 0; n < bs; ++n)
+	uint32_t k;
+	for(n = n0; n < n0 + count; ++n)
 	{
 		for(i = 0; i < dim->height; ++i)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
-				nn_tensor_set(Yt11, n, i, j, 0, 1.0f);
-			}
-		}
-	}
-}
-
-static void mnist_gan_initYt10(nn_tensor_t* Yt10)
-{
-	ASSERT(Yt10);
-
-	nn_dim_t* dim = nn_tensor_dim(Yt10);
-	uint32_t  bs  = dim->count;
-	uint32_t  bs2 = bs/2;
-
-	// half ones
-	uint32_t n;
-	uint32_t i;
-	uint32_t j;
-	for(n = 0; n < bs2; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				nn_tensor_set(Yt10, n, i, j, 0, 1.0f);
-			}
-		}
-	}
-
-	// half zeros
-	for(n = bs2; n < bs; ++n)
-	{
-		for(i = 0; i < dim->height; ++i)
-		{
-			for(j = 0; j < dim->width; ++j)
-			{
-				nn_tensor_set(Yt10, n, i, j, 0, 0.0f);
+				for(k = 0; k < dim->depth; ++k)
+				{
+					nn_tensor_set(Yt, n, i, j, k, yt);
+				}
 			}
 		}
 	}
@@ -173,14 +141,12 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	}
 
 	nn_dim_t* dimXt = nn_tensor_dim(Xt);
-	uint32_t  xh    = dimXt->height;
-	uint32_t  xw    = dimXt->width;
-	uint32_t  count = dimXt->count;
 	uint32_t  bs    = 32;
 	uint32_t  bs2   = bs/2;
 
 	mnist_denoise_t* dn;
-	dn = mnist_denoise_new(engine, bs2, 32, xh, xw, 0.1, 0.1);
+	dn = mnist_denoise_new(engine, bs2, 32, dimXt->height,
+	                       dimXt->width, 0.1, 0.1);
 	if(dn == NULL)
 	{
 		goto fail_dn;
@@ -189,7 +155,8 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	nn_archState_t* dn_state = &dn->base.state;
 
 	mnist_disc_t* disc;
-	disc = mnist_disc_new(engine, bs, 32, xh, xw);
+	disc = mnist_disc_new(engine, bs, 32, dimXt->height,
+	                      dimXt->width);
 	if(disc == NULL)
 	{
 		goto fail_disc;
@@ -198,24 +165,24 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	nn_dim_t dimX =
 	{
 		.count  = bs2,
-		.height = xh,
-		.width  = xw,
+		.height = dimXt->height,
+		.width  = dimXt->width,
 		.depth  = 1,
 	};
 
 	nn_dim_t dimXd =
 	{
 		.count  = bs,
-		.height = xh,
-		.width  = xw,
+		.height = dimXt->height,
+		.width  = dimXt->width,
 		.depth  = 2,
 	};
 
 	nn_dim_t dimY =
 	{
 		.count  = bs,
-		.height = xh/4,
-		.width  = xh/4,
+		.height = dimXt->height/4,
+		.width  = dimXt->height/4,
 		.depth  = 1,
 	};
 
@@ -272,7 +239,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	{
 		goto fail_Yt11;
 	}
-	mnist_gan_initYt11(Yt11);
+	mnist_gan_initYt(Yt11, 0, bs, 1.0f);
 
 	nn_tensor_t* Yt10;
 	Yt10 = nn_tensor_new(engine, &dimY,
@@ -282,7 +249,8 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	{
 		goto fail_Yt10;
 	}
-	mnist_gan_initYt10(Yt10);
+	mnist_gan_initYt(Yt10, 0,   bs2, 1.0f);
+	mnist_gan_initYt(Yt10, bs2, bs2, 0.0f);
 
 	nn_tensor_t* dL_dYb;
 	dL_dYb = nn_tensor_new(engine, &dimX,
@@ -354,7 +322,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	float    g_max_loss = 0.0f;
 	while(epoch < 20)
 	{
-		steps = (epoch + 1)*count/bs;
+		steps = (epoch + 1)*dimXt->count/bs;
 		while(step < steps)
 		{
 			mnist_denoise_sampleXt2(dn, Xt, Cg, Ytg);
