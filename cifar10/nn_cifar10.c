@@ -21,10 +21,12 @@
  *
  */
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define LOG_TAG "nn"
+#include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/nn_tensor.h"
@@ -34,7 +36,9 @@
 * public                                                   *
 ***********************************************************/
 
-nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine, int idx)
+nn_cifar10_t*
+nn_cifar10_load(nn_engine_t* engine, nn_cifar10Mode_e mode,
+                int idx)
 {
 	ASSERT(engine);
 
@@ -94,20 +98,41 @@ nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine, int idx)
 		goto fail_labels;
 	}
 
-	nn_dim_t dim =
+	nn_dim_t dim_color =
 	{
 		.count  = 10000,
 		.height = 32,
 		.width  = 32,
-		.depth  = 3,
+		.depth  = (uint32_t) NN_CIFAR10_MODE_COLOR,
 	};
 
-	self->images = nn_tensor_new(engine, &dim,
-	                             NN_TENSOR_INIT_ZERO,
-	                             NN_TENSOR_MODE_IO);
-	if(self->images == NULL)
+	nn_tensor_t* images;
+	images = nn_tensor_new(engine, &dim_color,
+	                       NN_TENSOR_INIT_ZERO,
+	                       NN_TENSOR_MODE_IO);
+	if(images == NULL)
 	{
-		goto fail_images;
+		goto fail_color;
+	}
+	self->images = images;
+
+	if(mode == NN_CIFAR10_MODE_LUMINANCE)
+	{
+		nn_dim_t dim_lum =
+		{
+			.count  = 10000,
+			.height = 32,
+			.width  = 32,
+			.depth  = (uint32_t) NN_CIFAR10_MODE_LUMINANCE,
+		};
+
+		self->images = nn_tensor_new(engine, &dim_lum,
+		                             NN_TENSOR_INIT_ZERO,
+		                             NN_TENSOR_MODE_IO);
+		if(self->images == NULL)
+		{
+			goto fail_lum;
+		}
 	}
 
 	// parse data
@@ -130,10 +155,52 @@ nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine, int idx)
 				for(j = 0; j < 32; ++j)
 				{
 					c = ((float) buf[offset++])/255.0f;
-					nn_tensor_set(self->images, n, i, j, k, c);
+					nn_tensor_set(images, n, i, j, k, c);
 				}
 			}
 		}
+	}
+
+	// optionally convert color to luminance
+	// https://github.com/antimatter15/rgb-lab/blob/master/color.js
+	if(mode == NN_CIFAR10_MODE_LUMINANCE)
+	{
+		float r;
+		float g;
+		float b;
+		float yy;
+		float labl;
+		for(n = 0; n < 10000; ++n)
+		{
+			for(i = 0; i < 32; ++i)
+			{
+				for(j = 0; j < 32; ++j)
+				{
+					r = nn_tensor_get(images, n, i, j, 0);
+					g = nn_tensor_get(images, n, i, j, 1);
+					b = nn_tensor_get(images, n, i, j, 2);
+
+					r = (r > 0.04045f) ?
+					    powf((r + 0.055f)/1.055f, 2.4f) : r/12.92f;
+					g = (g > 0.04045f) ?
+					    powf((g + 0.055f)/1.055f, 2.4f) : g/12.92f;
+					b = (b > 0.04045f) ?
+					    powf((b + 0.055f)/1.055f, 2.4f) : b/12.92f;
+
+					yy = (r*0.2126f + g*0.7152f + b*0.0722f)/1.00000f;
+					yy = (yy > 0.008856f) ?
+					     powf(yy, 0.333333f) :
+					     (7.787f*yy) + 16.0f/116.0f;
+
+					labl = cc_clamp((1.0f/100.0f)*(116.0f*yy - 16.0f),
+					                0.0f, 1.0f);
+
+					nn_tensor_set(self->images, n, i, j, 0, labl);
+				}
+			}
+		}
+
+		nn_tensor_delete(&images);
 	}
 
 	FREE(buf);
@@ -143,7 +210,9 @@ nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine, int idx)
 	return self;
 
 	// failure
-	fail_images:
+	fail_lum:
+		nn_tensor_delete(&images);
+	fail_color:
 		FREE(self->labels);
 	fail_labels:
 		FREE(self);

@@ -62,12 +62,14 @@ cifar10_denoise_t* cifar10_denoise_new(nn_engine_t* engine,
                                        uint32_t fc,
                                        uint32_t xh,
                                        uint32_t xw,
+                                       uint32_t xd,
                                        double mu,
                                        double sigma);
 void               cifar10_denoise_delete(cifar10_denoise_t** _self);
 cifar10_denoise_t* cifar10_denoise_import(nn_engine_t* engine,
                                           uint32_t xh,
                                           uint32_t xw,
+                                          uint32_t xd,
                                           const char* fname);
 int                cifar10_denoise_export(cifar10_denoise_t* self,
                                           const char* fname);

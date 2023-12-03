@@ -50,20 +50,20 @@ cifar10_denoise_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_cifar10_t* cifar10 = nn_cifar10_load(engine, 1);
+	nn_cifar10_t* cifar10;
+	cifar10 = nn_cifar10_load(engine,
+	                          NN_CIFAR10_MODE_LUMINANCE, 1);
 	if(cifar10 == NULL)
 	{
 		goto fail_cifar10;
 	}
 
 	nn_dim_t* dimXt = nn_tensor_dim(cifar10->images);
-	uint32_t  xh    = dimXt->height;
-	uint32_t  xw    = dimXt->width;
-	uint32_t  count = dimXt->count;
 
 	cifar10_denoise_t* self;
 	self = cifar10_denoise_new(engine, 32, 32,
-	                           xh, xw, 0.1, 0.1);
+	                           dimXt->height, dimXt->width,
+	                           dimXt->depth, 0.1, 0.1);
 	if(self == NULL)
 	{
 		goto fail_dn;
@@ -87,7 +87,7 @@ cifar10_denoise_onMain(vkk_engine_t* ve, int argc,
 	float    max_loss = 0.0f;
 	while(epoch < 20)
 	{
-		steps = (epoch + 1)*count/bs;
+		steps = (epoch + 1)*dimXt->count/bs;
 		while(step < steps)
 		{
 			cifar10_denoise_sampleXt(self, cifar10->images);

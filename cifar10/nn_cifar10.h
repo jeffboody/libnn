@@ -28,13 +28,21 @@
 
 #include "libnn/nn.h"
 
+typedef enum
+{
+	NN_CIFAR10_MODE_LUMINANCE = 1,
+	NN_CIFAR10_MODE_COLOR     = 3,
+} nn_cifar10Mode_e;
+
 typedef struct
 {
 	uint8_t*     labels;
 	nn_tensor_t* images;
 } nn_cifar10_t;
 
-nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine, int idx);
+nn_cifar10_t* nn_cifar10_load(nn_engine_t* engine,
+                              nn_cifar10Mode_e mode,
+                              int idx);
 void          nn_cifar10_delete(nn_cifar10_t** _self);
 
 #endif
