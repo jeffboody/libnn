@@ -12,7 +12,7 @@ digraph NN
 	Ytg     [fillcolor=yellow, style=filled, shape=box, label="Ytg"];
 	Ytr     [fillcolor=yellow, style=filled, shape=box, label="Ytr"];
 	Cr      [fillcolor=yellow, style=filled, shape=box, label="Cr"];
-	Xd      [fillcolor=cyan, style=filled, label="3. Concatenate\nXd = (Yg|Cg,Ytr|Cr)"];
+	Xd      [fillcolor=cyan, style=filled, label="3. Concatenate\nXd = (Ytr|Cr,Yg|Cg)"];
 	Yt10    [fillcolor=yellow, style=filled, shape=box, label="Yt10"];
 	Yt11    [fillcolor=yellow, style=filled, shape=box, label="Yt11"];
 	D       [fillcolor=skyblue, style=filled, label="Discriminator\n4. Forward Pass\nYd = D(Xd)\n6. Backprop dL_dYd10\n8. Backprop dL_dYd11 (NOP)"];
