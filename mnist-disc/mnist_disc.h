@@ -64,9 +64,18 @@ int           mnist_disc_export(mnist_disc_t* self,
 int           mnist_disc_exportX(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);
-int           mnist_disc_export_dL_dY(mnist_disc_t* self,
-                                      const char* fname,
-                                      uint32_t n);
+int           mnist_disc_exportXd0(mnist_disc_t* self,
+                                   const char* fname,
+                                   uint32_t n);
+int           mnist_disc_exportXd1(mnist_disc_t* self,
+                                   const char* fname,
+                                   uint32_t n);
+int           mnist_disc_export_dL_dY0(mnist_disc_t* self,
+                                       const char* fname,
+                                       uint32_t n);
+int           mnist_disc_export_dL_dY1(mnist_disc_t* self,
+                                       const char* fname,
+                                       uint32_t n);
 int           mnist_disc_exportY(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);

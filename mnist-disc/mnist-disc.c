@@ -67,21 +67,20 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	}
 
 	nn_dim_t* dimXt = nn_tensor_dim(Xt);
-	uint32_t  xh    = dimXt->height;
-	uint32_t  xw    = dimXt->width;
-	uint32_t  count = dimXt->count;
 	uint32_t  bs    = 32;
 	uint32_t  bs2   = bs/2;
 
 	mnist_denoise_t* dn;
-	dn = mnist_denoise_import(engine, xh, xw, "data/dn.json");
+	dn = mnist_denoise_import(engine, dimXt->height,
+	                          dimXt->width, "data/dn.json");
 	if(dn == NULL)
 	{
 		goto fail_dn;
 	}
 
 	mnist_disc_t* disc;
-	disc = mnist_disc_new(engine, bs, 32, xh, xw);
+	disc = mnist_disc_new(engine, bs, 32, dimXt->height,
+	                      dimXt->width);
 	if(disc == NULL)
 	{
 		goto fail_disc;
@@ -111,7 +110,7 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 	float    max_loss = 0.0f;
 	while(epoch < 20)
 	{
-		steps = (epoch + 1)*count/bs;
+		steps = (epoch + 1)*dimXt->count/bs;
 		while(step < steps)
 		{
 			mnist_disc_sampleXt(disc, dn, Xt);
@@ -135,34 +134,39 @@ mnist_disc_onMain(vkk_engine_t* ve, int argc,
 			uint32_t export_interval = 100;
 			if((step%export_interval) == (export_interval - 1))
 			{
-				snprintf(fname, 256, "data/X-%u-%u-%u.png",
+				snprintf(fname, 256, "data/Ytr-%u-%u-%u.png",
 				         epoch, step, 0);
-				mnist_disc_exportX(disc, fname, 0);
-				snprintf(fname, 256, "data/X-%u-%u-%u.png",
+				mnist_disc_exportXd0(disc, fname, 0);
+				snprintf(fname, 256, "data/Cr-%u-%u-%u.png",
+				         epoch, step, 0);
+				mnist_disc_exportXd1(disc, fname, 0);
+
+				snprintf(fname, 256, "data/Yg-%u-%u-%u.png",
 				         epoch, step, bs2);
-				mnist_disc_exportX(disc, fname, bs2);
+				mnist_disc_exportXd0(disc, fname, bs2);
+				snprintf(fname, 256, "data/Cg-%u-%u-%u.png",
+				         epoch, step, bs2);
+				mnist_disc_exportXd1(disc, fname, bs2);
+
 				snprintf(fname, 256, "data/Y-%u-%u-%u.png",
 				         epoch, step, 0);
 				mnist_disc_exportY(disc, fname, 0);
 				snprintf(fname, 256, "data/Y-%u-%u-%u.png",
 				         epoch, step, bs2);
 				mnist_disc_exportY(disc, fname, bs2);
-				snprintf(fname, 256, "data/dL_dY-%u-%u-%u.png",
-				         epoch, step, 0);
-				mnist_disc_export_dL_dY(disc, fname, 0);
-				snprintf(fname, 256, "data/dL_dY-%u-%u-%u.png",
-				         epoch, step, bs2);
-				mnist_disc_export_dL_dY(disc, fname, bs2);
 
-				if(mnist_disc_predict(disc, bs))
-				{
-					snprintf(fname, 256, "data/Yp-%u-%u-%u.png",
-					         epoch, step, 0);
-					mnist_disc_exportY(disc, fname, 0);
-					snprintf(fname, 256, "data/Yp-%u-%u-%u.png",
-					         epoch, step, bs2);
-					mnist_disc_exportY(disc, fname, bs2);
-				}
+				snprintf(fname, 256, "data/dL_dY_Ytr-%u-%u-%u.png",
+				         epoch, step, 0);
+				mnist_disc_export_dL_dY0(disc, fname, 0);
+				snprintf(fname, 256, "data/dL_dY_Cr-%u-%u-%u.png",
+				         epoch, step, 0);
+				mnist_disc_export_dL_dY1(disc, fname, 0);
+				snprintf(fname, 256, "data/dL_dY_Yg-%u-%u-%u.png",
+				         epoch, step, bs2);
+				mnist_disc_export_dL_dY0(disc, fname, bs2);
+				snprintf(fname, 256, "data/dL_dY_Cg-%u-%u-%u.png",
+				         epoch, step, bs2);
+				mnist_disc_export_dL_dY1(disc, fname, bs2);
 			}
 
 			// plot loss

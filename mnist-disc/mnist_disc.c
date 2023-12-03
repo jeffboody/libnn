@@ -191,7 +191,7 @@ mnist_disc_parse(nn_engine_t* engine,
 	self->bs = strtol(val_bs->data, NULL, 0);
 	self->fc = strtol(val_fc->data, NULL, 0);
 
-	// depth is 2 for real/generated and noisy inputs
+	// depth is doubled for real/generated and noisy inputs
 	nn_dim_t dim =
 	{
 		.count  = self->bs,
@@ -265,7 +265,15 @@ mnist_disc_parse(nn_engine_t* engine,
 		goto fail_loss;
 	}
 
-	self->Yt = nn_tensor_new(engine, &dim,
+	nn_dim_t dimY =
+	{
+		.count  = self->bs,
+		.height = xh/4,
+		.width  = xw/4,
+		.depth  = 1,
+	};
+
+	self->Yt = nn_tensor_new(engine, &dimY,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_IO);
 	if(self->Yt == NULL)
@@ -275,7 +283,7 @@ mnist_disc_parse(nn_engine_t* engine,
 
 	mnist_disc_initYt(self);
 
-	self->Y = nn_tensor_new(engine, &dim,
+	self->Y = nn_tensor_new(engine, &dimY,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_IO);
 	if(self->Y == NULL)
@@ -355,7 +363,7 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 	self->bs = bs;
 	self->fc = fc;
 
-	// depth is 2 for real/generated and noisy inputs
+	// depth is doubled for real/generated and noisy inputs
 	nn_dim_t dimX  =
 	{
 		.count  = bs,
@@ -706,37 +714,72 @@ int mnist_disc_export(mnist_disc_t* self,
 	return 0;
 }
 
-int mnist_disc_exportX(mnist_disc_t* self,
-                       const char* fname,
-                       uint32_t n)
+int mnist_disc_exportXd0(mnist_disc_t* self,
+                         const char* fname,
+                         uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->X, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	// Ytr and Yg
+
+	// depth is doubled for real/generated and noisy inputs
+	nn_dim_t* dim = nn_tensor_dim(self->X);
+	uint32_t  xd2 = dim->depth/2;
+
+	return nn_tensor_exportPng(self->X, fname, n, 0,
+	                           xd2 - 1, 0.0f, 1.0f);
 }
 
-int mnist_disc_export_dL_dY(mnist_disc_t* self,
-                            const char* fname,
-                            uint32_t n)
+int mnist_disc_exportXd1(mnist_disc_t* self,
+                         const char* fname,
+                         uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->dL_dY, fname,
-	                           n, 0, 0, -1.0f, 1.0f);
+	// Cr and Cg
+
+	// depth is doubled for real/generated and noisy inputs
+	nn_dim_t* dim = nn_tensor_dim(self->X);
+	uint32_t  xd2 = dim->depth/2;
+
+	return nn_tensor_exportPng(self->X, fname, n, xd2,
+	                           dim->depth - 1, 0.0f, 1.0f);
 }
 
-int mnist_disc_exportYt(mnist_disc_t* self,
-                        const char* fname,
-                        uint32_t n)
+int mnist_disc_export_dL_dY0(mnist_disc_t* self,
+                             const char* fname,
+                             uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->Yt, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	// dL_dY_Ytr and dL_dY_Yg
+
+	// depth is doubled for real/generated and noisy inputs
+	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
+	uint32_t  xd2 = dim->depth/2;
+
+	return nn_tensor_exportPng(self->dL_dY, fname, n, 0,
+	                           xd2 - 1, -1.0f, 1.0f);
+}
+
+int mnist_disc_export_dL_dY1(mnist_disc_t* self,
+                             const char* fname,
+                             uint32_t n)
+{
+	ASSERT(self);
+	ASSERT(fname);
+
+	// dL_dY_Cr and dL_dY_Cg
+
+	// depth is doubled for real/generated and noisy inputs
+	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
+	uint32_t  xd2 = dim->depth/2;
+
+	return nn_tensor_exportPng(self->dL_dY, fname, n, xd2,
+	                           dim->depth - 1, -1.0f, 1.0f);
 }
 
 int mnist_disc_exportY(mnist_disc_t* self,
@@ -769,7 +812,7 @@ mnist_disc_sampleXt(mnist_disc_t* self,
 	nn_tensor_t* dnYt = dn->Yt;
 	nn_tensor_t* dnY  = dn->Y;
 
-	// depth is 2 for real/generated and noisy inputs
+	// depth is doubled for real/generated and noisy inputs
 	nn_tensor_t* X    = self->X;
 	nn_dim_t*    dimX = nn_tensor_dim(X);
 	uint32_t     n2   = dimX->count/2;
@@ -786,6 +829,7 @@ mnist_disc_sampleXt(mnist_disc_t* self,
 		{
 			for(j = 0; j < dimX->width; ++j)
 			{
+				// Ytr and Cr
 				x = nn_tensor_get(dnX, n, i, j, 0);
 				y = nn_tensor_get(dnYt, n, i, j, 0);
 				nn_tensor_set(X, n, i, j, 0, y);
@@ -801,6 +845,7 @@ mnist_disc_sampleXt(mnist_disc_t* self,
 		{
 			for(j = 0; j < dimX->width; ++j)
 			{
+				// Yg and Cg
 				x = nn_tensor_get(dnX, n, i, j, 0);
 				y = nn_tensor_get(dnY, n, i, j, 0);
 				nn_tensor_set(X, n, i, j, 0, y);
