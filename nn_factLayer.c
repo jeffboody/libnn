@@ -34,16 +34,12 @@
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
-const char* NN_FACT_LAYER_STRING_LINEAR    = "linear";
-const char* NN_FACT_LAYER_STRING_LOGISTIC  = "logistic";
-const char* NN_FACT_LAYER_STRING_RELU      = "ReLU";
-const char* NN_FACT_LAYER_STRING_PRELU     = "PReLU";
-const char* NN_FACT_LAYER_STRING_TANH      = "tanh";
-const char* NN_FACT_LAYER_STRING_DLINEAR   = "dlinear";
-const char* NN_FACT_LAYER_STRING_DLOGISTIC = "dlogistic";
-const char* NN_FACT_LAYER_STRING_DRELU     = "dReLU";
-const char* NN_FACT_LAYER_STRING_DPRELU    = "dPReLU";
-const char* NN_FACT_LAYER_STRING_DTANH     = "dtanh";
+const char* NN_FACT_LAYER_STRING_LINEAR   = "linear";
+const char* NN_FACT_LAYER_STRING_LOGISTIC = "logistic";
+const char* NN_FACT_LAYER_STRING_RELU     = "ReLU";
+const char* NN_FACT_LAYER_STRING_PRELU    = "PReLU";
+const char* NN_FACT_LAYER_STRING_TANH     = "tanh";
+const char* NN_FACT_LAYER_STRING_SINK     = "sink";
 
 /***********************************************************
 * private                                                  *
@@ -69,6 +65,7 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 		engine->cp_fact_forwardPassReLU,
 		engine->cp_fact_forwardPassPReLU,
 		engine->cp_fact_forwardPassTanh,
+		engine->cp_fact_forwardPassSink,
 	};
 
 	// sb00: dimX
@@ -149,6 +146,7 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 		engine->cp_fact_backpropReLU,
 		engine->cp_fact_backpropPReLU,
 		engine->cp_fact_backpropTanh,
+		engine->cp_fact_backpropSink,
 	};
 
 	// sb20: dim_dL_dY
@@ -274,6 +272,7 @@ static const char* nn_factLayer_string(nn_factLayerFn_e fn)
 		NN_FACT_LAYER_STRING_RELU,
 		NN_FACT_LAYER_STRING_PRELU,
 		NN_FACT_LAYER_STRING_TANH,
+		NN_FACT_LAYER_STRING_SINK,
 	};
 
 	return str_array[fn];
@@ -290,6 +289,7 @@ static nn_factLayerFn_e nn_factLayer_function(const char* str)
 		NN_FACT_LAYER_STRING_RELU,
 		NN_FACT_LAYER_STRING_PRELU,
 		NN_FACT_LAYER_STRING_TANH,
+		NN_FACT_LAYER_STRING_SINK,
 	};
 
 	int i;

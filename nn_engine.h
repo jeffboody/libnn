@@ -101,11 +101,13 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_fact_forwardPassReLU;
 	vkk_computePipeline_t* cp_fact_forwardPassPReLU;
 	vkk_computePipeline_t* cp_fact_forwardPassTanh;
+	vkk_computePipeline_t* cp_fact_forwardPassSink;
 	vkk_computePipeline_t* cp_fact_backpropLinear;
 	vkk_computePipeline_t* cp_fact_backpropLogistic;
 	vkk_computePipeline_t* cp_fact_backpropReLU;
 	vkk_computePipeline_t* cp_fact_backpropPReLU;
 	vkk_computePipeline_t* cp_fact_backpropTanh;
+	vkk_computePipeline_t* cp_fact_backpropSink;
 	vkk_computePipeline_t* cp_pooling_forwardPassAvg;
 	vkk_computePipeline_t* cp_pooling_forwardPassMax;
 	vkk_computePipeline_t* cp_pooling_backprop;

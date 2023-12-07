@@ -23,11 +23,13 @@ glslangValidator -V nn_factLayer_forwardPassLogistic.comp -o nn_factLayer_forwar
 glslangValidator -V nn_factLayer_forwardPassReLU.comp -o nn_factLayer_forwardPassReLU_comp.spv
 glslangValidator -V nn_factLayer_forwardPassPReLU.comp -o nn_factLayer_forwardPassPReLU_comp.spv
 glslangValidator -V nn_factLayer_forwardPassTanh.comp -o nn_factLayer_forwardPassTanh_comp.spv
+glslangValidator -V nn_factLayer_forwardPassSink.comp -o nn_factLayer_forwardPassSink_comp.spv
 glslangValidator -V nn_factLayer_backpropLinear.comp -o nn_factLayer_backpropLinear_comp.spv
 glslangValidator -V nn_factLayer_backpropLogistic.comp -o nn_factLayer_backpropLogistic_comp.spv
 glslangValidator -V nn_factLayer_backpropReLU.comp -o nn_factLayer_backpropReLU_comp.spv
 glslangValidator -V nn_factLayer_backpropPReLU.comp -o nn_factLayer_backpropPReLU_comp.spv
 glslangValidator -V nn_factLayer_backpropTanh.comp -o nn_factLayer_backpropTanh_comp.spv
+glslangValidator -V nn_factLayer_backpropSink.comp -o nn_factLayer_backpropSink_comp.spv
 glslangValidator -V nn_poolingLayer_forwardPassAvg.comp -o nn_poolingLayer_forwardPassAvg_comp.spv
 glslangValidator -V nn_poolingLayer_forwardPassMax.comp -o nn_poolingLayer_forwardPassMax_comp.spv
 glslangValidator -V nn_poolingLayer_backprop.comp -o nn_poolingLayer_backprop_comp.spv
@@ -77,11 +79,13 @@ bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassLogistic_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassPReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassTanh_comp.spv
+bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassSink_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropLinear_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropLogistic_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropPReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropTanh_comp.spv
+bfs $1 blobSet nn/shaders/nn_factLayer_backpropSink_comp.spv
 bfs $1 blobSet nn/shaders/nn_poolingLayer_forwardPassAvg_comp.spv
 bfs $1 blobSet nn/shaders/nn_poolingLayer_forwardPassMax_comp.spv
 bfs $1 blobSet nn/shaders/nn_poolingLayer_backprop_comp.spv

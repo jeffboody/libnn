@@ -37,9 +37,10 @@ typedef enum
 	NN_FACT_LAYER_FN_RELU     = 2,
 	NN_FACT_LAYER_FN_PRELU    = 3,
 	NN_FACT_LAYER_FN_TANH     = 4,
+	NN_FACT_LAYER_FN_SINK     = 5,
 } nn_factLayerFn_e;
 
-#define NN_FACT_LAYER_FN_COUNT 5
+#define NN_FACT_LAYER_FN_COUNT 6
 
 typedef struct nn_factLayer_s
 {
