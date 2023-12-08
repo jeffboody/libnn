@@ -105,6 +105,7 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_fact_backpropLinear;
 	vkk_computePipeline_t* cp_fact_backpropLogistic;
 	vkk_computePipeline_t* cp_fact_backpropReLU;
+	vkk_computePipeline_t* cp_fact_backpropLERP;
 	vkk_computePipeline_t* cp_fact_backpropPReLU;
 	vkk_computePipeline_t* cp_fact_backpropTanh;
 	vkk_computePipeline_t* cp_fact_backpropSink;

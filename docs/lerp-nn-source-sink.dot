@@ -1,0 +1,38 @@
+// sudo apt-get install graphviz
+// dot -Tpng lerp-nn-source-sink.dot -o lerp-nn-source-sink.png
+// xdot lerp-nn-source-sink.dot
+digraph NN
+{
+	label="LERP Neural Network\nSource/Sink";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+	// rankdir="LR";
+
+	NOTE [FILLCOLOR=gray, style=filled, shape=box, label="Notes:\n1) SINK is a \"Parameterized Rectified Logistic Unit\"\nSINK(x) = 0.125*x + 0.5 for [-4.0,4.0]\nSINK(x) = 0.01*(x + 4.0) for x < -4.0\nSINK(x) = 0.01*(x - 4.0) + 1.0 for x > 4.0\n2) SOURCE is the inverse of SINK\nInputs to SOURCE are always [0.0,1.0]\nSOURCE(x) = 8.0*(x - 0.5)\nHowever, SOURCE layer introduces instability!\n3) CONV2(X) may substitute CONV1(SOURCE1(X))\nby noting SINK2(DECONV2(H)) = DECONV2'(H) =\nSINK2(SUM(hi*wi) + b) =\n0.125(SUM(hi*wi) + b) + 0.5 =\nSUM(hi*wi') + b'\nWhere wi' = 0.125*wi and b' = 0.125*b + 0.5"];
+
+	{ rank=min X };
+	{ rank=same SOURCE1 -> SINK2   [style=invis] };
+	{ rank=same CONV1   -> DECONV2 [style=invis] };
+
+	// nodes
+	X       [fillcolor=yellow,  style=filled, shape=box, label="X"];
+	SOURCE1 [fillcolor=orange,  style=filled];
+	CONV1   [fillcolor=orange,  style=filled];
+	CONV2   [fillcolor=darkorange,  style=filled];
+	DECONV2 [fillcolor=skyblue, style=filled];
+	SINK2   [fillcolor=skyblue, style=filled];
+	H       [fillcolor=palegreen, style=filled, shape=box];
+
+	// forward pass 1
+	X       -> SOURCE1 [color=blue];
+	SOURCE1 -> CONV1   [color=blue];
+	CONV1   -> H       [color=blue];
+	X       -> CONV2   [color=blue];
+	CONV2   -> H       [color=blue];
+
+	// forward pass 2
+	H       -> DECONV2 [color=dodgerblue];
+	DECONV2 -> SINK2   [color=dodgerblue];
+	SINK2   -> X       [color=dodgerblue];
+}

@@ -1,0 +1,80 @@
+// sudo apt-get install graphviz
+// dot -Tpng lerp-nn-identity.dot -o lerp-nn-identity.png
+// xdot lerp-nn-identity.dot
+digraph NN
+{
+	label="LERP Neural Network\nIdentity";
+	fontsize=20;
+	size="4,2";
+	ratio=fill;
+	// rankdir="LR";
+
+	NOTE [FILLCOLOR=gray, style=filled, shape=box, label="Notes:\n1) CONV and DECONV are functionally\nequivalent for convolutions\nwhich are found naturally in neural networks\n2) CONV and CONVT are functionally\nequivalent for strided convolutions\nwhich are found naturally in neural networks\n3) CONV followed by RELU is functionally\nequivalent to DECONV followed by RELU\n4) BN followed by BN is functionally\nequivalent to BN followed by DECONV\n5) BN may also learn the identity function\ntherefore CONV2(X) may substitute CONV1(BN(X))"];
+
+	X1      [fillcolor=yellow, style=filled, shape=box, label="X"];
+	Y1      [fillcolor=yellow, style=filled, shape=box, label="X"];
+	H1      [fillcolor=palegreen, style=filled, shape=box, label="H"];
+	CONV1   [fillcolor=orange, style=filled, label="CONV"];
+	DECONV1 [fillcolor=skyblue, style=filled, label="DECONV\nCONV"];
+
+	X2      [fillcolor=yellow,    style=filled, shape=box, label="X"];
+	Y2      [fillcolor=yellow,    style=filled, shape=box, label="X"];
+	H2      [fillcolor=palegreen, style=filled, shape=box, label="H"];
+	CONV2   [fillcolor=orange,    style=filled, label="CONV(stride=3)"];
+	DECONV2 [fillcolor=skyblue,   style=filled, label="DECONV\nCONVT(stride=2)"];
+
+	X3      [fillcolor=yellow,    style=filled, shape=box, label="X"];
+	H3      [fillcolor=palegreen, style=filled, shape=box, label="H"];
+	CONV3   [fillcolor=orange,    style=filled, label="CONV"];
+	DECONV3 [fillcolor=skyblue,   style=filled, label="DECONV"];
+	RELU3a  [fillcolor=orange,    style=filled, label="RELU"];
+	RELU3b  [fillcolor=skyblue,   style=filled, label="RELU"];
+
+	X4      [fillcolor=yellow,    style=filled, shape=box, label="X"];
+	H4      [fillcolor=palegreen, style=filled, shape=box, label="H"];
+	BN41    [fillcolor=orange,    style=filled, label="BN"];
+	BN42    [fillcolor=skyblue,   style=filled, label="BN"];
+	CONV4   [fillcolor=orange,    style=filled, label="CONV"];
+	DECONV4 [fillcolor=skyblue,   style=filled, label="DECONV"];
+
+	X5      [fillcolor=yellow,     style=filled, shape=box, label="X"];
+	H5      [fillcolor=palegreen,  style=filled, shape=box, label="H"];
+	BN5     [fillcolor=orange,     style=filled, label="BN"];
+	CONV51  [fillcolor=orange,     style=filled, label="CONV1"];
+	CONV52  [fillcolor=darkorange, style=filled, label="CONV2"];
+
+	// CONV/DECONV
+	X1      -> CONV1;
+	CONV1   -> H1;
+	H1      -> DECONV1;
+	DECONV1 -> Y1;
+
+	// CONVS2/DECONV_CONVTS2
+	X2      -> CONV2;
+	CONV2   -> H2;
+	H2      -> DECONV2;
+	DECONV2 -> Y2;
+
+	// RELU
+	X3      -> CONV3;
+	X3      -> DECONV3;
+	CONV3   -> RELU3a;
+	DECONV3 -> RELU3b;
+	RELU3a  -> H3;
+	RELU3b  -> H3;
+
+	// BN
+	X4      -> BN41;
+	X4      -> BN42;
+	BN41    -> CONV4;
+	BN42    -> DECONV4;
+	CONV4   -> H4;
+	DECONV4 -> H4;
+
+	// BN
+	X5     -> BN5;
+	X5     -> CONV52;
+	BN5    -> CONV51;
+	CONV51 -> H5;
+	CONV52 -> H5;
+}

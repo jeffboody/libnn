@@ -10,12 +10,12 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=1) readonly buffer sb01
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=2) readonly buffer sb02
 {
 	float X[];
 };

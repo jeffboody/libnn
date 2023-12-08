@@ -34,6 +34,12 @@
 #include "nn_layer.h"
 #include "nn_tensor.h"
 
+typedef struct nn_factLayerLerp_s
+{
+	float s1;
+	float s2;
+} nn_factLayerLerp_t;
+
 const char* NN_FACT_LAYER_STRING_LINEAR   = "linear";
 const char* NN_FACT_LAYER_STRING_LOGISTIC = "logistic";
 const char* NN_FACT_LAYER_STRING_RELU     = "ReLU";
@@ -68,17 +74,23 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 		engine->cp_fact_forwardPassSink,
 	};
 
-	// sb00: dimX
-	// sb01: X
+	// sb00: state
+	// sb01: dimX
+	// sb02: X
 	vkk_uniformAttachment_t ua0_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X->sb_dim,
+			.buffer  = arch->sb_state,
 		},
 		{
 			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = X->sb_data,
 		},
@@ -113,7 +125,7 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-	                                 2, ua0_array);
+	                                 3, ua0_array);
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
@@ -139,11 +151,23 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 	nn_engine_t*    engine = arch->engine;
 	nn_dim_t*       dimX   = nn_tensor_dim(self->X);
 
+	// default cp_fact_backpropReLU
+	vkk_computePipeline_t* cp_fact_backpropReLU;
+	cp_fact_backpropReLU = engine->cp_fact_backpropReLU;
+
+	// optionally enable LERP
+	nn_tensor_t* X2 = engine->Null;
+	if(self->fact_lerp)
+	{
+		X2                   = self->fact_lerp->X;
+		cp_fact_backpropReLU = engine->cp_fact_backpropLERP;
+	}
+
 	vkk_computePipeline_t* cp[NN_FACT_LAYER_FN_COUNT] =
 	{
 		engine->cp_fact_backpropLinear,
 		engine->cp_fact_backpropLogistic,
-		engine->cp_fact_backpropReLU,
+		cp_fact_backpropReLU,
 		engine->cp_fact_backpropPReLU,
 		engine->cp_fact_backpropTanh,
 		engine->cp_fact_backpropSink,
@@ -151,6 +175,9 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 
 	// sb20: dim_dL_dY
 	// sb21: dL_dY
+	// sb22: dimX2
+	// sb23: X2
+	// sb24: lerp (s1,s2)
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
@@ -162,6 +189,21 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb24_s1s2,
 		},
 	};
 
@@ -179,7 +221,7 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 2, ua2_array);
+	                                 5, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs, dimX->height, dimX->width,
@@ -187,55 +229,6 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;
-}
-
-static int nn_factLayer_newCompute(nn_factLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t*   arch   = self->base.arch;
-	nn_engine_t* engine = arch->engine;
-
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_fact);
-	if(self->us0 == NULL)
-	{
-		return 0;
-	}
-
-	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                               engine->usf1_fact);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_fact);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_us2:
-		vkk_uniformSet_delete(&self->us1);
-	fail_us1:
-		vkk_uniformSet_delete(&self->us0);
-	return 0;
-}
-
-static void
-nn_factLayer_deleteCompute(nn_factLayer_t* self)
-{
-	ASSERT(self);
-
-	vkk_uniformSet_delete(&self->us2);
-	vkk_uniformSet_delete(&self->us1);
-	vkk_uniformSet_delete(&self->us0);
 }
 
 static nn_dim_t*
@@ -351,16 +344,54 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
-	if(nn_factLayer_newCompute(self) == 0)
+	nn_factLayerLerp_t s1s2 =
 	{
-		goto fail_compute;
+		.s1 = 0.5f,
+		.s2 = 0.5f,
+	};
+
+	self->sb24_s1s2 = vkk_buffer_new(engine->engine,
+	                                 VKK_UPDATE_MODE_STATIC,
+	                                 VKK_BUFFER_USAGE_STORAGE,
+	                                 sizeof(nn_factLayerLerp_t),
+	                                 &s1s2);
+	if(self->sb24_s1s2 == NULL)
+	{
+		goto fail_sb24_s1s2;
+	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_fact);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                               engine->usf1_fact);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_fact);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
 	}
 
 	// success
 	return self;
 
 	// failure
-	fail_compute:
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
+	fail_us1:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		vkk_buffer_delete(&self->sb24_s1s2);
+	fail_sb24_s1s2:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
@@ -456,8 +487,47 @@ void nn_factLayer_delete(nn_factLayer_t** _self)
 	nn_factLayer_t* self = *_self;
 	if(self)
 	{
-		nn_factLayer_deleteCompute(self);
+		vkk_uniformSet_delete(&self->us2);
+		vkk_uniformSet_delete(&self->us1);
+		vkk_uniformSet_delete(&self->us0);
+		vkk_buffer_delete(&self->sb24_s1s2);
 		nn_tensor_delete(&self->Y);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
+}
+
+int nn_factLayer_lerp(nn_factLayer_t* self,
+                      nn_factLayer_t* fact_lerp,
+                      float s1, float s2)
+{
+	ASSERT(self);
+	ASSERT(fact_lerp);
+
+	nn_arch_t*   arch   = self->base.arch;
+	nn_engine_t* engine = arch->engine;
+
+	nn_factLayerLerp_t s1s2 =
+	{
+		.s1 = s1,
+		.s2 = s2,
+	};
+
+	vkk_buffer_t* sb24_s1s2;
+	sb24_s1s2 = vkk_buffer_new(engine->engine,
+	                           VKK_UPDATE_MODE_STATIC,
+	                           VKK_BUFFER_USAGE_STORAGE,
+	                           sizeof(nn_factLayerLerp_t),
+	                           &s1s2);
+	if(sb24_s1s2 == NULL)
+	{
+		return 0;
+	}
+
+	// replace sb24_s1s2
+	vkk_buffer_delete(&self->sb24_s1s2);
+	self->sb24_s1s2 = sb24_s1s2;
+
+	self->fact_lerp = fact_lerp;
+
+	return 1;
 }

@@ -1,0 +1,103 @@
+// sudo apt-get install graphviz
+// dot -Tpng lerp-nn-forwardpass.dot -o lerp-nn-forwardpass.png
+// xdot lerp-nn-forwardpass.dot
+digraph NN
+{
+	label="LERP Neural Network\nForward Pass";
+	fontsize=20;
+	size="1,2";
+	ratio=fill;
+	// rankdir="LR";
+
+	NOTE [FILLCOLOR=gray, style=filled, shape=box, label="Notes:\n1) Two neural networks are placed side-by-side with\nthe goal that their input, output and hidden values\nare identical\n2) LERP is RELU for forward pass\n3) The desired H values are weighted averages\nfrom Y values calculated during the forward pass\n4) The weights prioritize the output nearest to the\nloss function\n5) SINK is a \"Parameterized Rectified Logistic Unit\"\n6) Edges are labeled relative to LERP"];
+
+	{ rank=min Xt };
+	{ rank=same CONV1a -> SINK2    [style=invis] };
+	{ rank=same LERP1a -> DECONV2a [style=invis] };
+	{ rank=same CONV1b -> LERP2b   [style=invis] };
+	{ rank=same LERP1b -> DECONV2b [style=invis] };
+	{ rank=same CONV1c -> LERP2c   [style=invis] };
+	{ rank=same LERP1c -> DECONV2c [style=invis] };
+	{ rank=same CONV1d -> LERP2d   [style=invis] };
+	{ rank=same SINK1  -> DECONV2d [style=invis] };
+	{ rank=max Yt };
+
+	// nodes
+	Xt       [fillcolor=yellow, style=filled, shape=box, label="Xt"];
+	Yt       [fillcolor=yellow, style=filled, shape=box, label="Yt"];
+	Ha       [fillcolor=palegreen, style=filled, shape=box, label="Ha = s1*Y1a + s2*Y2b\ns1 = 0.25\ns2 = 1.0 - s1 = 0.75"];
+	Hb       [fillcolor=palegreen, style=filled, shape=box, label="Hb = s1*Y1b + s2*Y2c\ns1 = 0.5\ns2 = 1.0 - s1 = 0.5"];
+	Hc       [fillcolor=palegreen, style=filled, shape=box, label="Hc = s1*Y1c + s2*Y2d\ns1 = 0.75\ns2 = 1.0 - s1 = 0.25"];
+	CONV1a   [fillcolor=orange, style=filled];
+	LERP1a   [fillcolor=orange, style=filled];
+	CONV1b   [fillcolor=orange, style=filled];
+	LERP1b   [fillcolor=orange, style=filled];
+	CONV1c   [fillcolor=orange, style=filled];
+	LERP1c   [fillcolor=orange, style=filled];
+	CONV1d   [fillcolor=orange, style=filled];
+	SINK1    [fillcolor=orange, style=filled];
+	DECONV2d [fillcolor=skyblue, style=filled];
+	LERP2d   [fillcolor=skyblue, style=filled];
+	DECONV2c [fillcolor=skyblue, style=filled];
+	LERP2c   [fillcolor=skyblue, style=filled];
+	DECONV2b [fillcolor=skyblue, style=filled];
+	LERP2b   [fillcolor=skyblue, style=filled];
+	DECONV2a [fillcolor=skyblue, style=filled];
+	SINK2    [fillcolor=skyblue, style=filled];
+
+	// forward pass 1
+	Xt     -> CONV1a [color=blue];
+	CONV1a -> LERP1a [color=blue];
+	LERP1a -> Ha     [color=blue, label="Y1a"];
+	Ha     -> CONV1b [color=blue, label="Y1a"];
+	CONV1b -> LERP1b [color=blue];
+	LERP1b -> Hb     [color=blue, label="Y1b"];
+	Hb     -> CONV1c [color=blue, label="Y1b"];
+	CONV1c -> LERP1c [color=blue];
+	LERP1c -> Hc     [color=blue, label="Y1c"];
+	Hc     -> CONV1d [color=blue, label="Y1c"];
+	CONV1d -> SINK1  [color=blue];
+	SINK1  -> Yt     [color=blue];
+
+	// forward pass 2
+	Yt       -> DECONV2d [color=dodgerblue];
+	DECONV2d -> LERP2d   [color=dodgerblue];
+	LERP2d   -> Hc       [color=dodgerblue, label="Y2d"];
+	Hc       -> DECONV2c [color=dodgerblue, label="Y2d"];
+	DECONV2c -> LERP2c   [color=dodgerblue];
+	LERP2c   -> Hb       [color=dodgerblue, label="Y2c"];
+	Hb       -> DECONV2b [color=dodgerblue, label="Y2c"];
+	DECONV2b -> LERP2b   [color=dodgerblue];
+	LERP2b   -> Ha       [color=dodgerblue, label="Y2b"];
+	Ha       -> DECONV2a [color=dodgerblue, label="Y2b"];
+	DECONV2a -> SINK2    [color=dodgerblue];
+	SINK2    -> Xt       [color=dodgerblue];
+
+	// backprop pass 1
+	// CONV1a -> Xt     [color=red];
+	// LERP1a -> CONV1a [color=red];
+	// Ha     -> LERP1a [color=red];
+	// CONV1b -> Ha     [color=red];
+	// LERP1b -> CONV1b [color=red];
+	// Hb     -> LERP1b [color=red];
+	// CONV1c -> Hb     [color=red];
+	// LERP1c -> CONV1c [color=red];
+	// Hc     -> LERP1c [color=red];
+	// CONV1d -> Hc     [color=red];
+	// SINK1  -> CONV1d [color=red];
+	// Yt     -> SINK1  [color=red];
+
+	// backprop pass 2
+	// DECONV2d -> Yt       [color=magenta];
+	// LERP2d   -> DECONV2d [color=magenta];
+	// Hc       -> LERP2d   [color=magenta];
+	// DECONV2c -> Hc       [color=magenta];
+	// LERP2c   -> DECONV2c [color=magenta];
+	// Hb       -> LERP2c   [color=magenta];
+	// DECONV2b -> Hb       [color=magenta];
+	// LERP2b   -> DECONV2b [color=magenta];
+	// Ha       -> LERP2b   [color=magenta];
+	// DECONV2a -> Ha       [color=magenta];
+	// SINK2    -> DECONV2a [color=magenta];
+	// Xt       -> SINK2    [color=magenta];
+}

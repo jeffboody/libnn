@@ -59,6 +59,10 @@ typedef struct nn_factLayer_s
 	// dL_dY : dim(bs,xh,xw,xd)
 	// dL_dX : dim(bs,xh,xw,xd)
 
+	// LERP method
+	nn_factLayer_t* fact_lerp; // reference
+	vkk_buffer_t*   sb24_s1s2;
+
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;
@@ -72,5 +76,8 @@ nn_factLayer_t* nn_factLayer_import(nn_arch_t* arch,
 int             nn_factLayer_export(nn_factLayer_t* self,
                                     jsmn_stream_t* stream);
 void            nn_factLayer_delete(nn_factLayer_t** _self);
+int             nn_factLayer_lerp(nn_factLayer_t* self,
+                                  nn_factLayer_t* fact_lerp,
+                                  float s1, float s2);
 
 #endif

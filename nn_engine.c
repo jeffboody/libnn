@@ -182,10 +182,11 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf3_conv = vkk_uniformSetFactory_new(engine, um,
 	                                            1, ub_array);
 
-	// sb00: dimX
-	// sb01: X
+	// sb00: state
+	// ...
+	// sb02: X
 	self->usf0_fact = vkk_uniformSetFactory_new(engine, um,
-	                                            2, ub_array);
+	                                            3, ub_array);
 
 	// sb10: dimY
 	// sb11: Y
@@ -193,9 +194,10 @@ nn_engine_new(vkk_engine_t* engine)
 	                                            2, ub_array);
 
 	// sb20: dim_dL_dY
-	// sb21: dL_dY
+	// ...
+	// sb24: lerp (s1,s2)
 	self->usf2_fact = vkk_uniformSetFactory_new(engine, um,
-	                                            2, ub_array);
+	                                            5, ub_array);
 
 	// sb00: state
 	// ...
@@ -689,6 +691,17 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_fact_backpropReLU);
 
+	vkk_computePipelineInfo_t cpi_fact_backpropLERP =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact,
+		.cs      = "nn/shaders/nn_factLayer_backpropLERP_comp.spv",
+	};
+
+	self->cp_fact_backpropLERP =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropLERP);
+
 	vkk_computePipelineInfo_t cpi_fact_backpropPReLU =
 	{
 		.compute = self->compute,
@@ -992,6 +1005,7 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_fact_backpropLinear             == NULL) ||
 	   (self->cp_fact_backpropLogistic           == NULL) ||
 	   (self->cp_fact_backpropReLU               == NULL) ||
+	   (self->cp_fact_backpropLERP               == NULL) ||
 	   (self->cp_fact_backpropPReLU              == NULL) ||
 	   (self->cp_fact_backpropTanh               == NULL) ||
 	   (self->cp_fact_backpropSink               == NULL) ||
@@ -1122,6 +1136,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_fact_backpropTanh);
 		vkk_computePipeline_delete(&self->cp_fact_backpropPReLU);
 		vkk_computePipeline_delete(&self->cp_fact_backpropReLU);
+		vkk_computePipeline_delete(&self->cp_fact_backpropLERP);
 		vkk_computePipeline_delete(&self->cp_fact_backpropLogistic);
 		vkk_computePipeline_delete(&self->cp_fact_backpropLinear);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassSink);

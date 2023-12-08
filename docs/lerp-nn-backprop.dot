@@ -1,0 +1,50 @@
+// sudo apt-get install graphviz
+// dot -Tpng lerp-nn-backprop.dot -o lerp-nn-backprop.png
+// xdot lerp-nn-backprop.dot
+digraph NN
+{
+	label="LERP Neural Network\nBackprop";
+	fontsize=20;
+	size="4,3";
+	ratio=fill;
+	// rankdir="LR";
+
+	NOTE [FILLCOLOR=gray, style=filled, shape=box, label="Notes:\n1) LERP backprop interpolation adjusts the\nrelative strength of the gradients to move\ntowards the target value\n2) LERP backprop is RELU when Y1a equals Y2b\n3) Clamp around 1.0 for outliers and\ndivide-by-zero (e.g. clamp(x,0.8,1.25))\n4) Edges are labeled relative to LERP"];
+
+	{ rank=same CONV1a -> SINK2    [style=invis] };
+	{ rank=same LERP1a -> DECONV2a [style=invis] };
+	{ rank=same CONV1b -> LERP2b   [style=invis] };
+	{ rank=same LERP1b -> DECONV2b [style=invis] };
+
+	Ha       [fillcolor=palegreen, style=filled, shape=box, label="Ha = s1*Y1a + s2*Y2b\ns1 = 0.25\ns2 = 1.0 - s1 = 0.75"];
+	CONV1a   [fillcolor=orange, style=filled];
+	LERP1a   [fillcolor=orange, style=filled, label="LERP1a\ndL_dX1a = clamp((Y1a + s*(Ha - Y1a))/Y1a)*(dL_dY1a*dY_dX1a)\ns = 0.1"];
+	CONV1b   [fillcolor=orange, style=filled];
+	LERP1b   [fillcolor=orange, style=filled];
+	DECONV2b [fillcolor=skyblue, style=filled];
+	LERP2b   [fillcolor=skyblue, style=filled, label="LERP2b\ndL_dX2b = clamp((Y2b + s*(Ha - Y2b))/Y2b)*(dL_dY2b*dY_dX2b)\ns = 0.1"];
+	DECONV2a [fillcolor=skyblue, style=filled];
+	SINK2    [fillcolor=skyblue, style=filled];
+
+	// forward pass 1
+	CONV1a -> LERP1a [color=blue, label="X1a\ndY_dX1a"];
+	LERP1a -> Ha     [color=blue, label="Y1a"];
+	Ha     -> CONV1b [color=blue, label="Y1a"];
+	CONV1b -> LERP1b [color=blue];
+
+	// forward pass 2
+	DECONV2b -> LERP2b   [color=dodgerblue, label="X2b\ndY_dX2b"];
+	LERP2b   -> Ha       [color=dodgerblue, label="Y2b"];
+	Ha       -> DECONV2a [color=dodgerblue, label="Y2b"];
+	DECONV2a -> SINK2    [color=dodgerblue];
+
+	// backprop 1
+	LERP1a -> CONV1a [color=red, label="dL_dX1a"];
+	Ha     -> LERP1a [color=red, label="dL_dY1a"];
+	CONV1b -> Ha     [color=red, label="dL_dY1a"];
+
+	// backprop 2
+	Ha       -> LERP2b   [color=magenta, label="dL_dY2b"];
+	LERP2b   -> DECONV2b [color=magenta, label="dL_dX2b"];
+	DECONV2a -> Ha       [color=magenta, label="dL_dY2b"];
+}
