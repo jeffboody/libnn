@@ -994,6 +994,7 @@ backpropagation algorithm for the convolution layer.
 References
 
 * [What is Transposed Convolutional Layer?](https://towardsdatascience.com/what-is-transposed-convolutional-layer-40e5e6e31c11)
+* [Network Deconvolution](https://arxiv.org/pdf/1905.11926.pdf)
 
 Autoencoders
 ------------
@@ -1210,6 +1211,9 @@ References
 * [Image-to-Image Translation with Conditional Adversarial Networks](https://arxiv.org/pdf/1611.07004.pdf)
 * [Progressive Growing of GANs for Improved Quality, Stability, and Variation](https://arxiv.org/pdf/1710.10196.pdf)
 * [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/pdf/1703.10593.pdf)
+* [High-Resolution Image Synthesis and Semantic Manipulation with Conditional GANs](https://arxiv.org/pdf/1711.11585.pdf)
+* [Learning to Factorize and Relight a City](https://arxiv.org/pdf/2008.02796.pdf)
+* [Persistent Nature: A Generative Model of Unbounded 3D Worlds](https://arxiv.org/pdf/2303.13515.pdf)
 * [Least Squares Generative Adversarial Networks](https://arxiv.org/pdf/1611.04076.pdf)
 * [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
 * [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
@@ -1311,6 +1315,14 @@ The larger minibatch size of the discriminator results in
 smoother gradients which is somewhat equivalent to the
 Pix-To-Pix training policy which divides the objective by
 two while optimizing the discriminator.
+
+3D Applications
+===============
+
+References
+
+* [3D reconstruction from satellite imagery using deep learning](https://liu.diva-portal.org/smash/get/diva2:1567722/FULLTEXT01.pdf)
+* [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
 
 License
 =======
