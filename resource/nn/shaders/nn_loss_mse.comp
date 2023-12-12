@@ -121,6 +121,6 @@ void main()
 			sum += loss_work[n];
 		}
 
-		loss = sum/M;
+		loss = sum/(2.0*M);
 	}
 }

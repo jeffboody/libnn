@@ -214,7 +214,10 @@ The Mean Squared Error (MSE) and Mean Absolute Error (MAE)
 are the most commonly used loss functions for regression
 problems. The MSE is typically used unless the training data
 has a large number of outliers. This is because the MSE is
-highly sensitive to outliers due to the squared term.
+highly sensitive to outliers due to the squared term. When
+using MSE with gradient descent algorithms, it is a common
+practice to introduce a factor of 1/2 for ease of
+computation after taking the derivative.
 
 The Binary Cross-Entropy (BCE) may also be used for
 regression problems when the output values are in the
@@ -224,8 +227,8 @@ contradict the claim that BCE may be used for regression
 problems.
 
 	MSE
-	L(Y,Yt) = (1/n)*SUM((yi - yti)^2)
-	dL/dyi  = 2*(yi - yti)
+	L(Y,Yt) = (1/n)*(1/2)SUM((yi - yti)^2)
+	dL/dyi  = yi - yti
 
 	MAE
 	L(Y,Yt) = (1/n)*SUM(|yi - yti|)
@@ -249,6 +252,7 @@ neural networks.
 References
 
 * [Loss Functions and Their Use In Neural Networks](https://towardsdatascience.com/loss-functions-and-their-use-in-neural-networks-a470e703f1e9)
+* [Mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error)
 * [Binary Crossentropy in its core!](https://medium.com/analytics-vidhya/binary-crossentropy-in-its-core-35bcecf27a8a)
 * [Introduction to Autoencoders? What are Autoencoders Applications and Types?](https://www.mygreatlearning.com/blog/autoencoder/)
 * [Tensorflow Cross Entropy for Regression?](https://stats.stackexchange.com/questions/223256/tensorflow-cross-entropy-for-regression)

@@ -66,16 +66,9 @@ void set_dL_dY(uint n, uint i, uint j, uint k, float v)
 
 void dL_dY_mse(uint m, uint i, uint j, uint k)
 {
-	float y;
-	float yt;
-	float dy;
-	float dl_dy;
-
-	y     = getY(m, i, j, k);
-	yt    = getYt(m, i, j, k);
-	dy    = y - yt;
-	dl_dy = 2.0*dy;
-	set_dL_dY(m, i, j, k, dl_dy);
+	float y  = getY(m, i, j, k);
+	float yt = getYt(m, i, j, k);
+	set_dL_dY(m, i, j, k, y - yt);
 }
 
 void main()
