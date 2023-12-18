@@ -620,6 +620,7 @@ References
 * [Deriving the Gradient for the Backward Pass of Batch Normalization](https://kevinzakka.github.io/2016/09/14/batch_normalization/)
 * [Understanding the backward pass through Batch Normalization Layer](http://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html)
 * [Matrix form of backpropagation with batch normalization](https://stats.stackexchange.com/questions/328242/matrix-form-of-backpropagation-with-batch-normalization)
+* [Diminishing Batch Normalization](https://arxiv.org/pdf/1705.08011.pdf)
 
 Learning Rate
 -------------
@@ -1327,6 +1328,7 @@ References
 
 * [3D reconstruction from satellite imagery using deep learning](https://liu.diva-portal.org/smash/get/diva2:1567722/FULLTEXT01.pdf)
 * [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
+* [Deep Learning for 3D Point Clouds: A Survey](https://arxiv.org/pdf/1912.12033.pdf)
 
 License
 =======
