@@ -622,6 +622,31 @@ References
 * [Matrix form of backpropagation with batch normalization](https://stats.stackexchange.com/questions/328242/matrix-form-of-backpropagation-with-batch-normalization)
 * [Diminishing Batch Normalization](https://arxiv.org/pdf/1705.08011.pdf)
 
+Spectral Normalization
+----------------------
+
+Spectral Normalization (SN) is a normalization technique
+used for generative adversarial networks, used to stabilize
+training of the discriminator.
+
+SN is used by Real-ESRGAN for normalization of the GAN
+discriminator.
+
+Questions
+
+* How does SN affect Bias? => SN does not affect bias
+* How does SN work with Nesterov Momentum Update? (e.g. VW and VB)
+* Why apply SN in forward pass? (see spectral_normalization.py)
+
+References
+
+* [Spectral Normalization for Generative Adversarial Networks](https://arxiv.org/pdf/1802.05957.pdf)
+* [Spectral Normalization](https://paperswithcode.com/method/spectral-normalization)
+* [spectral_normalization.py](https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/12dcf945a6359301d63d1e0da3708cd0f0590b19/spectral_normalization.py#L14)
+* [Advanced GANs - Exploring Normalization Techniques for GAN training: Self-Attention and Spectral Norm](https://sthalles.github.io/advanced_gans/)
+* [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://arxiv.org/pdf/2009.02773.pdf)
+* [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://blog.ml.cmu.edu/2022/01/21/why-spectral-normalization-stabilizes-gans-analysis-and-improvements/)
+
 Learning Rate
 -------------
 
@@ -1321,14 +1346,27 @@ smoother gradients which is somewhat equivalent to the
 Pix-To-Pix training policy which divides the objective by
 two while optimizing the discriminator.
 
+GAN Based Super-Resolution
+--------------------------
+
+References
+
+* [Photo-Realistic Single Image Super-Resolution Using a Generative Adversarial Network](https://arxiv.org/pdf/1609.04802.pdf)
+* [ESRGAN: Enhanced Super-Resolution Generative Adversarial Networks](https://arxiv.org/pdf/1809.00219.pdf)
+* [Real-ESRGAN: Training Real-World Blind Super-Resolution with Pure Synthetic Data](https://arxiv.org/pdf/2107.10833.pdf)
+
+See the Autoencoders section for non-GAN based
+super-resolution techniques.
+
 3D Applications
-===============
+---------------
 
 References
 
 * [3D reconstruction from satellite imagery using deep learning](https://liu.diva-portal.org/smash/get/diva2:1567722/FULLTEXT01.pdf)
 * [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
 * [Deep Learning for 3D Point Clouds: A Survey](https://arxiv.org/pdf/1912.12033.pdf)
+* [3D Elevation Program](https://www.usgs.gov/3d-elevation-program)
 
 License
 =======
