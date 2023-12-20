@@ -635,30 +635,29 @@ References
 * [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
 * [Chapter 8 Training Neural Networks Part 2](https://srdas.github.io/DLBook/ImprovingModelGeneralization.html)
 
-Adam, AdamW and ND-Adam Update
-------------------------------
+AdamW Optimizer
+---------------
 
-The Adam update is another per-parameter adaptive technique
-known as "Adaptive Moment Estimation" which combines
-features from the momentum and RMSProp update techniques.
-The momentum component increases the overall speed while
-the RMSProp component normalizes the gradient scale in
-different directions. The design of the original Adam
-algorithm includes a L2 regularizaion term, however, it was
-discovered that the term was placed incorrectly. As a
-result, the original Adam algorithm failed to generalize
-well leading to suboptimal solutions. AdamW and ND-Adam were
-proposed to address the shortcomings of Adam, however, it's
-unclear these improvements can supplant SGD+Momentum+L2
-Regularization in practice.
+Adam stands for "Adaptive Moment Estimation" and the W
+variant includes "decoupled weight decay". The Adam/AdamW
+Optimizer is an alternative technique to perform the
+backprop update step which replaces SGD, Momentum Update
+and L2 Regularization.
+
+The original Adam algorithm was commonly implemented in
+combination with L2 Regularization, however, it was
+discovered that this approach is not effective due to
+improper scaling of the L2 Regularization term. As a result,
+Adam fails to generalize as well as SGD with momentum (e.g.
+overfits data). The AdamW variant addresses this problem by
+replacing the L2 Regularization with weight decay as
+described below.
 
 References
 
 * [ADAM: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980.pdf)
-* [Why AdamW matters](https://towardsdatascience.com/why-adamw-matters-736223f31b5d)
-* [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v2.pdf)
 * [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf)
-* [Normalized Direction-Preserving Adam](https://arxiv.org/pdf/1709.04546.pdf)
+* [Why AdamW matters](https://towardsdatascience.com/why-adamw-matters-736223f31b5d)
 
 Data Centering and Scaling
 --------------------------
