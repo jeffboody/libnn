@@ -434,33 +434,6 @@ References
 * [Bias Initialization in a Neural Network](https://medium.com/@glenmeyerowitz/bias-initialization-in-a-neural-network-2e5d26fed0f0)
 * [3 Common Problems with Neural Network Initialization](https://towardsdatascience.com/3-common-problems-with-neural-network-initialisation-5e6cacfcd8e6)
 
-Data Centering and Scaling
---------------------------
-
-Data centering and scaling should be performed on the input
-layer on a per-channel (i) basis to normalize the data to
-zero mean and unit variance. When the input layer contains
-images it's common to perform the zero mean but skip the
-unit variance. It may also be beneficial to perform data
-centering and scaling on a per-image basis rather than
-per-channel (e.g. face recognition). Data whitening may also
-be applied by performing PCA and transforming the covariance
-matrix to the identity matrix.
-
-	Yi = (Xi - Mean(Xi))/StdDev(Xi)
-
-Add a small epsilon to avoid divide-by-zero problems.
-
-This transformation improves the learning/convergence rate by
-avoiding the well known zig-zag pattern where the gradient
-descent trajectory oscilates back and forth along one
-dimension.
-
-References
-
-* [Batch Norm Explained Visually - How it works, and why neural networks need it](https://towardsdatascience.com/batch-norm-explained-visually-how-it-works-and-why-neural-networks-need-it-b18919692739)
-* [CS231n Winter 2016: Lecture 5: Neural Networks Part 2](https://www.youtube.com/watch?v=gYpoJMlgyXA&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=5)
-
 Batch Size
 ----------
 
@@ -541,6 +514,178 @@ References
 * [A Gentle Introduction to Mini-Batch Gradient Descent and How to Configure Batch Size](https://machinelearningmastery.com/gentle-introduction-mini-batch-gradient-descent-configure-batch-size/)
 * [Variable batch-size in mini-batch gradient descent](https://www.reddit.com/r/MachineLearning/comments/481f2v/variable_batchsize_in_minibatch_gradient_descent/)
 * [Sum or average of gradients in (mini) batch gradient descent?](https://stats.stackexchange.com/questions/183840/sum-or-average-of-gradients-in-mini-batch-gradient-decent)
+
+Learning Rate
+-------------
+
+The learning rate is arguably the most important
+hyperparameter that affects how fast the gradient descent
+converges. Large learning rates can cause the gradient
+descent to become unstable leading to a failure to converge.
+On the other hand, small learning rates may cause the
+gradient descent to converge slowly or get trapped in local
+minima. Variable learning rates may be achieved by using a high
+learning rate in the beginning while slowly decreasing the
+learning rate after each epoch.
+
+The learning rate may also be impacted by L2 regularization
+when combined with Batch Normalization.
+
+References
+
+* [CS231n Winter 2016: Lecture 6: Neural Networks Part 3 / Intro to ConvNets](https://www.youtube.com/watch?v=hd_KFJ5ktUc&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
+* [A Visual Explanation of Gradient Descent Methods (Momentum, AdaGrad, RMSProp, Adam)](https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c)
+
+Momentum Update
+---------------
+
+The momentum update is a per parameter adaptive technique
+that changes the update by including an exponentially
+decaying velocity term. When successive updates are
+performed in the same direction, the velocity term picks up
+speed and increases the effective learning rate.
+Alternatively, when successive updates are performed in
+opposite directions (e.g. oscilation) the velocity is
+dampened (e.g. friction). The increased velocity can cause
+the update to escape a local minima and power through
+plateaus. On the other hand, it may overshoot a desired
+minimum and will need to backtrack to reach the minimum.
+
+Recall that the backpropagation update is the following.
+
+	wi = wi - gamma*dL/dwi
+
+The momentum update is the following.
+
+	vi = mu*vi - gamma*dL/dwi
+	wi = wi + vi
+
+The decay rate (mu) is a hyperparameter and it was suggested
+that good defaults are 0.5, 0.9 or 0.99. The decay rate may
+be varied across epochs beginning from a value of 0.5 while
+slowly increasing towards 0.99.
+
+The Nesterov momentum update is an improved update which
+uses the "lookahead" gradient for faster convergence rates
+as follows.
+
+	v0i = v1i
+	v1i = mu*v0i - gamma*dL/dwi
+	wi  = wi - mu*v0i + (1 + mu)*v1i
+
+References
+
+* [CS231n Winter 2016: Lecture 6: Neural Networks Part 3 / Intro to ConvNets](https://www.youtube.com/watch?v=hd_KFJ5ktUc&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
+* [A Visual Explanation of Gradient Descent Methods (Momentum, AdaGrad, RMSProp, Adam)](https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c)
+
+L2 Regularization
+-----------------
+
+L2 regularization is a technique that was originally
+designed to reduce data overfitting by adding a term to the
+loss function which penalizes the variance of the function
+parameters.
+
+Loss Function with L2 Regularization
+
+	LR(lambda,W,Y,Yt) = L(Y,Yt) + lambda*SUM(wi^2)
+	dLR/dwi = dL/dwi + 2*lambda*wi
+
+Keep in mind that the regularization term affects the
+backpropagation algorithm by adding an additional term to
+the update parameter step since dL/dwi is replaced by
+dLR/dwi. Some results also suggest that the regularization
+term is not required for the perceptron bias parameter since
+it does not seem to impact the final result. The lambda
+term is a regularization hyperparameter.
+
+To explain how regularization works in the absense of
+normalization, let's consider how the L2 regularization term
+affects the following example.
+
+	X  = [1,1,1,1]
+	W1 = [1,0,0,0]
+	W2 = [0.25,0.25,0.25,0.25]
+
+The perceptron output is the same for each parameter vector,
+however, the regularization term prefers W2.
+
+	SUM(xi*w1i) == SUM(xi*w2i) = 1.0
+	SUM(w1i^2)  = 1.0
+	SUM(w2i^2)  = 0.25
+
+The W2 parameters are prefered since they are more
+generalized across inputs and therefore reduce the variance
+caused by a single outlier.
+
+However, it's important to note that L2 regularization
+has no regularization effect when combined with
+normalization techniques such as Batch Normalization.
+However, if L2 regularization is not used, then the norm of
+the weights tends to increase over time. As a result, the
+effective learning rate decreases. While this may be a
+desirable property, it can be difficult to control and may
+interfere with explicit attempts to control the learning
+rate.
+
+References
+
+* [CS231n Winter 2016: Lecture 3: Linear Classification 2, Optimization](https://www.youtube.com/watch?v=qlLChbHhbg4&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=3)
+* [Regularization in a Neural Network | Dealing with overfitting](https://www.youtube.com/watch?v=EehRcPo1M-Q)
+* [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
+* [Chapter 8 Training Neural Networks Part 2](https://srdas.github.io/DLBook/ImprovingModelGeneralization.html)
+
+Adam, AdamW and ND-Adam Update
+------------------------------
+
+The Adam update is another per-parameter adaptive technique
+known as "Adaptive Moment Estimation" which combines
+features from the momentum and RMSProp update techniques.
+The momentum component increases the overall speed while
+the RMSProp component normalizes the gradient scale in
+different directions. The design of the original Adam
+algorithm includes a L2 regularizaion term, however, it was
+discovered that the term was placed incorrectly. As a
+result, the original Adam algorithm failed to generalize
+well leading to suboptimal solutions. AdamW and ND-Adam were
+proposed to address the shortcomings of Adam, however, it's
+unclear these improvements can supplant SGD+Momentum+L2
+Regularization in practice.
+
+References
+
+* [ADAM: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980.pdf)
+* [Why AdamW matters](https://towardsdatascience.com/why-adamw-matters-736223f31b5d)
+* [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v2.pdf)
+* [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf)
+* [Normalized Direction-Preserving Adam](https://arxiv.org/pdf/1709.04546.pdf)
+
+Data Centering and Scaling
+--------------------------
+
+Data centering and scaling should be performed on the input
+layer on a per-channel (i) basis to normalize the data to
+zero mean and unit variance. When the input layer contains
+images it's common to perform the zero mean but skip the
+unit variance. It may also be beneficial to perform data
+centering and scaling on a per-image basis rather than
+per-channel (e.g. face recognition). Data whitening may also
+be applied by performing PCA and transforming the covariance
+matrix to the identity matrix.
+
+	Yi = (Xi - Mean(Xi))/StdDev(Xi)
+
+Add a small epsilon to avoid divide-by-zero problems.
+
+This transformation improves the learning/convergence rate by
+avoiding the well known zig-zag pattern where the gradient
+descent trajectory oscilates back and forth along one
+dimension.
+
+References
+
+* [Batch Norm Explained Visually - How it works, and why neural networks need it](https://towardsdatascience.com/batch-norm-explained-visually-how-it-works-and-why-neural-networks-need-it-b18919692739)
+* [CS231n Winter 2016: Lecture 5: Neural Networks Part 2](https://www.youtube.com/watch?v=gYpoJMlgyXA&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=5)
 
 Batch Normalization
 -------------------
@@ -646,218 +791,6 @@ References
 * [Advanced GANs - Exploring Normalization Techniques for GAN training: Self-Attention and Spectral Norm](https://sthalles.github.io/advanced_gans/)
 * [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://arxiv.org/pdf/2009.02773.pdf)
 * [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://blog.ml.cmu.edu/2022/01/21/why-spectral-normalization-stabilizes-gans-analysis-and-improvements/)
-
-Learning Rate
--------------
-
-The learning rate is arguably the most important
-hyperparameter that affects how fast the gradient descent
-converges. Large learning rates can cause the gradient
-descent to become unstable leading to a failure to converge.
-On the other hand, small learning rates may cause the
-gradient descent to converge slowly or get trapped in local
-minima.
-
-Variable learning rates may be achieved by using a high
-learning rate in the beginning while slowly decreasing the
-learning rate after each epoch. The learning rate typically
-starts in the range of 0.01 and 0.001. The following
-adaptive techniques have also been proposed to adjust the
-effective learning rate for faster convergence.
-
-* Momentum
-* RMSProp
-* Adam, AdamW and ND-Adam
-* Cyclical Learning Rates
-
-The learning rate is also impacted by L2 regularization when
-combined with Batch Normalization. The L2 regularization
-technique may also be used in conjunction with the adaptive
-techniques listed above (except AdamW).
-
-References
-
-* [CS231n Winter 2016: Lecture 6: Neural Networks Part 3 / Intro to ConvNets](https://www.youtube.com/watch?v=hd_KFJ5ktUc&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
-* [A Visual Explanation of Gradient Descent Methods (Momentum, AdaGrad, RMSProp, Adam)](https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c)
-
-Momentum Update
----------------
-
-The momentum update is a per parameter adaptive technique
-that changes the update by including an exponentially
-decaying velocity term. When successive updates are
-performed in the same direction, the velocity term picks up
-speed and increases the effective learning rate.
-Alternatively, when successive updates are performed in
-opposite directions (e.g. oscilation) the velocity is
-dampened (e.g. friction). The increased velocity can cause
-the update to escape a local minima and power through
-plateaus. On the other hand, it may overshoot a desired
-minimum and will need to backtrack to reach the minimum.
-
-Recall that the backpropagation update is the following.
-
-	wi = wi - gamma*dL/dwi
-
-The momentum update is the following.
-
-	vi = mu*vi - gamma*dL/dwi
-	wi = wi + vi
-
-The decay rate (mu) is a hyperparameter and it was suggested
-that good defaults are 0.5, 0.9 or 0.99. The decay rate may
-be varied across epochs beginning from a value of 0.5 while
-slowly increasing towards 0.99.
-
-The Nesterov momentum update is an improved update which
-uses the "lookahead" gradient for faster convergence rates
-as follows.
-
-	v0i = v1i
-	v1i = mu*v0i - gamma*dL/dwi
-	wi  = wi - mu*v0i + (1 + mu)*v1i
-
-References
-
-* [CS231n Winter 2016: Lecture 6: Neural Networks Part 3 / Intro to ConvNets](https://www.youtube.com/watch?v=hd_KFJ5ktUc&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
-* [A Visual Explanation of Gradient Descent Methods (Momentum, AdaGrad, RMSProp, Adam)](https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c)
-
-RMSProp Update
---------------
-
-The RMSProp (Root Mean Square Propagation) update is another
-per parameter adaptive technique that scales the update step
-size by the square root of an exponentially decaying
-gradient scaled term. When successive updates are performed
-using large gradients, the update step size is scaled down.
-Alternatively, when successive updates are performed using
-small gradients, the update step size is scaled up. As a
-result, the scaling term reduces the zig-zag pattern by
-normalizing the update step size such that we can proceed
-directly towards the local minimum.
-
-Recall that the backpropagation update is the following.
-
-	wi = wi - gamma*dL/dwi
-
-The RMSProp update is the following.
-
-	g2i = nu*g2i + (1 - nu)*(dL/dwi)^2
-	wi  = wi - gamma*(dL/dwi)/sqrt(g2i)
-
-The decay rate (nu) is a hyperparameter and it was
-suggested that a good default is 0.99.
-
-Add a small epsilon to avoid divide-by-zero problems.
-
-References
-
-* [CS231n Winter 2016: Lecture 6: Neural Networks Part 3 / Intro to ConvNets](https://www.youtube.com/watch?v=hd_KFJ5ktUc&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC)
-* [A Visual Explanation of Gradient Descent Methods (Momentum, AdaGrad, RMSProp, Adam)](https://towardsdatascience.com/a-visual-explanation-of-gradient-descent-methods-momentum-adagrad-rmsprop-adam-f898b102325c)
-
-Adam, AdamW and ND-Adam Update
-------------------------------
-
-The Adam update is another per-parameter adaptive technique
-known as "Adaptive Moment Estimation" which combines
-features from the momentum and RMSProp update techniques.
-The momentum component increases the overall speed while
-the RMSProp component normalizes the gradient scale in
-different directions. The design of the original Adam
-algorithm includes a L2 regularizaion term, however, it was
-discovered that the term was placed incorrectly. As a
-result, the original Adam algorithm failed to generalize
-well leading to suboptimal solutions. AdamW and ND-Adam were
-proposed to address the shortcomings of Adam, however, it's
-unclear these improvements can supplant SGD+Momentum+L2
-Regularization in practice.
-
-References
-
-* [ADAM: A Method for Stochastic Optimization](https://arxiv.org/pdf/1412.6980.pdf)
-* [Why AdamW matters](https://towardsdatascience.com/why-adamw-matters-736223f31b5d)
-* [Fixing Weight Decay Regularization in Adam](https://arxiv.org/pdf/1711.05101v2.pdf)
-* [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf)
-* [Normalized Direction-Preserving Adam](https://arxiv.org/pdf/1709.04546.pdf)
-
-Cyclical Learning Rate
-----------------------
-
-The cyclical learning rate algorithm claims that it's best
-to use a triangle learning rate policy where the learning
-rate varies between a bounds. A key aspect of their claims
-is that a high learning rate might have a short term
-negative effect yet lead to a longer term beneficial effect.
-Their policy helps to eliminate the guesswork in selecting
-the learning rate manually, is easy to implement and does
-not require additional computation expense.
-
-References
-
-* [Cyclical Learning Rates for Training Neural Networks](https://arxiv.org/pdf/1506.01186.pdf)
-
-L1/L2 Regularization
---------------------
-
-L1/L2 regularization is a technique that was originally
-designed to reduce data overfitting by adding a term to the
-loss function which penalizes the variance of the function
-parameters. However, it's important to note that L2
-regularization (presumably L1 as well) has no regularization
-effect when combined with normalization techniques such as
-Batch Normalization. However, if L2 regularization is not
-used, then the norm of the weights tends to increase over
-time. As a result, the effective learning rate decreases.
-While this may be a desirable property, it can be difficult
-to control and may interfere with explicit attempts to
-control the backpropagation learning rate. As such, it seems
-best to combine L2 regularization with a normalization
-technique.
-
-Loss Function with L1 Regularization
-
-	LR(lambda,W,Y,Yt) = L(Y,Yt) + lambda*SUM(|wi|)
-	dLR/dwi = dL/dwi + lambda*wi/|wi|
-
-Loss Function with L2 Regularization
-
-	LR(lambda,W,Y,Yt) = L(Y,Yt) + lambda*SUM(wi^2)
-	dLR/dwi = dL/dwi + 2*lambda*wi
-
-Keep in mind that the regularization term affects the
-backpropagation algorithm by adding an additional term to
-the update parameter step since dL/dwi is replaced by
-dLR/dwi. Some results also suggest that the regularization
-term is not required for the perceptron bias parameter since
-it does not seem to impact the final result. The lambda
-term is a regularization hyperparameter and it was suggested
-that a good default is 0.01.
-
-To explain how regularization works in the absense of
-normalization, let's consider how the L2 regularization term
-affects the following example.
-
-	X  = [1,1,1,1]
-	W1 = [1,0,0,0]
-	W2 = [0.25,0.25,0.25,0.25]
-
-The perceptron output is the same for each parameter vector,
-however, the regularization term prefers W2.
-
-	SUM(xi*w1i) == SUM(xi*w2i) = 1.0
-	SUM(w1i^2)  = 1.0
-	SUM(w2i^2)  = 0.25
-
-The W2 parameters are prefered since they are more
-generalized across inputs and therefore reduce the variance
-caused by a single outlier.
-
-References
-
-* [CS231n Winter 2016: Lecture 3: Linear Classification 2, Optimization](https://www.youtube.com/watch?v=qlLChbHhbg4&list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&index=3)
-* [Regularization in a Neural Network | Dealing with overfitting](https://www.youtube.com/watch?v=EehRcPo1M-Q)
-* [L2 Regularization versus Batch and Weight Normalization](https://arxiv.org/pdf/1706.05350.pdf)
-* [Chapter 8 Training Neural Networks Part 2](https://srdas.github.io/DLBook/ImprovingModelGeneralization.html)
 
 Skip Connections
 ----------------
