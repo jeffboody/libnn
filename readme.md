@@ -771,26 +771,115 @@ Spectral Normalization
 ----------------------
 
 Spectral Normalization (SN) is a normalization technique
-used for generative adversarial networks, used to stabilize
-training of the discriminator.
+used to stabilize training of neural networks. The algorithm
+works by scaling the convolution and dense layer weight
+tensors to satisfy the 1-Lipschitz constraint. This means
+that the largest eigenvalue of the (reshaped) weight tensors
+is rescaled to 1.0. The weight scaling helps to mitigate two
+common failure cases of exploding and vanishing gradients
+which occur when training neural networks. Spectral
+Normalization does not affect the bias terms.
 
-SN is used by Real-ESRGAN for normalization of the GAN
-discriminator.
+The largest eigenvalue may be approximated using the Power
+Method and it was reported that a single iteration was
+sufficient. A single iteration is sufficient because updates
+to the weight tensor are small in magnitude due to the SGD
+use of a small learning rate. This fact is also exploited
+for the working u vector which allows for reuse between
+subsequent training steps.
 
-Questions
+Spectral Normalization may be used in conjunction with Batch
+Normalization. Spectral Normalization is used to normalize
+the weight tensors while Batch Normalization is used to
+normalize the network inputs. On the other hand, Spectral
+Normalization seems to replace L2 regularization and AdamW
+weight decay as their effects will be scaled away.
 
-* How does SN affect Bias? => SN does not affect bias
-* How does SN work with Nesterov Momentum Update? (e.g. VW and VB)
-* Why apply SN in forward pass? (see spectral_normalization.py)
+Spectral Normalization Algorithm (Per Layer)
+
+	// Given W
+	W: dim(fc, fh, fw, xd)
+
+	// Working Vectors
+	u1: dim(fc) = normalize({normal(0.0, 1.0)})
+	v1: dim(xd)
+
+	// Power Method
+	float sigma(M, u, v, power_iterations)
+	{
+		foreach power_iterations
+		{
+			v = normalize(transpose(M)*u)
+			u = normalize(M*v)
+		}
+		return transpose(u)*M*v
+	}
+
+	// Spectral Normalization
+	M1 = reshape(W, dim(fc,fh*fw,xd))
+	W  = W/sigma(M1, u1, v1, 1)
+
+Regarding the implementation of Spectral Normalization.
+Step 3 of "Algorithm 1 SGD with spectral normalization"
+performs the following backprop update where Wbar is the
+Spectral Normalized W.
+
+	W = W + alpha*dL_dWbar
+
+While popular implementations such as pytorch and
+christiancosgrove seem to perform the following backprop
+update where Spectral Normalization calculated during to the
+forward pass and W was immediately updated to Wbar.
+
+	W = Wbar + alpha*dL_dWbar
+
+However, I was expecting Spectral Normalization would be
+applied during backprop after the update of W. The stored
+version of W will always be Spectral Normalized. This should
+be more efficient since redundant computations may be
+avoided during inference.
+
+	W = W + alpha*dL_dW
+	W = SN(W)
+
+Two very simple extensions to Spectral Normalizatin have
+been proposed by the Bidirectional Scaled Spectral
+Normalization (BSSN) algorithm. First, BSSN recommends
+recomputing the Spectral Normalization of W using a second
+reshaped matrix W2 with dim(xd,fc*fh*fw). The two Spectral
+Normalization results are averaged. Secondly, the weights
+are also scaled by tunable constant c. The BSSN paper
+recommended values of 0.2 and 1.2 for c which were
+determined experimentally. Alternatively, the scaled
+extension may be disabled by setting c to 1.0. The equation
+below summarizes the BSSN extensions.
+
+	// Working Vectors
+	u2: dim(xd) = normalize({normal(0.0, 1.0)})
+	v2: dim(fc)
+
+	// BSSN
+	M1 = reshape(W, dim(fc,fh*fw,xd))
+	M2 = reshape(W, dim(xd,fc*fh*fw))
+	W  = c*W/((sigma(M1, u1, v1, 1) +
+	           sigma(M2, u2, v2, 1))/2)
+
+An nice summary of the Spectral Normalization algorithm and
+the BSSN extensions is provided by the CMU blog post
+referenced below.
+
+Additionally, the Spectral Normalization algorithm is used
+by Real-ESRGAN for normalization of the GAN discriminator.
 
 References
 
 * [Spectral Normalization for Generative Adversarial Networks](https://arxiv.org/pdf/1802.05957.pdf)
-* [Spectral Normalization](https://paperswithcode.com/method/spectral-normalization)
-* [spectral_normalization.py](https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/12dcf945a6359301d63d1e0da3708cd0f0590b19/spectral_normalization.py#L14)
-* [Advanced GANs - Exploring Normalization Techniques for GAN training: Self-Attention and Spectral Norm](https://sthalles.github.io/advanced_gans/)
 * [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://arxiv.org/pdf/2009.02773.pdf)
 * [Why Spectral Normalization Stabilizes GANs: Analysis and Improvements](https://blog.ml.cmu.edu/2022/01/21/why-spectral-normalization-stabilizes-gans-analysis-and-improvements/)
+* [Spectral Normalization](https://paperswithcode.com/method/spectral-normalization)
+* [Spectral Normalization for Generative Adversarial Networks](https://paperswithcode.com/paper/spectral-normalization-for-generative)
+* [spectral_normalization.py](https://github.com/christiancosgrove/pytorch-spectral-normalization-gan/blob/12dcf945a6359301d63d1e0da3708cd0f0590b19/spectral_normalization.py#L14)
+* [Advanced GANs - Exploring Normalization Techniques for GAN training: Self-Attention and Spectral Norm](https://sthalles.github.io/advanced_gans/)
 
 Skip Connections
 ----------------
