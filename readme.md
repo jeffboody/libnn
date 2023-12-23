@@ -780,12 +780,13 @@ which occur when training neural networks. Spectral
 Normalization does not affect the bias terms.
 
 The largest eigenvalue may be approximated using the Power
-Method and it was reported that a single iteration was
-sufficient. A single iteration is sufficient because updates
-to the weight tensor are small in magnitude due to the SGD
-use of a small learning rate. This fact is also exploited
-for the working u vector which allows for reuse between
-subsequent training steps.
+Iteration Method and it was reported that a single
+iteration was sufficient to achieve good results. A single
+iteration is sufficient because updates to the weight tensor
+are small in magnitude due to the SGD use of a small
+learning rate. This fact is also exploited for the working u
+vector which allows for reuse between subsequent training
+steps.
 
 Spectral Normalization may be used in conjunction with Batch
 Normalization. Spectral Normalization is used to normalize
@@ -794,74 +795,69 @@ normalize the network inputs. On the other hand, Spectral
 Normalization seems to replace L2 regularization and AdamW
 weight decay as their effects will be scaled away.
 
-Spectral Normalization Algorithm (Per Layer)
+![Spectral Normalization Algorithm)](docs/spectral-normalization.jpg?raw=true "Spectral Normalization")
 
-	// Given W
-	W: dim(fc, fh, fw, xd)
+To clarify, the u vector may be initialized by selecting
+samples from a normal distribution with zero mean and unit
+standard deviation. The u vector must also be normalized.
+The tensor W has dim(fc,fh,fw,xd) (per NN convention), u has
+dim(fc) and v has dim(xd). The tensor W must be reshaped
+into a matrix with dim(fc,fh*fw*xd) while applying the Power
+Iteration Method and computing sigma (e.g. the largest
+eigenvector).
 
-	// Working Vectors
-	u1: dim(fc) = normalize({normal(0.0, 1.0)})
-	v1: dim(xd)
-
-	// Power Method
-	float sigma(M, u, v, power_iterations)
-	{
-		foreach power_iterations
-		{
-			v = normalize(transpose(M)*u)
-			u = normalize(M*v)
-		}
-		return transpose(u)*M*v
-	}
-
-	// Spectral Normalization
-	M1 = reshape(W, dim(fc,fh*fw,xd))
-	W  = W/sigma(M1, u1, v1, 1)
-
-Regarding the implementation of Spectral Normalization.
-Step 3 of "Algorithm 1 SGD with spectral normalization"
-performs the following backprop update where Wbar is the
-Spectral Normalized W.
+The implementation of the update step 3 is somewhat
+ambiguous because the algorithm as written seems to suggest
+that W is updated with the old value for W minus the SGD
+gradient update which uses Wbar.
 
 	W = W + alpha*dL_dWbar
 
-While popular implementations such as pytorch and
-christiancosgrove seem to perform the following backprop
-update where Spectral Normalization calculated during to the
-forward pass and W was immediately updated to Wbar.
+However, popular implementations such as pytorch and
+christiancosgrove seem to insert Spectral Normalization
+before the forward pass of each layer resulting in the
+following update.
 
 	W = Wbar + alpha*dL_dWbar
 
-However, I was expecting Spectral Normalization would be
-applied during backprop after the update of W. The stored
-version of W will always be Spectral Normalized. This should
-be more efficient since redundant computations may be
-avoided during inference.
+To resolve this inconsistency, I prefer the following
+procedure (e.g. matching the popular implementations).
 
+	// apply Spectral Normalization prior to the forwardPass
+	W = W/sigma(W)
+
+	// perform forwardPass using Spectral Normalized W
+	forwardPass(W)
+
+	// perform backprop update using Spectral Normalized W
 	W = W + alpha*dL_dW
-	W = SN(W)
+
+The paper also does not explicitly mention if Spectral
+Normalization should be applied during inference. A review
+of the popular implementations did not help to clarify if
+the Specular Normalization code path is executed during
+inference. However, it seems logical to use the unnormalized
+W during inference since Spectral Normalization may
+adversely impact the results.
 
 Two very simple extensions to Spectral Normalizatin have
 been proposed by the Bidirectional Scaled Spectral
 Normalization (BSSN) algorithm. First, BSSN recommends
-recomputing the Spectral Normalization of W using a second
-reshaped matrix W2 with dim(xd,fc*fh*fw). The two Spectral
-Normalization results are averaged. Secondly, the weights
-are also scaled by tunable constant c. The BSSN paper
-recommended values of 0.2 and 1.2 for c which were
-determined experimentally. Alternatively, the scaled
-extension may be disabled by setting c to 1.0. The equation
-below summarizes the BSSN extensions.
+recomputing the Spectral Normalization where the tensor W
+is reshaped into a matrix with dim(xd,fc*fh*fw). The two
+Spectral Normalization results are then averaged. Each
+computation of W requires their own temporary variables for
+u and v. Secondly, the weights are also scaled by tunable
+constant c. The BSSN paper recommended values of 0.2 and
+1.2 for c which were determined experimentally.
+Alternatively, the scaled extension may be disabled by
+setting c to 1.0. The equation below summarizes the BSSN
+extensions.
 
-	// Working Vectors
-	u2: dim(xd) = normalize({normal(0.0, 1.0)})
-	v2: dim(fc)
-
-	// BSSN
+	// BSSN extensions
 	M1 = reshape(W, dim(fc,fh*fw,xd))
 	M2 = reshape(W, dim(xd,fc*fh*fw))
-	W  = c*W/((sigma(M1, u1, v1, 1) +
-	           sigma(M2, u2, v2, 1))/2)
+	W  = c*W/((sigma(M1) + sigma(M2))/2)
 
 An nice summary of the Spectral Normalization algorithm and
 the BSSN extensions is provided by the CMU blog post
