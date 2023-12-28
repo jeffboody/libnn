@@ -131,7 +131,7 @@ void main()
 		float v0  = getVW(n, 0, 0, k);
 		float v1  = state_sgd_beta1*v0 -
 		            state_sgd_alpha*(gc_gcw*dl_dw +
-		            2.0*state_sgd_l2_lambda*w);
+		            state_sgd_l2_lambda*w);
 		setVW(n, 0, 0, k, v1);
 		addW(n, 0, 0, k, -state_sgd_beta1*v0 +
 		                 (1.0 + state_sgd_beta1)*v1);

@@ -123,7 +123,7 @@ void main()
 		float v0  = getVW(f, fi, fj, k);
 		float v1  = state_sgd_beta1*v0 -
 		            state_sgd_alpha*(dl_dw +
-		            2.0*state_sgd_l2_lambda*w);
+		            state_sgd_l2_lambda*w);
 		setVW(f, fi, fj, k, v1);
 		addW(f, fi, fj, k, -state_sgd_beta1*v0 +
 		                   (1.0 + state_sgd_beta1)*v1);

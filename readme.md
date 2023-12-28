@@ -634,8 +634,8 @@ parameters.
 
 Loss Function with L2 Regularization
 
-	LR(lambda,W,Y,Yt) = L(Y,Yt) + lambda*SUM(wi^2)
-	dLR/dwi = dL/dwi + 2*lambda*wi
+	LR(lambda,W,Y,Yt) = L(Y,Yt) + (lambda/2.0)*SUM(wi^2)
+	dLR/dwi = dL/dwi + lambda*wi
 
 Keep in mind that the regularization term affects the
 backpropagation algorithm by adding an additional term to
