@@ -346,6 +346,10 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	nn_arch_t*           arch   = base->arch;
 	nn_engine_t*         engine = arch->engine;
 
+	nn_tensor_t* MG       = self->MG;
+	nn_tensor_t* VG       = self->VG;
+	nn_tensor_t* MB       = self->MB;
+	nn_tensor_t* VB       = self->VB;
 	nn_tensor_t* dL_dXhat = self->dL_dXhat;
 	nn_tensor_t* Bsum     = self->Bsum;
 	nn_tensor_t* Csum     = self->Csum;
@@ -354,14 +358,18 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	uint32_t     xw       = dim->width;
 	uint32_t     xd       = dim->depth;
 
-	// sb20: dim_dL_dXhat
-	// sb21: dL_dXhat
-	// sb22: dim_dL_dY
-	// sb23: dL_dY
-	// sb24: dimBsum
-	// sb25: Bsum
-	// sb26: dimCsum
-	// sb27: Csum
+	// sb20:  dim_dL_dXhat
+	// sb21:  dL_dXhat
+	// sb22:  dim_dL_dY
+	// sb23:  dL_dY
+	// sb24:  dimBsum
+	// sb25:  Bsum
+	// sb26:  dimCsum
+	// sb27:  Csum
+	// sb28:  MG
+	// sb29:  VG
+	// sb210: MB
+	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
@@ -404,6 +412,26 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = Csum->sb_data,
 		},
+		{
+			.binding = 8,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = MG->sb_data,
+		},
+		{
+			.binding = 9,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VG->sb_data,
+		},
+		{
+			.binding = 10,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = MB->sb_data,
+		},
+		{
+			.binding = 11,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = VB->sb_data,
+		},
 	};
 
 	vkk_uniformSet_t* us_array[] =
@@ -422,7 +450,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 8, ua2_array);
+	                                 12, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
@@ -670,6 +698,38 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_Y;
 	}
 
+	self->MG = nn_tensor_new(engine, &dim_111d,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->MG == NULL)
+	{
+		goto fail_MG;
+	}
+
+	self->VG = nn_tensor_new(engine, &dim_111d,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->VG == NULL)
+	{
+		goto fail_VG;
+	}
+
+	self->MB = nn_tensor_new(engine, &dim_111d,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->MB == NULL)
+	{
+		goto fail_MB;
+	}
+
+	self->VB = nn_tensor_new(engine, &dim_111d,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->VB == NULL)
+	{
+		goto fail_VB;
+	}
+
 	self->Xmean_mb = nn_tensor_new(engine, &dim_111d,
 	                               NN_TENSOR_INIT_ZERO,
 	                               NN_TENSOR_MODE_COMPUTE);
@@ -732,6 +792,14 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	fail_Xvar_mb:
 		nn_tensor_delete(&self->Xmean_mb);
 	fail_Xmean_mb:
+		nn_tensor_delete(&self->VB);
+	fail_VB:
+		nn_tensor_delete(&self->MB);
+	fail_MB:
+		nn_tensor_delete(&self->VG);
+	fail_VG:
+		nn_tensor_delete(&self->MG);
+	fail_MG:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_tensor_delete(&self->Xhat);
@@ -763,6 +831,10 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	jsmn_val_t* val_dimX     = NULL;
 	jsmn_val_t* val_G        = NULL;
 	jsmn_val_t* val_B        = NULL;
+	jsmn_val_t* val_MG       = NULL;
+	jsmn_val_t* val_VG       = NULL;
+	jsmn_val_t* val_MB       = NULL;
+	jsmn_val_t* val_VB       = NULL;
 	jsmn_val_t* val_Xmean_ra = NULL;
 	jsmn_val_t* val_Xvar_ra  = NULL;
 
@@ -793,6 +865,22 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			{
 				val_B = kv->val;
 			}
+			else if(strcmp(kv->key, "MG") == 0)
+			{
+				val_MG = kv->val;
+			}
+			else if(strcmp(kv->key, "VG") == 0)
+			{
+				val_VG = kv->val;
+			}
+			else if(strcmp(kv->key, "MB") == 0)
+			{
+				val_MB = kv->val;
+			}
+			else if(strcmp(kv->key, "VB") == 0)
+			{
+				val_VB = kv->val;
+			}
 			else if(strcmp(kv->key, "Xmean_ra") == 0)
 			{
 				val_Xmean_ra = kv->val;
@@ -811,6 +899,10 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	   (val_dimX     == NULL) ||
 	   (val_G        == NULL) ||
 	   (val_B        == NULL) ||
+	   (val_MG       == NULL) ||
+	   (val_VG       == NULL) ||
+	   (val_MB       == NULL) ||
+	   (val_VB       == NULL) ||
 	   (val_Xmean_ra == NULL) ||
 	   (val_Xvar_ra  == NULL))
 	{
@@ -847,10 +939,14 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// load tensors
-	if((nn_tensor_load(self->G,        val_G) == 0)        ||
-	   (nn_tensor_load(self->B,        val_B) == 0)        ||
+	if((nn_tensor_load(self->G,        val_G)        == 0) ||
+	   (nn_tensor_load(self->B,        val_B)        == 0) ||
+	   (nn_tensor_load(self->MG,       val_MG)       == 0) ||
+	   (nn_tensor_load(self->VG,       val_VG)       == 0) ||
+	   (nn_tensor_load(self->MB,       val_MB)       == 0) ||
+	   (nn_tensor_load(self->VB,       val_VB)       == 0) ||
 	   (nn_tensor_load(self->Xmean_ra, val_Xmean_ra) == 0) ||
-	   (nn_tensor_load(self->Xvar_ra,  val_Xvar_ra) == 0))
+	   (nn_tensor_load(self->Xvar_ra,  val_Xvar_ra)  == 0))
 	{
 		goto fail_tensor;
 	}
@@ -894,6 +990,14 @@ int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
 	ret &= nn_tensor_store(self->G, stream);
 	ret &= jsmn_stream_key(stream, "%s", "B");
 	ret &= nn_tensor_store(self->B, stream);
+	ret &= jsmn_stream_key(stream, "%s", "MG");
+	ret &= nn_tensor_store(self->MG, stream);
+	ret &= jsmn_stream_key(stream, "%s", "VG");
+	ret &= nn_tensor_store(self->VG, stream);
+	ret &= jsmn_stream_key(stream, "%s", "MB");
+	ret &= nn_tensor_store(self->MB, stream);
+	ret &= jsmn_stream_key(stream, "%s", "VB");
+	ret &= nn_tensor_store(self->VB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "Xmean_ra");
 	ret &= nn_tensor_store(self->Xmean_ra, stream);
 	ret &= jsmn_stream_key(stream, "%s", "Xvar_ra");
@@ -916,6 +1020,10 @@ void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)
 		nn_tensor_delete(&self->Xmean_ra);
 		nn_tensor_delete(&self->Xvar_mb);
 		nn_tensor_delete(&self->Xmean_mb);
+		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->MB);
+		nn_tensor_delete(&self->VG);
+		nn_tensor_delete(&self->MG);
 		nn_tensor_delete(&self->Y);
 		nn_tensor_delete(&self->Xhat);
 		nn_tensor_delete(&self->B);

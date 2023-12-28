@@ -370,9 +370,13 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_archState_t arch_state =
 	{
-		.sgd_alpha        = 0.001f,
-		.sgd_beta1        = 0.5f,
-		.sgd_l2_lambda    = 0.0001f,
+		.adam_alpha       = 0.0001f,
+		.adam_beta1       = 0.9f,
+		.adam_beta2       = 0.999f,
+		.adam_beta1t      = 1.0f,
+		.adam_beta2t      = 1.0f,
+		.adam_lambda      = 0.25f*0.001f,
+		.adam_nu          = 1.0f,
 		.bn_momentum      = 0.99f,
 		.gan_blend_factor = 0.1f,
 		.gan_blend_scalar = 1.01f,

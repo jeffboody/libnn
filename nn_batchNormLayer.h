@@ -48,6 +48,12 @@ typedef struct nn_batchNormLayer_s
 	nn_tensor_t* Xhat; // dim(bs,xh,xw,xd)
 	nn_tensor_t* Y;    // dim(bs,xh,xw,xd)
 
+	// Adam moment estimates
+	nn_tensor_t* MG; // dim(1,1,1,xd)
+	nn_tensor_t* VG; // dim(1,1,1,xd)
+	nn_tensor_t* MB; // dim(1,1,1,xd)
+	nn_tensor_t* VB; // dim(1,1,1,xd)
+
 	// mini-batch mean/variance
 	nn_tensor_t* Xmean_mb; // dim(1,1,1,xd)
 	nn_tensor_t* Xvar_mb;  // dim(1,1,1,xd)
@@ -57,12 +63,14 @@ typedef struct nn_batchNormLayer_s
 	nn_tensor_t* Xvar_ra;  // dim(1,1,1,xd)
 
 	// backprop gradients (dL_dY replaced by dL_dX)
-	//           dL_dY;     // dim(bs,xh,xw,xd)
-	//           dL_dX;     // dim(bs,xh,xw,xd)
-	nn_tensor_t* dL_dXhat;  // dim(bs,xh,xw,xd)
+	//           dL_dY;    // dim(bs,xh,xw,xd)
+	//           dL_dX;    // dim(bs,xh,xw,xd)
+	nn_tensor_t* dL_dXhat; // dim(bs,xh,xw,xd)
 
-	nn_tensor_t*      Bsum; // dim(1,1,1,xd)
-	nn_tensor_t*      Csum; // dim(1,1,1,xd)
+	// working sums
+	nn_tensor_t* Bsum; // dim(1,1,1,xd)
+	nn_tensor_t* Csum; // dim(1,1,1,xd)
+
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 	vkk_uniformSet_t* us2;

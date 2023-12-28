@@ -13,9 +13,13 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_sgd_alpha;
-	float state_sgd_beta1;
-	float state_sgd_l2_lambda;
+	float state_adam_alpha;
+	float state_adam_beta1;
+	float state_adam_beta2;
+	float state_adam_beta1t;
+	float state_adam_beta2t;
+	float state_adam_lambda;
+	float state_adam_nu;
 	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
@@ -41,10 +45,20 @@ layout(std430, set=2, binding=5) readonly buffer sb25
 	float dL_dB[];
 };
 
+layout(std430, set=2, binding=10) buffer sb210
+{
+	float MB[];
+};
+
 layout(std430, set=2, binding=11) buffer sb211
 {
 	float VB[];
 };
+
+float getB(uint n)
+{
+	return B[n];
+}
 
 void addB(uint n, float v)
 {
@@ -54,6 +68,16 @@ void addB(uint n, float v)
 float get_dL_dB(uint n)
 {
 	return dL_dB[n];
+}
+
+float getMB(uint n)
+{
+	return MB[n];
+}
+
+void setMB(uint n, float v)
+{
+	MB[n] = v;
 }
 
 float getVB(uint n)
@@ -70,20 +94,31 @@ void main()
 {
 	// RAW hazzard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	uint  fc = dimB.count;
-	uint  f  = gl_GlobalInvocationID.x;
-	float s  = 1.0/(float(state_bs));
+	uint fc = dimB.count;
+	uint f  = gl_GlobalInvocationID.x;
 
 	if(f >= fc)
 	{
 		return;
 	}
 
-	float dl_db = s*get_dL_dB(f);
-
-	// Nesterov Momentum Update
-	float v0  = getVB(f);
-	float v1  = state_sgd_beta1*v0 - state_sgd_alpha*dl_db;
-	setVB(f, v1);
-	addB(f, -state_sgd_beta1*v0 + (1.0 + state_sgd_beta1)*v1);
+	// Adam Update
+	float alpha   = state_adam_alpha;
+	float beta1   = state_adam_beta1;
+	float beta2   = state_adam_beta2;
+	float beta1t  = state_adam_beta1t;
+	float beta2t  = state_adam_beta2t;
+	float lambda  = state_adam_lambda;
+	float nu      = state_adam_nu;
+	float epsilon = 0.00001;
+	float gt      = get_dL_dB(f);
+	float mt      = beta1*getMB(f) + (1.0 - beta1)*gt;
+	float vt      = beta2*getVB(f) + (1.0 - beta2)*gt*gt;
+	float bt      = getB(f);
+	float mt_hat  = mt/(1.0 - beta1t);
+	float vt_hat  = vt/(1.0 - beta2t);
+	setMB(f, mt);
+	setVB(f, vt);
+	addB(f, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
+	             lambda*bt));
 }

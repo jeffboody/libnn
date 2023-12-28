@@ -55,8 +55,10 @@ typedef struct nn_convLayer_s
 	nn_tensor_t* B; // dim(fc,1,1,1)
 	nn_tensor_t* Y; // dim(bs,yh,yw,fc)
 
-	// momentum update
+	// Adam moment estimates
+	nn_tensor_t* MW; // dim(fc,fh,fw,xd)
 	nn_tensor_t* VW; // dim(fc,fh,fw,xd)
+	nn_tensor_t* MB; // dim(fc,1,1,1)
 	nn_tensor_t* VB; // dim(fc,1,1,1)
 
 	// forward gradients

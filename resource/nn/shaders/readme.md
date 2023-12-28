@@ -64,14 +64,18 @@ Forward Pass Uniforms
 
 Backprop Uniforms
 
-* sb20: dim_dL_dXhat
-* sb21: dL_dXhat
-* sb22: dim_dL_dY
-* sb23: dL_dY
-* sb24: dimBsum
-* sb25: Bsum
-* sb26: dimCsum
-* sb27: Csum
+* sb20:  dim_dL_dXhat
+* sb21:  dL_dXhat
+* sb22:  dim_dL_dY
+* sb23:  dL_dY
+* sb24:  dimBsum
+* sb25:  Bsum
+* sb26:  dimCsum
+* sb27:  Csum
+* sb28:  MG // dimG
+* sb29:  VG // dimG
+* sb210: MB // dimB
+* sb211: VB // dimB
 
 Dispatch Uniforms
 
@@ -119,10 +123,10 @@ Backprop Uniforms
 * sb25:  dL_dB
 * sb26:  dim_dL_dX
 * sb27:  dL_dX
-* sb28:  dimVW
-* sb29:  VW
-* sb210: dimVB
-* sb211: VB
+* sb28:  MW // dimW
+* sb29:  VW // dimW
+* sb210: MB // dimB
+* sb211: VB // dimB
 
 Dispatch Uniforms
 
@@ -251,10 +255,10 @@ Backprop Uniforms
 * sb25:  dL_dB
 * sb26:  dim_dL_dX
 * sb27:  dL_dX
-* sb28:  dimVW
-* sb29:  VW
-* sb210: dimVB
-* sb211: VB
+* sb28:  MW // dimW
+* sb29:  VW // dimW
+* sb210: MB // dimB
+* sb211: VB // dimB
 
 Backprop Dispatch Order
 

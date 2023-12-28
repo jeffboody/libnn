@@ -29,15 +29,29 @@
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
-// See "Decoupled Weight Decay Regularization" for the
-// definition of SGD and ADAM parameters
+// Recommended Defaults
+// adam_alpha:  0.0001f
+// adam_beta1:  0.9f
+// adam_beta2:  0.999f
+// adam_beta1t: 1.0f
+// adam_beta2t: 1.0f
+// adam_lambda: s*0.001f, s=0.25f=[0.0f...2.0f]
+// adam_nu:     1.0f
+// bn_momentum: 0.99f
+//
+// See "Decoupled Weight Decay Regularization"
+// for the definition of Adam parameters
 // https://arxiv.org/pdf/1711.05101.pdf
 typedef struct nn_archState_s
 {
 	uint32_t bs;
-	float    sgd_alpha;     // learning rate
-	float    sgd_beta1;     // momentum factor
-	float    sgd_l2_lambda; // L2 regularization
+	float    adam_alpha;    // learning rate
+	float    adam_beta1;    // first moment decay rate
+	float    adam_beta2;    // second moment decay rate
+	float    adam_beta1t;   // beta1^t
+	float    adam_beta2t;   // beta2^t
+	float    adam_lambda;   // AdamW decoupled weight decay
+	float    adam_nu;       // AdamW schedule multiplier
 	float    bn_momentum;
 	float    gan_blend_factor;
 	float    gan_blend_scalar;

@@ -13,9 +13,13 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_sgd_alpha;
-	float state_sgd_beta1;
-	float state_sgd_l2_lambda;
+	float state_adam_alpha;
+	float state_adam_beta1;
+	float state_adam_beta2;
+	float state_adam_beta1t;
+	float state_adam_beta2t;
+	float state_adam_lambda;
+	float state_adam_nu;
 	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;

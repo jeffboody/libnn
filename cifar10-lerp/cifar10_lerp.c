@@ -228,13 +228,17 @@ cifar10_lerp_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_archState_t arch_state =
 	{
-		.sgd_alpha     = 0.001f,
-		.sgd_beta1     = 0.5f,
-		.sgd_l2_lambda = 0.0001f,
-		.bn_momentum   = 0.99f,
-		.lerp_s        = 0.1,
-		.lerp_min      = 0.8,
-		.lerp_max      = 1.25,
+		.adam_alpha  = 0.0001f,
+		.adam_beta1  = 0.9f,
+		.adam_beta2  = 0.999f,
+		.adam_beta1t = 1.0f,
+		.adam_beta2t = 1.0f,
+		.adam_lambda = 0.25f*0.001f,
+		.adam_nu     = 1.0f,
+		.bn_momentum = 0.99f,
+		.lerp_s      = 0.1,
+		.lerp_min    = 0.8,
+		.lerp_max    = 1.25,
 	};
 
 	cifar10_lerp_t* self;

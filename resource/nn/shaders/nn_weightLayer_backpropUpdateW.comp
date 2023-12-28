@@ -13,9 +13,13 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_sgd_alpha;
-	float state_sgd_beta1;
-	float state_sgd_l2_lambda;
+	float state_adam_alpha;
+	float state_adam_beta1;
+	float state_adam_beta2;
+	float state_adam_beta1t;
+	float state_adam_beta2t;
+	float state_adam_lambda;
+	float state_adam_nu;
 	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
@@ -58,12 +62,12 @@ layout(std430, set=2, binding=4) readonly buffer sb24
 	float dL_dW[];
 };
 
-layout(std430, set=2, binding=9) readonly buffer sb29
+layout(std430, set=2, binding=8) buffer sb28
 {
-	nn_dim_t dimVW;
+	float MW[];
 };
 
-layout(std430, set=2, binding=10) buffer sb210
+layout(std430, set=2, binding=9) buffer sb29
 {
 	float VW[];
 };
@@ -92,48 +96,75 @@ float get_dL_dW(uint n, uint i, uint j, uint k)
 	return dL_dW[n*sn + i*sy + j*sx + k];
 }
 
+float getMW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return MW[n*sn + i*sy + j*sx + k];
+}
+
+void setMW(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	MW[n*sn + i*sy + j*sx + k] = v;
+}
+
 float getVW(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimVW.height*dimVW.width*dimVW.depth;
-	uint sy = dimVW.width*dimVW.depth;
-	uint sx = dimVW.depth;
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
 	return VW[n*sn + i*sy + j*sx + k];
 }
 
 void setVW(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dimVW.height*dimVW.width*dimVW.depth;
-	uint sy = dimVW.width*dimVW.depth;
-	uint sx = dimVW.depth;
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
 	VW[n*sn + i*sy + j*sx + k] = v;
 }
 
 void main()
 {
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
-	uint  n  = gl_GlobalInvocationID.x;
-	uint  nc = dimW.count;
-	uint  xd = dimW.depth;
-	float s  = 1.0/(float(state_bs));
+	uint n  = gl_GlobalInvocationID.x;
+	uint nc = dimW.count;
+	uint xd = dimW.depth;
 
 	if(n >= nc)
 	{
 		return;
 	}
 
+	float alpha   = state_adam_alpha;
+	float beta1   = state_adam_beta1;
+	float beta2   = state_adam_beta2;
+	float beta1t  = state_adam_beta1t;
+	float beta2t  = state_adam_beta2t;
+	float lambda  = state_adam_lambda;
+	float nu      = state_adam_nu;
+	float epsilon = 0.00001;
+
 	uint k;
 	for(k = 0; k < xd; ++k)
 	{
-		float dl_dw = s*get_dL_dW(n, 0, 0, k);
-		float w     = getW(n, 0, 0, k);
-
-		// Nesterov Momentum Update and L2 Regularization
-		float v0  = getVW(n, 0, 0, k);
-		float v1  = state_sgd_beta1*v0 -
-		            state_sgd_alpha*(gc_gcw*dl_dw +
-		            state_sgd_l2_lambda*w);
-		setVW(n, 0, 0, k, v1);
-		addW(n, 0, 0, k, -state_sgd_beta1*v0 +
-		                 (1.0 + state_sgd_beta1)*v1);
+		// Adam Update
+		float gt     = get_dL_dW(n, 0, 0, k);
+		float mt     = beta1*getMW(n, 0, 0, k) +
+		               (1.0 - beta1)*gt;
+		float vt     = beta2*getVW(n, 0, 0, k) +
+		               (1.0 - beta2)*gt*gt;
+		float wt     = getW(n, 0, 0, k);
+		float mt_hat = mt/(1.0 - beta1t);
+		float vt_hat = vt/(1.0 - beta2t);
+		setMW(n, 0, 0, k, mt);
+		setVW(n, 0, 0, k, vt);
+		addW(n, 0, 0, k,
+		     -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
+		     lambda*wt));
 	}
 }

@@ -18,9 +18,13 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_sgd_alpha;
-	float state_sgd_beta1;
-	float state_sgd_l2_lambda;
+	float state_adam_alpha;
+	float state_adam_beta1;
+	float state_adam_beta2;
+	float state_adam_beta1t;
+	float state_adam_beta2t;
+	float state_adam_lambda;
+	float state_adam_nu;
 	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
@@ -81,6 +85,26 @@ layout(std430, set=2, binding=7) writeonly buffer sb27
 	float Csum[];
 };
 
+layout(std430, set=2, binding=8) buffer sb28
+{
+	float MG[];
+};
+
+layout(std430, set=2, binding=9) buffer sb29
+{
+	float VG[];
+};
+
+layout(std430, set=2, binding=10) buffer sb210
+{
+	float MB[];
+};
+
+layout(std430, set=2, binding=11) buffer sb211
+{
+	float VB[];
+};
+
 layout(std430, set=3, binding=0) readonly buffer sb30
 {
 	uint idx_k;
@@ -94,9 +118,19 @@ float getXhat(uint n, uint i, uint j, uint k)
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
+float getG(uint n)
+{
+	return G[n];
+}
+
 void addG(uint n, float v)
 {
 	G[n] += v;
+}
+
+float getB(uint n)
+{
+	return B[n];
 }
 
 void addB(uint n, float v)
@@ -129,6 +163,46 @@ void setBsum(uint n, float v)
 void setCsum(uint n, float v)
 {
 	Csum[n] = v;
+}
+
+float getMG(uint n)
+{
+	return MG[n];
+}
+
+void setMG(uint n, float v)
+{
+	MG[n] = v;
+}
+
+float getVG(uint n)
+{
+	return VG[n];
+}
+
+void setVG(uint n, float v)
+{
+	VG[n] = v;
+}
+
+float getMB(uint n)
+{
+	return MB[n];
+}
+
+void setMB(uint n, float v)
+{
+	MB[n] = v;
+}
+
+float getVB(uint n)
+{
+	return VB[n];
+}
+
+void setVB(uint n, float v)
+{
+	VB[n] = v;
 }
 
 void main()
@@ -176,7 +250,7 @@ void main()
 	memoryBarrierShared();
 	barrier();
 
-	// compute final sums
+	// compute final sums, update G and update B
 	if(idx == 0)
 	{
 		float dl_dg = 0.0;
@@ -195,8 +269,45 @@ void main()
 		setBsum(k, bsum);
 		setCsum(k, csum);
 
-		// update G and B
-		addG(k, -state_sgd_alpha*dl_dg);
-		addB(k, -state_sgd_alpha*dl_db);
+		// Adam Parameters
+		float alpha   = state_adam_alpha;
+		float beta1   = state_adam_beta1;
+		float beta2   = state_adam_beta2;
+		float beta1t  = state_adam_beta1t;
+		float beta2t  = state_adam_beta2t;
+		float lambda  = state_adam_lambda;
+		float nu      = state_adam_nu;
+		float epsilon = 0.00001;
+		float gt;
+		float mt;
+		float vt;
+		float g;
+		float b;
+		float mt_hat;
+		float vt_hat;
+
+		// Adam Update for G
+		gt     = dl_dg;
+		mt     = beta1*getMG(k) + (1.0 - beta1)*gt;
+		vt     = beta2*getVG(k) + (1.0 - beta2)*gt*gt;
+		g      = getG(k);
+		mt_hat = mt/(1.0 - beta1t);
+		vt_hat = vt/(1.0 - beta2t);
+		setMG(k, mt);
+		setVG(k, vt);
+		addG(k, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
+		             lambda*g));
+
+		// Adam Update for B
+		gt     = dl_db;
+		mt     = beta1*getMB(k) + (1.0 - beta1)*gt;
+		vt     = beta2*getVB(k) + (1.0 - beta2)*gt*gt;
+		b      = getB(k);
+		mt_hat = mt/(1.0 - beta1t);
+		vt_hat = vt/(1.0 - beta2t);
+		setMB(k, mt);
+		setVB(k, vt);
+		addB(k, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
+		             lambda*b));
 	}
 }

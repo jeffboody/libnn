@@ -133,6 +133,11 @@ nn_arch_init(nn_arch_t* self,
 	// update global state
 	nn_archState_t* state = &self->state;
 	state->bs = bs;
+	if(Yt)
+	{
+		state->adam_beta1t *= state->adam_beta1;
+		state->adam_beta2t *= state->adam_beta2;
+	}
 	vkk_compute_writeBuffer(engine->compute,
 	                        self->sb_state,
 	                        sizeof(nn_archState_t),
@@ -405,6 +410,8 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 
 	// update global state
 	state->bs = bs2;
+	state->adam_beta1t *= state->adam_beta1;
+	state->adam_beta2t *= state->adam_beta2;
 	vkk_compute_writeBuffer(engine->compute,
 	                        self->sb_state,
 	                        sizeof(nn_archState_t),
@@ -489,6 +496,10 @@ nn_arch_initLERP(nn_arch_t* self, nn_arch_t* lerp,
 	nn_archState_t* state2 = &lerp->state;
 	state1->bs = bs;
 	state2->bs = bs;
+	state1->adam_beta1t *= state1->adam_beta1;
+	state1->adam_beta2t *= state1->adam_beta2;
+	state2->adam_beta1t *= state2->adam_beta1;
+	state2->adam_beta2t *= state2->adam_beta2;
 	vkk_compute_writeBuffer(engine->compute,
 	                        self->sb_state,
 	                        sizeof(nn_archState_t),
@@ -797,9 +808,13 @@ nn_arch_import(nn_engine_t* engine,
 	}
 
 	// bs not required
-	jsmn_val_t* val_sgd_alpha        = NULL;
-	jsmn_val_t* val_sgd_beta1        = NULL;
-	jsmn_val_t* val_sgd_l2_lambda    = NULL;
+	jsmn_val_t* val_adam_alpha       = NULL;
+	jsmn_val_t* val_adam_beta1       = NULL;
+	jsmn_val_t* val_adam_beta2       = NULL;
+	jsmn_val_t* val_adam_beta1t      = NULL;
+	jsmn_val_t* val_adam_beta2t      = NULL;
+	jsmn_val_t* val_adam_lambda      = NULL;
+	jsmn_val_t* val_adam_nu          = NULL;
 	jsmn_val_t* val_bn_momentum      = NULL;
 	jsmn_val_t* val_gan_blend_factor = NULL;
 	jsmn_val_t* val_gan_blend_scalar = NULL;
@@ -814,17 +829,33 @@ nn_arch_import(nn_engine_t* engine,
 
 		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
 		{
-			if(strcmp(kv->key, "sgd_alpha") == 0)
+			if(strcmp(kv->key, "adam_alpha") == 0)
 			{
-				val_sgd_alpha = kv->val;
+				val_adam_alpha = kv->val;
 			}
-			else if(strcmp(kv->key, "sgd_beta1") == 0)
+			else if(strcmp(kv->key, "adam_beta1") == 0)
 			{
-				val_sgd_beta1 = kv->val;
+				val_adam_beta1 = kv->val;
 			}
-			else if(strcmp(kv->key, "sgd_l2_lambda") == 0)
+			else if(strcmp(kv->key, "adam_beta2") == 0)
 			{
-				val_sgd_l2_lambda = kv->val;
+				val_adam_beta2 = kv->val;
+			}
+			else if(strcmp(kv->key, "adam_beta1t") == 0)
+			{
+				val_adam_beta1t = kv->val;
+			}
+			else if(strcmp(kv->key, "adam_beta2t") == 0)
+			{
+				val_adam_beta2t = kv->val;
+			}
+			else if(strcmp(kv->key, "adam_lambda") == 0)
+			{
+				val_adam_lambda = kv->val;
+			}
+			else if(strcmp(kv->key, "adam_nu") == 0)
+			{
+				val_adam_nu = kv->val;
 			}
 			else if(strcmp(kv->key, "bn_momentum") == 0)
 			{
@@ -852,9 +883,13 @@ nn_arch_import(nn_engine_t* engine,
 	}
 
 	// check for required parameters
-	if((val_sgd_alpha        == NULL) ||
-	   (val_sgd_beta1        == NULL) ||
-	   (val_sgd_l2_lambda    == NULL) ||
+	if((val_adam_alpha       == NULL) ||
+	   (val_adam_beta1       == NULL) ||
+	   (val_adam_beta2       == NULL) ||
+	   (val_adam_beta1t      == NULL) ||
+	   (val_adam_beta2t      == NULL) ||
+	   (val_adam_lambda      == NULL) ||
+	   (val_adam_nu          == NULL) ||
 	   (val_bn_momentum      == NULL) ||
 	   (val_gan_blend_factor == NULL) ||
 	   (val_gan_blend_scalar == NULL) ||
@@ -867,9 +902,13 @@ nn_arch_import(nn_engine_t* engine,
 
 	nn_archState_t state =
 	{
-		.sgd_alpha        = strtof(val_sgd_alpha->data,        NULL),
-		.sgd_beta1        = strtof(val_sgd_beta1->data,        NULL),
-		.sgd_l2_lambda    = strtof(val_sgd_l2_lambda->data,    NULL),
+		.adam_alpha       = strtof(val_adam_alpha->data,       NULL),
+		.adam_beta1       = strtof(val_adam_beta1->data,       NULL),
+		.adam_beta2       = strtof(val_adam_beta2->data,       NULL),
+		.adam_beta1t      = strtof(val_adam_beta1t->data,      NULL),
+		.adam_beta2t      = strtof(val_adam_beta2t->data,      NULL),
+		.adam_lambda      = strtof(val_adam_lambda->data,      NULL),
+		.adam_nu          = strtof(val_adam_nu->data,          NULL),
 		.bn_momentum      = strtof(val_bn_momentum->data,      NULL),
 		.gan_blend_factor = strtof(val_gan_blend_factor->data, NULL),
 		.gan_blend_scalar = strtof(val_gan_blend_scalar->data, NULL),
@@ -890,14 +929,22 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	// bs not required
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "sgd_alpha");
-	ret &= jsmn_stream_float(stream, state->sgd_alpha);
-	ret &= jsmn_stream_key(stream, "%s", "sgd_beta1");
-	ret &= jsmn_stream_float(stream, state->sgd_beta1);
+	ret &= jsmn_stream_key(stream, "%s", "adam_alpha");
+	ret &= jsmn_stream_float(stream, state->adam_alpha);
+	ret &= jsmn_stream_key(stream, "%s", "adam_beta1");
+	ret &= jsmn_stream_float(stream, state->adam_beta1);
+	ret &= jsmn_stream_key(stream, "%s", "adam_beta2");
+	ret &= jsmn_stream_float(stream, state->adam_beta2);
+	ret &= jsmn_stream_key(stream, "%s", "adam_beta1t");
+	ret &= jsmn_stream_float(stream, state->adam_beta1t);
+	ret &= jsmn_stream_key(stream, "%s", "adam_beta2t");
+	ret &= jsmn_stream_float(stream, state->adam_beta2t);
+	ret &= jsmn_stream_key(stream, "%s", "adam_lambda");
+	ret &= jsmn_stream_float(stream, state->adam_lambda);
+	ret &= jsmn_stream_key(stream, "%s", "adam_nu");
+	ret &= jsmn_stream_float(stream, state->adam_nu);
 	ret &= jsmn_stream_key(stream, "%s", "bn_momentum");
 	ret &= jsmn_stream_float(stream, state->bn_momentum);
-	ret &= jsmn_stream_key(stream, "%s", "sgd_l2_lambda");
-	ret &= jsmn_stream_float(stream, state->sgd_l2_lambda);
 	ret &= jsmn_stream_key(stream, "%s", "gan_blend_factor");
 	ret &= jsmn_stream_float(stream, state->gan_blend_factor);
 	ret &= jsmn_stream_key(stream, "%s", "gan_blend_scalar");

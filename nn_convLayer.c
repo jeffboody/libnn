@@ -174,7 +174,9 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_arch_t*      arch   = base->arch;
 	nn_engine_t*    engine = arch->engine;
 
+	nn_tensor_t* MW   = self->MW;
 	nn_tensor_t* VW   = self->VW;
+	nn_tensor_t* MB   = self->MB;
 	nn_tensor_t* VB   = self->VB;
 	nn_dim_t*    dimW = nn_tensor_dim(self->W);
 	nn_dim_t*    dimY = nn_tensor_dim(dL_dY);
@@ -213,9 +215,9 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	// sb25:  dL_dB
 	// sb26:  dim_dL_dX
 	// sb27:  dL_dX
-	// sb28:  dimVW
+	// sb28:  MW
 	// sb29:  VW
-	// sb210: dimVB
+	// sb210: MB
 	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
@@ -262,7 +264,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_dim,
+			.buffer  = MW->sb_data,
 		},
 		{
 			.binding = 9,
@@ -272,7 +274,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		{
 			.binding = 10,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VB->sb_dim,
+			.buffer  = MB->sb_data,
 		},
 		{
 			.binding = 11,
@@ -538,7 +540,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	nn_arch_t*      arch   = base->arch;
 	nn_engine_t*    engine = arch->engine;
 
+	nn_tensor_t* MW   = self->MW;
 	nn_tensor_t* VW   = self->VW;
+	nn_tensor_t* MB   = self->MB;
 	nn_tensor_t* VB   = self->VB;
 	nn_dim_t*    dimW = nn_tensor_dim(self->W);
 	nn_dim_t*    dimY = nn_tensor_dim(dL_dY);
@@ -577,9 +581,9 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	// sb25:  dL_dB
 	// sb26:  dim_dL_dX
 	// sb27:  dL_dX
-	// sb28:  dimVW
+	// sb28:  MW
 	// sb29:  VW
-	// sb210: dimVB
+	// sb210: MB
 	// sb211: VB
 	vkk_uniformAttachment_t ua2_array[] =
 	{
@@ -626,7 +630,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 		{
 			.binding = 8,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_dim,
+			.buffer  = MW->sb_data,
 		},
 		{
 			.binding = 9,
@@ -636,7 +640,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 		{
 			.binding = 10,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VB->sb_dim,
+			.buffer  = MB->sb_data,
 		},
 		{
 			.binding = 11,
@@ -940,12 +944,28 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_Y;
 	}
 
+	self->MW = nn_tensor_new(engine, dimW,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->MW == NULL)
+	{
+		goto fail_MW;
+	}
+
 	self->VW = nn_tensor_new(engine, dimW,
 	                         NN_TENSOR_INIT_ZERO,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->VW == NULL)
 	{
 		goto fail_VW;
+	}
+
+	self->MB = nn_tensor_new(engine, &dimB,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
+	if(self->MB == NULL)
+	{
+		goto fail_MB;
 	}
 
 	self->VB = nn_tensor_new(engine, &dimB,
@@ -1043,8 +1063,12 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_dL_dW:
 		nn_tensor_delete(&self->VB);
 	fail_VB:
+		nn_tensor_delete(&self->MB);
+	fail_MB:
 		nn_tensor_delete(&self->VW);
 	fail_VW:
+		nn_tensor_delete(&self->MW);
+	fail_MW:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_tensor_delete(&self->B);
@@ -1073,7 +1097,9 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	jsmn_val_t* val_stride = NULL;
 	jsmn_val_t* val_W      = NULL;
 	jsmn_val_t* val_B      = NULL;
+	jsmn_val_t* val_MW     = NULL;
 	jsmn_val_t* val_VW     = NULL;
+	jsmn_val_t* val_MB     = NULL;
 	jsmn_val_t* val_VB     = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
@@ -1111,9 +1137,17 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			{
 				val_B = kv->val;
 			}
+			else if(strcmp(kv->key, "MW") == 0)
+			{
+				val_MW = kv->val;
+			}
 			else if(strcmp(kv->key, "VW") == 0)
 			{
 				val_VW = kv->val;
+			}
+			else if(strcmp(kv->key, "MB") == 0)
+			{
+				val_MB = kv->val;
 			}
 			else if(strcmp(kv->key, "VB") == 0)
 			{
@@ -1131,7 +1165,9 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	   (val_stride        == NULL) ||
 	   (val_W             == NULL) ||
 	   (val_B             == NULL) ||
+	   (val_MW            == NULL) ||
 	   (val_VW            == NULL) ||
+	   (val_MB            == NULL) ||
 	   (val_VB            == NULL))
 	{
 		LOGE("invalid");
@@ -1160,7 +1196,9 @@ nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	// load tensors
 	if((nn_tensor_load(self->W,  val_W)  == 0) ||
 	   (nn_tensor_load(self->B,  val_B)  == 0) ||
+	   (nn_tensor_load(self->MW, val_MW) == 0) ||
 	   (nn_tensor_load(self->VW, val_VW) == 0) ||
+	   (nn_tensor_load(self->MB, val_MB) == 0) ||
 	   (nn_tensor_load(self->VB, val_VB) == 0))
 	{
 		goto fail_tensor;
@@ -1198,8 +1236,12 @@ int nn_convLayer_export(nn_convLayer_t* self,
 	ret &= nn_tensor_store(self->W, stream);
 	ret &= jsmn_stream_key(stream, "%s", "B");
 	ret &= nn_tensor_store(self->B, stream);
+	ret &= jsmn_stream_key(stream, "%s", "MW");
+	ret &= nn_tensor_store(self->MW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VW");
 	ret &= nn_tensor_store(self->VW, stream);
+	ret &= jsmn_stream_key(stream, "%s", "MB");
+	ret &= nn_tensor_store(self->MB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
 	ret &= nn_tensor_store(self->VB, stream);
 	ret &= jsmn_stream_end(stream);
@@ -1223,7 +1265,9 @@ void nn_convLayer_delete(nn_convLayer_t** _self)
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);
 		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->MB);
 		nn_tensor_delete(&self->VW);
+		nn_tensor_delete(&self->MW);
 		nn_tensor_delete(&self->Y);
 		nn_tensor_delete(&self->B);
 		nn_tensor_delete(&self->W);

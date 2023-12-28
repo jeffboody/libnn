@@ -47,8 +47,10 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* B;  // dim(nc,1,1,1)
 	nn_tensor_t* Y;  // dim(bs,1,1,nc)
 
-	// momentum update
+	// Adam - moment estimates
+	nn_tensor_t* MW; // dim(nc,1,1,xd)
 	nn_tensor_t* VW; // dim(nc,1,1,xd)
+	nn_tensor_t* MB; // dim(nc,1,1,1)
 	nn_tensor_t* VB; // dim(nc,1,1,1)
 
 	// forward gradients

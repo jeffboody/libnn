@@ -153,9 +153,9 @@ nn_engine_new(vkk_engine_t* engine)
 
 	// sb20: dim_dL_dXhat
 	// ...
-	// sb27: Csum
+	// sb211: VB
 	self->usf2_batchNorm = vkk_uniformSetFactory_new(engine, um,
-	                                                 8, ub_array);
+	                                                 12, ub_array);
 
 	// sb30: idx
 	self->usf3_batchNorm = vkk_uniformSetFactory_new(engine, um,

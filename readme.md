@@ -695,24 +695,27 @@ dimensions).
 Adam tracks the moving averages of the first moment
 (mean) and the second moment (uncentered variance) of the
 gradient. The uncentered variance simply states that the
-mean is not subtracted from the variance
-(e.g. Var(X) = (1/N)*SUM((x - Mean(X))^2)). The beta1 and
-beta2 hyperparameters control the exponential decay rates
-for the first and second moments. Note that larger values
-result in a smaller decay rates. The moving averages must
-also be bias corrected due to the fact that the values are
-initialized to zero.
+mean is not subtracted from the variance.
 
-The Adam update rate is modulated by the ratio first moment
-to the second moment which is loosly analogous to a form of
-signal-to-noise ratio. As this SNR tends towards zero there
-is greater uncertainty as to the direction of the true
-gradient. This occurs as the solution becomes optimal
-resulting in smaller step sizes (a form of automatic
-annealing). The effective step size is also invariant to the
-scale of the gradients (since c/sqrt(c^2) is one). As such,
-each step taken is loosly proportional to the estimated
-distance remaining.
+	Var(X)   = (1/N)*SUM((x - Mean(X))^2)
+	VarUC(X) = (1/N)*SUM(x^2)
+
+The beta1 and beta2 hyperparameters control the exponential
+decay rates for the first and second moments. Note that
+larger values result in a smaller decay rates. The moving
+averages must be bias corrected due to the fact that the
+first and second moments are initialized to zero.
+
+The Adam update rate is modulated by the ratio of the first
+moment to the square root of the second moment. This ratio
+is loosly analogous to a form of signal-to-noise ratio. As
+this "SNR" tends towards zero there is greater uncertainty
+as to the direction of the true gradient. This occurs as the
+solution becomes optimal resulting in smaller step sizes (a
+form of automatic annealing). The effective step size is
+also invariant to the scale of the gradients (since
+c/sqrt(c^2) is one). As such, each step taken is loosly
+proportional to the estimated distance remaining.
 
 ![Adam](docs/adam.jpg?raw=true "Adam")
 
@@ -723,8 +726,9 @@ Regularization term. As a result, Adam combined with L2
 Regularization fails to generalize as well as SGD with
 momentum. The AdamW extension addresses this problem by
 replacing the L2 Regularization with a decoupled weight
-decay. The AdamW extension may not be compatible or even
-necessary when Adam is combined with Spectral Normalization.
+decay. It is unclear if the AdamW extension is compatible or
+even necessary when Adam is combined with Spectral
+Normalization.
 
 ![AdamW](docs/adamw.jpg?raw=true "AdamW")
 
