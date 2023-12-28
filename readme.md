@@ -199,6 +199,52 @@ References
 
 * [CS231n Winter 2016: Lecture 4: Backpropagation, Neural Networks 1](https://www.youtube.com/watch?v=i94OvYb6noo)
 
+Epsilon
+-------
+
+Many of the equations used by AI algorithms perform
+operations which can result in undefined results. For
+example, a divide-by-zero operation may result in a NAN
+(not-a-number) value. The behavior of such an operation
+may even vary based on the computing environment (e.g. C and
+GLSL is undefined while others may result in exceptions). To
+address this problem, an epsilon value may be included to
+ensure that the corresponding computations result in defined
+values. For example.
+
+	1/|x| => 1/(|x| + epsilon)
+
+Microsoft defines the epsilon constant as the "smallest
+positive number x, such that x + 1.0 is not equal to 1.0."
+The value of the epsilon constant depends on the numerical
+precision of floating point operations. CPUs typically
+support 32-bit and 64-bit floating point operations while
+GPUs may support additional floating point precision
+(e.g. 16-bit). Below are the constants recommended by GNU C
+and Microsoft implementations.
+
+	// GNU C
+	FLT_EPSILON 1e-5 // or smaller
+	DBL_EPSILON 1e-9 // or smaller
+
+	// Microsoft
+	FLT_EPSILON 1.192092896e-07f
+	DBL_EPSILON 2.2204460492503131e-016
+
+AI papers have recommended a wide range of values for
+epsilon, however, for 32-bit floating operations the value
+should generally be in the range of 1e-5 to 1e-7 per above.
+Different types of operations may even require different
+values for epsilon to ensure defined behavior. As a result,
+the safest general approach seems to be to set epsilon to
+1e-5 (0.00001f) per GNU C.
+
+References
+
+* [cfloat](https://cplusplus.com/reference/cfloat/)
+* [Floating Limits](https://learn.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-170)
+* [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html)
+
 Loss Function
 -------------
 
