@@ -13,10 +13,10 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_learning_rate;
-	float state_momentum_decay;
-	float state_batch_momentum;
-	float state_l2_lambda;
+	float state_sgd_alpha;
+	float state_sgd_beta1;
+	float state_sgd_l2_lambda;
+	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
 	float state_gan_blend_min;
@@ -111,13 +111,10 @@ void setVW(uint n, uint i, uint j, uint k, float v)
 void main()
 {
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
-	uint  n      = gl_GlobalInvocationID.x;
-	uint  nc     = dimW.count;
-	uint  xd     = dimW.depth;
-	float lr     = state_learning_rate;
-	float mu     = state_momentum_decay;
-	float lambda = state_l2_lambda;
-	float s      = 1.0/(float(state_bs));
+	uint  n  = gl_GlobalInvocationID.x;
+	uint  nc = dimW.count;
+	uint  xd = dimW.depth;
+	float s  = 1.0/(float(state_bs));
 
 	if(n >= nc)
 	{
@@ -132,8 +129,11 @@ void main()
 
 		// Nesterov Momentum Update and L2 Regularization
 		float v0  = getVW(n, 0, 0, k);
-		float v1  = mu*v0 - lr*(gc_gcw*dl_dw + 2.0*lambda*w);
+		float v1  = state_sgd_beta1*v0 -
+		            state_sgd_alpha*(gc_gcw*dl_dw +
+		            2.0*state_sgd_l2_lambda*w);
 		setVW(n, 0, 0, k, v1);
-		addW(n, 0, 0, k, -mu*v0 + (1.0 + mu)*v1);
+		addW(n, 0, 0, k, -state_sgd_beta1*v0 +
+		                 (1.0 + state_sgd_beta1)*v1);
 	}
 }

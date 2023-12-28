@@ -150,10 +150,10 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate  = 0.000001f,
-		.momentum_decay = 0.5f,
-		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.0001f,
+		.sgd_alpha     = 0.000001f,
+		.sgd_beta1     = 0.5f,
+		.sgd_l2_lambda = 0.0001f,
+		.bn_momentum   = 0.99f,
 	};
 
 	nn_arch_t* arch = nn_arch_new(engine, 0, &arch_state);

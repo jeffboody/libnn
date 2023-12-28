@@ -797,10 +797,10 @@ nn_arch_import(nn_engine_t* engine,
 	}
 
 	// bs not required
-	jsmn_val_t* val_learning_rate    = NULL;
-	jsmn_val_t* val_momentum_decay   = NULL;
-	jsmn_val_t* val_batch_momentum   = NULL;
-	jsmn_val_t* val_l2_lambda        = NULL;
+	jsmn_val_t* val_sgd_alpha        = NULL;
+	jsmn_val_t* val_sgd_beta1        = NULL;
+	jsmn_val_t* val_sgd_l2_lambda    = NULL;
+	jsmn_val_t* val_bn_momentum      = NULL;
 	jsmn_val_t* val_gan_blend_factor = NULL;
 	jsmn_val_t* val_gan_blend_scalar = NULL;
 	jsmn_val_t* val_gan_blend_min    = NULL;
@@ -814,21 +814,21 @@ nn_arch_import(nn_engine_t* engine,
 
 		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
 		{
-			if(strcmp(kv->key, "learning_rate") == 0)
+			if(strcmp(kv->key, "sgd_alpha") == 0)
 			{
-				val_learning_rate = kv->val;
+				val_sgd_alpha = kv->val;
 			}
-			else if(strcmp(kv->key, "momentum_decay") == 0)
+			else if(strcmp(kv->key, "sgd_beta1") == 0)
 			{
-				val_momentum_decay = kv->val;
+				val_sgd_beta1 = kv->val;
 			}
-			else if(strcmp(kv->key, "batch_momentum") == 0)
+			else if(strcmp(kv->key, "sgd_l2_lambda") == 0)
 			{
-				val_batch_momentum = kv->val;
+				val_sgd_l2_lambda = kv->val;
 			}
-			else if(strcmp(kv->key, "l2_lambda") == 0)
+			else if(strcmp(kv->key, "bn_momentum") == 0)
 			{
-				val_l2_lambda = kv->val;
+				val_bn_momentum = kv->val;
 			}
 			else if(strcmp(kv->key, "gan_blend_factor") == 0)
 			{
@@ -852,10 +852,10 @@ nn_arch_import(nn_engine_t* engine,
 	}
 
 	// check for required parameters
-	if((val_learning_rate    == NULL) ||
-	   (val_momentum_decay   == NULL) ||
-	   (val_batch_momentum   == NULL) ||
-	   (val_l2_lambda        == NULL) ||
+	if((val_sgd_alpha        == NULL) ||
+	   (val_sgd_beta1        == NULL) ||
+	   (val_sgd_l2_lambda    == NULL) ||
+	   (val_bn_momentum      == NULL) ||
 	   (val_gan_blend_factor == NULL) ||
 	   (val_gan_blend_scalar == NULL) ||
 	   (val_gan_blend_min    == NULL) ||
@@ -867,10 +867,10 @@ nn_arch_import(nn_engine_t* engine,
 
 	nn_archState_t state =
 	{
-		.learning_rate    = strtof(val_learning_rate->data,    NULL),
-		.momentum_decay   = strtof(val_momentum_decay->data,   NULL),
-		.batch_momentum   = strtof(val_batch_momentum->data,   NULL),
-		.l2_lambda        = strtof(val_l2_lambda->data,        NULL),
+		.sgd_alpha        = strtof(val_sgd_alpha->data,        NULL),
+		.sgd_beta1        = strtof(val_sgd_beta1->data,        NULL),
+		.sgd_l2_lambda    = strtof(val_sgd_l2_lambda->data,    NULL),
+		.bn_momentum      = strtof(val_bn_momentum->data,      NULL),
 		.gan_blend_factor = strtof(val_gan_blend_factor->data, NULL),
 		.gan_blend_scalar = strtof(val_gan_blend_scalar->data, NULL),
 		.gan_blend_min    = strtof(val_gan_blend_min->data,    NULL),
@@ -890,14 +890,14 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	// bs not required
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "learning_rate");
-	ret &= jsmn_stream_float(stream, state->learning_rate);
-	ret &= jsmn_stream_key(stream, "%s", "momentum_decay");
-	ret &= jsmn_stream_float(stream, state->momentum_decay);
-	ret &= jsmn_stream_key(stream, "%s", "batch_momentum");
-	ret &= jsmn_stream_float(stream, state->batch_momentum);
-	ret &= jsmn_stream_key(stream, "%s", "l2_lambda");
-	ret &= jsmn_stream_float(stream, state->l2_lambda);
+	ret &= jsmn_stream_key(stream, "%s", "sgd_alpha");
+	ret &= jsmn_stream_float(stream, state->sgd_alpha);
+	ret &= jsmn_stream_key(stream, "%s", "sgd_beta1");
+	ret &= jsmn_stream_float(stream, state->sgd_beta1);
+	ret &= jsmn_stream_key(stream, "%s", "bn_momentum");
+	ret &= jsmn_stream_float(stream, state->bn_momentum);
+	ret &= jsmn_stream_key(stream, "%s", "sgd_l2_lambda");
+	ret &= jsmn_stream_float(stream, state->sgd_l2_lambda);
 	ret &= jsmn_stream_key(stream, "%s", "gan_blend_factor");
 	ret &= jsmn_stream_float(stream, state->gan_blend_factor);
 	ret &= jsmn_stream_key(stream, "%s", "gan_blend_scalar");

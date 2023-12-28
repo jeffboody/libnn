@@ -29,13 +29,16 @@
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
+// See "Decoupled Weight Decay Regularization" for the
+// definition of SGD and ADAM parameters
+// https://arxiv.org/pdf/1711.05101.pdf
 typedef struct nn_archState_s
 {
 	uint32_t bs;
-	float    learning_rate;
-	float    momentum_decay;
-	float    batch_momentum;
-	float    l2_lambda;
+	float    sgd_alpha;     // learning rate
+	float    sgd_beta1;     // momentum factor
+	float    sgd_l2_lambda; // L2 regularization
+	float    bn_momentum;
 	float    gan_blend_factor;
 	float    gan_blend_scalar;
 	float    gan_blend_min;

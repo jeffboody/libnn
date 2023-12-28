@@ -260,13 +260,13 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate  = 0.001f,
-		.momentum_decay = 0.5f,
-		.batch_momentum = 0.99f,
-		.l2_lambda      = 0.0001f,
-		.lerp_s         = 0.25,
-		.lerp_min       = 0.5,
-		.lerp_max       = 2.0,
+		.sgd_alpha     = 0.001f,
+		.sgd_beta1     = 0.5f,
+		.sgd_l2_lambda = 0.0001f,
+		.bn_momentum   = 0.99f,
+		.lerp_s        = 0.25,
+		.lerp_min      = 0.5,
+		.lerp_max      = 2.0,
 	};
 
 	cifar10_regen2_t* self;

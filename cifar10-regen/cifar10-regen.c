@@ -432,15 +432,15 @@ cifar10_regen_onMain(vkk_engine_t* ve, int argc,
 	float    sum_loss4 = 0.0f;
 	float    min_loss4 = FLT_MAX;
 	float    max_loss4 = 0.0f;
-	float    mu;
+	float    beta1;
 	while(epoch < 20)
 	{
 		// adjust momentum decay
-		mu = 0.5f + 0.5f*((float) epoch)/20.0f;
-		regen1->base.state.momentum_decay = mu;
-		regen2->base.state.momentum_decay = mu;
-		regen3->base.state.momentum_decay = mu;
-		regen4->base.state.momentum_decay = mu;
+		beta1 = 0.5f + 0.5f*((float) epoch)/20.0f;
+		regen1->base.state.sgd_beta1 = beta1;
+		regen2->base.state.sgd_beta1 = beta1;
+		regen3->base.state.sgd_beta1 = beta1;
+		regen4->base.state.sgd_beta1 = beta1;
 
 		steps = (epoch + 1)*dim->count/bs;
 		while(step < steps)

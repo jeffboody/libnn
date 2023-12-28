@@ -370,10 +370,10 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_archState_t arch_state =
 	{
-		.learning_rate    = 0.001f,
-		.momentum_decay   = 0.5f,
-		.batch_momentum   = 0.99f,
-		.l2_lambda        = 0.0001f,
+		.sgd_alpha        = 0.001f,
+		.sgd_beta1        = 0.5f,
+		.sgd_l2_lambda    = 0.0001f,
+		.bn_momentum      = 0.99f,
 		.gan_blend_factor = 0.1f,
 		.gan_blend_scalar = 1.01f,
 		.gan_blend_min    = 0.1f,

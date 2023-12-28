@@ -13,10 +13,10 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_learning_rate;
-	float state_momentum_decay;
-	float state_batch_momentum;
-	float state_l2_lambda;
+	float state_sgd_alpha;
+	float state_sgd_beta1;
+	float state_sgd_l2_lambda;
+	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
 	float state_gan_blend_min;
@@ -84,8 +84,6 @@ void main()
 	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
 	uint  nc = dimB.count;
 	uint  n  = gl_GlobalInvocationID.x;
-	float lr = state_learning_rate;
-	float mu = state_momentum_decay;
 	float s  = 1.0/(float(state_bs));
 
 	if(n >= nc)
@@ -97,7 +95,8 @@ void main()
 
 	// Nesterov Momentum Update
 	float v0  = getVB(n);
-	float v1  = mu*v0 - lr*gc_gcb*dl_db;
+	float v1  = state_sgd_beta1*v0 -
+	            state_sgd_alpha*gc_gcb*dl_db;
 	setVB(n, v1);
-	addB(n, -mu*v0 + (1.0 + mu)*v1);
+	addB(n, -state_sgd_beta1*v0 + (1.0 + state_sgd_beta1)*v1);
 }

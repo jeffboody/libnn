@@ -18,10 +18,10 @@ struct nn_dim_t
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	uint  state_bs;
-	float state_learning_rate;
-	float state_momentum_decay;
-	float state_batch_momentum;
-	float state_l2_lambda;
+	float state_sgd_alpha;
+	float state_sgd_beta1;
+	float state_sgd_l2_lambda;
+	float state_bn_momentum;
 	float state_gan_blend_factor;
 	float state_gan_blend_scalar;
 	float state_gan_blend_min;
@@ -196,7 +196,7 @@ void main()
 		setCsum(k, csum);
 
 		// update G and B
-		addG(k, -state_learning_rate*dl_dg);
-		addB(k, -state_learning_rate*dl_db);
+		addG(k, -state_sgd_alpha*dl_dg);
+		addB(k, -state_sgd_alpha*dl_db);
 	}
 }
