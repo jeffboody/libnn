@@ -88,7 +88,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb_state,
+			.buffer  = arch->sb00_state,
 		},
 		{
 			.binding = 1,

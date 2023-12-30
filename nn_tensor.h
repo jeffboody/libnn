@@ -58,8 +58,13 @@ typedef struct nn_tensor_s
 	nn_tensorMode_e tensor_mode;
 
 	nn_dim_t dim;
-	float*   data;
 
+	// IO tensor (optional)
+	float* data;
+
+	// compute tensor (optional)
+	// sb_dim/sb_data index varies by layer but are
+	// sb00_dim/sb01_data for tensor compute shaders
 	vkk_uniformSet_t* us0;
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;

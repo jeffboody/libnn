@@ -67,7 +67,7 @@ typedef struct nn_arch_s
 	nn_engine_t* engine;
 
 	nn_archState_t state;
-	vkk_buffer_t*  sb_state;
+	vkk_buffer_t*  sb00_state;
 
 	// references
 	cc_list_t* layers;

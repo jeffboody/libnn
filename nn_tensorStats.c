@@ -41,7 +41,7 @@ static void nn_tensorStats_update(nn_tensorStats_t* self)
 
 	if(self->dirty)
 	{
-		vkk_compute_readBuffer(engine->compute, self->sb_stats,
+		vkk_compute_readBuffer(engine->compute, self->sb10_stats,
 		                       sizeof(nn_tensorStatsData_t), 0,
 		                       &self->data);
 		self->dirty = 0;
@@ -78,20 +78,20 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 		goto fail_us1;
 	}
 
-	self->sb_stats = vkk_buffer_new(engine->engine, um,
-	                                VKK_BUFFER_USAGE_STORAGE,
-	                                sizeof(nn_tensorStatsData_t),
-	                                NULL);
-	if(self->sb_stats == NULL)
+	self->sb10_stats = vkk_buffer_new(engine->engine, um,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_tensorStatsData_t),
+	                                  NULL);
+	if(self->sb10_stats == NULL)
 	{
-		goto fail_sb_stats;
+		goto fail_sb10_stats;
 	}
 
 	// success
 	return self;
 
 	// failure
-	fail_sb_stats:
+	fail_sb10_stats:
 		vkk_uniformSet_delete(&self->us1);
 	fail_us1:
 		FREE(self);
@@ -105,7 +105,7 @@ void nn_tensorStats_delete(nn_tensorStats_t** _self)
 	nn_tensorStats_t* self = *_self;
 	if(self)
 	{
-		vkk_buffer_delete(&self->sb_stats);
+		vkk_buffer_delete(&self->sb10_stats);
 		vkk_uniformSet_delete(&self->us1);
 		FREE(self);
 		*_self = NULL;

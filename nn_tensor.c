@@ -718,7 +718,7 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 
 	stats->data.count = count;
 	vkk_compute_writeBuffer(engine->compute,
-	                        stats->sb_stats,
+	                        stats->sb10_stats,
 	                        sizeof(nn_tensorStatsData_t),
 	                        0, &stats->data);
 
@@ -744,7 +744,7 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = stats->sb_stats,
+			.buffer  = stats->sb10_stats,
 		},
 	};
 

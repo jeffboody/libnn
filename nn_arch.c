@@ -139,7 +139,7 @@ nn_arch_init(nn_arch_t* self,
 		state->adam_beta2t *= state->adam_beta2;
 	}
 	vkk_compute_writeBuffer(engine->compute,
-	                        self->sb_state,
+	                        self->sb00_state,
 	                        sizeof(nn_archState_t),
 	                        0, state);
 
@@ -413,7 +413,7 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 	state->adam_beta1t *= state->adam_beta1;
 	state->adam_beta2t *= state->adam_beta2;
 	vkk_compute_writeBuffer(engine->compute,
-	                        self->sb_state,
+	                        self->sb00_state,
 	                        sizeof(nn_archState_t),
 	                        0, state);
 
@@ -501,11 +501,11 @@ nn_arch_initLERP(nn_arch_t* self, nn_arch_t* lerp,
 	state2->adam_beta1t *= state2->adam_beta1;
 	state2->adam_beta2t *= state2->adam_beta2;
 	vkk_compute_writeBuffer(engine->compute,
-	                        self->sb_state,
+	                        self->sb00_state,
 	                        sizeof(nn_archState_t),
 	                        0, state1);
 	vkk_compute_writeBuffer(engine->compute,
-	                        lerp->sb_state,
+	                        lerp->sb00_state,
 	                        sizeof(nn_archState_t),
 	                        0, state2);
 
@@ -535,7 +535,7 @@ nn_arch_forwardPassFairCGAN(nn_arch_t* self, uint32_t bs,
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb_state,
+			.buffer  = self->sb00_state,
 		},
 	};
 
@@ -741,13 +741,13 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
-	self->sb_state = vkk_buffer_new(engine->engine, um,
-	                                VKK_BUFFER_USAGE_STORAGE,
-	                                sizeof(nn_archState_t),
-	                                NULL);
-	if(self->sb_state == NULL)
+	self->sb00_state = vkk_buffer_new(engine->engine, um,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_archState_t),
+	                                  NULL);
+	if(self->sb00_state == NULL)
 	{
-		goto fail_sb_state;
+		goto fail_sb00_state;
 	}
 
 	self->layers = cc_list_new();
@@ -788,8 +788,8 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 	fail_us0:
 		cc_list_delete(&self->layers);
 	fail_layers:
-		vkk_buffer_delete(&self->sb_state);
-	fail_sb_state:
+		vkk_buffer_delete(&self->sb00_state);
+	fail_sb00_state:
 		FREE(self);
 	return NULL;
 }
@@ -980,7 +980,7 @@ void nn_arch_delete(nn_arch_t** _self)
 		nn_tensor_delete(&self->X);
 		cc_list_discard(self->layers);
 		cc_list_delete(&self->layers);
-		vkk_buffer_delete(&self->sb_state);
+		vkk_buffer_delete(&self->sb00_state);
 		FREE(self);
 		*_self = NULL;
 	}
