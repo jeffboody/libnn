@@ -1,0 +1,294 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+shared float norm_work[64];
+shared float sigma_work[64];
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb00
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) buffer sb01
+{
+	float X[];
+};
+
+layout(std430, set=2, binding=0) buffer sb20
+{
+	float u1[];
+};
+
+layout(std430, set=2, binding=1) buffer sb21
+{
+	float v1[];
+};
+
+float getX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
+}
+
+void setX(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	X[n*sn + i*sy + j*sx + k] = v;
+}
+
+void mulX(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	X[n*sn + i*sy + j*sx + k] *= v;
+}
+
+float getU1(uint n)
+{
+	return u1[n];
+}
+
+void setU1(uint n, float v)
+{
+	u1[n] = v;
+}
+
+void addU1(uint n, float v)
+{
+	u1[n] += v;
+}
+
+void divU1(uint n, float v)
+{
+	float epsilon = 0.00001;
+	u1[n] /= v + epsilon;
+}
+
+float getV1(uint i, uint j, uint k)
+{
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return v1[i*sy + j*sx + k];
+}
+
+void setV1(uint i, uint j, uint k, float v)
+{
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	v1[i*sy + j*sx + k] = v;
+}
+
+void addV1(uint i, uint j, uint k, float v)
+{
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	v1[i*sy + j*sx + k] += v;
+}
+
+void divV1(uint i, uint j, uint k, float v)
+{
+	float epsilon = 0.00001;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	v1[i*sy + j*sx + k] /= v + epsilon;
+}
+
+void main()
+{
+	// hazzard depends on use case
+	// dispatch(hazzard, 1, 1, 1, 64, 1, 1)
+	uint  idx = gl_GlobalInvocationID.x;
+	uint  fc  = dimX.count;
+	uint  fh  = dimX.height;
+	uint  fw  = dimX.width;
+	uint  xd  = dimX.depth;
+	uint  n;
+	uint  i;
+	uint  j;
+	uint  k;
+	float u;
+	float v;
+	float w;
+
+	// power iteration: v1 = W^T*u1
+	// parallelize over xd
+	for(k = idx; k < xd; k += 64)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				setV1(i, j, k, 0.0);
+				for(n = 0; n < fc; ++n)
+				{
+					addV1(i, j, k, getX(n, i, j, k)*getU1(n));
+				}
+			}
+		}
+	}
+	memoryBarrierBuffer();
+	barrier();
+
+	// power iteration: v1 = normalize(v1) (part 1)
+	// parallelize over xd
+	norm_work[idx] = 0.0;
+	for(k = idx; k < xd; k += 64)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				v = getV1(i, j, k);
+				norm_work[idx] += v*v;
+			}
+		}
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// power iteration: v1 = normalize(v1) (part 2)
+	// skip parallelization
+	if(idx == 0)
+	{
+		for(n = 1; n < 64; ++n)
+		{
+			norm_work[0] += norm_work[n];
+		}
+		norm_work[0] = sqrt(norm_work[0]);
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// power iteration: v1 = normalize(v1) (part 3)
+	// parallelize over xd
+	for(k = idx; k < xd; k += 64)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				divV1(i, j, k, norm_work[0]);
+			}
+		}
+	}
+	memoryBarrierBuffer();
+	barrier();
+
+	// power iteration: u1 = W*v1
+	// parallelize over fc
+	for(n = idx; n < fc; n += 64)
+	{
+		setU1(n, 0.0);
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					addU1(n, getX(n, i, j, k)*getV1(i, j, k));
+				}
+			}
+		}
+	}
+	memoryBarrierBuffer();
+	barrier();
+
+	// power iteration: u1 = normalize(u1) (part 1)
+	// parallelize over fc
+	norm_work[idx] = 0.0;
+	for(n = idx; n < fc; n += 64)
+	{
+		u = getU1(n);
+		norm_work[idx] += u*u;
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// power iteration: u1 = normalize(u1) (part 2)
+	// skip parallelization
+	if(idx == 0)
+	{
+		for(n = 1; n < 64; ++n)
+		{
+			norm_work[0] += norm_work[n];
+		}
+		norm_work[0] = sqrt(norm_work[0]);
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// power iteration: u1 = normalize(u1) (part 3)
+	// parallelize over fc
+	for(n = idx; n < fc; n += 64)
+	{
+		divU1(n, norm_work[0]);
+	}
+	memoryBarrierBuffer();
+	barrier();
+
+	// compute sigma_work
+	// parallelize over fc
+	sigma_work[idx] = 0.0;
+	for(n = idx; n < fc; n += 64)
+	{
+		u = getU1(n);
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					v = getV1(i, j, k);
+					w = getX(n, i, j, k);
+					sigma_work[idx] += u*w*v;
+				}
+			}
+		}
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// compute sigma
+	// skip parallelization
+	if(idx == 0)
+	{
+		for(n = 1; n < 64; ++n)
+		{
+			sigma_work[0] += sigma_work[n];
+		}
+	}
+	memoryBarrierShared();
+	barrier();
+
+	// update W
+	// parallelize over fc
+	float epsilon = 0.00001;
+	float sn      = 1.0/(sigma_work[0] + epsilon);
+	for(n = idx; n < fc; n += 64)
+	{
+		for(i = 0; i < fh; ++i)
+		{
+			for(j = 0; j < fw; ++j)
+			{
+				for(k = 0; k < xd; ++k)
+				{
+					mulX(n, i, j, k, sn);
+				}
+			}
+		}
+	}
+}

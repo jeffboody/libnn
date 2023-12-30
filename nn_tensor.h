@@ -42,6 +42,14 @@ typedef enum
 	NN_TENSOR_MODE_COMPUTE = 1,
 } nn_tensorMode_e;
 
+// SN:   Spectral Normalization
+// BSSN: Bidirectional Scaled Spectral Normalization
+typedef enum
+{
+	NN_TENSOR_NORM_MODE_SN   = 0,
+	NN_TENSOR_NORM_MODE_BSSN = 1,
+} nn_tensorNormMode_e;
+
 // definitions must match vkk_hazzard_e
 typedef enum
 {
@@ -68,6 +76,14 @@ typedef struct nn_tensor_s
 	vkk_uniformSet_t* us0;
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;
+
+	// spectral normalization (optional)
+	vkk_uniformSet_t* us2;
+	vkk_buffer_t*     sb20_data_u1;
+	vkk_buffer_t*     sb21_data_v1;
+	vkk_buffer_t*     sb22_data_u2;
+	vkk_buffer_t*     sb23_data_v2;
+	vkk_buffer_t*     sb24_c;
 } nn_tensor_t;
 
 nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
@@ -90,6 +106,10 @@ int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
 int          nn_tensor_clear(nn_tensor_t* self,
                              nn_tensorHazzard_e hazzard);
+int          nn_tensor_normalize(nn_tensor_t* self,
+                                 nn_tensorHazzard_e hazzard,
+                                 nn_tensorNormMode_e norm,
+                                 float c);
 int          nn_tensor_computeStats(nn_tensor_t* self,
                                     uint32_t count,
                                     nn_tensorHazzard_e hazzard,

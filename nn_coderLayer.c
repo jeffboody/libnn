@@ -51,10 +51,34 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_coderOpLayer_t* self;
 	self = (nn_coderOpLayer_t*) base;
 
+	nn_coderLayer_t* coder = self->coder;
+
 	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONVT_6X6_S2) ||
 	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
 	{
+		// Spectral Normalization
+		if(coder->norm_mode == NN_CODER_NORM_MODE_SN)
+		{
+			if(nn_tensor_normalize(self->conv->W,
+			                       NN_TENSOR_HAZZARD_NONE,
+			                       NN_TENSOR_NORM_MODE_SN,
+			                       1.0f) == 0)
+			{
+				return NULL;
+			}
+		}
+		else if(coder->norm_mode == NN_CODER_NORM_MODE_BSSN)
+		{
+			if(nn_tensor_normalize(self->conv->W,
+			                       NN_TENSOR_HAZZARD_NONE,
+			                       NN_TENSOR_NORM_MODE_BSSN,
+			                       1.2f) == 0)
+			{
+				return NULL;
+			}
+		}
+
 		return nn_layer_forwardPass(&self->conv->base,
 		                            flags, bs, X);
 	}
@@ -151,10 +175,12 @@ nn_coderOpLayer_dimYFn(nn_layer_t* base)
 
 static nn_coderOpLayer_t*
 nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                    nn_coderLayer_t* coder,
                     nn_coderOpMode_e op_mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
+	ASSERT(coder);
 
 	nn_layerInfo_t info =
 	{
@@ -175,6 +201,7 @@ nn_coderOpLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
+	self->coder   = coder;
 	self->op_mode = op_mode;
 
 	uint32_t xd = dimX->depth;
@@ -471,6 +498,8 @@ typedef struct nn_coderRepeaterLayer_s
 {
 	nn_layer_t base;
 
+	nn_coderLayer_t* coder;
+
 	// repeater layer
 	// he, relu
 	// xd : fc
@@ -490,6 +519,30 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 
 	nn_coderRepeaterLayer_t* self;
 	self = (nn_coderRepeaterLayer_t*) base;
+
+	nn_coderLayer_t* coder = self->coder;
+
+	// Spectral Normalization
+	if(coder->norm_mode == NN_CODER_NORM_MODE_SN)
+	{
+		if(nn_tensor_normalize(self->conv->W,
+		                       NN_TENSOR_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_SN,
+		                       1.0f) == 0)
+		{
+			return NULL;
+		}
+	}
+	else if(coder->norm_mode == NN_CODER_NORM_MODE_BSSN)
+	{
+		if(nn_tensor_normalize(self->conv->W,
+		                       NN_TENSOR_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_BSSN,
+		                       1.2f) == 0)
+		{
+			return NULL;
+		}
+	}
 
 	X = nn_layer_forwardPass(&self->conv->base, flags,
 	                         bs, X);
@@ -559,10 +612,12 @@ nn_coderRepeaterLayer_dimYFn(nn_layer_t* base)
 }
 
 static nn_coderRepeaterLayer_t*
-nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
+nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                          nn_coderLayer_t* coder)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
+	ASSERT(coder);
 
 	nn_layerInfo_t info =
 	{
@@ -585,6 +640,8 @@ nn_coderRepeaterLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 	{
 		return NULL;
 	}
+
+	self->coder = coder;
 
 	nn_dim_t dimW =
 	{
@@ -764,6 +821,28 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	if(self->conv)
 	{
+		// Spectral Normalization
+		if(self->norm_mode == NN_CODER_NORM_MODE_SN)
+		{
+			if(nn_tensor_normalize(self->conv->W,
+			                       NN_TENSOR_HAZZARD_NONE,
+			                       NN_TENSOR_NORM_MODE_SN,
+			                       1.0f) == 0)
+			{
+				return NULL;
+			}
+		}
+		else if(self->norm_mode == NN_CODER_NORM_MODE_BSSN)
+		{
+			if(nn_tensor_normalize(self->conv->W,
+			                       NN_TENSOR_HAZZARD_NONE,
+			                       NN_TENSOR_NORM_MODE_BSSN,
+			                       1.2f) == 0)
+			{
+				return NULL;
+			}
+		}
+
 		X = nn_layer_forwardPass(&self->conv->base, flags,
 		                         bs, X);
 		if(X == NULL)
@@ -1047,7 +1126,7 @@ nn_coderLayer_newRepeater(nn_coderLayer_t* self,
 	nn_coderRepeaterLayer_t* r = NULL;
 	for(i = 0; i < repeat; ++i)
 	{
-		r = nn_coderRepeaterLayer_new(base->arch, dimX);
+		r = nn_coderRepeaterLayer_new(base->arch, dimX, self);
 		if(r == NULL)
 		{
 			goto fail_repeater;
@@ -1101,9 +1180,11 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 	nn_dim_t* dim = info->dimX;
 	nn_dim_copy(dim, &self->dimX);
 
+	self->norm_mode = info->norm_mode;
+
 	if(info->pre_op_mode != NN_CODER_OP_MODE_NONE)
 	{
-		self->pre_op = nn_coderOpLayer_new(info->arch, dim,
+		self->pre_op = nn_coderOpLayer_new(info->arch, dim, self,
 		                                   info->pre_op_mode);
 		if(self->pre_op == NULL)
 		{
@@ -1197,7 +1278,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 
 	if(info->post_op_mode != NN_CODER_OP_MODE_NONE)
 	{
-		self->post_op = nn_coderOpLayer_new(info->arch, dim,
+		self->post_op = nn_coderOpLayer_new(info->arch, dim, self,
 		                                    info->post_op_mode);
 		if(self->post_op == NULL)
 		{
@@ -1267,14 +1348,15 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX    = NULL;
-	jsmn_val_t* val_dimY    = NULL;
-	jsmn_val_t* val_pre_op  = NULL;
-	jsmn_val_t* val_conv    = NULL;
-	jsmn_val_t* val_skip    = NULL;
-	jsmn_val_t* val_bn      = NULL;
-	jsmn_val_t* val_fact    = NULL;
-	jsmn_val_t* val_post_op = NULL;
+	jsmn_val_t* val_dimX      = NULL;
+	jsmn_val_t* val_dimY      = NULL;
+	jsmn_val_t* val_norm_mode = NULL;
+	jsmn_val_t* val_pre_op    = NULL;
+	jsmn_val_t* val_conv      = NULL;
+	jsmn_val_t* val_skip      = NULL;
+	jsmn_val_t* val_bn        = NULL;
+	jsmn_val_t* val_fact      = NULL;
+	jsmn_val_t* val_post_op   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -1325,13 +1407,21 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 				val_post_op = kv->val;
 			}
 		}
+		else if(kv->val->type == JSMN_TYPE_STRING)
+		{
+			if(strcmp(kv->key, "norm_mode") == 0)
+			{
+				val_norm_mode = kv->val;
+			}
+		}
 
 		iter = cc_list_next(iter);
 	}
 
 	// check for required parameters
 	// layers are optional
-	if((val_dimX == NULL) || (val_dimY == NULL))
+	if((val_dimX == NULL) || (val_dimY == NULL) ||
+	   (val_norm_mode == NULL))
 	{
 		LOGE("invalid");
 		goto fail_check;
@@ -1364,6 +1454,24 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	if(nn_dim_load(&self->dimY, val_dimY) == 0)
 	{
 		goto fail_dimY;
+	}
+
+	if(strcmp(val_norm_mode->data, "NONE") == 0)
+	{
+		self->norm_mode = NN_CODER_NORM_MODE_NONE;
+	}
+	else if(strcmp(val_norm_mode->data, "SN") == 0)
+	{
+		self->norm_mode = NN_CODER_NORM_MODE_SN;
+	}
+	else if(strcmp(val_norm_mode->data, "BSSN") == 0)
+	{
+		self->norm_mode = NN_CODER_NORM_MODE_BSSN;
+	}
+	else
+	{
+		LOGE("invalid norm_mode=%s", val_norm_mode->data);
+		goto fail_norm_mode;
 	}
 
 	if(val_pre_op)
@@ -1490,6 +1598,7 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	fail_conv:
 		nn_coderOpLayer_delete(&self->pre_op);
 	fail_pre_op:
+	fail_norm_mode:
 	fail_dimY:
 	fail_dimX:
 		nn_layer_delete((nn_layer_t**) &self);
@@ -1515,6 +1624,16 @@ int nn_coderLayer_export(nn_coderLayer_t* self,
 	ret &= nn_dim_store(&self->dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimY");
 	ret &= nn_dim_store(&self->dimY, stream);
+
+	const char* norm_mode_str[NN_CODER_NORM_MODE_COUNT] =
+	{
+		"NONE",
+		"SN",
+		"BSSN",
+	};
+	ret &= jsmn_stream_key(stream, "%s", "norm_mode");
+	ret &= jsmn_stream_string(stream, "%s",
+	                          norm_mode_str[self->norm_mode]);
 
 	if(self->pre_op)
 	{

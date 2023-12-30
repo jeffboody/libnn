@@ -98,8 +98,6 @@ void main()
 			}
 		}
 	}
-
-	// synchronize work
 	memoryBarrierShared();
 	barrier();
 

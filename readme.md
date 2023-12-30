@@ -864,10 +864,10 @@ that the largest eigenvalue of the (reshaped) weight tensors
 is rescaled to 1.0. The weight scaling helps to mitigate two
 common failure cases of exploding and vanishing gradients
 which occur when training neural networks. Spectral
-Normalization does not affect the bias terms.
+Normalization is not applied to the bias terms.
 
-The largest eigenvalue may be approximated using the Power
-Iteration Method and it was reported that a single
+The largest eigenvalue (sigma) may be approximated using the
+Power Iteration Method and it was reported that a single
 iteration was sufficient to achieve good results. A single
 iteration is sufficient because updates to the weight tensor
 are small in magnitude due to the SGD use of a small
@@ -880,18 +880,20 @@ Normalization. Spectral Normalization is used to normalize
 the weight tensors while Batch Normalization is used to
 normalize the network inputs. On the other hand, Spectral
 Normalization seems to replace L2 regularization and AdamW
-weight decay as their effects will be scaled away.
+decoupled weight decay.
 
 ![Spectral Normalization Algorithm)](docs/spectral-normalization.jpg?raw=true "Spectral Normalization")
 
-To clarify, the u vector may be initialized by selecting
-samples from a normal distribution with zero mean and unit
-standard deviation. The u vector must also be normalized.
-The tensor W has dim(fc,fh,fw,xd) (per NN convention), u has
-dim(fc) and v has dim(xd). The tensor W must be reshaped
-into a matrix with dim(fc,fh*fw*xd) while applying the Power
-Iteration Method and computing sigma (e.g. the largest
-eigenvector).
+The Spectral Normalization algorithm is written assuming
+column major matrices so the transposes need to be
+rearranged for row major matricies. The tensor W has
+dim(fc,fh,fw,xd) (where fc=cout and xd=cin per NN
+convention) and must be reshaped into a matrix with
+dim(fc,fh\*fw\*xd). The u vector has dim(fc) and is
+initialized by selecting samples from a normal distribution
+(with zero mean and unit standard deviation) followed by
+normalization. The v vector has dim(fh\*fw\*xd) and does
+not require initialization.
 
 The implementation of the update step 3 is somewhat
 ambiguous because the algorithm as written seems to suggest
@@ -907,11 +909,15 @@ following update.
 
 	W = Wbar + alpha*dL_dWbar
 
-To resolve this inconsistency, I prefer the following
-procedure (e.g. matching the popular implementations).
+To clarify this ambiguity, I propose the following
+procedure which essentially matches popular
+implementations.
 
 	// apply Spectral Normalization prior to the forwardPass
-	W = W/sigma(W)
+	u = dim(fc)
+	v = dim(fh*fw*xd)
+	M = reshape(W, dim(fc,fh*fw*xd))
+	W = W/sigma(u, v, M)
 
 	// perform forwardPass using Spectral Normalized W
 	forwardPass(W)
@@ -922,16 +928,16 @@ procedure (e.g. matching the popular implementations).
 The paper also does not explicitly mention if Spectral
 Normalization should be applied during inference. A review
 of the popular implementations did not help to clarify if
-the Specular Normalization code path is executed during
+the Spectral Normalization code path is executed during
 inference. However, it seems logical to use the unnormalized
 W during inference since Spectral Normalization may
 adversely impact the results.
 
-Two very simple extensions to Spectral Normalizatin have
+Two very simple extensions to Spectral Normalization have
 been proposed by the Bidirectional Scaled Spectral
 Normalization (BSSN) algorithm. First, BSSN recommends
 recomputing the Spectral Normalization where the tensor W
-is reshaped into a matrix with dim(xd,fc*fh*fw). The two
+is reshaped into a matrix with dim(xd,fc\*fh\*fw). The two
 Spectral Normalization results are then averaged. Each
 computation of W requires their own temporary variables for
 u and v. Secondly, the weights are also scaled by tunable
@@ -942,11 +948,15 @@ setting c to 1.0. The equation below summarizes the BSSN
 extensions.
 
 	// BSSN extensions
-	M1 = reshape(W, dim(fc,fh*fw,xd))
+	u1 = dim(fc)
+	v1 = dim(fh*fw*xd)
+	M1 = reshape(W, dim(fc,fh*fw*xd))
+	u2 = dim(xd)
+	v2 = dim(fc*fh*fw)
 	M2 = reshape(W, dim(xd,fc*fh*fw))
-	W  = c*W/((sigma(M1) + sigma(M2))/2)
+	W  = c*W/((sigma(u1, v1, M1) + sigma(u2, v2, M2))/2)
 
-An nice summary of the Spectral Normalization algorithm and
+A nice summary of the Spectral Normalization algorithm and
 the BSSN extensions is provided by the CMU blog post
 referenced below.
 

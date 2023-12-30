@@ -49,6 +49,7 @@ typedef enum
 #define NN_CODER_SKIP_MODE_COUNT 4
 
 // see nn_batchNormMode_e
+// RUNNING is default
 typedef enum
 {
 	NN_CODER_BATCH_NORM_MODE_NONE     = -1,
@@ -57,6 +58,17 @@ typedef enum
 } nn_coderBatchNormMode_e;
 
 #define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 2
+
+// see nn_tensorNormMode_e
+// NONE is default
+typedef enum
+{
+	NN_CODER_NORM_MODE_NONE = 0,
+	NN_CODER_NORM_MODE_SN   = 1,
+	NN_CODER_NORM_MODE_BSSN = 2,
+} nn_coderTensorNormMode_e;
+
+#define NN_CODER_NORM_MODE_COUNT 3
 
 typedef enum
 {
@@ -76,6 +88,9 @@ typedef struct nn_coderLayerInfo_s
 
 	nn_dim_t* dimX;
 	uint32_t  fc;
+
+	// tensor normalization
+	nn_coderTensorNormMode_e norm_mode;
 
 	// pre operation layer
 	nn_coderOpMode_e pre_op_mode;
@@ -102,6 +117,8 @@ typedef struct nn_coderLayerInfo_s
 typedef struct nn_coderOpLayer_s
 {
 	nn_layer_t base;
+
+	nn_coderLayer_t* coder;
 
 	nn_coderOpMode_e op_mode;
 	union
@@ -130,6 +147,9 @@ typedef struct nn_coderLayer_s
 
 	nn_dim_t dimX;
 	nn_dim_t dimY;
+
+	// tensor normalization
+	nn_coderTensorNormMode_e norm_mode;
 
 	// layers may be NULL depending on the desired modes
 

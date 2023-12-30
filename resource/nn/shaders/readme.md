@@ -301,3 +301,11 @@ Uniforms
 Stats
 
 * sb10: stats
+
+Spectral Normalization
+
+* sb20: u1
+* sb21: v1
+* sb22: u2
+* sb23: v2
+* sb24: c

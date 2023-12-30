@@ -92,8 +92,6 @@ void main()
 			}
 		}
 	}
-
-	// synchronize work
 	memoryBarrierShared();
 	barrier();
 
@@ -127,8 +125,6 @@ void main()
 		stats_mean = sumx/float(stats_count*xh*xw*xd);
 		stats_norm = sqrt(sumxx);
 	}
-
-	// synchronize work
 	memoryBarrierShared();
 	barrier();
 
@@ -149,8 +145,6 @@ void main()
 			}
 		}
 	}
-
-	// synchronize work
 	memoryBarrierShared();
 	barrier();
 
