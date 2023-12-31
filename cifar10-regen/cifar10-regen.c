@@ -55,7 +55,9 @@ cifar10_samplem(nn_cifar10_t* cifar10, cc_rngUniform_t* rng,
 
 	nn_dim_t* dim = nn_tensor_dim(cifar10->images);
 
-	// interpolation s
+	// input interpolation
+	#if 1
+	// linear interpolation
 	float s = cc_rngUniform_rand2F(rng, 0.0f, 1.0f);
 	if(m == 0)
 	{
@@ -65,6 +67,17 @@ cifar10_samplem(nn_cifar10_t* cifar10, cc_rngUniform_t* rng,
 	{
 		s = 1.0f;
 	}
+	#else
+	// no interpolation (GAN default)
+	float s = 0.0f;
+	if(m%2)
+	{
+		s = 1.0f;
+	}
+	#endif
+
+	// realness coefficient
+	float realness = s*s;
 
 	// create texX1
 	texgz_tex_t* texX1;
@@ -144,8 +157,7 @@ cifar10_samplem(nn_cifar10_t* cifar10, cc_rngUniform_t* rng,
 				              ((float) yt[k])/255.0f);
 			}
 
-			// realness = s*s
-			nn_tensor_set(Yt, m, i, j, dim->depth, s*s);
+			nn_tensor_set(Yt, m, i, j, dim->depth, realness);
 		}
 	}
 
