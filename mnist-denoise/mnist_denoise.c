@@ -422,7 +422,7 @@ mnist_denoise_new(nn_engine_t* engine,
 		goto fail_dL_dY;
 	}
 
-	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_RUNNING;
+	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_INSTANCE;
 
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
@@ -434,7 +434,7 @@ mnist_denoise_new(nn_engine_t* engine,
 	}
 
 	nn_coderBatchNormMode_e cbn_mode;
-	cbn_mode = NN_CODER_BATCH_NORM_MODE_RUNNING;
+	cbn_mode = NN_CODER_BATCH_NORM_MODE_INSTANCE;
 
 	nn_coderLayerInfo_t info_enc1 =
 	{
