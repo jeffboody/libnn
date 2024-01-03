@@ -125,7 +125,7 @@ void main()
 		stats_mean = sumx/float(stats_count*xh*xw*xd);
 		stats_norm = sqrt(sumxx);
 	}
-	memoryBarrierShared();
+	memoryBarrierBuffer();
 	barrier();
 
 	// compute working stddev
