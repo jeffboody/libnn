@@ -591,7 +591,7 @@ int nn_tensor_store(nn_tensor_t* self,
 }
 
 int nn_tensor_clear(nn_tensor_t* self,
-                    nn_tensorHazzard_e hazzard)
+                    vkk_hazzard_e hazzard)
 {
 	ASSERT(self);
 
@@ -641,7 +641,7 @@ int nn_tensor_clear(nn_tensor_t* self,
 		                                 2, ua0_array);
 		vkk_compute_bindUniformSets(engine->compute, 1,
 		                            &self->us0);
-		nn_engine_dispatch(engine, (vkk_hazzard_e) hazzard,
+		nn_engine_dispatch(engine, hazzard,
 		                   count, 1, 1, 64, 1, 1);
 	}
 	else
@@ -653,7 +653,7 @@ int nn_tensor_clear(nn_tensor_t* self,
 }
 
 int nn_tensor_normalize(nn_tensor_t* self,
-                        nn_tensorHazzard_e hazzard,
+                        vkk_hazzard_e hazzard,
                         nn_tensorNormMode_e norm,
                         float c)
 {
@@ -864,7 +864,7 @@ int nn_tensor_normalize(nn_tensor_t* self,
 	                            &self->us0);
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            &self->us2);
-	nn_engine_dispatch(engine, (vkk_hazzard_e) hazzard,
+	nn_engine_dispatch(engine, hazzard,
 	                   1, 1, 1, 64, 1, 1);
 
 	return 1;
@@ -872,7 +872,7 @@ int nn_tensor_normalize(nn_tensor_t* self,
 
 int nn_tensor_computeStats(nn_tensor_t* self,
                            uint32_t count,
-                           nn_tensorHazzard_e hazzard,
+                           vkk_hazzard_e hazzard,
                            nn_tensorStats_t* stats)
 {
 	ASSERT(self);
@@ -1018,7 +1018,7 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	                                 1, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2,
 	                            us_array);
-	nn_engine_dispatch(engine, (vkk_hazzard_e) hazzard,
+	nn_engine_dispatch(engine, hazzard,
 	                   1, 1, 1, 8, 8, 1);
 
 	stats->dirty = 1;

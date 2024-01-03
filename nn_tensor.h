@@ -50,15 +50,6 @@ typedef enum
 	NN_TENSOR_NORM_MODE_BSSN = 1,
 } nn_tensorNormMode_e;
 
-// definitions must match vkk_hazzard_e
-typedef enum
-{
-	NN_TENSOR_HAZZARD_NONE = 0,
-	NN_TENSOR_HAZZARD_WAR  = 1,
-	NN_TENSOR_HAZZARD_RAW  = 2,
-	NN_TENSOR_HAZZARD_ANY  = 3,
-} nn_tensorHazzard_e;
-
 typedef struct nn_tensor_s
 {
 	nn_engine_t* engine;
@@ -105,14 +96,14 @@ int          nn_tensor_load(nn_tensor_t* self,
 int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
 int          nn_tensor_clear(nn_tensor_t* self,
-                             nn_tensorHazzard_e hazzard);
+                             vkk_hazzard_e hazzard);
 int          nn_tensor_normalize(nn_tensor_t* self,
-                                 nn_tensorHazzard_e hazzard,
+                                 vkk_hazzard_e hazzard,
                                  nn_tensorNormMode_e norm,
                                  float c);
 int          nn_tensor_computeStats(nn_tensor_t* self,
                                     uint32_t count,
-                                    nn_tensorHazzard_e hazzard,
+                                    vkk_hazzard_e hazzard,
                                     nn_tensorStats_t* stats);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t n, uint32_t i,

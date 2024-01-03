@@ -61,7 +61,7 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
 		if(coder->norm_mode == NN_CODER_NORM_MODE_SN)
 		{
 			if(nn_tensor_normalize(self->conv->W,
-			                       NN_TENSOR_HAZZARD_NONE,
+			                       VKK_HAZZARD_NONE,
 			                       NN_TENSOR_NORM_MODE_SN,
 			                       1.0f) == 0)
 			{
@@ -71,7 +71,7 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
 		else if(coder->norm_mode == NN_CODER_NORM_MODE_BSSN)
 		{
 			if(nn_tensor_normalize(self->conv->W,
-			                       NN_TENSOR_HAZZARD_NONE,
+			                       VKK_HAZZARD_NONE,
 			                       NN_TENSOR_NORM_MODE_BSSN,
 			                       1.2f) == 0)
 			{
@@ -526,7 +526,7 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 	if(coder->norm_mode == NN_CODER_NORM_MODE_SN)
 	{
 		if(nn_tensor_normalize(self->conv->W,
-		                       NN_TENSOR_HAZZARD_NONE,
+		                       VKK_HAZZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_SN,
 		                       1.0f) == 0)
 		{
@@ -536,7 +536,7 @@ nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
 	else if(coder->norm_mode == NN_CODER_NORM_MODE_BSSN)
 	{
 		if(nn_tensor_normalize(self->conv->W,
-		                       NN_TENSOR_HAZZARD_NONE,
+		                       VKK_HAZZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_BSSN,
 		                       1.2f) == 0)
 		{
@@ -825,7 +825,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 		if(self->norm_mode == NN_CODER_NORM_MODE_SN)
 		{
 			if(nn_tensor_normalize(self->conv->W,
-			                       NN_TENSOR_HAZZARD_NONE,
+			                       VKK_HAZZARD_NONE,
 			                       NN_TENSOR_NORM_MODE_SN,
 			                       1.0f) == 0)
 			{
@@ -835,7 +835,7 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 		else if(self->norm_mode == NN_CODER_NORM_MODE_BSSN)
 		{
 			if(nn_tensor_normalize(self->conv->W,
-			                       NN_TENSOR_HAZZARD_NONE,
+			                       VKK_HAZZARD_NONE,
 			                       NN_TENSOR_NORM_MODE_BSSN,
 			                       1.2f) == 0)
 			{

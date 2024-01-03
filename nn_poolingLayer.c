@@ -66,7 +66,7 @@ nn_poolingLayer_forwardPassFn(nn_layer_t* base, int flags,
 	// clear forward gradients
 	if(self->pooling_mode == NN_POOLING_MODE_MAX)
 	{
-		if(nn_tensor_clear(dY_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+		if(nn_tensor_clear(dY_dX, VKK_HAZZARD_NONE) == 0)
 		{
 			return NULL;
 		}

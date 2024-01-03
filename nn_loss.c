@@ -379,7 +379,7 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	                   1, 8, 8);
 
 	if(nn_tensor_computeStats(dL_dY, bs,
-	                          NN_TENSOR_HAZZARD_RAW,
+	                          VKK_HAZZARD_RAW,
 	                          self->stats_dL_dY) == 0)
 	{
 		return NULL;

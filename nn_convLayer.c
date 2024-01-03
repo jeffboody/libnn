@@ -189,20 +189,20 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	if(nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dW, VKK_HAZZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE) == 0)
+		if(nn_tensor_clear(dL_dB, VKK_HAZZARD_NONE) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dX, VKK_HAZZARD_NONE) == 0)
 	{
 		return NULL;
 	}
@@ -407,7 +407,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	                   fc, 1, 1, 64, 1, 1);
 
 	if(nn_tensor_computeStats(dL_dX, bs,
-	                          NN_TENSOR_HAZZARD_RAW,
+	                          VKK_HAZZARD_RAW,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;
@@ -555,20 +555,20 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	if(nn_tensor_clear(dL_dW, NN_TENSOR_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dW, VKK_HAZZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(dL_dB, NN_TENSOR_HAZZARD_NONE) == 0)
+		if(nn_tensor_clear(dL_dB, VKK_HAZZARD_NONE) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(dL_dX, NN_TENSOR_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dX, VKK_HAZZARD_NONE) == 0)
 	{
 		return NULL;
 	}
@@ -773,7 +773,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	                   fc, 1, 1, 64, 1, 1);
 
 	if(nn_tensor_computeStats(dL_dX, bs,
-	                          NN_TENSOR_HAZZARD_RAW,
+	                          VKK_HAZZARD_RAW,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;
