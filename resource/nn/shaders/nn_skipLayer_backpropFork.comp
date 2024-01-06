@@ -10,22 +10,22 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=2, binding=0) readonly buffer sb20
 {
 	nn_dim_t dim_dL_dY;
 };
 
-layout(std430, set=1, binding=1) buffer sb11
+layout(std430, set=2, binding=1) buffer sb21
 {
 	float dL_dY[];
 };
 
-layout(std430, set=1, binding=6) readonly buffer sb16
+layout(std430, set=2, binding=6) readonly buffer sb26
 {
 	nn_dim_t dim_dL_dY2;
 };
 
-layout(std430, set=1, binding=7) readonly buffer sb17
+layout(std430, set=2, binding=7) readonly buffer sb27
 {
 	float dL_dY2[];
 };

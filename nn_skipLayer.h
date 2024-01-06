@@ -39,7 +39,10 @@ typedef struct nn_skipLayer_s
 {
 	nn_layer_t base;
 
+	// skip_beta is residule scaling for add/cat modes
+	// set to 1.0f to disable
 	nn_skipMode_e skip_mode;
+	float         skip_beta;
 
 	// fork/add/cat layer
 	nn_skipLayer_t* skip; // reference
@@ -66,11 +69,17 @@ typedef struct nn_skipLayer_s
 	//   dL_dY2 : dim(bs,xh,xw,xd)
 	//   dL_dX1 : NULL
 	//   dL_dX2 : NULL
-	// add:
+	// add (skip_beta == 1.0):
 	//   dL_dY passed through
 	//   dL_dY  : dim(bs,xh,xw,xd)
 	//            x1h==x2h, x1w==x2w, x1d==x2d
 	//   dL_dX1 : NULL
+	//   dL_dX2 : dL_dY (reference)
+	// add (skip_beta != 1.0):
+	//   dL_dY passed through
+	//   dL_dY  : dim(bs,xh,xw,xd)
+	//            x1h==x2h, x1w==x2w, x1d==x2d
+	//   dL_dX1 : dim(bs,xh,xw,xd)
 	//   dL_dX2 : dL_dY (reference)
 	// cat:
 	//   dL_dY  : dim(bs,xh,xw,x1d + x2d)
@@ -82,16 +91,20 @@ typedef struct nn_skipLayer_s
 
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
+	vkk_uniformSet_t* us2;
+	vkk_buffer_t*     sb01_param;
 } nn_skipLayer_t;
 
 nn_skipLayer_t* nn_skipLayer_newFork(nn_arch_t* arch,
                                      nn_dim_t* dimX);
 nn_skipLayer_t* nn_skipLayer_newAdd(nn_arch_t* arch,
                                     nn_dim_t* dimX,
-                                    nn_skipLayer_t* skip_fork);
+                                    nn_skipLayer_t* skip_fork,
+                                    float skip_beta);
 nn_skipLayer_t* nn_skipLayer_newCat(nn_arch_t* arch,
                                     nn_dim_t* dimX,
-                                    nn_skipLayer_t* skip_fork);
+                                    nn_skipLayer_t* skip_fork,
+                                    float skip_beta);
 nn_skipLayer_t* nn_skipLayer_import(nn_arch_t* arch,
                                     jsmn_val_t* val,
                                     nn_skipLayer_t* skip_fork);

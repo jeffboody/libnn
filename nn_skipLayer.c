@@ -38,6 +38,11 @@
 * private                                                  *
 ***********************************************************/
 
+typedef struct
+{
+	float beta;
+} nn_skipLayerParam_t;
+
 static nn_tensor_t*
 nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int flags,
                                uint32_t bs, nn_tensor_t* X)
@@ -50,190 +55,6 @@ nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int flags,
 	self->Y = X;
 
 	return X;
-}
-
-static nn_tensor_t*
-nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* dL_dY)
-{
-	ASSERT(base);
-	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
-
-	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
-
-	self->dL_dX2 = dL_dY; // reference
-
-	return dL_dY;
-}
-
-static nn_tensor_t*
-nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
-{
-	ASSERT(base);
-	ASSERT(X);
-
-	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch   = base->arch;
-	nn_engine_t*    engine = arch->engine;
-
-	if((self->skip == NULL) || (self->skip->Y == NULL))
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	nn_tensor_t* X1   = X;
-	nn_tensor_t* X2   = self->skip->Y;
-	nn_tensor_t* Y    = self->Y;
-	nn_dim_t*    dimX = &self->dimX;
-
-	// sb00: dimX/dimX1
-	// sb01: X/X1
-	// sb02: dimY
-	// sb03: Y
-	// sb04: dimX2
-	// sb05: X2
-	vkk_uniformAttachment_t ua0_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X1->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X1->sb_data,
-		},
-		{
-			.binding = 2,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_dim,
-		},
-		{
-			.binding = 3,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_data,
-		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X2->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X2->sb_data,
-		},
-	};
-
-	vkk_uniformSet_t* us_array[] =
-	{
-		self->us0,
-	};
-
-	// nn_skipLayer_forwardPassAdd
-	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp;
-	cp = engine->cp_skip_forwardPassAdd;
-	if(nn_engine_bind(engine, cp) == 0)
-	{
-		return NULL;
-	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-	                                 6, ua0_array);
-	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
-
-	return Y;
-}
-
-static nn_tensor_t*
-nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
-{
-	ASSERT(base);
-	ASSERT(X);
-
-	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
-	nn_arch_t*      arch   = base->arch;
-	nn_engine_t*    engine = arch->engine;
-
-	if((self->skip == NULL) || (self->skip->Y == NULL))
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	nn_tensor_t* X1   = X;
-	nn_tensor_t* X2   = self->skip->Y;
-	nn_tensor_t* Y    = self->Y;
-	nn_dim_t*    dimX = nn_tensor_dim(X);
-
-	// sb00: dimX/dimX1
-	// sb01: X/X1
-	// sb02: dimY
-	// sb03: Y
-	// sb04: dimX2
-	// sb05: X2
-	vkk_uniformAttachment_t ua0_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X1->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X1->sb_data,
-		},
-		{
-			.binding = 2,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_dim,
-		},
-		{
-			.binding = 3,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_data,
-		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X2->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X2->sb_data,
-		},
-	};
-
-	vkk_uniformSet_t* us_array[] =
-	{
-		self->us0,
-	};
-
-	// nn_skipLayer_forwardPassCat
-	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp;
-	cp = engine->cp_skip_forwardPassCat;
-	if(nn_engine_bind(engine, cp) == 0)
-	{
-		return NULL;
-	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-	                                 6, ua0_array);
-	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
-
-	return Y;
 }
 
 static nn_tensor_t*
@@ -257,15 +78,71 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 	nn_tensor_t* dL_dY2 = self->skip->dL_dX2;
 	nn_dim_t*    dimX   = &self->dimX;
 
-	// sb10: dim_dL_dY
-	// sb11: dL_dY
-	// sb12: dim_dL_dX/dim_dL_dX1
-	// sb13: dL_dX/dL_dX1
-	// sb14: dim_dL_dX2/dim_dL_dY2
-	// sb15: dL_dX2/dL_dY2
-	// sb16: dim_dL_dY2
-	// sb17: dL_dY2
+	// sb00: state
+	// sb01: param (beta)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb00_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb01_param,
+		},
+	};
+
+	// sb10: dimX/dimX1
+	// sb11: X/X1
+	// sb12: dimY
+	// sb13: Y
+	// sb14: dimX2
+	// sb15: X2
 	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+	};
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	// sb22: dim_dL_dX/dim_dL_dX1
+	// sb23: dL_dX/dL_dX1
+	// sb24: dim_dL_dX2/dim_dL_dY2
+	// sb25: dL_dX2/dL_dY2
+	// sb26: dim_dL_dY2
+	// sb27: dL_dY2
+	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
@@ -311,7 +188,9 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 
 	vkk_uniformSet_t* us_array[] =
 	{
+		self->us0,
 		self->us1,
+		self->us2,
 	};
 
 	// nn_skipLayer_backpropFork
@@ -322,15 +201,330 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
+	                                 2, ua0_array);
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
-	                                 8, ua1_array);
-	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	                                 6, ua1_array);
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
+	                                 8, ua2_array);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
 	// dL_dY replaced by dL_dY1 + dL_dY2
 	return dL_dY;
+}
+
+static nn_tensor_t*
+nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
+                              uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
+
+	if((self->skip == NULL) || (self->skip->Y == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_tensor_t* X1   = X;
+	nn_tensor_t* X2   = self->skip->Y;
+	nn_tensor_t* Y    = self->Y;
+	nn_dim_t*    dimX = &self->dimX;
+
+	// sb00: state
+	// sb01: param (beta)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb00_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb01_param,
+		},
+	};
+
+	// sb10: dimX/dimX1
+	// sb11: X/X1
+	// sb12: dimY
+	// sb13: Y
+	// sb14: dimX2
+	// sb15: X2
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+	};
+
+	// nn_skipLayer_forwardPassAdd
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_skip_forwardPassAdd;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return NULL;
+	}
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
+	                                 2, ua0_array);
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
+	                                 6, ua1_array);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
+
+	return Y;
+}
+
+static nn_tensor_t*
+nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
+                           uint32_t bs, nn_tensor_t* dL_dY)
+{
+	ASSERT(base);
+	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
+
+	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
+
+	self->dL_dX2 = dL_dY; // reference
+
+	// fast path where skip_beta == 1.0f
+	if(self->skip_beta == 1.0f)
+	{
+		return dL_dY;
+	}
+
+	nn_arch_t*   arch   = base->arch;
+	nn_engine_t* engine = arch->engine;
+
+	nn_tensor_t* Null   = engine->Null;
+	nn_tensor_t* dL_dX1 = self->dL_dX1;
+	nn_dim_t*    dimX   = &self->dimX;
+
+	// ua0_array and ua1_array updated in forwardPass
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	// sb22: dim_dL_dX/dim_dL_dX1
+	// sb23: dL_dX/dL_dX1
+	// sb24: dim_dL_dX2/dim_dL_dY2
+	// sb25: dL_dX2/dL_dY2
+	// sb26: dim_dL_dY2
+	// sb27: dL_dY2
+	vkk_uniformAttachment_t ua2_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dY->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX1->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = dL_dX1->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_dim,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Null->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+		self->us2,
+	};
+
+	// nn_skipLayer_backpropAdd
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_skip_backpropAdd;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return NULL;
+	}
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
+	                                 8, ua2_array);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
+
+	return dL_dX1;
+}
+
+static nn_tensor_t*
+nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
+                              uint32_t bs, nn_tensor_t* X)
+{
+	ASSERT(base);
+	ASSERT(X);
+
+	nn_skipLayer_t* self   = (nn_skipLayer_t*) base;
+	nn_arch_t*      arch   = base->arch;
+	nn_engine_t*    engine = arch->engine;
+
+	if((self->skip == NULL) || (self->skip->Y == NULL))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_tensor_t* X1   = X;
+	nn_tensor_t* X2   = self->skip->Y;
+	nn_tensor_t* Y    = self->Y;
+	nn_dim_t*    dimX = nn_tensor_dim(X);
+
+	// sb00: state
+	// sb01: param (beta)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = arch->sb00_state,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb01_param,
+		},
+	};
+
+	// sb10: dimX/dimX1
+	// sb11: X/X1
+	// sb12: dimY
+	// sb13: Y
+	// sb14: dimX2
+	// sb15: X2
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X1->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X2->sb_data,
+		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1,
+	};
+
+	// nn_skipLayer_forwardPassCat
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_skip_forwardPassCat;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return NULL;
+	}
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
+	                                 2, ua0_array);
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
+	                                 6, ua1_array);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	                   bs, dimX->height, dimX->width,
+	                   1, 8, 8);
+
+	return Y;
 }
 
 static nn_tensor_t*
@@ -349,15 +543,17 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
 	nn_tensor_t* dL_dX2 = self->dL_dX2;
 	nn_dim_t*    dimX   = &self->dimX;
 
-	// sb10: dim_dL_dY
-	// sb11: dL_dY
-	// sb12: dim_dL_dX/dim_dL_dX1
-	// sb13: dL_dX/dL_dX1
-	// sb14: dim_dL_dX2/dim_dL_dY2
-	// sb15: dL_dX2/dL_dY2
-	// sb16: dim_dL_dY2
-	// sb17: dL_dY2
-	vkk_uniformAttachment_t ua1_array[] =
+	// ua0_array and ua1_array updated in forwardPass
+
+	// sb20: dim_dL_dY
+	// sb21: dL_dY
+	// sb22: dim_dL_dX/dim_dL_dX1
+	// sb23: dL_dX/dL_dX1
+	// sb24: dim_dL_dX2/dim_dL_dY2
+	// sb25: dL_dX2/dL_dY2
+	// sb26: dim_dL_dY2
+	// sb27: dL_dY2
+	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
@@ -403,7 +599,9 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
 
 	vkk_uniformSet_t* us_array[] =
 	{
+		self->us0,
 		self->us1,
+		self->us2,
 	};
 
 	// nn_skipLayer_backpropCat
@@ -414,9 +612,9 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
-	                                 8, ua1_array);
-	vkk_compute_bindUniformSets(engine->compute, 1, us_array);
+	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
+	                                 8, ua2_array);
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
@@ -445,10 +643,35 @@ static int nn_skipLayer_newCompute(nn_skipLayer_t* self)
 		goto fail_us1;
 	}
 
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_skip);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	nn_skipLayerParam_t param =
+	{
+		.beta = self->skip_beta,
+	};
+	self->sb01_param = vkk_buffer_new(engine->engine,
+	                                  VKK_UPDATE_MODE_STATIC,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(nn_skipLayerParam_t),
+	                                  &param);
+	if(self->sb01_param == NULL)
+	{
+		goto fail_sb01_param;
+	}
+
 	// success
 	return 1;
 
 	// failure
+	fail_sb01_param:
+		vkk_uniformSet_delete(&self->us2);
+	fail_us2:
+		vkk_uniformSet_delete(&self->us1);
 	fail_us1:
 		vkk_uniformSet_delete(&self->us0);
 	return 0;
@@ -459,6 +682,8 @@ nn_skipLayer_deleteCompute(nn_skipLayer_t* self)
 {
 	ASSERT(self);
 
+	vkk_buffer_delete(&self->sb01_param);
+	vkk_uniformSet_delete(&self->us2);
 	vkk_uniformSet_delete(&self->us1);
 	vkk_uniformSet_delete(&self->us0);
 }
@@ -540,13 +765,25 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 nn_skipLayer_t*
 nn_skipLayer_newAdd(nn_arch_t* arch,
                     nn_dim_t* dimX1,
-                    nn_skipLayer_t* skip_fork)
+                    nn_skipLayer_t* skip_fork,
+                    float skip_beta)
 {
 	ASSERT(arch);
 	ASSERT(dimX1);
 	ASSERT(skip_fork);
 
 	nn_engine_t* engine = arch->engine;
+
+	if(skip_beta == 0.0f)
+	{
+		// default
+		skip_beta = 1.0f;
+	}
+	else if((skip_beta < 0.0f) || (skip_beta > 1.0f))
+	{
+		LOGE("invalid skip_beta=%f", skip_beta);
+		return NULL;
+	}
 
 	// check required dimensions
 	// x1h==x2h, x1w==x2w, x1d==x2d
@@ -585,6 +822,7 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 	}
 
 	self->skip_mode = NN_SKIP_MODE_ADD;
+	self->skip_beta = skip_beta,
 	self->skip      = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
@@ -597,7 +835,17 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 		goto fail_Y;
 	}
 
-	// dL_X1 and dL_X2 are set by backpropAddFn
+	// dL_dX1 is optional and dL_dX2 is set by backpropAddFn
+	if(skip_beta != 1.0f)
+	{
+		self->dL_dX1 = nn_tensor_new(engine, dimX1,
+		                             NN_TENSOR_INIT_ZERO,
+		                             NN_TENSOR_MODE_COMPUTE);
+		if(self->dL_dX1 == NULL)
+		{
+			goto fail_dL_dX1;
+		}
+	}
 
 	// connect skip
 	skip_fork->skip = self;
@@ -612,6 +860,8 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 
 	// failure
 	fail_compute:
+		nn_tensor_delete(&self->dL_dX1);
+	fail_dL_dX1:
 		nn_tensor_delete(&self->Y);
 	fail_Y:
 		nn_layer_delete((nn_layer_t**) &self);
@@ -621,12 +871,24 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 nn_skipLayer_t*
 nn_skipLayer_newCat(nn_arch_t* arch,
                     nn_dim_t* dimX1,
-                    nn_skipLayer_t* skip_fork)
+                    nn_skipLayer_t* skip_fork,
+                    float skip_beta)
 {
 	ASSERT(arch);
 	ASSERT(skip_fork);
 
 	nn_engine_t* engine = arch->engine;
+
+	if(skip_beta == 0.0f)
+	{
+		// default
+		skip_beta = 1.0f;
+	}
+	else if((skip_beta < 0.0f) || (skip_beta > 1.0f))
+	{
+		LOGE("invalid skip_beta=%f", skip_beta);
+		return NULL;
+	}
 
 	// check required dimensions
 	// x1h==x2h, x1w==x2w
@@ -664,6 +926,7 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	}
 
 	self->skip_mode = NN_SKIP_MODE_CAT;
+	self->skip_beta = skip_beta,
 	self->skip      = skip_fork;
 
 	nn_dim_copy(dimX1, &self->dimX);
@@ -739,6 +1002,7 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 
 	jsmn_val_t* val_dimX      = NULL;
 	jsmn_val_t* val_skip_mode = NULL;
+	jsmn_val_t* val_skip_beta = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -760,17 +1024,27 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 				val_dimX = kv->val;
 			}
 		}
+		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		{
+			if(strcmp(kv->key, "skip_beta") == 0)
+			{
+				val_skip_beta = kv->val;
+			}
+		}
 
 		iter = cc_list_next(iter);
 	}
 
 	// check for required parameters
 	if((val_dimX      == NULL) ||
-	   (val_skip_mode == NULL))
+	   (val_skip_mode == NULL) ||
+	   (val_skip_beta == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
 	}
+
+	float skip_beta = strtof(val_skip_beta->data, NULL);
 
 	nn_dim_t dimX;
 	if(nn_dim_load(&dimX, val_dimX) == 0)
@@ -784,11 +1058,13 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	}
 	else if(strcmp(val_skip_mode->data, "ADD") == 0)
 	{
-		return nn_skipLayer_newAdd(arch, &dimX, skip_fork);
+		return nn_skipLayer_newAdd(arch, &dimX, skip_fork,
+		                           skip_beta);
 	}
 	else if(strcmp(val_skip_mode->data, "CAT") == 0)
 	{
-		return nn_skipLayer_newCat(arch, &dimX, skip_fork);
+		return nn_skipLayer_newCat(arch, &dimX, skip_fork,
+		                           skip_beta);
 	}
 	else
 	{
@@ -822,6 +1098,8 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	{
 		ret &= jsmn_stream_string(stream, "%s", "FORK");
 	}
+	ret &= jsmn_stream_key(stream, "%s", "skip_beta");
+	ret &= jsmn_stream_float(stream, self->skip_beta);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
@@ -836,6 +1114,7 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 	{
 		nn_skipLayer_deleteCompute(self);
 
+		// Y, dL_dX1, dL_dX2 may be references
 		if(self->skip_mode == NN_SKIP_MODE_CAT)
 		{
 			nn_tensor_delete(&self->dL_dX2);
@@ -844,6 +1123,10 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 		}
 		else if(self->skip_mode == NN_SKIP_MODE_ADD)
 		{
+			if(self->skip_beta != 1.0f)
+			{
+				nn_tensor_delete(&self->dL_dX1);
+			}
 			nn_tensor_delete(&self->Y);
 		}
 		nn_layer_delete((nn_layer_t**) _self);

@@ -60,6 +60,7 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf2_pooling;
 	vkk_uniformSetFactory_t* usf0_skip;
 	vkk_uniformSetFactory_t* usf1_skip;
+	vkk_uniformSetFactory_t* usf2_skip;
 	vkk_uniformSetFactory_t* usf0_weight;
 	vkk_uniformSetFactory_t* usf1_weight;
 	vkk_uniformSetFactory_t* usf2_weight;
@@ -115,6 +116,7 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_pooling_backprop;
 	vkk_computePipeline_t* cp_skip_forwardPassAdd;
 	vkk_computePipeline_t* cp_skip_forwardPassCat;
+	vkk_computePipeline_t* cp_skip_backpropAdd;
 	vkk_computePipeline_t* cp_skip_backpropCat;
 	vkk_computePipeline_t* cp_skip_backpropFork;
 	vkk_computePipeline_t* cp_weight_forwardPass;

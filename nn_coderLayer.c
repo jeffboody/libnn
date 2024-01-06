@@ -1230,13 +1230,15 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		{
 			ASSERT(info->skip_coder);
 			self->skip = nn_skipLayer_newAdd(info->arch, dim,
-			                                 info->skip_coder->skip);
+			                                 info->skip_coder->skip,
+			                                 info->skip_beta);
 		}
 		else if(info->skip_mode == NN_CODER_SKIP_MODE_CAT)
 		{
 			ASSERT(info->skip_coder);
 			self->skip = nn_skipLayer_newCat(info->arch, dim,
-			                                 info->skip_coder->skip);
+			                                 info->skip_coder->skip,
+			                                 info->skip_beta);
 		}
 
 		if(self->skip == NULL)

@@ -36,6 +36,7 @@ glslangValidator -V nn_poolingLayer_forwardPassMax.comp -o nn_poolingLayer_forwa
 glslangValidator -V nn_poolingLayer_backprop.comp -o nn_poolingLayer_backprop_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassAdd.comp -o nn_skipLayer_forwardPassAdd_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassCat.comp -o nn_skipLayer_forwardPassCat_comp.spv
+glslangValidator -V nn_skipLayer_backpropAdd.comp -o nn_skipLayer_backpropAdd_comp.spv
 glslangValidator -V nn_skipLayer_backpropCat.comp -o nn_skipLayer_backpropCat_comp.spv
 glslangValidator -V nn_skipLayer_backpropFork.comp -o nn_skipLayer_backpropFork_comp.spv
 glslangValidator -V nn_tensor_clear.comp -o nn_tensor_clear_comp.spv
@@ -95,6 +96,7 @@ bfs $1 blobSet nn/shaders/nn_poolingLayer_forwardPassMax_comp.spv
 bfs $1 blobSet nn/shaders/nn_poolingLayer_backprop_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassAdd_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassCat_comp.spv
+bfs $1 blobSet nn/shaders/nn_skipLayer_backpropAdd_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_backpropCat_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_backpropFork_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_clear_comp.spv

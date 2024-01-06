@@ -10,32 +10,37 @@ struct nn_dim_t
 	uint depth;
 };
 
+layout(std430, set=0, binding=1) readonly buffer sb01
+{
+	float param_skip_beta;
+};
+
 layout(std430, set=0, binding=0) readonly buffer sb00
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=1, binding=1) readonly buffer sb11
 {
 	float X[];
 };
 
-layout(std430, set=0, binding=2) readonly buffer sb02
+layout(std430, set=1, binding=2) readonly buffer sb12
 {
 	nn_dim_t dimY;
 };
 
-layout(std430, set=0, binding=3) writeonly buffer sb03
+layout(std430, set=1, binding=3) writeonly buffer sb13
 {
 	float Y[];
 };
 
-layout(std430, set=0, binding=4) readonly buffer sb04
+layout(std430, set=1, binding=4) readonly buffer sb14
 {
 	nn_dim_t dimX2;
 };
 
-layout(std430, set=0, binding=5) readonly buffer sb05
+layout(std430, set=1, binding=5) readonly buffer sb15
 {
 	float X2[];
 };
@@ -85,6 +90,6 @@ void main()
 	{
 		float x1 = getX1(m, i, j, k);
 		float x2 = getX2(m, i, j, k);
-		setY(m, i, j, k, x1 + x2);
+		setY(m, i, j, k, param_skip_beta*x1 + x2);
 	}
 }

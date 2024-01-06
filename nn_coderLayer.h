@@ -102,6 +102,7 @@ typedef struct nn_coderLayerInfo_s
 	// skip_coder must be set for add/cat modes
 	nn_coderSkipMode_e skip_mode;
 	nn_coderLayer_t*   skip_coder;
+	float              skip_beta;
 
 	// bn layer
 	nn_coderBatchNormMode_e bn_mode;

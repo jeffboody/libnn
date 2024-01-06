@@ -206,25 +206,30 @@ Backprop Uniforms
 Skip Layer
 ----------
 
+Shared Uniforms
+
+* sb00: state
+* sb01: param (beta)
+
 Forward Pass Uniforms
 
-* sb00: dimX/dimX1
-* sb01: X/X1
-* sb02: dimY
-* sb03: Y
-* sb04: dimX2
-* sb05: X2
+* sb10: dimX/dimX1
+* sb11: X/X1
+* sb12: dimY
+* sb13: Y
+* sb14: dimX2
+* sb15: X2
 
 Backprop Uniforms
 
-* sb10: dim_dL_dY
-* sb11: dL_dY
-* sb12: dim_dL_dX/dim_dL_dX1
-* sb13: dL_dX/dL_dX1
-* sb14: dim_dL_dX2
-* sb15: dL_dX2
-* sb16: dim_dL_dY2
-* sb17: dL_dY2
+* sb20: dim_dL_dY
+* sb21: dL_dY
+* sb22: dim_dL_dX/dim_dL_dX1
+* sb23: dL_dX/dL_dX1
+* sb24: dim_dL_dX2
+* sb25: dL_dX2
+* sb26: dim_dL_dY2
+* sb27: dL_dY2
 
 Weight Layer
 ------------
