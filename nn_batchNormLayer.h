@@ -32,8 +32,8 @@
 // see nn_coderBatchNormMode_e
 typedef enum
 {
-	NN_BATCH_NORM_MODE_RUNNING  = 0,
-	NN_BATCH_NORM_MODE_INSTANCE = 1,
+	NN_BATCH_NORM_MODE_RUNNING  = 1,
+	NN_BATCH_NORM_MODE_INSTANCE = 2,
 } nn_batchNormMode_e;
 
 typedef struct nn_batchNormLayer_s

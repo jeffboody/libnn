@@ -1200,6 +1200,7 @@ References
 * [Normalization is dead, long live normalization!](https://iclr-blog-track.github.io/2022/03/25/unnormalized-resnets/)
 * [It Is Necessary to Combine Batch Normalization and Skip Connections](https://towardsdatascience.com/its-necessary-to-combine-batch-norm-and-skip-connections-e92210ca04da)
 * [Identity Mappings in Deep Residual Networks](https://arxiv.org/pdf/1603.05027.pdf)
+* [Densely Connected Convolutional Networks](https://arxiv.org/pdf/1608.06993.pdf)
 * [Deep Residual Learning for Image Recognition](https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
 * [Machine Learning Super-Resolution](https://artoriuz.github.io/blog/super_resolution.html)
 * [Accurate Image Super-Resolution Using Very Deep Convolutional Networks](https://arxiv.org/pdf/1511.04587v2.pdf)

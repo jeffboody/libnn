@@ -299,11 +299,13 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 	// 2: X < F < C < CF < Up   < CF < CF < Yt
 	nn_coderLayerInfo_t info1 =
 	{
-		.arch      = &self->base,
-		.dimX      = dim,
-		.fc        = fc,
-		.conv_mode = NN_CODER_CONV_MODE_3X3_RELU,
-		.bn_mode   = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder1 = nn_coderLayer_new(&info1);
@@ -315,11 +317,13 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info2 =
 	{
-		.arch      = &self->base,
-		.dimX      = dim,
-		.fc        = fc,
-		.conv_mode = NN_CODER_CONV_MODE_3X3_RELU,
-		.bn_mode   = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder2 = nn_coderLayer_new(&info2);
@@ -331,11 +335,13 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info3 =
 	{
-		.arch      = &self->base,
-		.dimX      = dim,
-		.fc        = fc,
-		.conv_mode = NN_CODER_CONV_MODE_3X3_RELU,
-		.bn_mode   = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder3 = nn_coderLayer_new(&info3);
@@ -347,11 +353,14 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info4 =
 	{
-		.arch      = &self->base,
-		.dimX      = dim,
-		.fc        = fc,
-		.conv_mode = NN_CODER_CONV_MODE_3X3_RELU,
-		.bn_mode   = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.op_mode    = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
 
 	self->coder4 = nn_coderLayer_new(&info4);
@@ -363,12 +372,13 @@ cifar10_regen2_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info5 =
 	{
-		.arch        = &self->base,
-		.dimX        = dim,
-		.fc          = fc,
-		.pre_op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2,
-		.conv_mode   = NN_CODER_CONV_MODE_3X3_RELU,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder5 = nn_coderLayer_new(&info5);

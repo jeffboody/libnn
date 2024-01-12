@@ -392,31 +392,27 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 		goto fail_dL_dY;
 	}
 
-	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_RUNNING;
-
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
 	self->bn0 = nn_batchNormLayer_new(&self->base,
-	                                  bn_mode, dim);
+	                                  NN_BATCH_NORM_MODE_RUNNING,
+	                                  dim);
 	if(self->bn0 == NULL)
 	{
 		goto fail_bn0;
 	}
 
-	nn_coderBatchNormMode_e cbn_mode;
-	cbn_mode = NN_CODER_BATCH_NORM_MODE_RUNNING;
-
 	nn_coderLayerInfo_t info_coder1 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_3X3_RELU,
-		.repeat       = 2,
-		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.repeat     = 2,
+		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
 	self->coder1 = nn_coderLayer_new(&info_coder1);
@@ -428,15 +424,15 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info_coder2 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_3X3_RELU,
-		.repeat       = 2,
-		.post_op_mode = NN_CODER_OP_MODE_CONV_3X3_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.repeat     = 2,
+		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
 	self->coder2 = nn_coderLayer_new(&info_coder2);
@@ -448,14 +444,13 @@ mnist_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info_coder3 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_NONE,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder3 = nn_coderLayer_new(&info_coder3);

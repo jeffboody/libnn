@@ -28,59 +28,41 @@
 #include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "../libcc/cc_list.h"
 #include "nn_dim.h"
+#include "nn_factLayer.h"
 #include "nn_layer.h"
 
+// see nn_skipMode_e
 typedef enum
 {
-	NN_CODER_CONV_MODE_NONE     = 0,
-	NN_CODER_CONV_MODE_3X3_RELU = 1,
-} nn_coderConvMode_e;
-
-#define NN_CODER_CONV_MODE_COUNT 2
-
-typedef enum
-{
-	NN_CODER_SKIP_MODE_NONE = 0,
-	NN_CODER_SKIP_MODE_FORK = 1,
-	NN_CODER_SKIP_MODE_ADD  = 2,
-	NN_CODER_SKIP_MODE_CAT  = 3,
+	NN_CODER_SKIP_MODE_NONE     = 0,
+	NN_CODER_SKIP_MODE_FORK_ADD = 1,
+	NN_CODER_SKIP_MODE_FORK_CAT = 2,
+	NN_CODER_SKIP_MODE_ADD      = 3,
+	NN_CODER_SKIP_MODE_CAT      = 4,
 } nn_coderSkipMode_e;
 
-#define NN_CODER_SKIP_MODE_COUNT 4
+#define NN_CODER_SKIP_MODE_COUNT 5
 
 // see nn_batchNormMode_e
-// RUNNING is default
 typedef enum
 {
-	NN_CODER_BATCH_NORM_MODE_NONE     = -1,
-	NN_CODER_BATCH_NORM_MODE_RUNNING  = 0,
-	NN_CODER_BATCH_NORM_MODE_INSTANCE = 1,
+	NN_CODER_BATCH_NORM_MODE_NONE     = 0,
+	NN_CODER_BATCH_NORM_MODE_RUNNING  = 1,
+	NN_CODER_BATCH_NORM_MODE_INSTANCE = 2,
 } nn_coderBatchNormMode_e;
 
-#define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 2
-
-// see nn_tensorNormMode_e
-// NONE is default
-typedef enum
-{
-	NN_CODER_NORM_MODE_NONE = 0,
-	NN_CODER_NORM_MODE_SN   = 1,
-	NN_CODER_NORM_MODE_BSSN = 2,
-} nn_coderTensorNormMode_e;
-
-#define NN_CODER_NORM_MODE_COUNT 3
+#define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 3
 
 typedef enum
 {
 	NN_CODER_OP_MODE_NONE         = 0,
 	NN_CODER_OP_MODE_CONVT_2X2_S2 = 1, // upscale
-	NN_CODER_OP_MODE_CONVT_6X6_S2 = 2, // upscale
-	NN_CODER_OP_MODE_CONV_3X3_S2  = 3, // downscale
-	NN_CODER_OP_MODE_POOL_MAX_S2  = 4,
-	NN_CODER_OP_MODE_POOL_AVG_S2  = 5,
+	NN_CODER_OP_MODE_CONV_3X3_S2  = 2, // downscale
+	NN_CODER_OP_MODE_POOL_MAX_S2  = 3,
+	NN_CODER_OP_MODE_POOL_AVG_S2  = 4,
 } nn_coderOpMode_e;
 
-#define NN_CODER_OP_MODE_COUNT 6
+#define NN_CODER_OP_MODE_COUNT 5
 
 typedef struct nn_coderLayerInfo_s
 {
@@ -89,14 +71,9 @@ typedef struct nn_coderLayerInfo_s
 	nn_dim_t* dimX;
 	uint32_t  fc;
 
-	// tensor normalization
-	nn_coderTensorNormMode_e norm_mode;
-
-	// pre operation layer
-	nn_coderOpMode_e pre_op_mode;
-
 	// conv layer
-	nn_coderConvMode_e conv_mode;
+	int      norm_flags;
+	uint32_t conv_size;
 
 	// skip layer
 	// skip_coder must be set for add/cat modes
@@ -107,12 +84,14 @@ typedef struct nn_coderLayerInfo_s
 	// bn layer
 	nn_coderBatchNormMode_e bn_mode;
 
-	// repeater layers
-	nn_coderConvMode_e repeat_mode;
-	uint32_t           repeat;
+	// fact layer
+	nn_factLayerFn_e fact_fn;
 
-	// post operation layer
-	nn_coderOpMode_e post_op_mode;
+	// repeater layers
+	uint32_t repeat;
+
+	// op layer
+	nn_coderOpMode_e op_mode;
 } nn_coderLayerInfo_t;
 
 typedef struct nn_coderOpLayer_s
@@ -149,32 +128,16 @@ typedef struct nn_coderLayer_s
 	nn_dim_t dimX;
 	nn_dim_t dimY;
 
-	// tensor normalization
-	nn_coderTensorNormMode_e norm_mode;
-
-	// layers may be NULL depending on the desired modes
-
-	// pre operation layer
-	nn_coderOpLayer_t* pre_op;
-
-	// main layer
-	// disable_bias, he, relu
-	// W : dim(fc,3,3,xd)
-	// Y : dim(bs,xh,xw,fc)
-	//
-	// skip layer
-	// fork (encoder)
-	// add/cat (decoder)
+	// layers may be NULL
+	// skip attachment order
+	//   FORK_ADD/ADD: after conv
+	//   FORK_CAT/CAT: after fact
 	nn_convLayer_t*      conv;
 	nn_skipLayer_t*      skip;
 	nn_batchNormLayer_t* bn;
 	nn_factLayer_t*      fact;
-
-	// repeater layers
-	cc_list_t* repeater;
-
-	// post operation layer
-	nn_coderOpLayer_t* post_op;
+	cc_list_t*           repeater;
+	nn_coderOpLayer_t*   op;
 } nn_coderLayer_t;
 
 nn_coderLayer_t* nn_coderLayer_new(nn_coderLayerInfo_t* info);

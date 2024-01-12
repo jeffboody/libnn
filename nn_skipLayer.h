@@ -28,11 +28,13 @@
 #include "nn_dim.h"
 #include "nn_layer.h"
 
+// see nn_coderSkipMode_e
 typedef enum
 {
-	NN_SKIP_MODE_FORK = 0,
-	NN_SKIP_MODE_ADD  = 1,
-	NN_SKIP_MODE_CAT  = 2,
+	NN_SKIP_MODE_FORK_ADD = 1,
+	NN_SKIP_MODE_FORK_CAT = 2,
+	NN_SKIP_MODE_ADD      = 3,
+	NN_SKIP_MODE_CAT      = 4,
 } nn_skipMode_e;
 
 typedef struct nn_skipLayer_s
@@ -96,7 +98,8 @@ typedef struct nn_skipLayer_s
 } nn_skipLayer_t;
 
 nn_skipLayer_t* nn_skipLayer_newFork(nn_arch_t* arch,
-                                     nn_dim_t* dimX);
+                                     nn_dim_t* dimX,
+                                     nn_skipMode_e skip_mode);
 nn_skipLayer_t* nn_skipLayer_newAdd(nn_arch_t* arch,
                                     nn_dim_t* dimX,
                                     nn_skipLayer_t* skip_fork,

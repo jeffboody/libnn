@@ -705,7 +705,8 @@ nn_skipLayer_dimYFn(nn_layer_t* base)
 
 	nn_skipLayer_t* self = (nn_skipLayer_t*) base;
 
-	if(self->skip_mode == NN_SKIP_MODE_FORK)
+	if((self->skip_mode == NN_SKIP_MODE_FORK_ADD) ||
+	   (self->skip_mode == NN_SKIP_MODE_FORK_CAT))
 	{
 		return &self->dimX;
 	}
@@ -718,10 +719,13 @@ nn_skipLayer_dimYFn(nn_layer_t* base)
 ***********************************************************/
 
 nn_skipLayer_t*
-nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
+nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX,
+                     nn_skipMode_e skip_mode)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
+	ASSERT((skip_mode == NN_SKIP_MODE_FORK_ADD) ||
+	       (skip_mode == NN_SKIP_MODE_FORK_CAT));
 
 	nn_layerInfo_t info =
 	{
@@ -740,7 +744,7 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX)
 		return NULL;
 	}
 
-	self->skip_mode = NN_SKIP_MODE_FORK;
+	self->skip_mode = skip_mode;
 
 	// skip is set by add/cat
 
@@ -1052,9 +1056,15 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		return NULL;
 	}
 
-	if(strcmp(val_skip_mode->data, "FORK") == 0)
+	if(strcmp(val_skip_mode->data, "FORK_ADD") == 0)
 	{
-		return nn_skipLayer_newFork(arch, &dimX);
+		return nn_skipLayer_newFork(arch, &dimX,
+		                            NN_SKIP_MODE_FORK_ADD);
+	}
+	else if(strcmp(val_skip_mode->data, "FORK_CAT") == 0)
+	{
+		return nn_skipLayer_newFork(arch, &dimX,
+		                            NN_SKIP_MODE_FORK_CAT);
 	}
 	else if(strcmp(val_skip_mode->data, "ADD") == 0)
 	{
@@ -1086,7 +1096,15 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_store(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "skip_mode");
-	if(self->skip_mode == NN_SKIP_MODE_ADD)
+	if(self->skip_mode == NN_SKIP_MODE_FORK_ADD)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "FORK_ADD");
+	}
+	if(self->skip_mode == NN_SKIP_MODE_FORK_CAT)
+	{
+		ret &= jsmn_stream_string(stream, "%s", "FORK_CAT");
+	}
+	else if(self->skip_mode == NN_SKIP_MODE_ADD)
 	{
 		ret &= jsmn_stream_string(stream, "%s", "ADD");
 	}
@@ -1096,7 +1114,7 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	}
 	else
 	{
-		ret &= jsmn_stream_string(stream, "%s", "FORK");
+		return 0;
 	}
 	ret &= jsmn_stream_key(stream, "%s", "skip_beta");
 	ret &= jsmn_stream_float(stream, self->skip_beta);

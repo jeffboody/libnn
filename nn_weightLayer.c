@@ -62,6 +62,28 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_dim_t*    dimW = nn_tensor_dim(W);
 	float        nc   = dimW->count;
 
+	// optionally perform Spectral Normalization
+	if(self->flags & NN_WEIGHT_LAYER_FLAG_NORM_SN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_SN,
+		                       1.0f) == 0)
+		{
+			return NULL;
+		}
+	}
+	else if(self->flags & NN_WEIGHT_LAYER_FLAG_NORM_BSSN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_BSSN,
+		                       1.2f) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// sb00: state
 	// sb01: param (disable_bias)
 	// sb02: dimX

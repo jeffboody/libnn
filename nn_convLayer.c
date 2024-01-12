@@ -64,6 +64,28 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_tensor_t* Y    = self->Y;
 	nn_dim_t*    dimY = nn_tensor_dim(Y);
 
+	// optionally perform Spectral Normalization
+	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_SN,
+		                       1.0f) == 0)
+		{
+			return NULL;
+		}
+	}
+	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_BSSN,
+		                       1.2f) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// sb00: state
 	// sb01: param (disable_bias and stride)
 	// sb02: dimX
@@ -431,6 +453,28 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	nn_tensor_t* B    = self->B;
 	nn_tensor_t* Y    = self->Y;
 	nn_dim_t*    dimY = nn_tensor_dim(Y);
+
+	// optionally perform Spectral Normalization
+	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_SN,
+		                       1.0f) == 0)
+		{
+			return NULL;
+		}
+	}
+	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
+	{
+		if(nn_tensor_normalize(self->W,
+		                       VKK_HAZZARD_NONE,
+		                       NN_TENSOR_NORM_MODE_BSSN,
+		                       1.2f) == 0)
+		{
+			return NULL;
+		}
+	}
 
 	// sb00: state
 	// sb01: param (disable_bias and stride)

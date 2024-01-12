@@ -31,6 +31,8 @@
 #define NN_CONV_LAYER_FLAG_XAVIER       0x0001
 #define NN_CONV_LAYER_FLAG_HE           0x0002
 #define NN_CONV_LAYER_FLAG_DISABLE_BIAS 0x0010
+#define NN_CONV_LAYER_FLAG_NORM_SN      0x0100
+#define NN_CONV_LAYER_FLAG_NORM_BSSN    0x0200
 #define NN_CONV_LAYER_FLAG_TRANSPOSE    0x1000
 
 typedef struct nn_convLayer_s

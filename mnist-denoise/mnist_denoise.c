@@ -422,30 +422,26 @@ mnist_denoise_new(nn_engine_t* engine,
 		goto fail_dL_dY;
 	}
 
-	nn_batchNormMode_e bn_mode = NN_BATCH_NORM_MODE_INSTANCE;
-
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
 	self->bn0 = nn_batchNormLayer_new(&self->base,
-	                                  bn_mode, dim);
+	                                  NN_BATCH_NORM_MODE_INSTANCE,
+	                                  dim);
 	if(self->bn0 == NULL)
 	{
 		goto fail_bn0;
 	}
 
-	nn_coderBatchNormMode_e cbn_mode;
-	cbn_mode = NN_CODER_BATCH_NORM_MODE_INSTANCE;
-
 	nn_coderLayerInfo_t info_enc1 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.op_mode    = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
 
 	self->enc1 = nn_coderLayer_new(&info_enc1);
@@ -457,14 +453,14 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_coderLayerInfo_t info_enc2 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.op_mode    = NN_CODER_OP_MODE_POOL_MAX_S2,
 	};
 
 	self->enc2 = nn_coderLayer_new(&info_enc2);
@@ -476,14 +472,14 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_coderLayerInfo_t info_dec3 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.op_mode    = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
 
 	self->dec3 = nn_coderLayer_new(&info_dec3);
@@ -495,14 +491,14 @@ mnist_denoise_new(nn_engine_t* engine,
 
 	nn_coderLayerInfo_t info_dec4 =
 	{
-		.arch         = &self->base,
-		.dimX         = dim,
-		.fc           = fc,
-		.conv_mode    = NN_CODER_CONV_MODE_3X3_RELU,
-		.skip_mode    = NN_CODER_SKIP_MODE_NONE,
-		.bn_mode      = cbn_mode,
-		.repeat_mode  = NN_CODER_CONV_MODE_NONE,
-		.post_op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2,
+		.arch       = &self->base,
+		.dimX       = dim,
+		.fc         = fc,
+		.norm_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size  = 3,
+		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.op_mode    = NN_CODER_OP_MODE_CONVT_2X2_S2,
 	};
 
 	self->dec4 = nn_coderLayer_new(&info_dec4);
