@@ -1,0 +1,61 @@
+// sudo apt-get install graphviz
+// dot -Tpng urrdb.dot -o urrdb.png
+// xdot urrdb.dot
+digraph URRDB
+{
+	label="Unified Residual-in-Residual Dense Block (URRDB)";
+	fontsize=20;
+	size="4,4";
+	ratio=fill;
+	// rankdir="LR";
+
+	// URRDB Layer
+	urrdb        [fillcolor=darkorange, style=filled, label="URRDB(FC,blocks,nodes)\ndim(bs,xh,xw,xd)"];
+	urrdb_X      [fillcolor=yellow,     style=filled, shape=box, label="X\ndim(bs,xh,xw,xd)"];
+	urrdb_coder1 [fillcolor=gold,       style=filled, label="fc=FC\nSN\nCONV\nFORK_ADD\nNO BN/RELU\ndim(bs,xh,xw,fc)"];
+	urrdb_bb     [fillcolor=orange,     style=filled, label="URRDB_BLOCK(FC,X,nodes)"];
+	urrdb_coder2 [fillcolor=gold,       style=filled, label="BN\nRELU\ndim(bs,xh,xw,fc)"];
+	urrdb_coder3 [fillcolor=gold,       style=filled, label="fc=FC\nSN\nCONV\nADD(beta)\nBN\nRELU\ndim(bs,xh,xw,fc)"];
+	urrdb_Y      [fillcolor=yellow,     style=filled, shape=box, label="Y\ndim(bs,xh,xw,fc)"];
+
+	urrdb_X      -> urrdb;
+	urrdb        -> urrdb_coder1 [label="X"];
+	urrdb_coder1 -> urrdb_bb;
+	urrdb_coder1 -> urrdb_coder3;
+	urrdb_bb     -> urrdb_bb [label="for each\nblock"];
+	urrdb_bb     -> urrdb_coder2;
+	urrdb_coder2 -> urrdb_coder3;
+	urrdb_coder3 -> urrdb_Y;
+
+	// URRDB Node
+	urrdb_node   [fillcolor=coral,  style=filled, label="URRDB_NODE(X,FC)"];
+	urrdb_node_X [fillcolor=yellow, style=filled, shape=box, label="X\ndim(bs,xh,xw,xd)"];
+	urrdb_node0  [fillcolor=gold,   style=filled, label="FORK_CAT\ndim(bs,xh,xw,xd)"];
+	urrdb_node1  [fillcolor=gold,   style=filled, label="fc=FC\nSN\nCONV\nBN\nRELU\nCAT\ndim(bs,xh,xw,xd+fc)"];
+	urrdb_node_Y [fillcolor=yellow, style=filled, shape=box, label="Y\ndim(bs,xh,xw,xd+fc)"];
+
+	urrdb_node_X -> urrdb_node;
+	urrdb_node   -> urrdb_node0  [label="X"];
+	urrdb_node0  -> urrdb_node1  [label="X (CONV)"];
+	urrdb_node0  -> urrdb_node1  [label="X (CAT)"];
+	urrdb_node1  -> urrdb_node_Y [label="X|Y0"];
+
+	// URRDB Block
+	urrdb_block   [fillcolor=orange, style=filled, label="URRDB_BLOCK(FC,X,nodes=4)"];
+	urrdb_block_X [fillcolor=yellow, style=filled, shape=box, label="X\ndim(bs,xh,xw,fc)"];
+	urrdb_block0  [fillcolor=gold,   style=filled, label="FORK_ADD\nBN\nRELU\ndim(bs,xh,xw,fc)"];
+	urrdb_block1  [fillcolor=coral,  style=filled, label="URRDB_NODE(X,FC)\ndim(bs,xh,xw,2*fc)"];
+	urrdb_block2  [fillcolor=coral,  style=filled, label="URRDB_NODE(X,FC)\ndim(bs,xh,xw,3*fc)"];
+	urrdb_block3  [fillcolor=coral,  style=filled, label="URRDB_NODE(X,FC)\ndim(bs,xh,xw,4*fc)"];
+	urrdb_block4  [fillcolor=gold,   style=filled, label="fc=FC\nSN\nCONV\nADD(beta)\nNO BN/RELU\ndim(bs,xh,xw,fc)"];
+	urrdb_block_Y [fillcolor=yellow, style=filled, shape=box, label="Y\ndim(bs,xh,xw,fc)"];
+
+	urrdb_block_X -> urrdb_block;
+	urrdb_block   -> urrdb_block0 [label="X"];
+	urrdb_block0  -> urrdb_block4 [label="X"];
+	urrdb_block0  -> urrdb_block1 [label="X"];
+	urrdb_block1  -> urrdb_block2 [label="X|Y0"];
+	urrdb_block2  -> urrdb_block3 [label="X|Y0|Y1"];
+	urrdb_block3  -> urrdb_block4 [label="X|Y0|Y1|Y2"];
+	urrdb_block4  -> urrdb_block_Y;
+}
