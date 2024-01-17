@@ -314,7 +314,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 		return NULL;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 13, ua2_array);
+	                                 12, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
 	                   bs*xd, 1, 1, 64, 1, 1);
@@ -656,17 +656,15 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX          = NULL;
-	jsmn_val_t* val_dimW          = NULL;
-	jsmn_val_t* val_flags         = NULL;
-	jsmn_val_t* val_W             = NULL;
-	jsmn_val_t* val_B             = NULL;
-	jsmn_val_t* val_MW            = NULL;
-	jsmn_val_t* val_VW            = NULL;
-	jsmn_val_t* val_MB            = NULL;
-	jsmn_val_t* val_VB            = NULL;
-	jsmn_val_t* val_norm_dl_dw_ra = NULL;
-	jsmn_val_t* val_norm_dl_db_ra = NULL;
+	jsmn_val_t* val_dimX  = NULL;
+	jsmn_val_t* val_dimW  = NULL;
+	jsmn_val_t* val_flags = NULL;
+	jsmn_val_t* val_W     = NULL;
+	jsmn_val_t* val_B     = NULL;
+	jsmn_val_t* val_MW    = NULL;
+	jsmn_val_t* val_VW    = NULL;
+	jsmn_val_t* val_MB    = NULL;
+	jsmn_val_t* val_VB    = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -679,14 +677,6 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			if(strcmp(kv->key, "flags") == 0)
 			{
 				val_flags = kv->val;
-			}
-			else if(strcmp(kv->key, "norm_dl_dw_ra") == 0)
-			{
-				val_norm_dl_dw_ra = kv->val;
-			}
-			else if(strcmp(kv->key, "norm_dl_db_ra") == 0)
-			{
-				val_norm_dl_db_ra = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -729,17 +719,15 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX          == NULL) ||
-	   (val_dimW          == NULL) ||
-	   (val_flags         == NULL) ||
-	   (val_W             == NULL) ||
-	   (val_B             == NULL) ||
-	   (val_MW            == NULL) ||
-	   (val_VW            == NULL) ||
-	   (val_MB            == NULL) ||
-	   (val_VB            == NULL) ||
-	   (val_norm_dl_dw_ra == NULL) ||
-	   (val_norm_dl_db_ra == NULL))
+	if((val_dimX  == NULL) ||
+	   (val_dimW  == NULL) ||
+	   (val_flags == NULL) ||
+	   (val_W     == NULL) ||
+	   (val_B     == NULL) ||
+	   (val_MW    == NULL) ||
+	   (val_VW    == NULL) ||
+	   (val_MB    == NULL) ||
+	   (val_VB    == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
