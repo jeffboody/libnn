@@ -77,6 +77,35 @@ typedef struct nn_coderLayerInfo_s
 	nn_factLayerFn_e fact_fn;
 } nn_coderLayerInfo_t;
 
+// The coderLayer is a composite layer consisting of batch
+// normalization, activation, convolution and skip layers.
+// It is intended to be used as a building block for
+// encoder/decoder architectures such as U-Net and RRDB
+// (residual-in-residual dense blocks). The coder layer
+// helps to properly order the layers using the best known
+// practices. The coder layer order was largely influenced
+// by the paper "Identity Mappings in Deep Residual
+// Networks" which determined that the original Residual
+// Unit were improperly ordered resulting large errors. The
+// findings in the Identity Mappings paper were specific to
+// the add skip connection. The "Densely Connected
+// Convolutional Networks" paper used the same layer order
+// with the concatenation skip connection, however, I
+// noticed that this leads to a significant performance
+// overhead due to redundant application of batch
+// normalization and activation layers with the RRDB
+// architecture. As a result, the implementation changes
+// the skip layer placement depending on if an add or
+// concatenate operation is desired. When batch
+// normalization is enabled and the skip connection is not
+// an add operation then the conv flag is set to disable the
+// redundant bias. The convolution layer initialization flag
+// is set automatically (He or Xavier) depending on the type
+// of activation function that is used. Note that the order
+// of layers may appear different from the Identity Mappings
+// paper at first glance. However, the proposed pattern of
+// layers becomes apparent when the coder layer is chained
+// together multiple times.
 typedef struct nn_coderLayer_s
 {
 	nn_layer_t base;
