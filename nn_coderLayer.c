@@ -437,297 +437,6 @@ nn_coderOpLayer_export(nn_coderOpLayer_t* self,
 }
 
 /***********************************************************
-* private - nn_coderRepeaterLayer_t                        *
-***********************************************************/
-
-typedef struct nn_coderRepeaterLayer_s
-{
-	nn_layer_t base;
-
-	nn_coderLayer_t* coder;
-
-	// repeater layer
-	// he, relu
-	// xd : fc
-	// W  : dim(xd,conv_size,conv_size,xd)
-	// Y  : dim(bs,xh,xw,xd)
-	nn_convLayer_t* conv;
-	nn_factLayer_t* fact;
-} nn_coderRepeaterLayer_t;
-
-static nn_tensor_t*
-nn_coderRepeaterLayer_forwardPassFn(nn_layer_t* base,
-                                    int flags, uint32_t bs,
-                                    nn_tensor_t* X)
-{
-	ASSERT(base);
-	ASSERT(X);
-
-	nn_coderRepeaterLayer_t* self;
-	self = (nn_coderRepeaterLayer_t*) base;
-
-	X = nn_layer_forwardPass(&self->conv->base, flags,
-	                         bs, X);
-	if(X == NULL)
-	{
-		return NULL;
-	}
-
-	return nn_layer_forwardPass(&self->fact->base,
-	                            flags, bs, X);
-}
-
-static nn_tensor_t*
-nn_coderRepeaterLayer_backpropFn(nn_layer_t* base,
-                                 int flags, uint32_t bs,
-                                 nn_tensor_t* dL_dY)
-{
-	ASSERT(base);
-	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
-
-	nn_coderRepeaterLayer_t* self;
-	self = (nn_coderRepeaterLayer_t*) base;
-
-	dL_dY = nn_layer_backprop(&self->fact->base, flags,
-	                          bs, dL_dY);
-	if(dL_dY == NULL)
-	{
-		return NULL;
-	}
-
-	return nn_layer_backprop(&self->conv->base, flags,
-	                         bs, dL_dY);
-}
-
-static void
-nn_coderRepeaterLayer_postFn(nn_layer_t* base, int flags)
-{
-	ASSERT(base);
-
-	nn_coderRepeaterLayer_t* self;
-	self = (nn_coderRepeaterLayer_t*) base;
-
-	nn_layer_post(&self->conv->base, flags);
-	nn_layer_post(&self->fact->base, flags);
-}
-
-static nn_dim_t*
-nn_coderRepeaterLayer_dimXFn(nn_layer_t* base)
-{
-	ASSERT(base);
-
-	nn_coderRepeaterLayer_t* self;
-	self = (nn_coderRepeaterLayer_t*) base;
-
-	return nn_layer_dimX(&self->conv->base);
-}
-
-static nn_dim_t*
-nn_coderRepeaterLayer_dimYFn(nn_layer_t* base)
-{
-	ASSERT(base);
-
-	nn_coderRepeaterLayer_t* self;
-	self = (nn_coderRepeaterLayer_t*) base;
-
-	return nn_layer_dimY(&self->fact->base);
-}
-
-static nn_coderRepeaterLayer_t*
-nn_coderRepeaterLayer_new(nn_coderLayerInfo_t* info,
-                          nn_dim_t* dimX,
-                          nn_coderLayer_t* coder)
-{
-	ASSERT(info);
-	ASSERT(dimX);
-	ASSERT(coder);
-
-	nn_layerInfo_t layer_info =
-	{
-		.arch            = info->arch,
-		.forward_pass_fn = nn_coderRepeaterLayer_forwardPassFn,
-		.backprop_fn     = nn_coderRepeaterLayer_backpropFn,
-		.post_fn         = nn_coderRepeaterLayer_postFn,
-		.dimX_fn         = nn_coderRepeaterLayer_dimXFn,
-		.dimY_fn         = nn_coderRepeaterLayer_dimYFn,
-	};
-
-	nn_dim_t* dim = dimX;
-	uint32_t  xd  = dim->depth;
-
-	nn_coderRepeaterLayer_t*  self;
-	self = (nn_coderRepeaterLayer_t*)
-	       nn_layer_new(sizeof(nn_coderRepeaterLayer_t),
-	                    &layer_info);
-	if(self == NULL)
-	{
-		return NULL;
-	}
-
-	self->coder = coder;
-
-	nn_dim_t dimW =
-	{
-		.count  = xd,
-		.width  = info->conv_size,
-		.height = info->conv_size,
-		.depth  = xd,
-	};
-
-	int flags = NN_CONV_LAYER_FLAG_XAVIER;
-	if((info->fact_fn == NN_FACT_LAYER_FN_RELU) ||
-	   (info->fact_fn == NN_FACT_LAYER_FN_PRELU))
-	{
-		flags = NN_CONV_LAYER_FLAG_HE;
-	}
-	flags |= info->norm_flags;
-
-	self->conv = nn_convLayer_new(info->arch, dim, &dimW, 1,
-	                              flags);
-	if(self->conv == NULL)
-	{
-		goto fail_conv;
-	}
-	dim = nn_layer_dimY(&self->conv->base);
-
-	self->fact = nn_factLayer_new(info->arch, dim,
-	                              info->fact_fn);
-	if(self->fact == NULL)
-	{
-		goto fail_fact;
-	}
-
-	// success
-	return self;
-
-	// failure
-	fail_fact:
-		nn_convLayer_delete(&self->conv);
-	fail_conv:
-		nn_layer_delete((nn_layer_t**) &self);
-	return NULL;
-}
-
-static void
-nn_coderRepeaterLayer_delete(nn_coderRepeaterLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_coderRepeaterLayer_t* self = *_self;
-	if(self)
-	{
-		nn_factLayer_delete(&self->fact);
-		nn_convLayer_delete(&self->conv);
-		nn_layer_delete((nn_layer_t**) _self);
-	}
-}
-
-static nn_coderRepeaterLayer_t*
-nn_coderRepeaterLayer_import(nn_arch_t* arch,
-                             jsmn_val_t* val)
-{
-	ASSERT(arch);
-	ASSERT(val);
-
-	if(val->type != JSMN_TYPE_OBJECT)
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	jsmn_val_t* val_conv = NULL;
-	jsmn_val_t* val_fact = NULL;
-
-	cc_listIter_t* iter = cc_list_head(val->obj->list);
-	while(iter)
-	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
-
-		if(kv->val->type == JSMN_TYPE_OBJECT)
-		{
-			if(strcmp(kv->key, "conv") == 0)
-			{
-				val_conv = kv->val;
-			}
-			else if(strcmp(kv->key, "fact") == 0)
-			{
-				val_fact = kv->val;
-			}
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// check for required parameters
-	if((val_conv == NULL) ||
-	   (val_fact == NULL))
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	nn_layerInfo_t layer_info =
-	{
-		.arch            = arch,
-		.forward_pass_fn = nn_coderRepeaterLayer_forwardPassFn,
-		.backprop_fn     = nn_coderRepeaterLayer_backpropFn,
-		.post_fn         = nn_coderRepeaterLayer_postFn,
-		.dimX_fn         = nn_coderRepeaterLayer_dimXFn,
-		.dimY_fn         = nn_coderRepeaterLayer_dimYFn,
-	};
-
-	nn_coderRepeaterLayer_t*  self;
-	self = (nn_coderRepeaterLayer_t*)
-	       nn_layer_new(sizeof(nn_coderRepeaterLayer_t),
-	                    &layer_info);
-	if(self == NULL)
-	{
-		return NULL;
-	}
-
-	self->conv = nn_convLayer_import(arch, val_conv);
-	if(self->conv == NULL)
-	{
-		goto fail_conv;
-	}
-
-	self->fact = nn_factLayer_import(arch, val_fact);
-	if(self->fact == NULL)
-	{
-		goto fail_fact;
-	}
-
-	// success
-	return self;
-
-	// failure
-	fail_fact:
-		nn_convLayer_delete(&self->conv);
-	fail_conv:
-		nn_layer_delete((nn_layer_t**) &self);
-	return NULL;
-}
-
-static int
-nn_coderRepeaterLayer_export(nn_coderRepeaterLayer_t* self,
-                             jsmn_stream_t* stream)
-{
-	ASSERT(self);
-	ASSERT(stream);
-
-	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "conv");
-	ret &= nn_convLayer_export(self->conv, stream);
-	ret &= jsmn_stream_key(stream, "%s", "fact");
-	ret &= nn_factLayer_export(self->fact, stream);
-	ret &= jsmn_stream_end(stream);
-
-	return ret;
-}
-
-/***********************************************************
 * private - nn_coderLayer_t                                *
 ***********************************************************/
 
@@ -794,26 +503,6 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 		}
 	}
 
-	if(self->repeater)
-	{
-		cc_listIter_t* iter;
-		iter = cc_list_head(self->repeater);
-		while(iter)
-		{
-			nn_coderRepeaterLayer_t* r;
-			r = (nn_coderRepeaterLayer_t*)
-			    cc_list_peekIter(iter);
-
-			X = nn_layer_forwardPass(&r->base, flags, bs, X);
-			if(X == NULL)
-			{
-				return NULL;
-			}
-
-			iter = cc_list_next(iter);
-		}
-	}
-
 	if(self->op)
 	{
 		X = nn_layer_forwardPass(&self->op->base, flags, bs, X);
@@ -842,26 +531,6 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 		if(dL_dY == NULL)
 		{
 			return NULL;
-		}
-	}
-
-	if(self->repeater)
-	{
-		cc_listIter_t* iter;
-		iter = cc_list_tail(self->repeater);
-		while(iter)
-		{
-			nn_coderRepeaterLayer_t* r;
-			r = (nn_coderRepeaterLayer_t*)
-			    cc_list_peekIter(iter);
-
-			dL_dY = nn_layer_backprop(&r->base, flags, bs, dL_dY);
-			if(dL_dY == NULL)
-			{
-				return NULL;
-			}
-
-			iter = cc_list_prev(iter);
 		}
 	}
 
@@ -949,21 +618,6 @@ nn_coderLayer_postFn(nn_layer_t* base, int flags)
 		nn_layer_post(&self->fact->base, flags);
 	}
 
-	cc_listIter_t* iter;
-	if(self->repeater)
-	{
-		iter = cc_list_head(self->repeater);
-		while(iter)
-		{
-			nn_layer_t* layer;
-			layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-			nn_layer_post(layer, flags);
-
-			iter = cc_list_next(iter);
-		}
-	}
-
 	if(self->op)
 	{
 		nn_layer_post(&self->op->base, flags);
@@ -988,70 +642,6 @@ nn_coderLayer_dimYFn(nn_layer_t* base)
 	nn_coderLayer_t* self = (nn_coderLayer_t*) base;
 
 	return &self->dimY;
-}
-
-static void
-nn_coderLayer_deleteRepeater(nn_coderLayer_t* self)
-{
-	ASSERT(self);
-
-	if(self->repeater == NULL)
-	{
-		return;
-	}
-
-	cc_listIter_t* iter;
-	iter = cc_list_head(self->repeater);
-	while(iter)
-	{
-		nn_coderRepeaterLayer_t* r;
-		r = (nn_coderRepeaterLayer_t*)
-		    cc_list_remove(self->repeater, &iter);
-		nn_coderRepeaterLayer_delete(&r);
-	}
-	cc_list_delete(&self->repeater);
-}
-
-static int
-nn_coderLayer_newRepeater(nn_coderLayer_t* self,
-                          nn_coderLayerInfo_t* info,
-                          nn_dim_t* dimX)
-{
-	ASSERT(self);
-	ASSERT(info);
-	ASSERT(dimX);
-
-	self->repeater = cc_list_new();
-	if(self->repeater == NULL)
-	{
-		return 0;
-	}
-
-	int i;
-	nn_coderRepeaterLayer_t* r = NULL;
-	for(i = 0; i < info->repeat; ++i)
-	{
-		r = nn_coderRepeaterLayer_new(info, dimX, self);
-		if(r == NULL)
-		{
-			goto fail_repeater;
-		}
-
-		if(cc_list_append(self->repeater, NULL, r) == NULL)
-		{
-			goto fail_append;
-		}
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_append:
-		nn_coderRepeaterLayer_delete(&r);
-	fail_repeater:
-		nn_coderLayer_deleteRepeater(self);
-	return 0;
 }
 
 /***********************************************************
@@ -1171,14 +761,6 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		}
 	}
 
-	if(info->conv_size && info->repeat)
-	{
-		if(nn_coderLayer_newRepeater(self, info, dim) == 0)
-		{
-			goto fail_repeater;
-		}
-	}
-
 	if(info->op_mode != NN_CODER_OP_MODE_NONE)
 	{
 		self->op = nn_coderOpLayer_new(info, dim, self);
@@ -1196,8 +778,6 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 
 	// failure
 	fail_op:
-		nn_coderLayer_deleteRepeater(self);
-	fail_repeater:
 		nn_factLayer_delete(&self->fact);
 	fail_fact:
 		nn_batchNormLayer_delete(&self->bn);
@@ -1218,7 +798,6 @@ void nn_coderLayer_delete(nn_coderLayer_t** _self)
 	if(self)
 	{
 		nn_coderOpLayer_delete(&self->op);
-		nn_coderLayer_deleteRepeater(self);
 		nn_factLayer_delete(&self->fact);
 		nn_batchNormLayer_delete(&self->bn);
 		nn_skipLayer_delete(&self->skip);
@@ -1238,12 +817,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	if(val->type != JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
-		return NULL;
-	}
-
-	cc_list_t* repeater = cc_list_new();
-	if(repeater == NULL)
-	{
 		return NULL;
 	}
 
@@ -1287,14 +860,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 			{
 				val_fact = kv->val;
 			}
-			else if(strcmp(kv->key, "repeater") == 0)
-			{
-				if(cc_list_append(repeater, NULL,
-				                  kv->val) == NULL)
-				{
-					goto fail_append_val;
-				}
-			}
 			else if(strcmp(kv->key, "op") == 0)
 			{
 				val_op = kv->val;
@@ -1309,7 +874,7 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	if((val_dimX == NULL) || (val_dimY == NULL))
 	{
 		LOGE("invalid");
-		goto fail_check;
+		return NULL;
 	}
 
 	nn_layerInfo_t layer_info =
@@ -1328,7 +893,7 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	                    &layer_info);
 	if(self == NULL)
 	{
-		goto fail_layer;
+		return NULL;
 	}
 
 	if(nn_dim_load(&self->dimX, val_dimX) == 0)
@@ -1384,38 +949,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		}
 	}
 
-	if(cc_list_size(repeater) > 0)
-	{
-		self->repeater = cc_list_new();
-		if(self->repeater == NULL)
-		{
-			goto fail_new_repeater;
-		}
-
-		iter = cc_list_head(repeater);
-		while(iter)
-		{
-			jsmn_val_t* val_rpt;
-			val_rpt = (jsmn_val_t*)
-			          cc_list_peekIter(iter);
-
-			nn_coderRepeaterLayer_t* r;
-			r = nn_coderRepeaterLayer_import(arch, val_rpt);
-			if(r == NULL)
-			{
-				goto fail_add_repeater;
-			}
-
-			if(cc_list_append(self->repeater, NULL, r) == NULL)
-			{
-				nn_coderRepeaterLayer_delete(&r);
-				goto fail_add_repeater;
-			}
-
-			iter = cc_list_next(iter);
-		}
-	}
-
 	if(val_op)
 	{
 		self->op = nn_coderOpLayer_import(arch, val_op);
@@ -1425,27 +958,11 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		}
 	}
 
-	cc_list_discard(repeater);
-	cc_list_delete(&repeater);
-
 	// success
 	return self;
 
 	// failure
 	fail_op:
-	fail_add_repeater:
-	{
-		iter = cc_list_head(self->repeater);
-		while(iter)
-		{
-			nn_coderRepeaterLayer_t* r;
-			r = (nn_coderRepeaterLayer_t*)
-			    cc_list_remove(self->repeater, &iter);
-			nn_coderRepeaterLayer_delete(&r);
-		}
-		cc_list_delete(&self->repeater);
-	}
-	fail_new_repeater:
 		nn_factLayer_delete(&self->fact);
 	fail_fact:
 		nn_batchNormLayer_delete(&self->bn);
@@ -1457,13 +974,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	fail_dimY:
 	fail_dimX:
 		nn_layer_delete((nn_layer_t**) &self);
-	fail_layer:
-	fail_check:
-	fail_append_val:
-	{
-		cc_list_discard(repeater);
-		cc_list_delete(&repeater);
-	}
 	return NULL;
 }
 
@@ -1502,21 +1012,6 @@ int nn_coderLayer_export(nn_coderLayer_t* self,
 	{
 		ret &= jsmn_stream_key(stream, "%s", "fact");
 		ret &= nn_factLayer_export(self->fact, stream);
-	}
-
-	if(self->repeater)
-	{
-		cc_listIter_t* iter;
-		iter = cc_list_head(self->repeater);
-		while(iter)
-		{
-			nn_coderRepeaterLayer_t* r;
-			r = (nn_coderRepeaterLayer_t*)
-			    cc_list_peekIter(iter);
-			ret &= jsmn_stream_key(stream, "%s", "repeater");
-			ret &= nn_coderRepeaterLayer_export(r, stream);
-			iter = cc_list_next(iter);
-		}
 	}
 
 	if(self->op)

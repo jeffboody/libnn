@@ -26,7 +26,6 @@
 
 #include "../jsmn/wrapper/jsmn_stream.h"
 #include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "../libcc/cc_list.h"
 #include "nn_dim.h"
 #include "nn_factLayer.h"
 #include "nn_layer.h"
@@ -87,9 +86,6 @@ typedef struct nn_coderLayerInfo_s
 	// fact layer
 	nn_factLayerFn_e fact_fn;
 
-	// repeater layers
-	uint32_t repeat;
-
 	// op layer
 	nn_coderOpMode_e op_mode;
 } nn_coderLayerInfo_t;
@@ -136,7 +132,6 @@ typedef struct nn_coderLayer_s
 	nn_skipLayer_t*      skip;
 	nn_batchNormLayer_t* bn;
 	nn_factLayer_t*      fact;
-	cc_list_t*           repeater;
 	nn_coderOpLayer_t*   op;
 } nn_coderLayer_t;
 

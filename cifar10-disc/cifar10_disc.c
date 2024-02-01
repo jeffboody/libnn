@@ -412,7 +412,6 @@ cifar10_disc_new(nn_engine_t* engine, uint32_t bs,
 		.conv_size  = 3,
 		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
 		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.repeat     = 2,
 		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
@@ -432,7 +431,6 @@ cifar10_disc_new(nn_engine_t* engine, uint32_t bs,
 		.conv_size  = 3,
 		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
 		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.repeat     = 2,
 		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
