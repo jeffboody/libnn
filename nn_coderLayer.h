@@ -57,8 +57,6 @@ typedef enum
 	NN_CODER_OP_MODE_NONE         = 0,
 	NN_CODER_OP_MODE_CONVT_2X2_S2 = 1, // upscale
 	NN_CODER_OP_MODE_CONV_3X3_S2  = 2, // downscale
-	NN_CODER_OP_MODE_POOL_MAX_S2  = 3,
-	NN_CODER_OP_MODE_POOL_AVG_S2  = 4,
 } nn_coderOpMode_e;
 
 #define NN_CODER_OP_MODE_COUNT 5
@@ -97,24 +95,17 @@ typedef struct nn_coderOpLayer_s
 	nn_coderLayer_t* coder;
 
 	nn_coderOpMode_e op_mode;
-	union
-	{
-		// upscale layer
-		// transpose, xavier, stride=2
-		// W : dim(xd,2,2,xd)
-		// Y : dim(bs,2*xh,2*xw,xd)
-		//
-		// downscale layer
-		// xavier, stride=2
-		// W : dim(xd,3,3,xd)
-		// Y : dim(bs,xh/2,xw/2,xd)
-		nn_convLayer_t* conv;
 
-		// pooling layer
-		// 2x2, max or avg
-		// Y : dim(bs,xh/2,xw/2,xd)
-		nn_poolingLayer_t* pool;
-	};
+	// upscale layer
+	// transpose, xavier, stride=2
+	// W : dim(xd,2,2,xd)
+	// Y : dim(bs,2*xh,2*xw,xd)
+	//
+	// downscale layer
+	// xavier, stride=2
+	// W : dim(xd,3,3,xd)
+	// Y : dim(bs,xh/2,xw/2,xd)
+	nn_convLayer_t* conv;
 } nn_coderOpLayer_t;
 
 typedef struct nn_coderLayer_s

@@ -55,9 +55,6 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf0_fact;
 	vkk_uniformSetFactory_t* usf1_fact;
 	vkk_uniformSetFactory_t* usf2_fact;
-	vkk_uniformSetFactory_t* usf0_pooling;
-	vkk_uniformSetFactory_t* usf1_pooling;
-	vkk_uniformSetFactory_t* usf2_pooling;
 	vkk_uniformSetFactory_t* usf0_skip;
 	vkk_uniformSetFactory_t* usf1_skip;
 	vkk_uniformSetFactory_t* usf2_skip;
@@ -73,7 +70,6 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_batchNorm;
 	vkk_pipelineLayout_t* pl_conv;
 	vkk_pipelineLayout_t* pl_fact;
-	vkk_pipelineLayout_t* pl_pooling;
 	vkk_pipelineLayout_t* pl_skip;
 	vkk_pipelineLayout_t* pl_weight;
 	vkk_pipelineLayout_t* pl_loss;
@@ -111,9 +107,6 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_fact_backpropPReLU;
 	vkk_computePipeline_t* cp_fact_backpropTanh;
 	vkk_computePipeline_t* cp_fact_backpropSink;
-	vkk_computePipeline_t* cp_pooling_forwardPassAvg;
-	vkk_computePipeline_t* cp_pooling_forwardPassMax;
-	vkk_computePipeline_t* cp_pooling_backprop;
 	vkk_computePipeline_t* cp_skip_forwardPassAdd;
 	vkk_computePipeline_t* cp_skip_forwardPassCat;
 	vkk_computePipeline_t* cp_skip_backpropAdd;

@@ -9,7 +9,6 @@ CLASSES = \
 	nn_factLayer       \
 	nn_layer           \
 	nn_loss            \
-	nn_poolingLayer    \
 	nn_reshapeLayer    \
 	nn_skipLayer       \
 	nn_tensorStats     \

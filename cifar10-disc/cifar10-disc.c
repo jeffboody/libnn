@@ -37,7 +37,6 @@
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_engine.h"
 #include "libnn/nn_loss.h"
-#include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "libvkk/vkk_platform.h"

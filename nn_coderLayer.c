@@ -33,7 +33,6 @@
 #include "nn_convLayer.h"
 #include "nn_dim.h"
 #include "nn_factLayer.h"
-#include "nn_poolingLayer.h"
 #include "nn_skipLayer.h"
 #include "nn_tensor.h"
 
@@ -51,17 +50,8 @@ nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_coderOpLayer_t* self;
 	self = (nn_coderOpLayer_t*) base;
 
-	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-	{
-		return nn_layer_forwardPass(&self->conv->base,
-		                            flags, bs, X);
-	}
-	else
-	{
-		return nn_layer_forwardPass(&self->pool->base,
-		                            flags, bs, X);
-	}
+	return nn_layer_forwardPass(&self->conv->base,
+	                            flags, bs, X);
 }
 
 static nn_tensor_t*
@@ -75,17 +65,8 @@ nn_coderOpLayer_backpropFn(nn_layer_t* base,
 	nn_coderOpLayer_t* self;
 	self = (nn_coderOpLayer_t*) base;
 
-	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-	{
-		return nn_layer_backprop(&self->conv->base, flags,
-		                         bs, dL_dY);
-	}
-	else
-	{
-		return nn_layer_backprop(&self->pool->base, flags,
-		                         bs, dL_dY);
-	}
+	return nn_layer_backprop(&self->conv->base, flags,
+	                         bs, dL_dY);
 }
 
 static void
@@ -95,15 +76,7 @@ nn_coderOpLayer_postFn(nn_layer_t* base, int flags)
 
 	nn_coderOpLayer_t* self = (nn_coderOpLayer_t*) base;
 
-	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-	{
-		return nn_layer_post(&self->conv->base, flags);
-	}
-	else
-	{
-		return nn_layer_post(&self->pool->base, flags);
-	}
+	return nn_layer_post(&self->conv->base, flags);
 }
 
 static nn_dim_t*
@@ -114,15 +87,7 @@ nn_coderOpLayer_dimXFn(nn_layer_t* base)
 	nn_coderOpLayer_t* self;
 	self = (nn_coderOpLayer_t*) base;
 
-	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-	{
-		return nn_layer_dimX(&self->conv->base);
-	}
-	else
-	{
-		return nn_layer_dimX(&self->pool->base);
-	}
+	return nn_layer_dimX(&self->conv->base);
 }
 
 static nn_dim_t*
@@ -133,15 +98,7 @@ nn_coderOpLayer_dimYFn(nn_layer_t* base)
 	nn_coderOpLayer_t* self;
 	self = (nn_coderOpLayer_t*) base;
 
-	if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-	{
-		return nn_layer_dimY(&self->conv->base);
-	}
-	else
-	{
-		return nn_layer_dimY(&self->pool->base);
-	}
+	return nn_layer_dimY(&self->conv->base);
 }
 
 static nn_coderOpLayer_t*
@@ -217,24 +174,6 @@ nn_coderOpLayer_new(nn_coderLayerInfo_t* info,
 			goto fail_op;
 		}
 	}
-	else if(self->op_mode == NN_CODER_OP_MODE_POOL_AVG_S2)
-	{
-		self->pool = nn_poolingLayer_new(info->arch, dimX, 2,
-		                                 NN_POOLING_MODE_AVERAGE);
-		if(self->pool == NULL)
-		{
-			goto fail_op;
-		}
-	}
-	else if(self->op_mode == NN_CODER_OP_MODE_POOL_MAX_S2)
-	{
-		self->pool = nn_poolingLayer_new(info->arch, dimX, 2,
-		                                 NN_POOLING_MODE_MAX);
-		if(self->pool == NULL)
-		{
-			goto fail_op;
-		}
-	}
 	else
 	{
 		LOGE("invalid op_mode=%i", (int) self->op_mode);
@@ -258,15 +197,7 @@ nn_coderOpLayer_delete(nn_coderOpLayer_t** _self)
 	nn_coderOpLayer_t* self = *_self;
 	if(self)
 	{
-		if((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-		   (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2))
-		{
-			nn_convLayer_delete(&self->conv);
-		}
-		else
-		{
-			nn_poolingLayer_delete(&self->pool);
-		}
+		nn_convLayer_delete(&self->conv);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
 }
@@ -285,7 +216,6 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 	jsmn_val_t* val_op_mode = NULL;
 	jsmn_val_t* val_conv    = NULL;
-	jsmn_val_t* val_pool    = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -298,10 +228,6 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 			if(strcmp(kv->key, "conv") == 0)
 			{
 				val_conv = kv->val;
-			}
-			else if(strcmp(kv->key, "pool") == 0)
-			{
-				val_pool = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_STRING)
@@ -316,7 +242,6 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	// conv or pool also required depending on op_mode
 	if(val_op_mode == NULL)
 	{
 		LOGE("invalid");
@@ -350,14 +275,6 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	{
 		self->op_mode = NN_CODER_OP_MODE_CONV_3X3_S2;
 	}
-	else if(strcmp(val_op_mode->data, "POOL_AVG_S2") == 0)
-	{
-		self->op_mode = NN_CODER_OP_MODE_POOL_AVG_S2;
-	}
-	else if(strcmp(val_op_mode->data, "POOL_MAX_S2") == 0)
-	{
-		self->op_mode = NN_CODER_OP_MODE_POOL_MAX_S2;
-	}
 
 	if(val_conv &&
 	   ((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
@@ -365,16 +282,6 @@ nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	{
 		self->conv = nn_convLayer_import(arch, val_conv);
 		if(self->conv == NULL)
-		{
-			goto fail_op;
-		}
-	}
-	else if(val_pool &&
-	        ((self->op_mode == NN_CODER_OP_MODE_POOL_AVG_S2) ||
-	         (self->op_mode == NN_CODER_OP_MODE_POOL_MAX_S2)))
-	{
-		self->pool = nn_poolingLayer_import(arch, val_pool);
-		if(self->pool == NULL)
 		{
 			goto fail_op;
 		}
@@ -416,20 +323,6 @@ nn_coderOpLayer_export(nn_coderOpLayer_t* self,
 		ret &= jsmn_stream_string(stream, "%s", "CONV_3X3_S2");
 		ret &= jsmn_stream_key(stream, "%s", "conv");
 		ret &= nn_convLayer_export(self->conv, stream);
-	}
-	else if(self->op_mode == NN_CODER_OP_MODE_POOL_AVG_S2)
-	{
-		ret &= jsmn_stream_key(stream, "%s", "op_mode");
-		ret &= jsmn_stream_string(stream, "%s", "POOL_AVG_S2");
-		ret &= jsmn_stream_key(stream, "%s", "pool");
-		ret &= nn_poolingLayer_export(self->pool, stream);
-	}
-	else if(self->op_mode == NN_CODER_OP_MODE_POOL_MAX_S2)
-	{
-		ret &= jsmn_stream_key(stream, "%s", "op_mode");
-		ret &= jsmn_stream_string(stream, "%s", "POOL_MAX_S2");
-		ret &= jsmn_stream_key(stream, "%s", "pool");
-		ret &= nn_poolingLayer_export(self->pool, stream);
 	}
 	ret &= jsmn_stream_end(stream);
 

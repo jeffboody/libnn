@@ -31,9 +31,6 @@ glslangValidator -V nn_factLayer_backpropLERP.comp -o nn_factLayer_backpropLERP_
 glslangValidator -V nn_factLayer_backpropPReLU.comp -o nn_factLayer_backpropPReLU_comp.spv
 glslangValidator -V nn_factLayer_backpropTanh.comp -o nn_factLayer_backpropTanh_comp.spv
 glslangValidator -V nn_factLayer_backpropSink.comp -o nn_factLayer_backpropSink_comp.spv
-glslangValidator -V nn_poolingLayer_forwardPassAvg.comp -o nn_poolingLayer_forwardPassAvg_comp.spv
-glslangValidator -V nn_poolingLayer_forwardPassMax.comp -o nn_poolingLayer_forwardPassMax_comp.spv
-glslangValidator -V nn_poolingLayer_backprop.comp -o nn_poolingLayer_backprop_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassAdd.comp -o nn_skipLayer_forwardPassAdd_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassCat.comp -o nn_skipLayer_forwardPassCat_comp.spv
 glslangValidator -V nn_skipLayer_backpropAdd.comp -o nn_skipLayer_backpropAdd_comp.spv
@@ -91,9 +88,6 @@ bfs $1 blobSet nn/shaders/nn_factLayer_backpropLERP_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropPReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropTanh_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropSink_comp.spv
-bfs $1 blobSet nn/shaders/nn_poolingLayer_forwardPassAvg_comp.spv
-bfs $1 blobSet nn/shaders/nn_poolingLayer_forwardPassMax_comp.spv
-bfs $1 blobSet nn/shaders/nn_poolingLayer_backprop_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassAdd_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassCat_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_backpropAdd_comp.spv

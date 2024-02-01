@@ -37,7 +37,6 @@
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
-#include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "cifar10_disc.h"

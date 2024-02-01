@@ -200,24 +200,6 @@ nn_engine_new(vkk_engine_t* engine)
 	                                            5, ub_array);
 
 	// sb00: state
-	// ...
-	// sb03: dY_dX
-	self->usf0_pooling = vkk_uniformSetFactory_new(engine, um,
-	                                               4, ub_array);
-
-	// sb10: dimX
-	// ...
-	// sb13: Y
-	self->usf1_pooling = vkk_uniformSetFactory_new(engine, um,
-	                                               4, ub_array);
-
-	// sb20: dim_dL_dY
-	// ...
-	// sb23: dL_dX
-	self->usf2_pooling = vkk_uniformSetFactory_new(engine, um,
-	                                               4, ub_array);
-
-	// sb00: state
 	// sb01: param (beta)
 	self->usf0_skip = vkk_uniformSetFactory_new(engine, um,
 	                                            2, ub_array);
@@ -287,9 +269,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf0_fact      == NULL) ||
 	   (self->usf1_fact      == NULL) ||
 	   (self->usf2_fact      == NULL) ||
-	   (self->usf0_pooling   == NULL) ||
-	   (self->usf1_pooling   == NULL) ||
-	   (self->usf2_pooling   == NULL) ||
 	   (self->usf0_skip      == NULL) ||
 	   (self->usf1_skip      == NULL) ||
 	   (self->usf2_skip      == NULL) ||
@@ -342,15 +321,6 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_fact = vkk_pipelineLayout_new(engine, 3,
 	                                       usf_array_fact);
 
-	vkk_uniformSetFactory_t* usf_array_pooling[] =
-	{
-		self->usf0_pooling,
-		self->usf1_pooling,
-		self->usf2_pooling,
-	};
-	self->pl_pooling = vkk_pipelineLayout_new(engine, 3,
-	                                          usf_array_pooling);
-
 	vkk_uniformSetFactory_t* usf_array_skip[] =
 	{
 		self->usf0_skip,
@@ -389,7 +359,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_batchNorm == NULL) ||
 	   (self->pl_conv      == NULL) ||
 	   (self->pl_fact      == NULL) ||
-	   (self->pl_pooling   == NULL) ||
 	   (self->pl_skip      == NULL) ||
 	   (self->pl_weight    == NULL) ||
 	   (self->pl_loss      == NULL) ||
@@ -750,39 +719,6 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_fact_backpropSink);
 
-	vkk_computePipelineInfo_t cpi_pooling_forwardPassAvg =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_pooling,
-		.cs      = "nn/shaders/nn_poolingLayer_forwardPassAvg_comp.spv",
-	};
-
-	self->cp_pooling_forwardPassAvg =
-		vkk_computePipeline_new(engine,
-		                        &cpi_pooling_forwardPassAvg);
-
-	vkk_computePipelineInfo_t cpi_pooling_forwardPassMax =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_pooling,
-		.cs      = "nn/shaders/nn_poolingLayer_forwardPassMax_comp.spv",
-	};
-
-	self->cp_pooling_forwardPassMax =
-		vkk_computePipeline_new(engine,
-		                        &cpi_pooling_forwardPassMax);
-
-	vkk_computePipelineInfo_t cpi_pooling_backprop =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_pooling,
-		.cs      = "nn/shaders/nn_poolingLayer_backprop_comp.spv",
-	};
-
-	self->cp_pooling_backprop =
-		vkk_computePipeline_new(engine,
-		                        &cpi_pooling_backprop);
-
 	vkk_computePipelineInfo_t cpi_skip_forwardPassAdd =
 	{
 		.compute = self->compute,
@@ -1057,9 +993,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_fact_backpropPReLU              == NULL) ||
 	   (self->cp_fact_backpropTanh               == NULL) ||
 	   (self->cp_fact_backpropSink               == NULL) ||
-	   (self->cp_pooling_forwardPassAvg          == NULL) ||
-	   (self->cp_pooling_forwardPassMax          == NULL) ||
-	   (self->cp_pooling_backprop                == NULL) ||
 	   (self->cp_skip_forwardPassAdd             == NULL) ||
 	   (self->cp_skip_forwardPassCat             == NULL) ||
 	   (self->cp_skip_backpropAdd                == NULL) ||
@@ -1183,9 +1116,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_skip_backpropAdd);
 		vkk_computePipeline_delete(&self->cp_skip_forwardPassCat);
 		vkk_computePipeline_delete(&self->cp_skip_forwardPassAdd);
-		vkk_computePipeline_delete(&self->cp_pooling_backprop);
-		vkk_computePipeline_delete(&self->cp_pooling_forwardPassMax);
-		vkk_computePipeline_delete(&self->cp_pooling_forwardPassAvg);
 		vkk_computePipeline_delete(&self->cp_fact_backpropSink);
 		vkk_computePipeline_delete(&self->cp_fact_backpropTanh);
 		vkk_computePipeline_delete(&self->cp_fact_backpropPReLU);
@@ -1222,7 +1152,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_loss);
 		vkk_pipelineLayout_delete(&self->pl_weight);
 		vkk_pipelineLayout_delete(&self->pl_skip);
-		vkk_pipelineLayout_delete(&self->pl_pooling);
 		vkk_pipelineLayout_delete(&self->pl_fact);
 		vkk_pipelineLayout_delete(&self->pl_conv);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm);
@@ -1237,9 +1166,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf2_skip);
 		vkk_uniformSetFactory_delete(&self->usf1_skip);
 		vkk_uniformSetFactory_delete(&self->usf0_skip);
-		vkk_uniformSetFactory_delete(&self->usf2_pooling);
-		vkk_uniformSetFactory_delete(&self->usf1_pooling);
-		vkk_uniformSetFactory_delete(&self->usf0_pooling);
 		vkk_uniformSetFactory_delete(&self->usf2_fact);
 		vkk_uniformSetFactory_delete(&self->usf1_fact);
 		vkk_uniformSetFactory_delete(&self->usf0_fact);

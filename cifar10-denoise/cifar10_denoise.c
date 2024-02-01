@@ -38,7 +38,6 @@
 #include "libnn/nn_convLayer.h"
 #include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
-#include "libnn/nn_poolingLayer.h"
 #include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
 #include "cifar10_denoise.h"
@@ -443,7 +442,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.conv_size  = 3,
 		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
 		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.op_mode    = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
 	self->enc1 = nn_coderLayer_new(&info_enc1);
@@ -462,7 +461,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.conv_size  = 3,
 		.bn_mode    = NN_CODER_BATCH_NORM_MODE_INSTANCE,
 		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.op_mode    = NN_CODER_OP_MODE_POOL_MAX_S2,
+		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
 	};
 
 	self->enc2 = nn_coderLayer_new(&info_enc2);
