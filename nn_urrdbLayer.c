@@ -244,12 +244,13 @@ nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info)
 
 	nn_coderLayerInfo_t info_coder0 =
 	{
-		.arch       = info->arch,
-		.dimX       = dim,
-		.fc         = info->fc,
-		.conv_flags = info->norm_flags0,
-		.conv_size  = info->conv_size0,
-		.skip_mode  = NN_CODER_SKIP_MODE_FORK_ADD,
+		.arch        = info->arch,
+		.dimX        = dim,
+		.fc          = info->fc,
+		.conv_flags  = info->norm_flags0,
+		.conv_size   = info->conv_size0,
+		.conv_stride = 1,
+		.skip_mode   = NN_CODER_SKIP_MODE_FORK_ADD,
 		// NO BN/RELU
 	};
 
@@ -291,16 +292,17 @@ nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info)
 
 	nn_coderLayerInfo_t info_coder2 =
 	{
-		.arch       = info->arch,
-		.dimX       = dim,
-		.fc         = info->fc,
-		.conv_flags = info->norm_flags0,
-		.conv_size  = info->conv_size0,
-		.skip_mode  = NN_CODER_SKIP_MODE_ADD,
-		.skip_coder = self->coder0,
-		.skip_beta  = info->skip_beta0,
-		.bn_mode    = info->bn_mode0,
-		.fact_fn    = info->fact_fn0,
+		.arch        = info->arch,
+		.dimX        = dim,
+		.fc          = info->fc,
+		.conv_flags  = info->norm_flags0,
+		.conv_size   = info->conv_size0,
+		.conv_stride = 1,
+		.skip_mode   = NN_CODER_SKIP_MODE_ADD,
+		.skip_coder  = self->coder0,
+		.skip_beta   = info->skip_beta0,
+		.bn_mode     = info->bn_mode0,
+		.fact_fn     = info->fact_fn0,
 	};
 
 	self->coder2 = nn_coderLayer_new(&info_coder2);

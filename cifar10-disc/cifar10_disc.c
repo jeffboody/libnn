@@ -404,14 +404,14 @@ cifar10_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info_coder1 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 2,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder1 = nn_coderLayer_new(&info_coder1);
@@ -423,14 +423,14 @@ cifar10_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info_coder2 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
-		.op_mode    = NN_CODER_OP_MODE_CONV_3X3_S2,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 2,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder2 = nn_coderLayer_new(&info_coder2);
@@ -442,13 +442,14 @@ cifar10_disc_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info_coder3 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.bn_mode    = NN_CODER_BATCH_NORM_MODE_RUNNING,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 1,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_RUNNING,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder3 = nn_coderLayer_new(&info_coder3);

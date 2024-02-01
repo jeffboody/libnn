@@ -594,8 +594,8 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		}
 		flags |= info->conv_flags;
 
-		self->conv = nn_convLayer_new(info->arch, dim, &dimW, 1,
-		                              flags);
+		self->conv = nn_convLayer_new(info->arch, dim, &dimW,
+		                              info->conv_stride, flags);
 		if(self->conv == NULL)
 		{
 			goto fail_conv;

@@ -155,15 +155,16 @@ nn_urrdbNodeLayer_new(nn_urrdbLayerInfo_t* info,
 
 	nn_coderLayerInfo_t info_coder1 =
 	{
-		.arch       = info->arch,
-		.dimX       = dimX,
-		.fc         = info->fc,
-		.conv_flags = info->norm_flags1,
-		.conv_size  = info->conv_size1,
-		.skip_mode  = NN_SKIP_MODE_CAT,
-		.skip_coder = self->coder0,
-		.bn_mode    = info->bn_mode1,
-		.fact_fn    = info->fact_fn1,
+		.arch        = info->arch,
+		.dimX        = dimX,
+		.fc          = info->fc,
+		.conv_flags  = info->norm_flags1,
+		.conv_size   = info->conv_size1,
+		.conv_stride = 1,
+		.skip_mode   = NN_SKIP_MODE_CAT,
+		.skip_coder  = self->coder0,
+		.bn_mode     = info->bn_mode1,
+		.fact_fn     = info->fact_fn1,
 	};
 
 	self->coder1 = nn_coderLayer_new(&info_coder1);

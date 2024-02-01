@@ -265,12 +265,13 @@ cifar10_lerp_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info1 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 1,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder1 = nn_coderLayer_new(&info1);
@@ -282,12 +283,13 @@ cifar10_lerp_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info2 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 1,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder2 = nn_coderLayer_new(&info2);
@@ -299,12 +301,13 @@ cifar10_lerp_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_coderLayerInfo_t info3 =
 	{
-		.arch       = &self->base,
-		.dimX       = dim,
-		.fc         = fc,
-		.conv_flags = NN_CONV_LAYER_FLAG_NORM_BSSN,
-		.conv_size  = 3,
-		.fact_fn    = NN_FACT_LAYER_FN_RELU,
+		.arch        = &self->base,
+		.dimX        = dim,
+		.fc          = fc,
+		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.conv_size   = 3,
+		.conv_stride = 1,
+		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
 	self->coder3 = nn_coderLayer_new(&info3);

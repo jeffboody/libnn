@@ -71,6 +71,7 @@ typedef struct nn_coderLayerInfo_s
 	// conv layer
 	int      conv_flags;
 	uint32_t conv_size;
+	uint32_t conv_stride;
 
 	// skip layer
 	// skip_coder must be set for add/cat modes
