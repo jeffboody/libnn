@@ -37,299 +37,6 @@
 #include "nn_tensor.h"
 
 /***********************************************************
-* private - nn_coderOpLayer_t                              *
-***********************************************************/
-
-static nn_tensor_t*
-nn_coderOpLayer_forwardPassFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
-{
-	ASSERT(base);
-	ASSERT(X);
-
-	nn_coderOpLayer_t* self;
-	self = (nn_coderOpLayer_t*) base;
-
-	return nn_layer_forwardPass(&self->conv->base,
-	                            flags, bs, X);
-}
-
-static nn_tensor_t*
-nn_coderOpLayer_backpropFn(nn_layer_t* base,
-                           int flags, uint32_t bs,
-                           nn_tensor_t* dL_dY)
-{
-	ASSERT(base);
-	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
-
-	nn_coderOpLayer_t* self;
-	self = (nn_coderOpLayer_t*) base;
-
-	return nn_layer_backprop(&self->conv->base, flags,
-	                         bs, dL_dY);
-}
-
-static void
-nn_coderOpLayer_postFn(nn_layer_t* base, int flags)
-{
-	ASSERT(base);
-
-	nn_coderOpLayer_t* self = (nn_coderOpLayer_t*) base;
-
-	return nn_layer_post(&self->conv->base, flags);
-}
-
-static nn_dim_t*
-nn_coderOpLayer_dimXFn(nn_layer_t* base)
-{
-	ASSERT(base);
-
-	nn_coderOpLayer_t* self;
-	self = (nn_coderOpLayer_t*) base;
-
-	return nn_layer_dimX(&self->conv->base);
-}
-
-static nn_dim_t*
-nn_coderOpLayer_dimYFn(nn_layer_t* base)
-{
-	ASSERT(base);
-
-	nn_coderOpLayer_t* self;
-	self = (nn_coderOpLayer_t*) base;
-
-	return nn_layer_dimY(&self->conv->base);
-}
-
-static nn_coderOpLayer_t*
-nn_coderOpLayer_new(nn_coderLayerInfo_t* info,
-                    nn_dim_t* dimX,
-                    nn_coderLayer_t* coder)
-{
-	ASSERT(info);
-	ASSERT(dimX);
-	ASSERT(coder);
-
-	nn_layerInfo_t layer_info =
-	{
-		.arch            = info->arch,
-		.forward_pass_fn = nn_coderOpLayer_forwardPassFn,
-		.backprop_fn     = nn_coderOpLayer_backpropFn,
-		.post_fn         = nn_coderOpLayer_postFn,
-		.dimX_fn         = nn_coderOpLayer_dimXFn,
-		.dimY_fn         = nn_coderOpLayer_dimYFn,
-	};
-
-	nn_coderOpLayer_t*  self;
-	self = (nn_coderOpLayer_t*)
-	       nn_layer_new(sizeof(nn_coderOpLayer_t),
-	                    &layer_info);
-	if(self == NULL)
-	{
-		return NULL;
-	}
-
-	self->coder   = coder;
-	self->op_mode = info->op_mode;
-
-	uint32_t xd = dimX->depth;
-	if(self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2)
-	{
-		nn_dim_t dimW =
-		{
-			.count  = xd,
-			.width  = 2,
-			.height = 2,
-			.depth  = xd,
-		};
-
-		int flags = NN_CONV_LAYER_FLAG_TRANSPOSE |
-		            NN_CONV_LAYER_FLAG_XAVIER    |
-		            info->conv_flags;
-
-		self->conv = nn_convLayer_new(info->arch, dimX, &dimW, 2,
-		                              flags);
-		if(self->conv == NULL)
-		{
-			goto fail_op;
-		}
-	}
-	else if(self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2)
-	{
-		nn_dim_t dimW =
-		{
-			.count  = xd,
-			.width  = 3,
-			.height = 3,
-			.depth  = xd,
-		};
-
-		int flags = NN_CONV_LAYER_FLAG_XAVIER |
-		            info->conv_flags;
-
-		self->conv = nn_convLayer_new(info->arch, dimX, &dimW, 2,
-		                              flags);
-		if(self->conv == NULL)
-		{
-			goto fail_op;
-		}
-	}
-	else
-	{
-		LOGE("invalid op_mode=%i", (int) self->op_mode);
-		goto fail_op;
-	}
-
-	// success
-	return self;
-
-	// failure
-	fail_op:
-		nn_layer_delete((nn_layer_t**) &self);
-	return NULL;
-}
-
-static void
-nn_coderOpLayer_delete(nn_coderOpLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_coderOpLayer_t* self = *_self;
-	if(self)
-	{
-		nn_convLayer_delete(&self->conv);
-		nn_layer_delete((nn_layer_t**) _self);
-	}
-}
-
-static nn_coderOpLayer_t*
-nn_coderOpLayer_import(nn_arch_t* arch, jsmn_val_t* val)
-{
-	ASSERT(arch);
-	ASSERT(val);
-
-	if(val->type != JSMN_TYPE_OBJECT)
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	jsmn_val_t* val_op_mode = NULL;
-	jsmn_val_t* val_conv    = NULL;
-
-	cc_listIter_t* iter = cc_list_head(val->obj->list);
-	while(iter)
-	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
-
-		if(kv->val->type == JSMN_TYPE_OBJECT)
-		{
-			if(strcmp(kv->key, "conv") == 0)
-			{
-				val_conv = kv->val;
-			}
-		}
-		else if(kv->val->type == JSMN_TYPE_STRING)
-		{
-			if(strcmp(kv->key, "op_mode") == 0)
-			{
-				val_op_mode = kv->val;
-			}
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// check for required parameters
-	if(val_op_mode == NULL)
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
-	nn_layerInfo_t layer_info =
-	{
-		.arch            = arch,
-		.forward_pass_fn = nn_coderOpLayer_forwardPassFn,
-		.backprop_fn     = nn_coderOpLayer_backpropFn,
-		.post_fn         = nn_coderOpLayer_postFn,
-		.dimX_fn         = nn_coderOpLayer_dimXFn,
-		.dimY_fn         = nn_coderOpLayer_dimYFn,
-	};
-
-	nn_coderOpLayer_t*  self;
-	self = (nn_coderOpLayer_t*)
-	       nn_layer_new(sizeof(nn_coderOpLayer_t),
-	                    &layer_info);
-	if(self == NULL)
-	{
-		return NULL;
-	}
-
-	if(strcmp(val_op_mode->data, "CONVT_2X2_S2") == 0)
-	{
-		self->op_mode = NN_CODER_OP_MODE_CONVT_2X2_S2;
-	}
-	else if(strcmp(val_op_mode->data, "CONV_3X3_S2") == 0)
-	{
-		self->op_mode = NN_CODER_OP_MODE_CONV_3X3_S2;
-	}
-
-	if(val_conv &&
-	   ((self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2) ||
-	    (self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2)))
-	{
-		self->conv = nn_convLayer_import(arch, val_conv);
-		if(self->conv == NULL)
-		{
-			goto fail_op;
-		}
-	}
-	else
-	{
-		LOGE("invalid op_mode=%i", self->op_mode);
-		goto fail_op;
-	}
-
-	// success
-	return self;
-
-	// failure
-	fail_op:
-		nn_layer_delete((nn_layer_t**) &self);
-	return NULL;
-}
-
-static int
-nn_coderOpLayer_export(nn_coderOpLayer_t* self,
-                       jsmn_stream_t* stream)
-{
-	ASSERT(self);
-	ASSERT(stream);
-
-	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	if(self->op_mode == NN_CODER_OP_MODE_CONVT_2X2_S2)
-	{
-		ret &= jsmn_stream_key(stream, "%s", "op_mode");
-		ret &= jsmn_stream_string(stream, "%s", "CONVT_2X2_S2");
-		ret &= jsmn_stream_key(stream, "%s", "conv");
-		ret &= nn_convLayer_export(self->conv, stream);
-	}
-	else if(self->op_mode == NN_CODER_OP_MODE_CONV_3X3_S2)
-	{
-		ret &= jsmn_stream_key(stream, "%s", "op_mode");
-		ret &= jsmn_stream_string(stream, "%s", "CONV_3X3_S2");
-		ret &= jsmn_stream_key(stream, "%s", "conv");
-		ret &= nn_convLayer_export(self->conv, stream);
-	}
-	ret &= jsmn_stream_end(stream);
-
-	return ret;
-}
-
-/***********************************************************
 * private - nn_coderLayer_t                                *
 ***********************************************************/
 
@@ -396,15 +103,6 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 		}
 	}
 
-	if(self->op)
-	{
-		X = nn_layer_forwardPass(&self->op->base, flags, bs, X);
-		if(X == NULL)
-		{
-			return NULL;
-		}
-	}
-
 	return X;
 }
 
@@ -416,16 +114,6 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
 
 	nn_coderLayer_t* self = (nn_coderLayer_t*) base;
-
-	if(self->op)
-	{
-		dL_dY = nn_layer_backprop(&self->op->base, flags,
-		                          bs, dL_dY);
-		if(dL_dY == NULL)
-		{
-			return NULL;
-		}
-	}
 
 	if(self->skip &&
 	   ((self->skip->skip_mode == NN_SKIP_MODE_FORK_CAT) ||
@@ -509,11 +197,6 @@ nn_coderLayer_postFn(nn_layer_t* base, int flags)
 	if(self->fact)
 	{
 		nn_layer_post(&self->fact->base, flags);
-	}
-
-	if(self->op)
-	{
-		nn_layer_post(&self->op->base, flags);
 	}
 }
 
@@ -654,24 +337,12 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		}
 	}
 
-	if(info->op_mode != NN_CODER_OP_MODE_NONE)
-	{
-		self->op = nn_coderOpLayer_new(info, dim, self);
-		if(self->op == NULL)
-		{
-			goto fail_op;
-		}
-		dim = nn_layer_dimY(&self->op->base);
-	}
-
 	nn_dim_copy(dim, &self->dimY);
 
 	// success
 	return self;
 
 	// failure
-	fail_op:
-		nn_factLayer_delete(&self->fact);
 	fail_fact:
 		nn_batchNormLayer_delete(&self->bn);
 	fail_bn:
@@ -690,7 +361,6 @@ void nn_coderLayer_delete(nn_coderLayer_t** _self)
 	nn_coderLayer_t* self = *_self;
 	if(self)
 	{
-		nn_coderOpLayer_delete(&self->op);
 		nn_factLayer_delete(&self->fact);
 		nn_batchNormLayer_delete(&self->bn);
 		nn_skipLayer_delete(&self->skip);
@@ -719,7 +389,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	jsmn_val_t* val_skip = NULL;
 	jsmn_val_t* val_bn   = NULL;
 	jsmn_val_t* val_fact = NULL;
-	jsmn_val_t* val_op   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -752,10 +421,6 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 			else if(strcmp(kv->key, "fact") == 0)
 			{
 				val_fact = kv->val;
-			}
-			else if(strcmp(kv->key, "op") == 0)
-			{
-				val_op = kv->val;
 			}
 		}
 
@@ -842,21 +507,10 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		}
 	}
 
-	if(val_op)
-	{
-		self->op = nn_coderOpLayer_import(arch, val_op);
-		if(self->op == NULL)
-		{
-			goto fail_op;
-		}
-	}
-
 	// success
 	return self;
 
 	// failure
-	fail_op:
-		nn_factLayer_delete(&self->fact);
 	fail_fact:
 		nn_batchNormLayer_delete(&self->bn);
 	fail_bn:
@@ -905,12 +559,6 @@ int nn_coderLayer_export(nn_coderLayer_t* self,
 	{
 		ret &= jsmn_stream_key(stream, "%s", "fact");
 		ret &= nn_factLayer_export(self->fact, stream);
-	}
-
-	if(self->op)
-	{
-		ret &= jsmn_stream_key(stream, "%s", "op");
-		ret &= nn_coderOpLayer_export(self->op, stream);
 	}
 	ret &= jsmn_stream_end(stream);
 

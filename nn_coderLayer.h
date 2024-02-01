@@ -52,15 +52,6 @@ typedef enum
 
 #define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 3
 
-typedef enum
-{
-	NN_CODER_OP_MODE_NONE         = 0,
-	NN_CODER_OP_MODE_CONVT_2X2_S2 = 1, // upscale
-	NN_CODER_OP_MODE_CONV_3X3_S2  = 2, // downscale
-} nn_coderOpMode_e;
-
-#define NN_CODER_OP_MODE_COUNT 5
-
 typedef struct nn_coderLayerInfo_s
 {
 	nn_arch_t* arch;
@@ -84,30 +75,7 @@ typedef struct nn_coderLayerInfo_s
 
 	// fact layer
 	nn_factLayerFn_e fact_fn;
-
-	// op layer
-	nn_coderOpMode_e op_mode;
 } nn_coderLayerInfo_t;
-
-typedef struct nn_coderOpLayer_s
-{
-	nn_layer_t base;
-
-	nn_coderLayer_t* coder;
-
-	nn_coderOpMode_e op_mode;
-
-	// upscale layer
-	// transpose, xavier, stride=2
-	// W : dim(xd,2,2,xd)
-	// Y : dim(bs,2*xh,2*xw,xd)
-	//
-	// downscale layer
-	// xavier, stride=2
-	// W : dim(xd,3,3,xd)
-	// Y : dim(bs,xh/2,xw/2,xd)
-	nn_convLayer_t* conv;
-} nn_coderOpLayer_t;
 
 typedef struct nn_coderLayer_s
 {
@@ -124,7 +92,6 @@ typedef struct nn_coderLayer_s
 	nn_skipLayer_t*      skip;
 	nn_batchNormLayer_t* bn;
 	nn_factLayer_t*      fact;
-	nn_coderOpLayer_t*   op;
 } nn_coderLayer_t;
 
 nn_coderLayer_t* nn_coderLayer_new(nn_coderLayerInfo_t* info);
