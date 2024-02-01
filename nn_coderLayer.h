@@ -69,7 +69,7 @@ typedef struct nn_coderLayerInfo_s
 	uint32_t  fc;
 
 	// conv layer
-	int      norm_flags;
+	int      conv_flags;
 	uint32_t conv_size;
 
 	// skip layer

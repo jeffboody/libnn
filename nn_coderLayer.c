@@ -145,7 +145,7 @@ nn_coderOpLayer_new(nn_coderLayerInfo_t* info,
 
 		int flags = NN_CONV_LAYER_FLAG_TRANSPOSE |
 		            NN_CONV_LAYER_FLAG_XAVIER    |
-		            info->norm_flags;
+		            info->conv_flags;
 
 		self->conv = nn_convLayer_new(info->arch, dimX, &dimW, 2,
 		                              flags);
@@ -165,7 +165,7 @@ nn_coderOpLayer_new(nn_coderLayerInfo_t* info,
 		};
 
 		int flags = NN_CONV_LAYER_FLAG_XAVIER |
-		            info->norm_flags;
+		            info->conv_flags;
 
 		self->conv = nn_convLayer_new(info->arch, dimX, &dimW, 2,
 		                              flags);
@@ -592,7 +592,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		{
 			flags |= NN_CONV_LAYER_FLAG_DISABLE_BIAS;
 		}
-		flags |= info->norm_flags;
+		flags |= info->conv_flags;
 
 		self->conv = nn_convLayer_new(info->arch, dim, &dimW, 1,
 		                              flags);

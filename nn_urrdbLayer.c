@@ -247,7 +247,7 @@ nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info)
 		.arch       = info->arch,
 		.dimX       = dim,
 		.fc         = info->fc,
-		.norm_flags = info->norm_flags0,
+		.conv_flags = info->norm_flags0,
 		.conv_size  = info->conv_size0,
 		.skip_mode  = NN_CODER_SKIP_MODE_FORK_ADD,
 		// NO BN/RELU
@@ -294,7 +294,7 @@ nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info)
 		.arch       = info->arch,
 		.dimX       = dim,
 		.fc         = info->fc,
-		.norm_flags = info->norm_flags0,
+		.conv_flags = info->norm_flags0,
 		.conv_size  = info->conv_size0,
 		.skip_mode  = NN_CODER_SKIP_MODE_ADD,
 		.skip_coder = self->coder0,
