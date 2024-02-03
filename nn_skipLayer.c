@@ -901,7 +901,10 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 	   (dimX1->height != dimX2->height) ||
 	   (dimX1->width  != dimX2->width))
 	{
-		LOGE("invalid");
+		LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u",
+		     dimX1->count,  dimX2->count,
+		     dimX1->height, dimX2->height,
+		     dimX1->width,  dimX2->width);
 		return NULL;
 	}
 
