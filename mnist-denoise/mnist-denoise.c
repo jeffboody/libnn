@@ -28,6 +28,7 @@
 #define LOG_TAG "mnist-denoise"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
+#include "libcc/cc_timestamp.h"
 #include "libnn/mnist/nn_mnist.h"
 #include "libnn/nn_engine.h"
 #include "libnn/nn_tensor.h"
@@ -84,6 +85,7 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 	float    sum_loss = 0.0f;
 	float    min_loss = FLT_MAX;
 	float    max_loss = 0.0f;
+	double   t0       = cc_timestamp();
 	while(epoch < 20)
 	{
 		steps = (epoch + 1)*count/bs;
@@ -155,8 +157,8 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 				mnist_denoise_export(self, fname);
 			}
 
-			LOGI("epoch=%u, step=%u, loss=%f",
-			     epoch, step, loss);
+			LOGI("epoch=%u, step=%u, elapsed=%lf, loss=%f",
+			     epoch, step, cc_timestamp() - t0, loss);
 			++step;
 		}
 

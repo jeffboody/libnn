@@ -29,6 +29,7 @@
 #include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
+#include "libcc/cc_timestamp.h"
 #include "libnn/cifar10-denoise/cifar10_denoise.h"
 #include "libnn/cifar10-disc/cifar10_disc.h"
 #include "libnn/cifar10/nn_cifar10.h"
@@ -327,6 +328,7 @@ cifar10_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 	float    g_sum_loss = 0.0f;
 	float    g_min_loss = FLT_MAX;
 	float    g_max_loss = 0.0f;
+	double   t0         = cc_timestamp();
 	while(epoch < 20)
 	{
 		steps = (epoch + 1)*dimXt->count/bs;
@@ -517,8 +519,9 @@ cifar10_gan_onMain(vkk_engine_t* ve, int argc, char** argv)
 				cifar10_denoise_export(dn, fname);
 			}
 
-			LOGI("epoch=%u, step=%u, loss=%f, g_loss=%f, d_loss=%f, blend_factor=%f",
-			     epoch, step, loss, g_loss, d_loss,
+			LOGI("epoch=%u, step=%u, elapsed=%lf, loss=%f, g_loss=%f, d_loss=%f, blend_factor=%f",
+			     epoch, step, cc_timestamp() - t0,
+			     loss, g_loss, d_loss,
 			     dn_state->gan_blend_factor);
 			++step;
 		}

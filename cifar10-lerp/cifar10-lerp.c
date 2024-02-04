@@ -28,6 +28,7 @@
 #define LOG_TAG "cifar10"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
+#include "libcc/cc_timestamp.h"
 #include "libnn/cifar10/nn_cifar10.h"
 #include "libnn/nn_coderLayer.h"
 #include "libnn/nn_engine.h"
@@ -192,6 +193,7 @@ cifar10_lerp_onMain(vkk_engine_t* ve, int argc,
 	float    sum_loss3 = 0.0f;
 	float    min_loss3 = FLT_MAX;
 	float    max_loss3 = 0.0f;
+	double   t0        = cc_timestamp();
 	while(epoch < 20)
 	{
 		steps = (epoch + 1)*dim->count/bs;
@@ -306,8 +308,9 @@ cifar10_lerp_onMain(vkk_engine_t* ve, int argc,
 				cifar10_lerp_export(nn3, fname);
 			}
 
-			LOGI("epoch=%u, step=%u, loss1=%f, loss2=%f, loss3=%f",
-			     epoch, step, loss1, loss2, loss3);
+			LOGI("epoch=%u, step=%u, elapsed=%lf, loss1=%f, loss2=%f, loss3=%f",
+			     epoch, step, cc_timestamp() - t0,
+			     loss1, loss2, loss3);
 			++step;
 		}
 
