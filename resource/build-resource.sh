@@ -27,7 +27,6 @@ glslangValidator -V nn_factLayer_forwardPassSink.comp -o nn_factLayer_forwardPas
 glslangValidator -V nn_factLayer_backpropLinear.comp -o nn_factLayer_backpropLinear_comp.spv
 glslangValidator -V nn_factLayer_backpropLogistic.comp -o nn_factLayer_backpropLogistic_comp.spv
 glslangValidator -V nn_factLayer_backpropReLU.comp -o nn_factLayer_backpropReLU_comp.spv
-glslangValidator -V nn_factLayer_backpropLERP.comp -o nn_factLayer_backpropLERP_comp.spv
 glslangValidator -V nn_factLayer_backpropPReLU.comp -o nn_factLayer_backpropPReLU_comp.spv
 glslangValidator -V nn_factLayer_backpropTanh.comp -o nn_factLayer_backpropTanh_comp.spv
 glslangValidator -V nn_factLayer_backpropSink.comp -o nn_factLayer_backpropSink_comp.spv
@@ -84,7 +83,6 @@ bfs $1 blobSet nn/shaders/nn_factLayer_forwardPassSink_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropLinear_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropLogistic_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropReLU_comp.spv
-bfs $1 blobSet nn/shaders/nn_factLayer_backpropLERP_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropPReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropTanh_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropSink_comp.spv

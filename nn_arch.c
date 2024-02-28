@@ -421,98 +421,6 @@ nn_arch_initFairCGAN(nn_arch_t* self,
 }
 
 static int
-nn_arch_initLERP(nn_arch_t* self, nn_arch_t* lerp,
-                 uint32_t bs,
-                 nn_tensor_t* Xt, nn_tensor_t* Yt)
-{
-	ASSERT(self);
-	ASSERT(lerp);
-	ASSERT(Xt);
-	ASSERT(Yt);
-
-	nn_engine_t* engine = self->engine;
-
-	// create Xt
-	if(Xt->tensor_mode == NN_TENSOR_MODE_IO)
-	{
-		// X is Xt
-		if(self->X)
-		{
-			if(nn_dim_equals(nn_tensor_dim(self->X),
-			                 nn_tensor_dim(Xt)) == 0)
-			{
-				nn_tensor_delete(&self->X);
-			}
-		}
-
-		if(self->X == NULL)
-		{
-			self->X = nn_tensor_new(engine, nn_tensor_dim(Xt),
-			                        NN_TENSOR_INIT_ZERO,
-			                        NN_TENSOR_MODE_COMPUTE);
-			if(self->X == NULL)
-			{
-				return 0;
-			}
-		}
-
-		if(nn_tensor_blit(Xt, self->X, bs, 0, 0) == 0)
-		{
-			return 0;
-		}
-	}
-
-	// create Yt
-	if(Yt->tensor_mode == NN_TENSOR_MODE_IO)
-	{
-		if(self->Yt)
-		{
-			if(nn_dim_equals(nn_tensor_dim(self->Yt),
-			                 nn_tensor_dim(Yt)) == 0)
-			{
-				nn_tensor_delete(&self->Yt);
-			}
-		}
-
-		if(self->Yt == NULL)
-		{
-			self->Yt = nn_tensor_new(engine, nn_tensor_dim(Yt),
-			                          NN_TENSOR_INIT_ZERO,
-			                          NN_TENSOR_MODE_COMPUTE);
-			if(self->Yt == NULL)
-			{
-				return 0;
-			}
-		}
-
-		if(nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0)
-		{
-			return 0;
-		}
-	}
-
-	// update global state
-	nn_archState_t* state1 = &self->state;
-	nn_archState_t* state2 = &lerp->state;
-	state1->bs = bs;
-	state2->bs = bs;
-	state1->adam_beta1t *= state1->adam_beta1;
-	state1->adam_beta2t *= state1->adam_beta2;
-	state2->adam_beta1t *= state2->adam_beta1;
-	state2->adam_beta2t *= state2->adam_beta2;
-	vkk_compute_writeBuffer(engine->compute,
-	                        self->sb00_state,
-	                        sizeof(nn_archState_t),
-	                        0, state1);
-	vkk_compute_writeBuffer(engine->compute,
-	                        lerp->sb00_state,
-	                        sizeof(nn_archState_t),
-	                        0, state2);
-
-	return nn_engine_begin(engine);
-}
-
-static int
 nn_arch_forwardPassFairCGAN(nn_arch_t* self, uint32_t bs,
                             nn_tensor_t* Cg1,
                             nn_tensor_t* Cr1,
@@ -1118,7 +1026,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 		goto fail_loss;
 	}
 
-	// perform backprop
+	// perform backpropagation
 	iter = cc_list_tail(self->layers);
 	while(iter)
 	{
@@ -1153,144 +1061,6 @@ nn_arch_train(nn_arch_t* self, int flags,
 	fail_backprop:
 	fail_loss:
 	fail_forwardPass:
-		nn_engine_end(self->engine);
-	return NULL;
-}
-
-nn_tensor_t*
-nn_arch_trainLERP(nn_arch_t* self, nn_arch_t* lerp,
-                  uint32_t bs,
-                  nn_tensor_t* Xt, nn_tensor_t* Yt,
-                  nn_tensor_t* X, nn_tensor_t* Y)
-{
-	// X and Y may be NULL
-	ASSERT(self);
-	ASSERT(lerp);
-	ASSERT(Xt);
-	ASSERT(Yt);
-
-	int flags = NN_LAYER_FLAG_TRAIN;
-
-	if(nn_arch_initLERP(self, lerp, bs, Xt, Yt) == 0)
-	{
-		return NULL;
-	}
-
-	// optionally replace Xt, Yt with compute tensors
-	if(Xt->tensor_mode == NN_TENSOR_MODE_IO)
-	{
-		// X is Xt
-		Xt = self->X;
-	}
-
-	if(Yt->tensor_mode == NN_TENSOR_MODE_IO)
-	{
-		Yt = self->Yt;
-	}
-
-	// perform the forward pass to compute Y1=NN1(Xt)
-	nn_tensor_t*   Y1   = Xt;
-	cc_listIter_t* iter = cc_list_head(self->layers);
-	while(iter)
-	{
-		nn_layer_t* layer;
-		layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-		Y1 = nn_layer_forwardPass(layer, flags, bs, Y1);
-		if(Y1 == NULL)
-		{
-			goto fail_train;
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// perform the forward pass to compute X2=NN2(Yt)
-	nn_tensor_t* X2 = Yt;
-	iter = cc_list_head(lerp->layers);
-	while(iter)
-	{
-		nn_layer_t* layer;
-		layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-		X2 = nn_layer_forwardPass(layer, flags, bs, X2);
-		if(X2 == NULL)
-		{
-			goto fail_train;
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// compute loss
-	nn_tensor_t* dL_dY1;
-	nn_tensor_t* dL_dX2;
-	dL_dY1 = nn_loss_loss(self->loss, bs, Y1, Yt);
-	dL_dX2 = nn_loss_loss(lerp->loss, bs, X2, Xt);
-	if((dL_dY1 == NULL) || (dL_dX2 == NULL))
-	{
-		goto fail_train;
-	}
-
-	// perform backprop (dL_dY1)
-	iter = cc_list_tail(self->layers);
-	while(iter)
-	{
-		nn_layer_t* layer;
-		layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-		dL_dY1 = nn_layer_backprop(layer, flags, bs, dL_dY1);
-		if(dL_dY1 == NULL)
-		{
-			goto fail_train;
-		}
-
-		iter = cc_list_prev(iter);
-	}
-
-	// perform backprop (dL_dX2)
-	iter = cc_list_tail(lerp->layers);
-	while(iter)
-	{
-		nn_layer_t* layer;
-		layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-		dL_dX2 = nn_layer_backprop(layer, flags, bs, dL_dX2);
-		if(dL_dX2 == NULL)
-		{
-			goto fail_train;
-		}
-
-		iter = cc_list_prev(iter);
-	}
-
-	nn_engine_end(self->engine);
-	nn_arch_post(self, flags);
-	nn_arch_post(lerp, flags);
-
-	// optionally blit Y
-	if(Y)
-	{
-		if(nn_tensor_blit(Y1, Y, bs, 0, 0) == 0)
-		{
-			return NULL;
-		}
-	}
-
-	// optionally blit X
-	if(X)
-	{
-		if(nn_tensor_blit(X2, X, bs, 0, 0) == 0)
-		{
-			return NULL;
-		}
-	}
-
-	// success
-	return dL_dY1;
-
-	// failure
-	fail_train:
 		nn_engine_end(self->engine);
 	return NULL;
 }
@@ -1484,7 +1254,7 @@ nn_arch_trainFairCGAN(nn_arch_t* G,
 		}
 	}
 
-	// perform backprop
+	// perform backpropagation
 	iter = cc_list_tail(G->layers);
 	while(iter)
 	{

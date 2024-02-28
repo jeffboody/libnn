@@ -564,16 +564,3 @@ int nn_coderLayer_export(nn_coderLayer_t* self,
 
 	return ret;
 }
-
-int nn_coderLayer_lerp(nn_coderLayer_t* self,
-                       nn_coderLayer_t* lerp,
-                       float s1, float s2)
-{
-	ASSERT(self);
-	ASSERT(lerp);
-
-	int ret = 1;
-	ret &= nn_factLayer_lerp(self->fact, lerp->fact, s1, s2);
-	ret &= nn_factLayer_lerp(lerp->fact, self->fact, s2, s1);
-	return ret;
-}

@@ -57,9 +57,6 @@ typedef struct nn_archState_s
 	float    gan_blend_scalar;
 	float    gan_blend_min;
 	float    gan_blend_max;
-	float    lerp_s;
-	float    lerp_min;
-	float    lerp_max;
 } nn_archState_t;
 
 typedef struct nn_arch_s
@@ -117,13 +114,6 @@ nn_tensor_t* nn_arch_train(nn_arch_t* self,
                            nn_tensor_t* X,
                            nn_tensor_t* Yt,
                            nn_tensor_t* Y);
-nn_tensor_t* nn_arch_trainLERP(nn_arch_t* self,
-                               nn_arch_t* lerp,
-                               uint32_t bs,
-                               nn_tensor_t* Xt,
-                               nn_tensor_t* Yt,
-                               nn_tensor_t* X,
-                               nn_tensor_t* Y);
 nn_tensor_t* nn_arch_trainFairCGAN(nn_arch_t* G,
                                    nn_arch_t* D,
                                    uint32_t bs,

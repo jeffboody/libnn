@@ -130,8 +130,5 @@ nn_coderLayer_t* nn_coderLayer_import(nn_arch_t* arch,
                                       nn_coderLayer_t* skip_coder);
 int              nn_coderLayer_export(nn_coderLayer_t* self,
                                       jsmn_stream_t* stream);
-int              nn_coderLayer_lerp(nn_coderLayer_t* self,
-                                    nn_coderLayer_t* lerp,
-                                    float s1, float s2);
 
 #endif

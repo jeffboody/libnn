@@ -159,9 +159,8 @@ Fact Layer
 
 Shared Uniforms
 
-* sb00: state
-* sb01: dimX
-* sb02: X
+* sb00: dimX
+* sb01: X
 
 Forward Pass Uniforms
 
@@ -172,12 +171,6 @@ Backprop Uniforms
 
 * sb20: dim_dL_dY
 * sb21: dL_dY
-
-Backprop Uniforms (LERP)
-
-* sb22: dimX2
-* sb23: X2
-* sb24: lerp (s1,s2)
 
 Pooling Layer
 -------------
