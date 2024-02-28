@@ -53,10 +53,6 @@ typedef struct nn_archState_s
 	float    adam_lambda;   // AdamW decoupled weight decay
 	float    adam_nu;       // AdamW schedule multiplier
 	float    bn_momentum;
-	float    gan_blend_factor;
-	float    gan_blend_scalar;
-	float    gan_blend_min;
-	float    gan_blend_max;
 } nn_archState_t;
 
 typedef struct nn_arch_s
@@ -79,16 +75,6 @@ typedef struct nn_arch_s
 	// default NN
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
-
-	// Fair cGAN
-	nn_tensor_t* Xd;
-	nn_tensor_t* Cg0;
-	nn_tensor_t* Cg1;
-	nn_tensor_t* Cr0;
-	nn_tensor_t* Cr1;
-	nn_tensor_t* Ytg;
-	nn_tensor_t* Ytr;
-	nn_tensor_t* dL_dYb;
 
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
@@ -114,25 +100,6 @@ nn_tensor_t* nn_arch_train(nn_arch_t* self,
                            nn_tensor_t* X,
                            nn_tensor_t* Yt,
                            nn_tensor_t* Y);
-nn_tensor_t* nn_arch_trainFairCGAN(nn_arch_t* G,
-                                   nn_arch_t* D,
-                                   uint32_t bs,
-                                   nn_tensor_t* Cg0,
-                                   nn_tensor_t* Cg1,
-                                   nn_tensor_t* Cr0,
-                                   nn_tensor_t* Cr1,
-                                   nn_tensor_t* Ytg,
-                                   nn_tensor_t* Ytr,
-                                   nn_tensor_t* Yt11,
-                                   nn_tensor_t* Yt10,
-                                   nn_tensor_t* dL_dYb,
-                                   nn_tensor_t* dL_dYg,
-                                   nn_tensor_t* dL_dYd,
-                                   nn_tensor_t* Yg,
-                                   nn_tensor_t* Yd,
-                                   float* loss,
-                                   float* g_loss,
-                                   float* d_loss);
 float        nn_arch_loss(nn_arch_t* self);
 int          nn_arch_predict(nn_arch_t* self,
                              uint32_t bs,

@@ -365,28 +365,6 @@ nn_engine_new(vkk_engine_t* engine)
 		goto failure;
 	}
 
-	vkk_computePipelineInfo_t cpi_arch_forwardPassFairCGAN =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_arch,
-		.cs      = "nn/shaders/nn_arch_forwardPassFairCGAN_comp.spv",
-	};
-
-	self->cp_arch_forwardPassFairCGAN =
-		vkk_computePipeline_new(engine,
-		                        &cpi_arch_forwardPassFairCGAN);
-
-	vkk_computePipelineInfo_t cpi_arch_backpropFairCGAN =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_arch,
-		.cs      = "nn/shaders/nn_arch_backpropFairCGAN_comp.spv",
-	};
-
-	self->cp_arch_backpropFairCGAN =
-		vkk_computePipeline_new(engine,
-		                        &cpi_arch_backpropFairCGAN);
-
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXmean =
 	{
 		.compute = self->compute,
@@ -948,9 +926,7 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_bssn);
 
-	if((self->cp_arch_forwardPassFairCGAN        == NULL) ||
-	   (self->cp_arch_backpropFairCGAN           == NULL) ||
-	   (self->cp_batchNorm_forwardPassXmean      == NULL) ||
+	if((self->cp_batchNorm_forwardPassXmean      == NULL) ||
 	   (self->cp_batchNorm_forwardPassXvar       == NULL) ||
 	   (self->cp_batchNorm_forwardPassXhat       == NULL) ||
 	   (self->cp_batchNorm_forwardPassY          == NULL) ||
@@ -1131,8 +1107,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXhat);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvar);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmean);
-		vkk_computePipeline_delete(&self->cp_arch_backpropFairCGAN);
-		vkk_computePipeline_delete(&self->cp_arch_forwardPassFairCGAN);
 		vkk_pipelineLayout_delete(&self->pl_tensor);
 		vkk_pipelineLayout_delete(&self->pl_loss);
 		vkk_pipelineLayout_delete(&self->pl_weight);

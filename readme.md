@@ -1326,14 +1326,22 @@ conditional information to guide the generator in producing
 the desired output. Notable examples of Conditional GANs
 include Pixel-To-Pixel GAN (paired image-to-image
 translation) and Cycle GAN (unpaired image-to-image
-translation). The Pixel-To-Pixel GAN paper proposes a
-generic architecture that incorporates U-Net skip
-connections for the generator, a custom cGAN + L1 objective
-fuction combined with a Patch GAN, divide the objective by 2
-when training the descriminator, the Adam optimizer, batch
-normalization with instance normalization, dropout in the
-generator (to increase variation), strided convolutions, and
-ReLU/leaky ReLU activation functions. The Cycle GAN enforces
+translation).
+
+The Pixel-To-Pixel GAN paper proposes a generic architecture
+that incorporates U-Net skip connections for the generator,
+a custom cGAN + L1 objective fuction combined with a Patch
+GAN, divide the objective by 2 when training the
+descriminator, the Adam optimizer, batch normalization with
+instance normalization, dropout in the generator (to
+increase variation), strided convolutions, and ReLU/leaky
+ReLU activation functions. The role of the L1 objective
+function is to serve as a stabilizing loss, however, this
+seems to fundamentially change the GAN game such that the
+discriminator is able to detect generated samples with a
+very high accuracy.
+
+The Cycle GAN enforces
 transitivity via a cycle consistency loss term. The Cycle
 GAN architecture consists of residual blocks for the
 generator, the objective function is combined with a Patch
@@ -1362,104 +1370,6 @@ References
 * [Least Squares Generative Adversarial Networks](https://arxiv.org/pdf/1611.04076.pdf)
 * [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
 * [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
-
-Fair cGAN Training Procedure
-----------------------------
-
-The fairness of the adversarial game is improved by ensuring
-that both generator and discriminator are trained using the
-same data. To understand this point better, consider the
-following corner case which is created by the original cGAN
-training procedure. During training, a bank ATM (e.g. the
-discriminator) detect fakes bills by comparing them directly
-with real bills. Perhaps, the tint of the real and fake
-bills is slightly different making it easy to detect
-fake bills. However, the counterfitter can tilt the game in
-its favor by stuffing the bank ATM with only fake bills thus
-making the bill tint an undiscernable feature. As a result,
-the bank ATM can successfully detect fake bills during
-training and the counterfitter can succcessfully generate
-fake bills that will fool the bank ATM in practice. One way
-this problem manifests in the neural network architecture is
-with the discriminator batch normalization layers which
-produce poor statistics when all samples are fake.
-
-The Fair cGAN training procedure consists of a four step
-process that is repeated for each iteration.
-
-![Fair cGAN Network](docs/fair_cgan.jpg?raw=true "Fair cGAN Network")
-
-Generator forward pass.
-
-1. Select a minibatch of m/2 conditional samples Cg
-2. Select a minibatch of m/2 corresponding real samples Ytg
-3. Perform the forward pass to compute Yg=G(Cg)
-4. Compute the loss and dL_dYg using Yg and Ytg
-
-Discriminator forward pass.
-
-1. Select a minibatch of m/2 conditional samples Cr
-2. Select a minibatch of m/2 corresponding real samples Ytr
-3. Form a single minibatch of m samples Xd=(Ytr|Cr,Yg|Cg)
-4. Perform the forward pass to compute Yd=D(Xd)
-
-Where '|' is a channelwise concatenation.
-
-Discriminator training.
-
-1. Form the training tensor Yt10 with half ones and half zeros
-2. Compute the loss using Yd and Yt10
-3. Perform backprop using the discriminator
-
-Generator training.
-
-1. Form the training tensor Yt11 with all ones
-2. Compute the loss using Yd and Yt11
-3. Perform backprop (NOP) using the discriminator
-4. Compute dL_dYb=blend(dL_dYg, dL_dYdg)
-5. Perform backprop using the generator and dL_dYb
-
-Where NOP means to disable the parameter update.
-
-The compuation of dL_dYdg consists of filtering a subset
-of the discriminator backprop gradient dL_dYd which
-corresponds to the minibatch and channnels of Yg from
-Xd=(Ytr|Cr,Yg|Cg).
-
-The Pix-To-Pix GAN uses a lambda=100 coefficient to scale
-the L1 objective loss (a stabilizing loss), however, this
-doesn't feel mathematically sound. Therefore, I recommend
-replacing lambda with a blend_factor as follows.
-
-	dL_dYb = (1 - blend_factor)*dL_dYg + blend_factor*dL_dYdg
-
-Preliminary experimentations using MNIST suggest that
-initializing the blend_factor to 0.1 while increasing the
-blend_factor to 0.5 over time using a blend_scalar of 1.01
-works well.
-
-	blend_factor *= blend_scalar
-	blend_factor = clamp(blend_factor, blend_min, blend_max)
-
-It is important to note that the inclusion of the
-stabilizing loss fundamentially changes the GAN game such
-that the discriminator is able to detect generated samples
-through the error introduced by the stabilizing loss with
-a very high accuracy. However, the expectation is that the
-generator is still able to produce more realistic samples
-using the blended gradients when compared to the stabilizing
-loss alone. Experiments were performed to blend away the
-stabilizing loss entirely over time to address this issue,
-however, this ultimately resulted in poorly generated
-samples which were also easily detectable by the
-discriminator.
-
-Compute performance is improved by eliminating a forward
-pass and by reducing the generator minibatch size to m/2.
-The larger minibatch size of the discriminator results in
-smoother gradients which is somewhat equivalent to the
-Pix-To-Pix training policy which divides the objective by
-two while optimizing the discriminator.
 
 GAN Based Super-Resolution
 --------------------------

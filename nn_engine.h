@@ -75,8 +75,6 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_loss;
 	vkk_pipelineLayout_t* pl_tensor;
 
-	vkk_computePipeline_t* cp_arch_forwardPassFairCGAN;
-	vkk_computePipeline_t* cp_arch_backpropFairCGAN;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXmean;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXvar;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXhat;

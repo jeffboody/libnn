@@ -21,10 +21,6 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_adam_lambda;
 	float state_adam_nu;
 	float state_bn_momentum;
-	float state_gan_blend_factor;
-	float state_gan_blend_scalar;
-	float state_gan_blend_min;
-	float state_gan_blend_max;
 };
 
 layout(std430, set=0, binding=6) readonly buffer sb06
