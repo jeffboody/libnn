@@ -37,11 +37,9 @@ static void nn_tensorStats_update(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_engine_t* engine = self->engine;
-
 	if(self->dirty)
 	{
-		vkk_compute_readBuffer(engine->compute, self->sb10_stats,
+		vkk_buffer_readStorage(self->sb10_stats,
 		                       sizeof(nn_tensorStatsData_t), 0,
 		                       &self->data);
 		self->dirty = 0;
