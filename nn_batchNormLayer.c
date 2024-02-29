@@ -261,12 +261,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 			if(k == 0)
 			{
-				nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 				                   1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+				nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 				                   1, 1, 1, 8, 8, 1);
 			}
 		}
@@ -290,12 +290,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 			if(k == 0)
 			{
-				nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 				                   1, 1, 1, 8, 8, 1);
 			}
 			else
 			{
-				nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+				nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 				                   1, 1, 1, 8, 8, 1);
 			}
 		}
@@ -317,7 +317,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		update = 0;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
 	// nn_batchNormLayer_forwardPassY
@@ -327,7 +327,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
 	return Y;
@@ -452,7 +452,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 12, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
 	// optionally skip parameter update
@@ -485,12 +485,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		vkk_compute_bindUniformSets(engine->compute, 1, &us3);
 		if(k == 0)
 		{
-			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 			                   1, 1, 1, 8, 8, 1);
 		}
 		else
 		{
-			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 			                   1, 1, 1, 8, 8, 1);
 		}
 	}
@@ -502,7 +502,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
 	// dL_dY replaced by dL_dX

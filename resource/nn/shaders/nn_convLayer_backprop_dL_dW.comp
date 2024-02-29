@@ -107,7 +107,7 @@ void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 void main()
 {
 	// dispatch required for each f,fi,fj,k
-	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// RAW hazard handled by nn_convLayer_backprop_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;

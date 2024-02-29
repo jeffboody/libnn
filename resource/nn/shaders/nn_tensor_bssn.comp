@@ -175,8 +175,8 @@ void divV2(uint n, uint i, uint j, float v)
 
 void main()
 {
-	// hazzard depends on use case
-	// dispatch(hazzard, 1, 1, 1, 64, 1, 1)
+	// hazard depends on use case
+	// dispatch(hazard, 1, 1, 1, 64, 1, 1)
 	uint  idx = gl_GlobalInvocationID.x;
 	uint  fc  = dimX.count;
 	uint  fh  = dimX.height;

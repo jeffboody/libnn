@@ -1331,7 +1331,7 @@ void nn_engine_end(nn_engine_t* self)
 }
 
 void nn_engine_dispatch(nn_engine_t* self,
-                        vkk_hazzard_e hazzard,
+                        vkk_hazard_e hazard,
                         uint32_t count_x,
                         uint32_t count_y,
                         uint32_t count_z,
@@ -1341,7 +1341,7 @@ void nn_engine_dispatch(nn_engine_t* self,
 {
 	ASSERT(self);
 
-	vkk_compute_dispatch(self->compute, hazzard,
+	vkk_compute_dispatch(self->compute, hazard,
 	                     count_x, count_y, count_z,
 	                     local_size_x, local_size_y,
 	                     local_size_z);

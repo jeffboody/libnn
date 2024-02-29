@@ -143,7 +143,7 @@ vkk_uniformSet_t* nn_engine_getConvIdx(nn_engine_t* self,
 int               nn_engine_begin(nn_engine_t* self);
 void              nn_engine_end(nn_engine_t* self);
 void              nn_engine_dispatch(nn_engine_t* self,
-                                     vkk_hazzard_e hazzard,
+                                     vkk_hazard_e hazard,
                                      uint32_t count_x,
                                      uint32_t count_y,
                                      uint32_t count_z,

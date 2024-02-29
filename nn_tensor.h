@@ -96,14 +96,14 @@ int          nn_tensor_load(nn_tensor_t* self,
 int          nn_tensor_store(nn_tensor_t* self,
                              jsmn_stream_t* stream);
 int          nn_tensor_clear(nn_tensor_t* self,
-                             vkk_hazzard_e hazzard);
+                             vkk_hazard_e hazard);
 int          nn_tensor_normalize(nn_tensor_t* self,
-                                 vkk_hazzard_e hazzard,
+                                 vkk_hazard_e hazard,
                                  nn_tensorNormMode_e norm,
                                  float c);
 int          nn_tensor_computeStats(nn_tensor_t* self,
                                     uint32_t count,
-                                    vkk_hazzard_e hazzard,
+                                    vkk_hazard_e hazard,
                                     nn_tensorStats_t* stats);
 float        nn_tensor_get(nn_tensor_t* self,
                            uint32_t n, uint32_t i,

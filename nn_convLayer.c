@@ -68,7 +68,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
 		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZZARD_NONE,
+		                       VKK_HAZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_SN,
 		                       1.0f) == 0)
 		{
@@ -78,7 +78,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
 		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZZARD_NONE,
+		                       VKK_HAZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_BSSN,
 		                       1.2f) == 0)
 		{
@@ -173,7 +173,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimY->height, dimY->width,
 	                   1, 8, 8);
 
@@ -211,20 +211,20 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	if(nn_tensor_clear(dL_dW, VKK_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dW, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(dL_dB, VKK_HAZZARD_NONE) == 0)
+		if(nn_tensor_clear(dL_dB, VKK_HAZARD_NONE) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(dL_dX, VKK_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dX, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
@@ -337,7 +337,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 			                   bs, dimY->height, dimY->width,
 			                   1, 8, 8);
 		}
@@ -345,7 +345,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 
 	// nn_convLayer_backprop_dL_dW
 	// dispatch required for each f,fi,fj,k
-	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// RAW hazard handled by nn_convLayer_backprop_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
@@ -369,7 +369,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 						return NULL;
 					}
 					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-					nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+					nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 					                   1, 1, 1, 8, 8, 1);
 				}
 			}
@@ -378,7 +378,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 
 	// nn_convLayer_backprop_dL_dB
 	// dispatch required for each f
-	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// RAW hazard handled by nn_convLayer_backprop_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
@@ -396,7 +396,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 			                   1, 1, 1, 8, 8, 1);
 		}
 	}
@@ -414,22 +414,22 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
-	// RAW hazzard handled by nn_convLayer_backpropUpdateW
+	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
 	cp = engine->cp_conv_backpropUpdateB;
 	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
 
 	if(nn_tensor_computeStats(dL_dX, bs,
-	                          VKK_HAZZARD_RAW,
+	                          VKK_HAZARD_RAW,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;
@@ -458,7 +458,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
 		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZZARD_NONE,
+		                       VKK_HAZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_SN,
 		                       1.0f) == 0)
 		{
@@ -468,7 +468,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
 		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZZARD_NONE,
+		                       VKK_HAZARD_NONE,
 		                       NN_TENSOR_NORM_MODE_BSSN,
 		                       1.2f) == 0)
 		{
@@ -563,7 +563,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimY->height, dimY->width,
 	                   1, 8, 8);
 
@@ -599,20 +599,20 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	nn_tensor_t* dL_dW = self->dL_dW;
 	nn_tensor_t* dL_dB = self->dL_dB;
 	nn_tensor_t* dL_dX = self->dL_dX;
-	if(nn_tensor_clear(dL_dW, VKK_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dW, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(dL_dB, VKK_HAZZARD_NONE) == 0)
+		if(nn_tensor_clear(dL_dB, VKK_HAZARD_NONE) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(dL_dX, VKK_HAZZARD_NONE) == 0)
+	if(nn_tensor_clear(dL_dX, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
@@ -725,7 +725,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-			nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 			                   bs, dimY->height, dimY->width,
 			                   1, 8, 8);
 		}
@@ -733,7 +733,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 
 	// nn_convLayer_backpropT_dL_dW
 	// dispatch required for each f,fi,fj,k
-	// RAW hazzard handled by nn_convLayer_backpropT_dL_dX
+	// RAW hazard handled by nn_convLayer_backpropT_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
@@ -757,7 +757,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 						return NULL;
 					}
 					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-					nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+					nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 					                   1, 1, 1, 8, 8, 1);
 				}
 			}
@@ -766,7 +766,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 
 	// nn_convLayer_backprop_dL_dB
 	// dispatch required for each f
-	// RAW hazzard handled by nn_convLayer_backprop_dL_dX
+	// RAW hazard handled by nn_convLayer_backprop_dL_dX
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
@@ -784,7 +784,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 				return NULL;
 			}
 			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
-			nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+			nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 			                   1, 1, 1, 8, 8, 1);
 		}
 	}
@@ -802,22 +802,22 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
-	// RAW hazzard handled by nn_convLayer_backpropUpdateW
+	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
 	cp = engine->cp_conv_backpropUpdateB;
 	if(nn_engine_bind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZZARD_NONE,
+	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
 
 	if(nn_tensor_computeStats(dL_dX, bs,
-	                          VKK_HAZZARD_RAW,
+	                          VKK_HAZARD_RAW,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;

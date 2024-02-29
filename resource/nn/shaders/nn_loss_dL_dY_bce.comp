@@ -81,7 +81,7 @@ void dL_dY_bce(uint m, uint i, uint j, uint k)
 
 void main()
 {
-	// RAW hazzard handled by nn_loss_bce
+	// RAW hazard handled by nn_loss_bce
 	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;

@@ -46,8 +46,8 @@ float getX(uint n, uint i, uint j, uint k)
 
 void main()
 {
-	// hazzard depends on use case
-	// dispatch(hazzard, 1, 1, 1, 8, 8, 1)
+	// hazard depends on use case
+	// dispatch(hazard, 1, 1, 1, 8, 8, 1)
 	uint p   = gl_GlobalInvocationID.x;
 	uint q   = gl_GlobalInvocationID.y;
 	uint xh  = dimX.height;

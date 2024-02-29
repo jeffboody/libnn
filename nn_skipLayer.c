@@ -208,7 +208,7 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 8, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
@@ -313,7 +313,7 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 6, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
@@ -416,7 +416,7 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 8, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
@@ -520,7 +520,7 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 6, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
@@ -615,7 +615,7 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 8, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 

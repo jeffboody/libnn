@@ -134,9 +134,9 @@ Dispatch Uniforms
 
 Backprop Dispatch Order
 
-* nn_tensor_clear(hazzard=NONE, dL_dW)
-* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazzard=NONE, dL_dX)
+* nn_tensor_clear(hazard=NONE, dL_dW)
+* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
+* nn_tensor_clear(hazard=NONE, dL_dX)
 * nn_convLayer_backprop_dL_dX (for each fi,fj)
 * nn_convLayer_backprop_dL_dW (for each f,fi,fj,k)
 * nn_convLayer_backprop_dL_dB (for each f)
@@ -145,9 +145,9 @@ Backprop Dispatch Order
 
 Backprop Dispatch Order (Transpose)
 
-* nn_tensor_clear(hazzard=NONE, dL_dW)
-* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazzard=NONE, dL_dX)
+* nn_tensor_clear(hazard=NONE, dL_dW)
+* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
+* nn_tensor_clear(hazard=NONE, dL_dX)
 * nn_convLayer_backpropT_dL_dX (for each fi,fj)
 * nn_convLayer_backpropT_dL_dW (for each f,fi,fj,k)
 * nn_convLayer_backprop_dL_dB  (for each f)
@@ -260,9 +260,9 @@ Backprop Uniforms
 
 Backprop Dispatch Order
 
-* nn_tensor_clear(hazzard=NONE, dL_dW)
-* nn_tensor_clear(hazzard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazzard=NONE, dL_dX)
+* nn_tensor_clear(hazard=NONE, dL_dW)
+* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
+* nn_tensor_clear(hazard=NONE, dL_dX)
 * nn_weightLayer_backprop_dL_dX
 * nn_weightLayer_backprop_dL_dW
 * nn_weightLayer_backprop_dL_dB

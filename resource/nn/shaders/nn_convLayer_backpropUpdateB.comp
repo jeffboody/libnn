@@ -85,7 +85,7 @@ void setVB(uint n, float v)
 
 void main()
 {
-	// RAW hazzard handled by nn_convLayer_backpropUpdateW
+	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
 	uint fc = dimB.count;
 	uint f  = gl_GlobalInvocationID.x;

@@ -117,7 +117,7 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
@@ -181,7 +181,7 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 2, ua2_array);
 	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
-	nn_engine_dispatch(engine, VKK_HAZZARD_RAW,
+	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, dimX->height, dimX->width,
 	                   1, 8, 8);
 
