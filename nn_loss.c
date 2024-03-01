@@ -392,8 +392,8 @@ void nn_loss_post(nn_loss_t* self, int flags)
 {
 	ASSERT(self);
 
-	vkk_buffer_readStorage(self->sb07_loss, sizeof(float), 0,
-	                       &self->loss);
+	vkk_buffer_readStorage(self->sb07_loss, 0,
+	                       sizeof(float), &self->loss);
 
 	if(flags & NN_LAYER_FLAG_BACKPROP)
 	{

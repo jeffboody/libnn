@@ -787,8 +787,8 @@ int nn_tensor_normalize(nn_tensor_t* self,
 	}
 	else
 	{
-		vkk_buffer_writeStorage(self->sb24_c,
-		                        sizeof(float), 0, &c);
+		vkk_buffer_writeStorage(self->sb24_c, 0, sizeof(float),
+		                        &c);
 	}
 
 	// sb00: dimX
@@ -967,9 +967,9 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	}
 
 	stats->data.count = count;
-	vkk_buffer_writeStorage(stats->sb10_stats,
+	vkk_buffer_writeStorage(stats->sb10_stats, 0,
 	                        sizeof(nn_tensorStatsData_t),
-	                        0, &stats->data);
+	                        &stats->data);
 
 	// sb00: dimX
 	// sb01: X
@@ -1103,20 +1103,20 @@ int nn_tensor_blit(nn_tensor_t* src,
 	if((src->tensor_mode == NN_TENSOR_MODE_IO) &&
 	   (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
 	{
-		vkk_buffer_writeStorage(dst->sb_data, size,
-		                        dst_offset, src_data);
+		vkk_buffer_writeStorage(dst->sb_data, dst_offset, size,
+		                        src_data);
 	}
 	else if((src->tensor_mode == NN_TENSOR_MODE_COMPUTE) &&
 	        (dst->tensor_mode == NN_TENSOR_MODE_IO))
 	{
-		vkk_buffer_readStorage(src->sb_data, size,
-		                       src_offset, dst_data);
+		vkk_buffer_readStorage(src->sb_data, src_offset, size,
+		                       dst_data);
 	}
 	else if((src->tensor_mode == NN_TENSOR_MODE_COMPUTE) &&
 	        (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
 	{
 		vkk_buffer_copyStorage(src->sb_data, dst->sb_data,
-		                       size, src_offset, dst_offset);
+		                       src_offset, dst_offset, size);
 	}
 	else
 	{

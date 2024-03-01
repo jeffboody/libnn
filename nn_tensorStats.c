@@ -39,8 +39,8 @@ static void nn_tensorStats_update(nn_tensorStats_t* self)
 
 	if(self->dirty)
 	{
-		vkk_buffer_readStorage(self->sb10_stats,
-		                       sizeof(nn_tensorStatsData_t), 0,
+		vkk_buffer_readStorage(self->sb10_stats, 0,
+		                       sizeof(nn_tensorStatsData_t),
 		                       &self->data);
 		self->dirty = 0;
 	}

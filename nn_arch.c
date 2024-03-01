@@ -138,9 +138,8 @@ nn_arch_init(nn_arch_t* self,
 		state->adam_beta1t *= state->adam_beta1;
 		state->adam_beta2t *= state->adam_beta2;
 	}
-	vkk_buffer_writeStorage(self->sb00_state,
-	                        sizeof(nn_archState_t),
-	                        0, state);
+	vkk_buffer_writeStorage(self->sb00_state, 0,
+	                        sizeof(nn_archState_t), state);
 
 	return nn_engine_begin(engine);
 }
