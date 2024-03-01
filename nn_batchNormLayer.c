@@ -224,6 +224,8 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		self->us0,
 		self->us1,
+		self->us2,
+		NULL,
 	};
 
 	// update once after first pipeline is bound
@@ -231,7 +233,6 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	uint32_t k;
 	vkk_computePipeline_t* cp;
-	vkk_uniformSet_t*      us3;
 	if((flags & NN_LAYER_FLAG_BACKPROP) ||
 	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
 	{
@@ -248,17 +249,16 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		                                 9, ua0_array);
 		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 		                                 14, ua1_array);
-		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		update = 0;
 
 		for(k = 0; k < xd; ++k)
 		{
-			us3 = nn_engine_getBatchNormIdx(engine, k);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getBatchNormIdx(engine, k);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			if(k == 0)
 			{
 				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -282,12 +282,12 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 		for(k = 0; k < xd; ++k)
 		{
-			us3 = nn_engine_getBatchNormIdx(engine, k);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getBatchNormIdx(engine, k);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			if(k == 0)
 			{
 				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -314,9 +314,9 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		                                 9, ua0_array);
 		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
 		                                 14, ua1_array);
-		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		update = 0;
 	}
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
@@ -439,6 +439,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 		self->us0,
 		self->us1,
 		self->us2,
+		NULL,
 	};
 
 	// nn_batchNormLayer_backprop_dL_dXhat
@@ -461,7 +462,6 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	// dispatch required for each k
 	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t k;
-	vkk_uniformSet_t* us3;
 	if(flags & NN_LAYER_FLAG_NOP)
 	{
 		cp = engine->cp_batchNorm_backpropSumNOP;
@@ -477,12 +477,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 
 	for(k = 0; k < xd; ++k)
 	{
-		us3 = nn_engine_getBatchNormIdx(engine, k);
-		if(us3 == NULL)
+		us_array[3] = nn_engine_getBatchNormIdx(engine, k);
+		if(us_array[3] == NULL)
 		{
 			return NULL;
 		}
-		vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+		vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 		if(k == 0)
 		{
 			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -502,6 +502,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 

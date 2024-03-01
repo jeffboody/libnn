@@ -310,6 +310,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 		self->us0,
 		self->us1,
 		self->us2,
+		NULL,
 	};
 
 	// nn_convLayer_backprop_dL_dX
@@ -318,7 +319,6 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	uint fi;
 	uint fj;
 	vkk_computePipeline_t* cp;
-	vkk_uniformSet_t*      us3;
 	cp = engine->cp_conv_backprop_dL_dX;
 	if(nn_engine_bind(engine, cp) == 0)
 	{
@@ -326,17 +326,16 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 12, ua2_array);
-	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us3 = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 			                   bs, dimY->height, dimY->width,
 			                   1, 8, 8);
@@ -363,12 +362,12 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us3 = nn_engine_getConvIdx(engine, f, fi, fj, k);
-					if(us3 == NULL)
+					us_array[3] = nn_engine_getConvIdx(engine, f, fi, fj, k);
+					if(us_array[3] == NULL)
 					{
 						return NULL;
 					}
-					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+					vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 					nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 					                   1, 1, 1, 8, 8, 1);
 				}
@@ -390,12 +389,12 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 
 		for(f = 0; f < fc; ++f)
 		{
-			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getConvIdx(engine, f, 0, 0, 0);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 			                   1, 1, 1, 8, 8, 1);
 		}
@@ -414,6 +413,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   fc, fh, fw, 4, 4, 4);
 
@@ -698,6 +698,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 		self->us0,
 		self->us1,
 		self->us2,
+		NULL,
 	};
 
 	// nn_convLayer_backpropT_dL_dX
@@ -706,7 +707,6 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	uint fi;
 	uint fj;
 	vkk_computePipeline_t* cp;
-	vkk_uniformSet_t*      us3;
 	cp = engine->cp_conv_backpropT_dL_dX;
 	if(nn_engine_bind(engine, cp) == 0)
 	{
@@ -714,17 +714,16 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
 	                                 12, ua2_array);
-	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	for(fi = 0; fi < fh; ++fi)
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us3 = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getConvIdx(engine, 0, fi, fj, 0);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 			                   bs, dimY->height, dimY->width,
 			                   1, 8, 8);
@@ -751,12 +750,12 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us3 = nn_engine_getConvIdx(engine, f, fi, fj, k);
-					if(us3 == NULL)
+					us_array[3] = nn_engine_getConvIdx(engine, f, fi, fj, k);
+					if(us_array[3] == NULL)
 					{
 						return NULL;
 					}
-					vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+					vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 					nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 					                   1, 1, 1, 8, 8, 1);
 				}
@@ -778,12 +777,12 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 
 		for(f = 0; f < fc; ++f)
 		{
-			us3 = nn_engine_getConvIdx(engine, f, 0, 0, 0);
-			if(us3 == NULL)
+			us_array[3] = nn_engine_getConvIdx(engine, f, 0, 0, 0);
+			if(us_array[3] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 1, &us3);
+			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
 			nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 			                   1, 1, 1, 8, 8, 1);
 		}
@@ -802,6 +801,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
+	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   fc, fh, fw, 4, 4, 4);
 
