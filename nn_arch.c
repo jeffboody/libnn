@@ -190,37 +190,10 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 		goto fail_layers;
 	}
 
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_arch);
-	if(self->us0 == NULL)
-	{
-		goto fail_us0;
-	}
-
-	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                               engine->usf1_arch);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_arch);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
 	// success
 	return self;
 
 	// failure
-	fail_us2:
-		vkk_uniformSet_delete(&self->us1);
-	fail_us1:
-		vkk_uniformSet_delete(&self->us0);
-	fail_us0:
-		cc_list_delete(&self->layers);
 	fail_layers:
 		vkk_buffer_delete(&self->sb00_state);
 	fail_sb00_state:
@@ -363,9 +336,6 @@ void nn_arch_delete(nn_arch_t** _self)
 	nn_arch_t* self = *_self;
 	if(self)
 	{
-		vkk_uniformSet_delete(&self->us2);
-		vkk_uniformSet_delete(&self->us1);
-		vkk_uniformSet_delete(&self->us0);
 		nn_tensor_delete(&self->Yt);
 		nn_tensor_delete(&self->X);
 		cc_list_discard(self->layers);

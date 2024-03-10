@@ -124,22 +124,6 @@ nn_engine_new(vkk_engine_t* engine)
 	nn_engine_initUbArray(ub_array, 20);
 
 	// sb00: state
-	self->usf0_arch = vkk_uniformSetFactory_new(engine, um,
-	                                            1, ub_array);
-
-	// sb10:  dimXd
-	// ...
-	// sb19:  Yr
-	self->usf1_arch = vkk_uniformSetFactory_new(engine, um,
-	                                            10, ub_array);
-
-	// sb20: dim_dL_dYg
-	// ...
-	// sb25: dL_dYb
-	self->usf2_arch = vkk_uniformSetFactory_new(engine, um,
-	                                            6, ub_array);
-
-	// sb00: state
 	// ...
 	// sb08: Xvar_mb
 	self->usf0_batchNorm = vkk_uniformSetFactory_new(engine, um,
@@ -253,10 +237,7 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf2_tensor = vkk_uniformSetFactory_new(engine, um,
 	                                              5, ub_array);
 
-	if((self->usf0_arch      == NULL) ||
-	   (self->usf1_arch      == NULL) ||
-	   (self->usf2_arch      == NULL) ||
-	   (self->usf0_batchNorm == NULL) ||
+	if((self->usf0_batchNorm == NULL) ||
 	   (self->usf1_batchNorm == NULL) ||
 	   (self->usf2_batchNorm == NULL) ||
 	   (self->usf3_batchNorm == NULL) ||
@@ -280,15 +261,6 @@ nn_engine_new(vkk_engine_t* engine)
 	{
 		goto failure;
 	}
-
-	vkk_uniformSetFactory_t* usf_array_arch[] =
-	{
-		self->usf0_arch,
-		self->usf1_arch,
-		self->usf2_arch,
-	};
-	self->pl_arch = vkk_pipelineLayout_new(engine, 3,
-	                                       usf_array_arch);
 
 	vkk_uniformSetFactory_t* usf_array_batchNorm[] =
 	{
@@ -353,8 +325,7 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_tensor = vkk_pipelineLayout_new(engine, 3,
 	                                         usf_array_tensor);
 
-	if((self->pl_arch      == NULL) ||
-	   (self->pl_batchNorm == NULL) ||
+	if((self->pl_batchNorm == NULL) ||
 	   (self->pl_conv      == NULL) ||
 	   (self->pl_fact      == NULL) ||
 	   (self->pl_skip      == NULL) ||
@@ -1114,7 +1085,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_fact);
 		vkk_pipelineLayout_delete(&self->pl_conv);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm);
-		vkk_pipelineLayout_delete(&self->pl_arch);
 		vkk_uniformSetFactory_delete(&self->usf2_tensor);
 		vkk_uniformSetFactory_delete(&self->usf1_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
@@ -1136,9 +1106,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf2_batchNorm);
 		vkk_uniformSetFactory_delete(&self->usf1_batchNorm);
 		vkk_uniformSetFactory_delete(&self->usf0_batchNorm);
-		vkk_uniformSetFactory_delete(&self->usf2_arch);
-		vkk_uniformSetFactory_delete(&self->usf1_arch);
-		vkk_uniformSetFactory_delete(&self->usf0_arch);
 		vkk_compute_delete(&self->compute);
 		FREE(self);
 		*_self = NULL;

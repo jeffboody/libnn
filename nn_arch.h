@@ -75,10 +75,6 @@ typedef struct nn_arch_s
 	// default NN
 	nn_tensor_t* X;
 	nn_tensor_t* Yt;
-
-	vkk_uniformSet_t* us0;
-	vkk_uniformSet_t* us1;
-	vkk_uniformSet_t* us2;
 } nn_arch_t;
 
 nn_arch_t*   nn_arch_new(nn_engine_t* engine,
