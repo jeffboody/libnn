@@ -10,41 +10,36 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	nn_dim_t dimXhat;
-};
-
-layout(std430, set=0, binding=2) writeonly buffer sb02
-{
-	float Xhat[];
-};
-
-layout(std430, set=1, binding=0) readonly buffer sb10
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=0, binding=3) writeonly buffer sb003
+{
+	float Xhat[];
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float X[];
 };
 
-layout(std430, set=1, binding=5) readonly buffer sb15
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float Xmean[];
 };
 
-layout(std430, set=1, binding=7) readonly buffer sb17
+layout(std430, set=1, binding=4) readonly buffer sb104
 {
 	float Xvar[];
 };
 
 void setXhat(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dimXhat.height*dimXhat.width*dimXhat.depth;
-	uint sy = dimXhat.width*dimXhat.depth;
-	uint sx = dimXhat.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	Xhat[n*sn + i*sy + j*sx + k] = v;
 }
 

@@ -42,9 +42,9 @@ typedef struct nn_engine_s
 	vkk_compute_t* compute;
 
 	vkk_uniformSetFactory_t* usf0_batchNorm;
-	vkk_uniformSetFactory_t* usf1_batchNorm;
+	vkk_uniformSetFactory_t* usf1_batchNorm_fp;
+	vkk_uniformSetFactory_t* usf1_batchNorm_bp;
 	vkk_uniformSetFactory_t* usf2_batchNorm;
-	vkk_uniformSetFactory_t* usf3_batchNorm;
 	vkk_uniformSetFactory_t* usf0_conv;
 	vkk_uniformSetFactory_t* usf1_conv;
 	vkk_uniformSetFactory_t* usf2_conv;
@@ -63,7 +63,8 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf1_tensor;
 	vkk_uniformSetFactory_t* usf2_tensor;
 
-	vkk_pipelineLayout_t* pl_batchNorm;
+	vkk_pipelineLayout_t* pl_batchNorm_fp;
+	vkk_pipelineLayout_t* pl_batchNorm_bp;
 	vkk_pipelineLayout_t* pl_conv;
 	vkk_pipelineLayout_t* pl_fact;
 	vkk_pipelineLayout_t* pl_skip;

@@ -138,6 +138,10 @@ nn_arch_init(nn_arch_t* self,
 		state->adam_beta1t *= state->adam_beta1;
 		state->adam_beta2t *= state->adam_beta2;
 	}
+	vkk_buffer_writeStorage(self->sb100_bs, 0,
+	                        sizeof(uint32_t), &bs);
+	vkk_buffer_writeStorage(self->sb101_state, 0,
+	                        sizeof(nn_archState_t), state);
 	vkk_buffer_writeStorage(self->sb00_state, 0,
 	                        sizeof(nn_archState_t), state);
 
@@ -175,6 +179,24 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
+	self->sb100_bs = vkk_buffer_new(engine->engine, um,
+	                                VKK_BUFFER_USAGE_STORAGE,
+	                                sizeof(uint32_t),
+	                                NULL);
+	if(self->sb100_bs == NULL)
+	{
+		goto fail_sb100_bs;
+	}
+
+	self->sb101_state = vkk_buffer_new(engine->engine, um,
+	                                   VKK_BUFFER_USAGE_STORAGE,
+	                                   sizeof(nn_archState_t),
+	                                   NULL);
+	if(self->sb101_state == NULL)
+	{
+		goto fail_sb101_state;
+	}
+
 	self->sb00_state = vkk_buffer_new(engine->engine, um,
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_archState_t),
@@ -197,6 +219,10 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 	fail_layers:
 		vkk_buffer_delete(&self->sb00_state);
 	fail_sb00_state:
+		vkk_buffer_delete(&self->sb101_state);
+	fail_sb101_state:
+		vkk_buffer_delete(&self->sb100_bs);
+	fail_sb100_bs:
 		FREE(self);
 	return NULL;
 }
@@ -341,6 +367,8 @@ void nn_arch_delete(nn_arch_t** _self)
 		cc_list_discard(self->layers);
 		cc_list_delete(&self->layers);
 		vkk_buffer_delete(&self->sb00_state);
+		vkk_buffer_delete(&self->sb101_state);
+		vkk_buffer_delete(&self->sb100_bs);
 		FREE(self);
 		*_self = NULL;
 	}

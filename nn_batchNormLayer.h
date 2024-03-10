@@ -72,8 +72,8 @@ typedef struct nn_batchNormLayer_s
 	nn_tensor_t* Csum; // dim(1,1,1,xd)
 
 	vkk_uniformSet_t* us0;
-	vkk_uniformSet_t* us1;
-	vkk_uniformSet_t* us2;
+	vkk_uniformSet_t* us1_fp;
+	vkk_uniformSet_t* us1_bp;
 } nn_batchNormLayer_t;
 
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,

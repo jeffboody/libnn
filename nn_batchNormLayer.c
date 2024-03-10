@@ -50,18 +50,10 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_arch_t*           arch   = base->arch;
 	nn_engine_t*         engine = arch->engine;
 
-	nn_tensor_t* G        = self->G;
-	nn_tensor_t* B        = self->B;
-	nn_tensor_t* Xhat     = self->Xhat;
-	nn_tensor_t* Y        = self->Y;
-	nn_tensor_t* Xmean_mb = self->Xmean_mb;
-	nn_tensor_t* Xvar_mb  = self->Xvar_mb;
-	nn_tensor_t* Xmean_ra = self->Xmean_ra;
-	nn_tensor_t* Xvar_ra  = self->Xvar_ra;
-	nn_dim_t*    dim      = nn_tensor_dim(X);
-	uint32_t     xh       = dim->height;
-	uint32_t     xw       = dim->width;
-	uint32_t     xd       = dim->depth;
+	nn_dim_t* dimX = nn_tensor_dim(self->Xhat);
+	uint32_t  xh   = dimX->height;
+	uint32_t  xw   = dimX->width;
+	uint32_t  xd   = dimX->depth;
 
 	// prediction (running average) or
 	// training (mini-batch) or instance normalization
@@ -74,162 +66,49 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		Xvar  = self->Xvar_mb;
 	}
 
-	// sb00: state
-	// sb01: dimXhat
-	// sb02: Xhat
-	// sb03: dimG
-	// sb04: G
-	// sb05: dimB
-	// sb06: B
-	// sb07: dimXvar_mb
-	// sb08: Xvar_mb
-	vkk_uniformAttachment_t ua0_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb00_state,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xhat->sb_dim,
-		},
-		{
-			.binding = 2,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xhat->sb_data,
-		},
-		{
-			.binding = 3,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = G->sb_dim,
-		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = G->sb_data,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = B->sb_dim,
-		},
-		{
-			.binding = 6,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = B->sb_data,
-		},
-		{
-			.binding = 7,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xvar_mb->sb_dim,
-		},
-		{
-			.binding = 8,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xvar_mb->sb_data,
-		},
-	};
-
-	// sb10:  dimX
-	// sb11:  X
-	// sb12:  dimY
-	// sb13:  Y
-	// sb14:  dimXmean
-	// sb15:  Xmean
-	// sb16:  dimXvar
-	// sb17:  Xvar
-	// sb18:  dimXmean_mb
-	// sb19:  Xmean_mb
-	// sb110: dimXmean_ra
-	// sb111: Xmean_ra
-	// sb112: dimXvar_ra
-	// sb113: Xvar_ra
+	// sb100: bs
+	// sb101: state
+	// sb102: X
+	// sb103: Xmean
+	// sb104: Xvar
 	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X->sb_dim,
+			.buffer  = arch->sb100_bs,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X->sb_data,
+			.buffer  = arch->sb101_state,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_dim,
+			.buffer  = X->sb_data,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_data,
+			.buffer  = Xmean->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean->sb_data,
-		},
-		{
-			.binding = 6,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xvar->sb_dim,
-		},
-		{
-			.binding = 7,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = Xvar->sb_data,
 		},
-		{
-			.binding = 8,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean_mb->sb_dim,
-		},
-		{
-			.binding = 9,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean_mb->sb_data,
-		},
-		{
-			.binding = 10,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean_ra->sb_dim,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xmean_ra->sb_data,
-		},
-		{
-			.binding = 12,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xvar_ra->sb_dim,
-		},
-		{
-			.binding = 13,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Xvar_ra->sb_data,
-		},
 	};
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us1_fp,
+	                                 5, ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
 		self->us0,
-		self->us1,
-		self->us2,
+		self->us1_fp,
 		NULL,
 	};
-
-	// update once after first pipeline is bound
-	int update = 1;
 
 	uint32_t k;
 	vkk_computePipeline_t* cp;
@@ -245,20 +124,16 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 		{
 			return NULL;
 		}
-		vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-		                                 9, ua0_array);
-		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
-		                                 14, ua1_array);
-		update = 0;
 
 		for(k = 0; k < xd; ++k)
 		{
-			us_array[3] = nn_engine_getBatchNormIdx(engine, k);
-			if(us_array[3] == NULL)
+			us_array[2] = nn_engine_getBatchNormIdx(engine, k);
+			if(us_array[2] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
+			vkk_compute_bindUniformSets(engine->compute, 3,
+			                            us_array);
 			if(k == 0)
 			{
 				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -282,12 +157,13 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 		for(k = 0; k < xd; ++k)
 		{
-			us_array[3] = nn_engine_getBatchNormIdx(engine, k);
-			if(us_array[3] == NULL)
+			us_array[2] = nn_engine_getBatchNormIdx(engine, k);
+			if(us_array[2] == NULL)
 			{
 				return NULL;
 			}
-			vkk_compute_bindUniformSets(engine->compute, 4, us_array);
+			vkk_compute_bindUniformSets(engine->compute, 3,
+			                            us_array);
 			if(k == 0)
 			{
 				nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -308,14 +184,6 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	if(update)
-	{
-		vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-		                                 9, ua0_array);
-		vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
-		                                 14, ua1_array);
-		update = 0;
-	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
@@ -330,7 +198,7 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
-	return Y;
+	return self->Y;
 }
 
 static nn_tensor_t*
@@ -346,99 +214,40 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	nn_arch_t*           arch   = base->arch;
 	nn_engine_t*         engine = arch->engine;
 
-	nn_tensor_t* MG       = self->MG;
-	nn_tensor_t* VG       = self->VG;
-	nn_tensor_t* MB       = self->MB;
-	nn_tensor_t* VB       = self->VB;
-	nn_tensor_t* dL_dXhat = self->dL_dXhat;
-	nn_tensor_t* Bsum     = self->Bsum;
-	nn_tensor_t* Csum     = self->Csum;
-	nn_dim_t*    dim      = nn_tensor_dim(dL_dY);
-	uint32_t     xh       = dim->height;
-	uint32_t     xw       = dim->width;
-	uint32_t     xd       = dim->depth;
+	nn_dim_t* dimX = nn_tensor_dim(self->Xhat);
+	uint32_t  xh   = dimX->height;
+	uint32_t  xw   = dimX->width;
+	uint32_t  xd   = dimX->depth;
 
-	// sb20:  dim_dL_dXhat
-	// sb21:  dL_dXhat
-	// sb22:  dim_dL_dY
-	// sb23:  dL_dY
-	// sb24:  dimBsum
-	// sb25:  Bsum
-	// sb26:  dimCsum
-	// sb27:  Csum
-	// sb28:  MG
-	// sb29:  VG
-	// sb210: MB
-	// sb211: VB
-	vkk_uniformAttachment_t ua2_array[] =
+	// sb100: bs
+	// sb101: state
+	// sb102: dL_dY
+	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dXhat->sb_dim,
+			.buffer  = arch->sb100_bs,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dXhat->sb_data,
+			.buffer  = arch->sb101_state,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
-		},
-		{
-			.binding = 3,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = dL_dY->sb_data,
 		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Bsum->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Bsum->sb_data,
-		},
-		{
-			.binding = 6,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Csum->sb_dim,
-		},
-		{
-			.binding = 7,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Csum->sb_data,
-		},
-		{
-			.binding = 8,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = MG->sb_data,
-		},
-		{
-			.binding = 9,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VG->sb_data,
-		},
-		{
-			.binding = 10,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = MB->sb_data,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VB->sb_data,
-		},
 	};
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us1_bp,
+	                                 3, ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
 		self->us0,
-		self->us1,
-		self->us2,
+		self->us1_bp,
 		NULL,
 	};
 
@@ -450,9 +259,7 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 12, ua2_array);
-	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
@@ -477,12 +284,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 
 	for(k = 0; k < xd; ++k)
 	{
-		us_array[3] = nn_engine_getBatchNormIdx(engine, k);
-		if(us_array[3] == NULL)
+		us_array[2] = nn_engine_getBatchNormIdx(engine, k);
+		if(us_array[2] == NULL)
 		{
 			return NULL;
 		}
-		vkk_compute_bindUniformSets(engine->compute, 4, us_array);
+		vkk_compute_bindUniformSets(engine->compute, 3, us_array);
 		if(k == 0)
 		{
 			nn_engine_dispatch(engine, VKK_HAZARD_RAW,
@@ -502,85 +309,12 @@ nn_batchNormLayer_backpropFn(nn_layer_t* base,
 	{
 		return NULL;
 	}
-	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs, xh, xw, 1, 8, 8);
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;
-}
-
-static int
-nn_batchNormLayer_newCompute(nn_batchNormLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t*   arch   = self->base.arch;
-	nn_engine_t* engine = arch->engine;
-	nn_dim_t*    dimG   = nn_tensor_dim(self->G);
-
-	self->Bsum = nn_tensor_new(engine, dimG,
-	                           NN_TENSOR_INIT_ZERO,
-	                           NN_TENSOR_MODE_COMPUTE);
-	if(self->Bsum == NULL)
-	{
-		return 0;
-	}
-
-	self->Csum = nn_tensor_new(engine, dimG,
-	                           NN_TENSOR_INIT_ZERO,
-	                           NN_TENSOR_MODE_COMPUTE);
-	if(self->Csum == NULL)
-	{
-		goto fail_Csum;
-	}
-
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_batchNorm);
-	if(self->us0 == NULL)
-	{
-		goto fail_us0;
-	}
-
-	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                               engine->usf1_batchNorm);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_batchNorm);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_us2:
-		vkk_uniformSet_delete(&self->us1);
-	fail_us1:
-		vkk_uniformSet_delete(&self->us0);
-	fail_us0:
-		nn_tensor_delete(&self->Csum);
-	fail_Csum:
-		nn_tensor_delete(&self->Bsum);
-	return 0;
-}
-
-static void
-nn_batchNormLayer_deleteCompute(nn_batchNormLayer_t* self)
-{
-	ASSERT(self);
-
-	vkk_uniformSet_delete(&self->us2);
-	vkk_uniformSet_delete(&self->us1);
-	vkk_uniformSet_delete(&self->us0);
-	nn_tensor_delete(&self->Csum);
-	nn_tensor_delete(&self->Bsum);
 }
 
 static nn_dim_t*
@@ -771,10 +505,145 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		goto fail_dL_dXhat;
 	}
 
-	if(nn_batchNormLayer_newCompute(self) == 0)
+	self->Bsum = nn_tensor_new(engine, &dim_111d,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_COMPUTE);
+	if(self->Bsum == NULL)
 	{
-		goto fail_compute;
+		goto fail_Bsum;
 	}
+
+	self->Csum = nn_tensor_new(engine, &dim_111d,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_COMPUTE);
+	if(self->Csum == NULL)
+	{
+		goto fail_Csum;
+	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_batchNorm);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	self->us1_fp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                                  engine->usf1_batchNorm_fp);
+	if(self->us1_fp == NULL)
+	{
+		goto fail_us1_fp;
+	}
+
+	self->us1_bp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                                  engine->usf1_batchNorm_bp);
+	if(self->us1_bp == NULL)
+	{
+		goto fail_us1_bp;
+	}
+
+	// sb000: dimX (xbs,xh,xw,xd)
+	// sb001: G
+	// sb002: B
+	// sb003: Xhat
+	// sb004: Y
+	// sb005: MG
+	// sb006: VG
+	// sb007: MB
+	// sb008: VB
+	// sb009: Xmean_mb
+	// sb010: Xvar_mb
+	// sb011: Xmean_ra
+	// sb012: Xvar_ra
+	// sb013: dL_dXhat
+	// sb014: Bsum
+	// sb015: Csum
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xhat->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->G->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->B->sb_data,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xhat->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Y->sb_data,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->MG->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->VG->sb_data,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->MB->sb_data,
+		},
+		{
+			.binding = 8,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->VB->sb_data,
+		},
+		{
+			.binding = 9,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xmean_mb->sb_data,
+		},
+		{
+			.binding = 10,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xvar_mb->sb_data,
+		},
+		{
+			.binding = 11,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xmean_ra->sb_data,
+		},
+		{
+			.binding = 12,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Xvar_ra->sb_data,
+		},
+		{
+			.binding = 13,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dXhat->sb_data,
+		},
+		{
+			.binding = 14,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Bsum->sb_data,
+		},
+		{
+			.binding = 15,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Csum->sb_data,
+		},
+	};
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0,
+	                                 16, ua0_array);
 
 	nn_tensor_delete(&tmpG);
 
@@ -782,7 +651,15 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	return self;
 
 	// failure
-	fail_compute:
+	fail_us1_bp:
+		vkk_uniformSet_delete(&self->us1_fp);
+	fail_us1_fp:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		nn_tensor_delete(&self->Csum);
+	fail_Csum:
+		nn_tensor_delete(&self->Bsum);
+	fail_Bsum:
 		nn_tensor_delete(&self->dL_dXhat);
 	fail_dL_dXhat:
 		nn_tensor_delete(&self->Xvar_ra);
@@ -1015,7 +892,11 @@ void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)
 	nn_batchNormLayer_t* self = *_self;
 	if(self)
 	{
-		nn_batchNormLayer_deleteCompute(self);
+		vkk_uniformSet_delete(&self->us1_bp);
+		vkk_uniformSet_delete(&self->us1_fp);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensor_delete(&self->Csum);
+		nn_tensor_delete(&self->Bsum);
 		nn_tensor_delete(&self->dL_dXhat);
 		nn_tensor_delete(&self->Xvar_ra);
 		nn_tensor_delete(&self->Xmean_ra);

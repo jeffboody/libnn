@@ -10,41 +10,36 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
-	nn_dim_t dimXhat;
+	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=2) readonly buffer sb02
-{
-	float Xhat[];
-};
-
-layout(std430, set=0, binding=4) readonly buffer sb04
+layout(std430, set=0, binding=1) readonly buffer sb001
 {
 	float G[];
 };
 
-layout(std430, set=0, binding=6) readonly buffer sb06
+layout(std430, set=0, binding=2) readonly buffer sb002
 {
 	float B[];
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb12
+layout(std430, set=0, binding=3) readonly buffer sb003
 {
-	nn_dim_t dimY;
+	float Xhat[];
 };
 
-layout(std430, set=1, binding=3) writeonly buffer sb13
+layout(std430, set=0, binding=4) writeonly buffer sb004
 {
 	float Y[];
 };
 
 float getXhat(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimXhat.height*dimXhat.width*dimXhat.depth;
-	uint sy = dimXhat.width*dimXhat.depth;
-	uint sx = dimXhat.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
@@ -60,9 +55,9 @@ float getB(uint n)
 
 void setY(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dimY.height*dimY.width*dimY.depth;
-	uint sy = dimY.width*dimY.depth;
-	uint sx = dimY.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
@@ -72,9 +67,9 @@ void main()
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
-	uint xh = dimXhat.height;
-	uint xw = dimXhat.width;
-	uint xd = dimXhat.depth;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
+	uint xd = dimX.depth;
 
 	if((i >= xh) || (j >= xw))
 	{

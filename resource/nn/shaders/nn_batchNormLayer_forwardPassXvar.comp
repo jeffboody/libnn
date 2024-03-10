@@ -12,7 +12,32 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=9) readonly buffer sb009
+{
+	float Xmean_mb[];
+};
+
+layout(std430, set=0, binding=10) writeonly buffer sb010
+{
+	float Xvar_mb[];
+};
+
+layout(std430, set=0, binding=12) buffer sb012
+{
+	float Xvar_ra[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -25,32 +50,12 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=0, binding=8) writeonly buffer sb08
-{
-	float Xvar_mb[];
-};
-
-layout(std430, set=1, binding=0) readonly buffer sb10
-{
-	nn_dim_t dimX;
-};
-
-layout(std430, set=1, binding=1) readonly buffer sb11
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float X[];
 };
 
-layout(std430, set=1, binding=9) readonly buffer sb19
-{
-	float Xmean_mb[];
-};
-
-layout(std430, set=1, binding=13) buffer sb113
-{
-	float Xvar_ra[];
-};
-
-layout(std430, set=3, binding=0) readonly buffer sb30
+layout(std430, set=2, binding=0) readonly buffer sb200
 {
 	uint idx_k;
 };
@@ -103,7 +108,7 @@ void main()
 	uint j;
 	float dx;
 	float xmean_mb = get_Xmean_mb(k);
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		for(i = p; i < xh; i += 8)
 		{
@@ -124,7 +129,7 @@ void main()
 		float xvar_mb = 0.0;
 
 		uint  n;
-		float M = float(state_bs)*float(xh)*float(xw);
+		float M = float(bs)*float(xh)*float(xw);
 		for(n = 0; n < 64; ++n)
 		{
 			xvar_mb += xvar_mb_work[n];

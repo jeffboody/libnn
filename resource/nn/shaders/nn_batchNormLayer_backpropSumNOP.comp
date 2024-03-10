@@ -13,7 +13,37 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=3) readonly buffer sb003
+{
+	float Xhat[];
+};
+
+layout(std430, set=0, binding=13) readonly buffer sb013
+{
+	float dL_dXhat[];
+};
+
+layout(std430, set=0, binding=14) writeonly buffer sb014
+{
+	float Bsum[];
+};
+
+layout(std430, set=0, binding=15) writeonly buffer sb015
+{
+	float Csum[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -26,55 +56,25 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	nn_dim_t dimXhat;
-};
-
-layout(std430, set=0, binding=2) readonly buffer sb02
-{
-	float Xhat[];
-};
-
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	nn_dim_t dim_dL_dXhat;
-};
-
-layout(std430, set=2, binding=1) readonly buffer sb21
-{
-	float dL_dXhat[];
-};
-
-layout(std430, set=2, binding=5) writeonly buffer sb25
-{
-	float Bsum[];
-};
-
-layout(std430, set=2, binding=7) writeonly buffer sb27
-{
-	float Csum[];
-};
-
-layout(std430, set=3, binding=0) readonly buffer sb30
+layout(std430, set=2, binding=0) readonly buffer sb200
 {
 	uint idx_k;
 };
 
 float getXhat(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimXhat.height*dimXhat.width*dimXhat.depth;
-	uint sy = dimXhat.width*dimXhat.depth;
-	uint sx = dimXhat.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	return Xhat[n*sn + i*sy + j*sx + k];
 }
 
 float get_dL_dXhat(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dXhat.height*dim_dL_dXhat.width*
-	          dim_dL_dXhat.depth;
-	uint sy = dim_dL_dXhat.width*dim_dL_dXhat.depth;
-	uint sx = dim_dL_dXhat.depth;
+	uint sn = dimX.height*dimX.width*
+	          dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	return dL_dXhat[n*sn + i*sy + j*sx + k];
 }
 
@@ -94,8 +94,8 @@ void main()
 	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 	uint p   = gl_GlobalInvocationID.x;
 	uint q   = gl_GlobalInvocationID.y;
-	uint xh  = dimXhat.height;
-	uint xw  = dimXhat.width;
+	uint xh  = dimX.height;
+	uint xw  = dimX.width;
 	uint idx = 8*p + q;
 	uint k   = idx_k;
 
@@ -109,7 +109,7 @@ void main()
 	uint  j;
 	float xhat;
 	float dl_dxhat;
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		for(i = p; i < xh; i += 8)
 		{

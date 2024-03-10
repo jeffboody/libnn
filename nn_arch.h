@@ -44,6 +44,7 @@
 // https://arxiv.org/pdf/1711.05101.pdf
 typedef struct nn_archState_s
 {
+	// TODO - remove bs
 	uint32_t bs;
 	float    adam_alpha;    // learning rate
 	float    adam_beta1;    // first moment decay rate
@@ -59,7 +60,10 @@ typedef struct nn_arch_s
 {
 	nn_engine_t* engine;
 
+	// TODO - remove sb00_state
 	nn_archState_t state;
+	vkk_buffer_t*  sb100_bs;
+	vkk_buffer_t*  sb101_state;
 	vkk_buffer_t*  sb00_state;
 
 	// references

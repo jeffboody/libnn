@@ -52,8 +52,8 @@ typedef struct
 
 typedef struct
 {
-	vkk_buffer_t*     sb30;
-	vkk_uniformSet_t* us3;
+	vkk_buffer_t*     sb200;
+	vkk_uniformSet_t* us2;
 } nn_batchNormIdxData_t;
 
 typedef struct
@@ -123,26 +123,26 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_uniformBinding_t ub_array[20] = { 0 };
 	nn_engine_initUbArray(ub_array, 20);
 
-	// sb00: state
+	// sb000: dimX (xbs,xh,xw,xd)
 	// ...
-	// sb08: Xvar_mb
+	// sb015: Csum
 	self->usf0_batchNorm = vkk_uniformSetFactory_new(engine, um,
-	                                                 9, ub_array);
+	                                                 16, ub_array);
 
-	// sb10:  dimX
+	// sb100: bs
 	// ...
-	// sb113: Xvar_ra
-	self->usf1_batchNorm = vkk_uniformSetFactory_new(engine, um,
-	                                                 14, ub_array);
+	// sb104: Xvar
+	self->usf1_batchNorm_fp = vkk_uniformSetFactory_new(engine, um,
+	                                                    5, ub_array);
 
-	// sb20: dim_dL_dXhat
+	// sb100: bs
 	// ...
-	// sb211: VB
+	// sb102: dL_dY
+	self->usf1_batchNorm_bp = vkk_uniformSetFactory_new(engine, um,
+	                                                    3, ub_array);
+
+	// sb200: idx (k)
 	self->usf2_batchNorm = vkk_uniformSetFactory_new(engine, um,
-	                                                 12, ub_array);
-
-	// sb30: idx
-	self->usf3_batchNorm = vkk_uniformSetFactory_new(engine, um,
 	                                                 1, ub_array);
 
 	// sb00: state
@@ -237,40 +237,48 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf2_tensor = vkk_uniformSetFactory_new(engine, um,
 	                                              5, ub_array);
 
-	if((self->usf0_batchNorm == NULL) ||
-	   (self->usf1_batchNorm == NULL) ||
-	   (self->usf2_batchNorm == NULL) ||
-	   (self->usf3_batchNorm == NULL) ||
-	   (self->usf0_conv      == NULL) ||
-	   (self->usf1_conv      == NULL) ||
-	   (self->usf2_conv      == NULL) ||
-	   (self->usf3_conv      == NULL) ||
-	   (self->usf0_fact      == NULL) ||
-	   (self->usf1_fact      == NULL) ||
-	   (self->usf2_fact      == NULL) ||
-	   (self->usf0_skip      == NULL) ||
-	   (self->usf1_skip      == NULL) ||
-	   (self->usf2_skip      == NULL) ||
-	   (self->usf0_weight    == NULL) ||
-	   (self->usf1_weight    == NULL) ||
-	   (self->usf2_weight    == NULL) ||
-	   (self->usf0_loss      == NULL) ||
-	   (self->usf0_tensor    == NULL) ||
-	   (self->usf1_tensor    == NULL) ||
-	   (self->usf2_tensor    == NULL))
+	if((self->usf0_batchNorm    == NULL) ||
+	   (self->usf1_batchNorm_fp == NULL) ||
+	   (self->usf1_batchNorm_bp == NULL) ||
+	   (self->usf2_batchNorm    == NULL) ||
+	   (self->usf0_conv         == NULL) ||
+	   (self->usf1_conv         == NULL) ||
+	   (self->usf2_conv         == NULL) ||
+	   (self->usf3_conv         == NULL) ||
+	   (self->usf0_fact         == NULL) ||
+	   (self->usf1_fact         == NULL) ||
+	   (self->usf2_fact         == NULL) ||
+	   (self->usf0_skip         == NULL) ||
+	   (self->usf1_skip         == NULL) ||
+	   (self->usf2_skip         == NULL) ||
+	   (self->usf0_weight       == NULL) ||
+	   (self->usf1_weight       == NULL) ||
+	   (self->usf2_weight       == NULL) ||
+	   (self->usf0_loss         == NULL) ||
+	   (self->usf0_tensor       == NULL) ||
+	   (self->usf1_tensor       == NULL) ||
+	   (self->usf2_tensor       == NULL))
 	{
 		goto failure;
 	}
 
-	vkk_uniformSetFactory_t* usf_array_batchNorm[] =
+	vkk_uniformSetFactory_t* usf_array_batchNorm_fp[] =
 	{
 		self->usf0_batchNorm,
-		self->usf1_batchNorm,
+		self->usf1_batchNorm_fp,
 		self->usf2_batchNorm,
-		self->usf3_batchNorm,
 	};
-	self->pl_batchNorm = vkk_pipelineLayout_new(engine, 4,
-	                                            usf_array_batchNorm);
+	self->pl_batchNorm_fp = vkk_pipelineLayout_new(engine, 3,
+	                                               usf_array_batchNorm_fp);
+
+	vkk_uniformSetFactory_t* usf_array_batchNorm_bp[] =
+	{
+		self->usf0_batchNorm,
+		self->usf1_batchNorm_bp,
+		self->usf2_batchNorm,
+	};
+	self->pl_batchNorm_bp = vkk_pipelineLayout_new(engine, 3,
+	                                               usf_array_batchNorm_bp);
 
 	vkk_uniformSetFactory_t* usf_array_conv[] =
 	{
@@ -325,13 +333,14 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_tensor = vkk_pipelineLayout_new(engine, 3,
 	                                         usf_array_tensor);
 
-	if((self->pl_batchNorm == NULL) ||
-	   (self->pl_conv      == NULL) ||
-	   (self->pl_fact      == NULL) ||
-	   (self->pl_skip      == NULL) ||
-	   (self->pl_weight    == NULL) ||
-	   (self->pl_loss      == NULL) ||
-	   (self->pl_tensor    == NULL))
+	if((self->pl_batchNorm_fp == NULL) ||
+	   (self->pl_batchNorm_bp == NULL) ||
+	   (self->pl_conv         == NULL) ||
+	   (self->pl_fact         == NULL) ||
+	   (self->pl_skip         == NULL) ||
+	   (self->pl_weight       == NULL) ||
+	   (self->pl_loss         == NULL) ||
+	   (self->pl_tensor       == NULL))
 	{
 		goto failure;
 	}
@@ -339,7 +348,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXmean =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_fp,
 		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXmean_comp.spv",
 	};
 
@@ -350,7 +359,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXvar =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_fp,
 		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXvar_comp.spv",
 	};
 
@@ -361,7 +370,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXhat =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_fp,
 		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXhat_comp.spv",
 	};
 
@@ -372,7 +381,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassY =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_fp,
 		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassY_comp.spv",
 	};
 
@@ -383,7 +392,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_backprop_dL_dX =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_bp,
 		.cs      = "nn/shaders/nn_batchNormLayer_backprop_dL_dX_comp.spv",
 	};
 
@@ -394,7 +403,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_backprop_dL_dXhat =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_bp,
 		.cs      = "nn/shaders/nn_batchNormLayer_backprop_dL_dXhat_comp.spv",
 	};
 
@@ -405,7 +414,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_backpropSum =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_bp,
 		.cs      = "nn/shaders/nn_batchNormLayer_backpropSum_comp.spv",
 	};
 
@@ -416,7 +425,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_batchNorm_backpropSumNOP =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_batchNorm,
+		.pl      = self->pl_batchNorm_bp,
 		.cs      = "nn/shaders/nn_batchNormLayer_backpropSumNOP_comp.spv",
 	};
 
@@ -1004,8 +1013,8 @@ void nn_engine_delete(nn_engine_t** _self)
 				nn_batchNormIdxData_t* data;
 				data = (nn_batchNormIdxData_t*)
 				       cc_map_remove(self->map_batchNormIdx, &miter);
-				vkk_uniformSet_delete(&data->us3);
-				vkk_buffer_delete(&data->sb30);
+				vkk_uniformSet_delete(&data->us2);
+				vkk_buffer_delete(&data->sb200);
 				FREE(data);
 			}
 			cc_map_delete(&self->map_batchNormIdx);
@@ -1084,7 +1093,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_skip);
 		vkk_pipelineLayout_delete(&self->pl_fact);
 		vkk_pipelineLayout_delete(&self->pl_conv);
-		vkk_pipelineLayout_delete(&self->pl_batchNorm);
+		vkk_pipelineLayout_delete(&self->pl_batchNorm_bp);
+		vkk_pipelineLayout_delete(&self->pl_batchNorm_fp);
 		vkk_uniformSetFactory_delete(&self->usf2_tensor);
 		vkk_uniformSetFactory_delete(&self->usf1_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
@@ -1102,9 +1112,9 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf2_conv);
 		vkk_uniformSetFactory_delete(&self->usf1_conv);
 		vkk_uniformSetFactory_delete(&self->usf0_conv);
-		vkk_uniformSetFactory_delete(&self->usf3_batchNorm);
 		vkk_uniformSetFactory_delete(&self->usf2_batchNorm);
-		vkk_uniformSetFactory_delete(&self->usf1_batchNorm);
+		vkk_uniformSetFactory_delete(&self->usf1_batchNorm_bp);
+		vkk_uniformSetFactory_delete(&self->usf1_batchNorm_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_batchNorm);
 		vkk_compute_delete(&self->compute);
 		FREE(self);
@@ -1132,7 +1142,7 @@ nn_engine_getBatchNormIdx(nn_engine_t* self, uint32_t k)
 	if(miter)
 	{
 		data = (nn_batchNormIdxData_t*) cc_map_val(miter);
-		return data->us3;
+		return data->us2;
 	}
 
 	data = (nn_batchNormIdxData_t*)
@@ -1143,21 +1153,21 @@ nn_engine_getBatchNormIdx(nn_engine_t* self, uint32_t k)
 		return NULL;
 	}
 
-	data->sb30 = vkk_buffer_new(self->engine,
+	data->sb200 = vkk_buffer_new(self->engine,
 	                            VKK_UPDATE_MODE_STATIC,
 	                            VKK_BUFFER_USAGE_STORAGE,
 	                            sizeof(nn_batchNormIdxKey_t),
 	                            &key);
-	if(data->sb30 == NULL)
+	if(data->sb200 == NULL)
 	{
-		goto fail_sb30;
+		goto fail_sb200;
 	}
 
-	data->us3 = vkk_uniformSet_new(self->engine, 3, 0, NULL,
-	                               self->usf3_batchNorm);
-	if(data->us3 == NULL)
+	data->us2 = vkk_uniformSet_new(self->engine, 2, 0, NULL,
+	                               self->usf2_batchNorm);
+	if(data->us2 == NULL)
 	{
-		goto fail_us3;
+		goto fail_us2;
 	}
 
 	if(cc_map_addp(self->map_batchNormIdx,
@@ -1167,27 +1177,28 @@ nn_engine_getBatchNormIdx(nn_engine_t* self, uint32_t k)
 		goto fail_add;
 	}
 
-	vkk_uniformAttachment_t ua3_array[] =
+	// sb200: idx (k)
+	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = data->sb30,
+			.buffer  = data->sb200,
 		},
 	};
 
-	vkk_compute_updateUniformSetRefs(self->compute, data->us3,
-	                                 1, ua3_array);
+	vkk_compute_updateUniformSetRefs(self->compute, data->us2,
+	                                 1, ua2_array);
 
 	// success
-	return data->us3;
+	return data->us2;
 
 	// failure
 	fail_add:
-		vkk_uniformSet_delete(&data->us3);
-	fail_us3:
-		vkk_buffer_delete(&data->sb30);
-	fail_sb30:
+		vkk_uniformSet_delete(&data->us2);
+	fail_us2:
+		vkk_buffer_delete(&data->sb200);
+	fail_sb200:
 		FREE(data);
 	return NULL;
 }

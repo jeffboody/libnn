@@ -4,53 +4,42 @@ Neural Network Compute Shader Notes
 Batch Normalization Layer
 -------------------------
 
-Shared Uniforms
+Layer Uniforms
 
-* sb00: state
-* sb01: dimXhat
-* sb02: Xhat
-* sb03: dimG
-* sb04: G
-* sb05: dimB
-* sb06: B
-* sb07: dimXvar_mb
-* sb08: Xvar_mb
+* sb000: dimX (xbs,xh,xw,xd)
+* sb001: G
+* sb002: B
+* sb003: Xhat
+* sb004: Y
+* sb005: MG
+* sb006: VG
+* sb007: MB
+* sb008: VB
+* sb009: Xmean_mb
+* sb010: Xvar_mb
+* sb011: Xmean_ra
+* sb012: Xvar_ra
+* sb013: dL_dXhat
+* sb014: Bsum
+* sb015: Csum
 
 Forward Pass Uniforms
 
-* sb10:  dimX
-* sb11:  X
-* sb12:  dimY
-* sb13:  Y
-* sb14:  dimXmean
-* sb15:  Xmean
-* sb16:  dimXvar
-* sb17:  Xvar
-* sb18:  dimXmean_mb
-* sb19:  Xmean_mb
-* sb110: dimXmean_ra
-* sb111: Xmean_ra
-* sb112: dimXvar_ra
-* sb113: Xvar_ra
+* sb100: bs
+* sb101: state
+* sb102: X
+* sb103: Xmean
+* sb104: Xvar
+
+* sb200: idx (k)
 
 Backprop Uniforms
 
-* sb20:  dim_dL_dXhat
-* sb21:  dL_dXhat
-* sb22:  dim_dL_dY
-* sb23:  dL_dY
-* sb24:  dimBsum
-* sb25:  Bsum
-* sb26:  dimCsum
-* sb27:  Csum
-* sb28:  MG // dimG
-* sb29:  VG // dimG
-* sb210: MB // dimB
-* sb211: VB // dimB
+* sb100: bs
+* sb101: state
+* sb102: dL_dY
 
-Dispatch Uniforms
-
-* sb30: idx (k)
+* sb200: idx (k)
 
 Forward Pass Dispatch Order
 
