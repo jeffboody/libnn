@@ -12,7 +12,43 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=10) writeonly buffer sb010
+{
+	float dL_dW[];
+};
+
+layout(std430, set=0, binding=12) readonly buffer sb012
+{
+	float dL_dX[];
+};
+
+layout(std430, set=0, binding=13) readonly buffer sb013
+{
+	uint param_disable_bias;
+	uint param_stride;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -25,53 +61,17 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_disable_bias;
-	uint param_stride;
-};
-
-layout(std430, set=0, binding=2) readonly buffer sb02
-{
-	nn_dim_t dimX;
-};
-
-layout(std430, set=0, binding=3) readonly buffer sb03
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float X[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=2) readonly buffer sb22
-{
-	nn_dim_t dim_dL_dW;
-};
-
-layout(std430, set=2, binding=3) writeonly buffer sb23
-{
-	float dL_dW[];
-};
-
-layout(std430, set=2, binding=6) readonly buffer sb26
-{
-	nn_dim_t dim_dL_dX;
-};
-
-layout(std430, set=2, binding=7) readonly buffer sb27
-{
-	float dL_dX[];
-};
-
-layout(std430, set=3, binding=0) readonly buffer sb30
+layout(std430, set=2, binding=0) readonly buffer sb200
 {
 	uint idx_f;
 	uint idx_fi;
@@ -90,17 +90,17 @@ float get_dY_dW(uint n, uint i, uint j, uint k)
 
 float get_dL_dY(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
-	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
-	uint sx = dim_dL_dY.depth;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
 void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dim_dL_dW.height*dim_dL_dW.width*dim_dL_dW.depth;
-	uint sy = dim_dL_dW.width*dim_dL_dW.depth;
-	uint sx = dim_dL_dW.depth;
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
 	dL_dW[n*sn + i*sy + j*sx + k] = v;
 }
 
@@ -116,12 +116,12 @@ void main()
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;
-	uint yh  = dim_dL_dY.height;
-	uint yw  = dim_dL_dY.width;
-	uint fh  = dim_dL_dW.height;
-	uint fw  = dim_dL_dW.width;
-	uint xh  = dim_dL_dX.height;
-	uint xw  = dim_dL_dX.width;
+	uint yh  = dimY.height;
+	uint yw  = dimY.width;
+	uint fh  = dimW.height;
+	uint fw  = dimW.width;
+	uint xh  = dimX.height;
+	uint xw  = dimX.width;
 	uint idx = 8*p + q;
 	uint f   = idx_f;
 	uint fi  = idx_fi;
@@ -151,7 +151,7 @@ void main()
 	int  jj;
 	float dl_dy;
 	float dy_dw;
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		for(i = p; i < yh; i += 8)
 		{

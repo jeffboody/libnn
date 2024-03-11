@@ -66,8 +66,8 @@ typedef struct
 
 typedef struct
 {
-	vkk_buffer_t*     sb30;
-	vkk_uniformSet_t* us3;
+	vkk_buffer_t*     sb200;
+	vkk_uniformSet_t* us2;
 } nn_convIdxData_t;
 
 static void
@@ -145,25 +145,26 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf2_batchNorm = vkk_uniformSetFactory_new(engine, um,
 	                                                 1, ub_array);
 
-	// sb00: state
+	// sb000: dimX (xbs,xh,xw,xd)
 	// ...
-	// sb07: B
+	// sb013: param (disable_bias,stride)
 	self->usf0_conv = vkk_uniformSetFactory_new(engine, um,
-	                                            8, ub_array);
+	                                            14, ub_array);
 
-	// sb10: dimY
-	// sb11: Y
-	self->usf1_conv = vkk_uniformSetFactory_new(engine, um,
-	                                            2, ub_array);
-
-	// sb20:  dim_dL_dY
+	// sb100: bs
 	// ...
-	// sb211: VB
-	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
-	                                            12, ub_array);
+	// sb102: X
+	self->usf1_conv_fp = vkk_uniformSetFactory_new(engine, um,
+	                                               3, ub_array);
 
-	// sb30:  idx
-	self->usf3_conv = vkk_uniformSetFactory_new(engine, um,
+	// sb100: bs
+	// ...
+	// sb103: dL_dY
+	self->usf1_conv_bp = vkk_uniformSetFactory_new(engine, um,
+	                                               4, ub_array);
+
+	// sb200: idx (f,fi,fj,k)
+	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
 	                                            1, ub_array);
 
 	// sb00: dimX
@@ -242,9 +243,9 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_batchNorm_bp == NULL) ||
 	   (self->usf2_batchNorm    == NULL) ||
 	   (self->usf0_conv         == NULL) ||
-	   (self->usf1_conv         == NULL) ||
+	   (self->usf1_conv_fp      == NULL) ||
+	   (self->usf1_conv_bp      == NULL) ||
 	   (self->usf2_conv         == NULL) ||
-	   (self->usf3_conv         == NULL) ||
 	   (self->usf0_fact         == NULL) ||
 	   (self->usf1_fact         == NULL) ||
 	   (self->usf2_fact         == NULL) ||
@@ -280,15 +281,23 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_batchNorm_bp = vkk_pipelineLayout_new(engine, 3,
 	                                               usf_array_batchNorm_bp);
 
-	vkk_uniformSetFactory_t* usf_array_conv[] =
+	vkk_uniformSetFactory_t* usf_array_conv_fp[] =
 	{
 		self->usf0_conv,
-		self->usf1_conv,
+		self->usf1_conv_fp,
 		self->usf2_conv,
-		self->usf3_conv,
 	};
-	self->pl_conv = vkk_pipelineLayout_new(engine, 4,
-	                                       usf_array_conv);
+	self->pl_conv_fp = vkk_pipelineLayout_new(engine, 3,
+	                                          usf_array_conv_fp);
+
+	vkk_uniformSetFactory_t* usf_array_conv_bp[] =
+	{
+		self->usf0_conv,
+		self->usf1_conv_bp,
+		self->usf2_conv,
+	};
+	self->pl_conv_bp = vkk_pipelineLayout_new(engine, 3,
+	                                          usf_array_conv_bp);
 
 	vkk_uniformSetFactory_t* usf_array_fact[] =
 	{
@@ -335,7 +344,8 @@ nn_engine_new(vkk_engine_t* engine)
 
 	if((self->pl_batchNorm_fp == NULL) ||
 	   (self->pl_batchNorm_bp == NULL) ||
-	   (self->pl_conv         == NULL) ||
+	   (self->pl_conv_fp      == NULL) ||
+	   (self->pl_conv_bp      == NULL) ||
 	   (self->pl_fact         == NULL) ||
 	   (self->pl_skip         == NULL) ||
 	   (self->pl_weight       == NULL) ||
@@ -436,7 +446,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_forwardPass =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_fp,
 		.cs      = "nn/shaders/nn_convLayer_forwardPass_comp.spv",
 	};
 
@@ -447,7 +457,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_forwardPassT =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_fp,
 		.cs      = "nn/shaders/nn_convLayer_forwardPassT_comp.spv",
 	};
 
@@ -458,7 +468,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dX =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dX_comp.spv",
 	};
 
@@ -469,7 +479,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dW =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dW_comp.spv",
 	};
 
@@ -480,7 +490,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dB =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dB_comp.spv",
 	};
 
@@ -491,7 +501,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dX =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dX_comp.spv",
 	};
 
@@ -502,7 +512,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dW =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dW_comp.spv",
 	};
 
@@ -513,7 +523,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backpropUpdateW =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backpropUpdateW_comp.spv",
 	};
 
@@ -524,7 +534,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_conv_backpropUpdateB =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_conv,
+		.pl      = self->pl_conv_bp,
 		.cs      = "nn/shaders/nn_convLayer_backpropUpdateB_comp.spv",
 	};
 
@@ -1028,8 +1038,8 @@ void nn_engine_delete(nn_engine_t** _self)
 				nn_convIdxData_t* data;
 				data = (nn_convIdxData_t*)
 				       cc_map_remove(self->map_convIdx, &miter);
-				vkk_uniformSet_delete(&data->us3);
-				vkk_buffer_delete(&data->sb30);
+				vkk_uniformSet_delete(&data->us2);
+				vkk_buffer_delete(&data->sb200);
 				FREE(data);
 			}
 			cc_map_delete(&self->map_convIdx);
@@ -1092,7 +1102,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_weight);
 		vkk_pipelineLayout_delete(&self->pl_skip);
 		vkk_pipelineLayout_delete(&self->pl_fact);
-		vkk_pipelineLayout_delete(&self->pl_conv);
+		vkk_pipelineLayout_delete(&self->pl_conv_bp);
+		vkk_pipelineLayout_delete(&self->pl_conv_fp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_bp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_fp);
 		vkk_uniformSetFactory_delete(&self->usf2_tensor);
@@ -1108,9 +1119,9 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf2_fact);
 		vkk_uniformSetFactory_delete(&self->usf1_fact);
 		vkk_uniformSetFactory_delete(&self->usf0_fact);
-		vkk_uniformSetFactory_delete(&self->usf3_conv);
 		vkk_uniformSetFactory_delete(&self->usf2_conv);
-		vkk_uniformSetFactory_delete(&self->usf1_conv);
+		vkk_uniformSetFactory_delete(&self->usf1_conv_bp);
+		vkk_uniformSetFactory_delete(&self->usf1_conv_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_conv);
 		vkk_uniformSetFactory_delete(&self->usf2_batchNorm);
 		vkk_uniformSetFactory_delete(&self->usf1_batchNorm_bp);
@@ -1228,7 +1239,7 @@ nn_engine_getConvIdx(nn_engine_t* self,
 	if(miter)
 	{
 		data = (nn_convIdxData_t*) cc_map_val(miter);
-		return data->us3;
+		return data->us2;
 	}
 
 	data = (nn_convIdxData_t*)
@@ -1239,21 +1250,21 @@ nn_engine_getConvIdx(nn_engine_t* self,
 		return NULL;
 	}
 
-	data->sb30 = vkk_buffer_new(self->engine,
-	                            VKK_UPDATE_MODE_STATIC,
-	                            VKK_BUFFER_USAGE_STORAGE,
-	                            sizeof(nn_convIdxKey_t),
-	                            &key);
-	if(data->sb30 == NULL)
+	data->sb200 = vkk_buffer_new(self->engine,
+	                             VKK_UPDATE_MODE_STATIC,
+	                             VKK_BUFFER_USAGE_STORAGE,
+	                             sizeof(nn_convIdxKey_t),
+	                             &key);
+	if(data->sb200 == NULL)
 	{
-		goto fail_sb30;
+		goto fail_sb200;
 	}
 
-	data->us3 = vkk_uniformSet_new(self->engine, 3, 0, NULL,
-	                               self->usf3_conv);
-	if(data->us3 == NULL)
+	data->us2 = vkk_uniformSet_new(self->engine, 2, 0, NULL,
+	                               self->usf2_conv);
+	if(data->us2 == NULL)
 	{
-		goto fail_us3;
+		goto fail_us2;
 	}
 
 	if(cc_map_addp(self->map_convIdx,
@@ -1263,27 +1274,27 @@ nn_engine_getConvIdx(nn_engine_t* self,
 		goto fail_add;
 	}
 
-	vkk_uniformAttachment_t ua3_array[] =
+	vkk_uniformAttachment_t ua2_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = data->sb30,
+			.buffer  = data->sb200,
 		},
 	};
 
-	vkk_compute_updateUniformSetRefs(self->compute, data->us3,
-	                                 1, ua3_array);
+	vkk_compute_updateUniformSetRefs(self->compute, data->us2,
+	                                 1, ua2_array);
 
 	// success
-	return data->us3;
+	return data->us2;
 
 	// failure
 	fail_add:
-		vkk_uniformSet_delete(&data->us3);
-	fail_us3:
-		vkk_buffer_delete(&data->sb30);
-	fail_sb30:
+		vkk_uniformSet_delete(&data->us2);
+	fail_us2:
+		vkk_buffer_delete(&data->sb200);
+	fail_sb200:
 		FREE(data);
 	return NULL;
 }

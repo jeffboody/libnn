@@ -10,7 +10,37 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=3) buffer sb003
+{
+	float B[];
+};
+
+layout(std430, set=0, binding=8) buffer sb008
+{
+	float MB[];
+};
+
+layout(std430, set=0, binding=9) buffer sb009
+{
+	float VB[];
+};
+
+layout(std430, set=0, binding=11) readonly buffer sb011
+{
+	float dL_dB[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -21,31 +51,6 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_adam_lambda;
 	float state_adam_nu;
 	float state_bn_momentum;
-};
-
-layout(std430, set=0, binding=6) readonly buffer sb06
-{
-	nn_dim_t dimB;
-};
-
-layout(std430, set=0, binding=7) buffer sb07
-{
-	float B[];
-};
-
-layout(std430, set=2, binding=5) readonly buffer sb25
-{
-	float dL_dB[];
-};
-
-layout(std430, set=2, binding=10) buffer sb210
-{
-	float MB[];
-};
-
-layout(std430, set=2, binding=11) buffer sb211
-{
-	float VB[];
 };
 
 float getB(uint n)
@@ -87,7 +92,7 @@ void main()
 {
 	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
-	uint fc = dimB.count;
+	uint fc = dimW.count;
 	uint f  = gl_GlobalInvocationID.x;
 
 	if(f >= fc)

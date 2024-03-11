@@ -77,10 +77,10 @@ typedef struct nn_convLayer_s
 	// backprop stats
 	nn_tensorStats_t* stats_dL_dX;
 
+	vkk_buffer_t*     sb013_param;
 	vkk_uniformSet_t* us0;
-	vkk_uniformSet_t* us1;
-	vkk_uniformSet_t* us2;
-	vkk_buffer_t*     sb01_param;
+	vkk_uniformSet_t* us1_fp;
+	vkk_uniformSet_t* us1_bp;
 } nn_convLayer_t;
 
 nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,

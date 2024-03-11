@@ -12,7 +12,22 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=11) writeonly buffer sb011
+{
+	float dL_dB[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -25,22 +40,12 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=2, binding=1) readonly buffer sb21
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=5) writeonly buffer sb25
-{
-	float dL_dB[];
-};
-
-layout(std430, set=3, binding=0) readonly buffer sb30
+layout(std430, set=2, binding=0) readonly buffer sb200
 {
 	uint idx_f;
 	uint idx_fi;
@@ -50,9 +55,9 @@ layout(std430, set=3, binding=0) readonly buffer sb30
 
 float get_dL_dY(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
-	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
-	uint sx = dim_dL_dY.depth;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
@@ -68,8 +73,8 @@ void main()
 	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;
-	uint yh  = dim_dL_dY.height;
-	uint yw  = dim_dL_dY.width;
+	uint yh  = dimY.height;
+	uint yw  = dimY.width;
 	uint idx = 8*p + q;
 	uint f   = idx_f;
 
@@ -81,7 +86,7 @@ void main()
 	uint i;
 	uint j;
 	float dy_db = 1.0;
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		for(i = p; i < yh; i += 8)
 		{
