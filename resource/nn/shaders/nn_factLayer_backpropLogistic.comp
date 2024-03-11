@@ -10,22 +10,17 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float X[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=2, binding=1) buffer sb21
+layout(std430, set=1, binding=3) buffer sb103
 {
 	float dL_dY[];
 };
@@ -40,9 +35,9 @@ float getX(uint n, uint i, uint j, uint k)
 
 void mul_dL_dY(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
-	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
-	uint sx = dim_dL_dY.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	dL_dY[n*sn + i*sy + j*sx + k] *= v;
 }
 

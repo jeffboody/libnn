@@ -60,8 +60,8 @@ typedef struct nn_factLayer_s
 	// dL_dX : dim(bs,xh,xw,xd)
 
 	vkk_uniformSet_t* us0;
-	vkk_uniformSet_t* us1;
-	vkk_uniformSet_t* us2;
+	vkk_uniformSet_t* us1_fp;
+	vkk_uniformSet_t* us1_bp;
 } nn_factLayer_t;
 
 nn_factLayer_t* nn_factLayer_new(nn_arch_t* arch,

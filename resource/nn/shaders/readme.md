@@ -114,20 +114,23 @@ Backprop Dispatch Order (Transpose)
 Fact Layer
 ----------
 
-Shared Uniforms
+Layer Uniforms
 
-* sb00: dimX
-* sb01: X
+* sb000: dimX
+* sb001: Y
 
 Forward Pass Uniforms
 
-* sb10: dimY
-* sb11: Y
+* sb100: bs
+* sb101: state
+* sb102: X
 
 Backprop Uniforms
 
-* sb20: dim_dL_dY
-* sb21: dL_dY
+* sb100: bs
+* sb101: state
+* sb102: X
+* sb103: dL_dY
 
 Skip Layer
 ----------
