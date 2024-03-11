@@ -129,30 +129,6 @@ Backprop Uniforms
 * sb20: dim_dL_dY
 * sb21: dL_dY
 
-Pooling Layer
--------------
-
-Shared Uniforms
-
-* sb00: state
-* sb01: param (stride)
-* sb02: dim_dY_dX
-* sb03: dY_dX
-
-Forward Pass Uniforms
-
-* sb10: dimX
-* sb11: X
-* sb12: dimY
-* sb13: Y
-
-Backprop Uniforms
-
-* sb20: dim_dL_dY
-* sb21: dL_dY
-* sb22: dim_dL_dX
-* sb23: dL_dX
-
 Skip Layer
 ----------
 
