@@ -201,22 +201,23 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf2_skip = vkk_uniformSetFactory_new(engine, um,
 	                                            8, ub_array);
 
-	// sb00: state
+	// sb000: dimX
 	// ...
-	// sb07: B
+	// sb013: param (disable_bias)
 	self->usf0_weight = vkk_uniformSetFactory_new(engine, um,
-	                                              8, ub_array);
+	                                              14, ub_array);
 
-	// sb10: dimY
-	// sb11: Y
-	self->usf1_weight = vkk_uniformSetFactory_new(engine, um,
-	                                              2, ub_array);
-
-	// sb20:  dim_dL_dY
+	// sb100: bs
 	// ...
-	// sb211: VB
-	self->usf2_weight = vkk_uniformSetFactory_new(engine, um,
-	                                              12, ub_array);
+	// sb102: X
+	self->usf1_weight_fp = vkk_uniformSetFactory_new(engine, um,
+	                                                 3, ub_array);
+
+	// sb100: bs
+	// ...
+	// sb103: dL_dY
+	self->usf1_weight_bp = vkk_uniformSetFactory_new(engine, um,
+	                                                 4, ub_array);
 
 	// sb00: state
 	// ...
@@ -255,8 +256,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_skip         == NULL) ||
 	   (self->usf2_skip         == NULL) ||
 	   (self->usf0_weight       == NULL) ||
-	   (self->usf1_weight       == NULL) ||
-	   (self->usf2_weight       == NULL) ||
+	   (self->usf1_weight_fp    == NULL) ||
+	   (self->usf1_weight_bp    == NULL) ||
 	   (self->usf0_loss         == NULL) ||
 	   (self->usf0_tensor       == NULL) ||
 	   (self->usf1_tensor       == NULL) ||
@@ -326,14 +327,21 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_skip = vkk_pipelineLayout_new(engine, 3,
 	                                       usf_array_skip);
 
-	vkk_uniformSetFactory_t* usf_array_weight[] =
+	vkk_uniformSetFactory_t* usf_array_weight_fp[] =
 	{
 		self->usf0_weight,
-		self->usf1_weight,
-		self->usf2_weight,
+		self->usf1_weight_fp,
 	};
-	self->pl_weight = vkk_pipelineLayout_new(engine, 3,
-	                                         usf_array_weight);
+	self->pl_weight_fp = vkk_pipelineLayout_new(engine, 2,
+	                                            usf_array_weight_fp);
+
+	vkk_uniformSetFactory_t* usf_array_weight_bp[] =
+	{
+		self->usf0_weight,
+		self->usf1_weight_bp,
+	};
+	self->pl_weight_bp = vkk_pipelineLayout_new(engine, 2,
+	                                            usf_array_weight_bp);
 
 	vkk_uniformSetFactory_t* usf_array_loss[] =
 	{
@@ -358,7 +366,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_fact_fp      == NULL) ||
 	   (self->pl_fact_bp      == NULL) ||
 	   (self->pl_skip         == NULL) ||
-	   (self->pl_weight       == NULL) ||
+	   (self->pl_weight_fp    == NULL) ||
+	   (self->pl_weight_bp    == NULL) ||
 	   (self->pl_loss         == NULL) ||
 	   (self->pl_tensor       == NULL))
 	{
@@ -742,7 +751,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_forwardPass =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_fp,
 		.cs      = "nn/shaders/nn_weightLayer_forwardPass_comp.spv",
 	};
 
@@ -753,7 +762,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_backpropUpdateW =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_bp,
 		.cs      = "nn/shaders/nn_weightLayer_backpropUpdateW_comp.spv",
 	};
 
@@ -764,7 +773,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_backpropUpdateB =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_bp,
 		.cs      = "nn/shaders/nn_weightLayer_backpropUpdateB_comp.spv",
 	};
 
@@ -775,7 +784,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dX =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_bp,
 		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dX_comp.spv",
 	};
 
@@ -786,7 +795,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dW =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_bp,
 		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dW_comp.spv",
 	};
 
@@ -797,7 +806,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_weight_backprop_dL_dB =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_weight,
+		.pl      = self->pl_weight_bp,
 		.cs      = "nn/shaders/nn_weightLayer_backprop_dL_dB_comp.spv",
 	};
 
@@ -1109,7 +1118,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmean);
 		vkk_pipelineLayout_delete(&self->pl_tensor);
 		vkk_pipelineLayout_delete(&self->pl_loss);
-		vkk_pipelineLayout_delete(&self->pl_weight);
+		vkk_pipelineLayout_delete(&self->pl_weight_bp);
+		vkk_pipelineLayout_delete(&self->pl_weight_fp);
 		vkk_pipelineLayout_delete(&self->pl_skip);
 		vkk_pipelineLayout_delete(&self->pl_fact_bp);
 		vkk_pipelineLayout_delete(&self->pl_fact_fp);
@@ -1121,8 +1131,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf1_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_loss);
-		vkk_uniformSetFactory_delete(&self->usf2_weight);
-		vkk_uniformSetFactory_delete(&self->usf1_weight);
+		vkk_uniformSetFactory_delete(&self->usf1_weight_bp);
+		vkk_uniformSetFactory_delete(&self->usf1_weight_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_weight);
 		vkk_uniformSetFactory_delete(&self->usf2_skip);
 		vkk_uniformSetFactory_delete(&self->usf1_skip);

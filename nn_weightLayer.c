@@ -56,11 +56,8 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_arch_t*        arch   = base->arch;
 	nn_engine_t*      engine = arch->engine;
 
-	nn_tensor_t* W    = self->W;
-	nn_tensor_t* B    = self->B;
-	nn_tensor_t* Y    = self->Y;
-	nn_dim_t*    dimW = nn_tensor_dim(W);
-	float        nc   = dimW->count;
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	float     nc   = dimW->count;
 
 	// optionally perform Spectral Normalization
 	if(self->flags & NN_WEIGHT_LAYER_FLAG_NORM_SN)
@@ -84,78 +81,36 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 		}
 	}
 
-	// sb00: state
-	// sb01: param (disable_bias)
-	// sb02: dimX
-	// sb03: X
-	// sb04: dimW
-	// sb05: W
-	// sb06: dimB
-	// sb07: B
-	vkk_uniformAttachment_t ua0_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb00_state,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb01_param,
-		},
-		{
-			.binding = 2,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X->sb_dim,
-		},
-		{
-			.binding = 3,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X->sb_data,
-		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = W->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = W->sb_data,
-		},
-		{
-			.binding = 6,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = B->sb_dim,
-		},
-		{
-			.binding = 7,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = B->sb_data,
-		},
-	};
-
-	// sb10: dimY
-	// sb11: Y
+	// sb100: bs
+	// sb101: state
+	// sb102: X
 	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_dim,
+			.buffer  = arch->sb100_bs,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = Y->sb_data,
+			.buffer  = arch->sb101_state,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
 		},
 	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us1_fp,
+	                                 3, ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
 		self->us0,
-		self->us1,
+		self->us1_fp,
 	};
 
 	// nn_weightLayer_forwardPass
@@ -166,10 +121,6 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-	                                 8, ua0_array);
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us1,
-	                                 2, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs*nc, 1, 1, 64, 1, 1);
@@ -177,7 +128,7 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 	// store reference
 	self->X = X;
 
-	return Y;
+	return self->Y;
 }
 
 static nn_tensor_t*
@@ -192,117 +143,65 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	nn_arch_t*        arch   = base->arch;
 	nn_engine_t*      engine = arch->engine;
 
-	nn_tensor_t* MW   = self->MW;
-	nn_tensor_t* VW   = self->VW;
-	nn_tensor_t* MB   = self->MB;
-	nn_tensor_t* VB   = self->VB;
-	nn_dim_t*    dimW = nn_tensor_dim(self->W);
-	uint32_t     xd   = dimW->depth;
-	uint32_t     nc   = dimW->count;
+	nn_dim_t* dimW = nn_tensor_dim(self->W);
+	uint32_t  xd   = dimW->depth;
+	uint32_t  nc   = dimW->count;
 
 	// clear backprop gradients
-	nn_tensor_t* dL_dW = self->dL_dW;
-	nn_tensor_t* dL_dB = self->dL_dB;
-	nn_tensor_t* dL_dX = self->dL_dX;
-	if(nn_tensor_clear(dL_dW, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_clear(self->dL_dW, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(dL_dB, VKK_HAZARD_NONE) == 0)
+		if(nn_tensor_clear(self->dL_dB, VKK_HAZARD_NONE) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(dL_dX, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_clear(self->dL_dX, VKK_HAZARD_NONE) == 0)
 	{
 		return NULL;
 	}
 
-	// sb20:  dim_dL_dY
-	// sb21:  dL_dY
-	// sb22:  dim_dL_dW
-	// sb23:  dL_dW
-	// sb24:  dim_dL_dB
-	// sb25:  dL_dB
-	// sb26:  dim_dL_dX
-	// sb27:  dL_dX
-	// sb28:  MW
-	// sb29:  VW
-	// sb210: MB
-	// sb211: VB
-	vkk_uniformAttachment_t ua2_array[] =
+	// sb100: bs
+	// sb101: state
+	// sb102: X
+	// sb103: dL_dY
+	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_dim,
+			.buffer  = arch->sb100_bs,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dY->sb_data,
+			.buffer  = arch->sb101_state,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_dim,
+			.buffer  = self->X->sb_data,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dW->sb_data,
-		},
-		{
-			.binding = 4,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_dim,
-		},
-		{
-			.binding = 5,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dB->sb_data,
-		},
-		{
-			.binding = 6,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_dim,
-		},
-		{
-			.binding = 7,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = dL_dX->sb_data,
-		},
-		{
-			.binding = 8,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = MW->sb_data,
-		},
-		{
-			.binding = 9,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VW->sb_data,
-		},
-		{
-			.binding = 10,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = MB->sb_data,
-		},
-		{
-			.binding = 11,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = VB->sb_data,
+			.buffer  = dL_dY->sb_data,
 		},
 	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us1_bp,
+	                                 4, ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
 		self->us0,
-		self->us1,
-		self->us2,
+		self->us1_bp,
 	};
 
 	// nn_weightLayer_backprop_dL_dX
@@ -313,9 +212,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	{
 		return NULL;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us2,
-	                                 12, ua2_array);
-	vkk_compute_bindUniformSets(engine->compute, 3, us_array);
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
 	                   bs*xd, 1, 1, 64, 1, 1);
 
@@ -347,7 +244,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	// optionally skip parameter update
 	if(flags & NN_LAYER_FLAG_NOP)
 	{
-		return dL_dX;
+		return self->dL_dX;
 	}
 
 	// nn_weightLayer_backpropUpdateW
@@ -371,74 +268,7 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 	                   nc, 1, 1, 64, 1, 1);
 
-	return dL_dX;
-}
-
-static int
-nn_weightLayer_newCompute(nn_weightLayer_t* self)
-{
-	ASSERT(self);
-
-	nn_arch_t*   arch   = self->base.arch;
-	nn_engine_t* engine = arch->engine;
-
-	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_weight);
-	if(self->us0 == NULL)
-	{
-		return 0;
-	}
-
-	self->us1 = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                               engine->usf1_weight);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_weight);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	nn_weightLayerParam_t param =
-	{
-		.disable_bias = (self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
-	};
-	self->sb01_param = vkk_buffer_new(engine->engine,
-	                                  VKK_UPDATE_MODE_STATIC,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(nn_weightLayerParam_t),
-	                                  &param);
-	if(self->sb01_param == NULL)
-	{
-		goto fail_sb01_param;
-	}
-
-	// success
-	return 1;
-
-	// failure
-	fail_sb01_param:
-		vkk_uniformSet_delete(&self->us2);
-	fail_us2:
-		vkk_uniformSet_delete(&self->us1);
-	fail_us1:
-		vkk_uniformSet_delete(&self->us0);
-	return 0;
-}
-
-static void
-nn_weightLayer_deleteCompute(nn_weightLayer_t* self)
-{
-	ASSERT(self);
-
-	vkk_buffer_delete(&self->sb01_param);
-	vkk_uniformSet_delete(&self->us2);
-	vkk_uniformSet_delete(&self->us1);
-	vkk_uniformSet_delete(&self->us0);
+	return self->dL_dX;
 }
 
 static nn_dim_t*
@@ -610,16 +440,144 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dX;
 	}
 
-	if(nn_weightLayer_newCompute(self) == 0)
+	nn_weightLayerParam_t param =
 	{
-		goto fail_compute;
+		.disable_bias = (self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) ? 1 : 0,
+	};
+	self->sb013_param = vkk_buffer_new(engine->engine,
+	                                   VKK_UPDATE_MODE_STATIC,
+	                                   VKK_BUFFER_USAGE_STORAGE,
+	                                   sizeof(nn_weightLayerParam_t),
+	                                   &param);
+	if(self->sb013_param == NULL)
+	{
+		goto fail_sb013_param;
 	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
+	                               engine->usf0_weight);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	self->us1_fp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                                  engine->usf1_weight_fp);
+	if(self->us1_fp == NULL)
+	{
+		goto fail_us1_fp;
+	}
+
+	self->us1_bp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
+	                                  engine->usf1_weight_bp);
+	if(self->us1_bp == NULL)
+	{
+		goto fail_us1_bp;
+	}
+
+	// sb000: dimX
+	// sb001: dimW
+	// sb002: W
+	// sb003: B
+	// sb004: dimY
+	// sb005: Y
+	// sb006: MW
+	// sb007: VW
+	// sb008: MB
+	// sb009: VB
+	// sb010: dL_dW
+	// sb011: dL_dB
+	// sb012: dL_dX
+	// sb013: param (disable_bias)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dX->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->W->sb_dim,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->W->sb_data,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->B->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Y->sb_dim,
+		},
+		{
+			.binding = 5,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->Y->sb_data,
+		},
+		{
+			.binding = 6,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->MW->sb_data,
+		},
+		{
+			.binding = 7,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->VW->sb_data,
+		},
+		{
+			.binding = 8,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->MB->sb_data,
+		},
+		{
+			.binding = 9,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->VB->sb_data,
+		},
+		{
+			.binding = 10,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dW->sb_data,
+		},
+		{
+			.binding = 11,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dB->sb_data,
+		},
+		{
+			.binding = 12,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dX->sb_data,
+		},
+		{
+			.binding = 13,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb013_param,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0,
+	                                 14, ua0_array);
 
 	// success
 	return self;
 
 	// failure
-	fail_compute:
+	fail_us1_bp:
+		vkk_uniformSet_delete(&self->us1_fp);
+	fail_us1_fp:
+		vkk_uniformSet_delete(&self->us0);
+	fail_us0:
+		vkk_buffer_delete(&self->sb013_param);
+	fail_sb013_param:
 		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dL_dB);
@@ -811,7 +769,10 @@ void nn_weightLayer_delete(nn_weightLayer_t** _self)
 	nn_weightLayer_t* self = *_self;
 	if(self)
 	{
-		nn_weightLayer_deleteCompute(self);
+		vkk_uniformSet_delete(&self->us1_bp);
+		vkk_uniformSet_delete(&self->us1_fp);
+		vkk_uniformSet_delete(&self->us0);
+		vkk_buffer_delete(&self->sb013_param);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);

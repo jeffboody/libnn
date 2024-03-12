@@ -163,36 +163,35 @@ Backprop Uniforms
 Weight Layer
 ------------
 
-Shared Uniforms
+Layer Uniforms
 
-* sb00: state
-* sb01: param (disable_bias)
-* sb02: dimX
-* sb03: X
-* sb04: dimW
-* sb05: W
-* sb06: dimB
-* sb07: B
+* sb000: dimX
+* sb001: dimW
+* sb002: W
+* sb003: B
+* sb004: dimY
+* sb005: Y
+* sb006: MW
+* sb007: VW
+* sb008: MB
+* sb009: VB
+* sb010: dL_dW
+* sb011: dL_dB
+* sb012: dL_dX
+* sb013: param (disable_bias)
 
 Forward Pass Uniforms
 
-* sb10: dimY
-* sb11: Y
+* sb100: bs
+* sb101: state
+* sb102: X
 
 Backprop Uniforms
 
-* sb20:  dim_dL_dY
-* sb21:  dL_dY
-* sb22:  dim_dL_dW
-* sb23:  dL_dW
-* sb24:  dim_dL_dB
-* sb25:  dL_dB
-* sb26:  dim_dL_dX
-* sb27:  dL_dX
-* sb28:  MW // dimW
-* sb29:  VW // dimW
-* sb210: MB // dimB
-* sb211: VB // dimB
+* sb100: bs
+* sb101: state
+* sb102: X
+* sb103: dL_dY
 
 Backprop Dispatch Order
 

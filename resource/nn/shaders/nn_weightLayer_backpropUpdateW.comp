@@ -10,7 +10,37 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=2) buffer sb002
+{
+	float W[];
+};
+
+layout(std430, set=0, binding=6) buffer sb006
+{
+	float MW[];
+};
+
+layout(std430, set=0, binding=7) buffer sb007
+{
+	float VW[];
+};
+
+layout(std430, set=0, binding=10) readonly buffer sb010
+{
+	float dL_dW[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -21,48 +51,6 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_adam_lambda;
 	float state_adam_nu;
 	float state_bn_momentum;
-};
-
-layout(std430, set=0, binding=4) readonly buffer sb04
-{
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=5) buffer sb05
-{
-	float W[];
-};
-
-layout(std430, set=2, binding=0) readonly buffer sb20
-{
-	float gc_gcw;
-	float gc_gcb;
-	float gc_norm_w;
-	float gc_norm_b;
-	float gc_norm_dl_dw;
-	float gc_norm_dl_db;
-	float gc_norm_dl_dw_ra;
-	float gc_norm_dl_db_ra;
-};
-
-layout(std430, set=2, binding=3) readonly buffer sb23
-{
-	nn_dim_t dim_dL_dW;
-};
-
-layout(std430, set=2, binding=4) readonly buffer sb24
-{
-	float dL_dW[];
-};
-
-layout(std430, set=2, binding=8) buffer sb28
-{
-	float MW[];
-};
-
-layout(std430, set=2, binding=9) buffer sb29
-{
-	float VW[];
 };
 
 float getW(uint n, uint i, uint j, uint k)
@@ -83,9 +71,9 @@ void addW(uint n, uint i, uint j, uint k, float v)
 
 float get_dL_dW(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dW.height*dim_dL_dW.width*dim_dL_dW.depth;
-	uint sy = dim_dL_dW.width*dim_dL_dW.depth;
-	uint sx = dim_dL_dW.depth;
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
 	return dL_dW[n*sn + i*sy + j*sx + k];
 }
 

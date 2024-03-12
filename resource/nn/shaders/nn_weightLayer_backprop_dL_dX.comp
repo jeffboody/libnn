@@ -10,7 +10,37 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=2) readonly buffer sb002
+{
+	float W[];
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=12) buffer sb012
+{
+	float dL_dX[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -23,34 +53,9 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=0, binding=4) readonly buffer sb04
-{
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=5) readonly buffer sb05
-{
-	float W[];
-};
-
-layout(std430, set=2, binding=1) readonly buffer sb21
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=2, binding=2) readonly buffer sb22
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float dL_dY[];
-};
-
-layout(std430, set=2, binding=7) readonly buffer sb27
-{
-	nn_dim_t dim_dL_dX;
-};
-
-layout(std430, set=2, binding=8) buffer sb28
-{
-	float dL_dX[];
 };
 
 float get_dY_dX(uint n, uint i, uint j, uint k)
@@ -64,17 +69,17 @@ float get_dY_dX(uint n, uint i, uint j, uint k)
 
 float get_dL_dY(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
-	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
-	uint sx = dim_dL_dY.depth;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
 void add_dL_dX(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dim_dL_dX.height*dim_dL_dX.width*dim_dL_dX.depth;
-	uint sy = dim_dL_dX.width*dim_dL_dX.depth;
-	uint sx = dim_dL_dX.depth;
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
 	dL_dX[n*sn + i*sy + j*sx + k] += v;
 }
 
@@ -109,7 +114,7 @@ void main()
 	uint m  = i/xd;
 	uint k  = umod(i, xd);
 
-	if(m >= state_bs)
+	if(m >= bs)
 	{
 		return;
 	}

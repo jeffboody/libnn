@@ -10,7 +10,47 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=2) readonly buffer sb002
+{
+	float W[];
+};
+
+layout(std430, set=0, binding=3) readonly buffer sb003
+{
+	float B[];
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=5) writeonly buffer sb005
+{
+	float Y[];
+};
+
+layout(std430, set=0, binding=13) readonly buffer sb013
+{
+	uint param_disable_bias;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -23,44 +63,9 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
-{
-	uint param_disable_bias;
-};
-
-layout(std430, set=0, binding=2) readonly buffer sb02
-{
-	nn_dim_t dimX;
-};
-
-layout(std430, set=0, binding=3) readonly buffer sb03
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float X[];
-};
-
-layout(std430, set=0, binding=4) readonly buffer sb04
-{
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=5) readonly buffer sb05
-{
-	float W[];
-};
-
-layout(std430, set=0, binding=7) readonly buffer sb07
-{
-	float B[];
-};
-
-layout(std430, set=1, binding=0) readonly buffer sb10
-{
-	nn_dim_t dimY;
-};
-
-layout(std430, set=1, binding=1) writeonly buffer sb11
-{
-	float Y[];
 };
 
 float getX(uint n, uint i, uint j, uint k)
@@ -105,7 +110,7 @@ void main()
 	uint m  = i/nc;
 	uint n  = umod(i, nc);
 
-	if(m >= state_bs)
+	if(m >= bs)
 	{
 		return;
 	}

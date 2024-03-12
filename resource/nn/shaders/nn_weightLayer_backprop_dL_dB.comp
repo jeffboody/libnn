@@ -10,7 +10,27 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=11) writeonly buffer sb011
+{
+	float dL_dB[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	uint  state_bs;
 	float state_adam_alpha;
@@ -23,31 +43,16 @@ layout(std430, set=0, binding=0) readonly buffer sb00
 	float state_bn_momentum;
 };
 
-layout(std430, set=2, binding=1) readonly buffer sb21
-{
-	nn_dim_t dim_dL_dY;
-};
-
-layout(std430, set=2, binding=2) readonly buffer sb22
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=5) readonly buffer sb25
-{
-	nn_dim_t dim_dL_dB;
-};
-
-layout(std430, set=2, binding=6) writeonly buffer sb26
-{
-	float dL_dB[];
-};
-
 float get_dL_dY(uint n, uint i, uint j, uint k)
 {
-	uint sn = dim_dL_dY.height*dim_dL_dY.width*dim_dL_dY.depth;
-	uint sy = dim_dL_dY.width*dim_dL_dY.depth;
-	uint sx = dim_dL_dY.depth;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
@@ -61,7 +66,7 @@ void main()
 	// RAW hazard handled by nn_weightLayer_backprop_dL_dX
 	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
 	uint n  = gl_GlobalInvocationID.x;
-	uint nc = dim_dL_dB.count;
+	uint nc = dimW.count;
 
 	if(n >= nc)
 	{
@@ -74,7 +79,7 @@ void main()
 	// compute dl_db
 	uint m;
 	float dy_db = 1.0;
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		dl_db += get_dL_dY(m, 0, 0, n)*dy_db;
 	}
