@@ -299,8 +299,7 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		{
 			ASSERT(info->skip_coder);
 			self->skip = nn_skipLayer_newCat(info->arch, dim,
-			                                 info->skip_coder->skip,
-			                                 info->skip_beta);
+			                                 info->skip_coder->skip);
 		}
 		else
 		{

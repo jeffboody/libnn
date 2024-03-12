@@ -184,22 +184,21 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_fact_bp = vkk_uniformSetFactory_new(engine, um,
 	                                               4, ub_array);
 
-	// sb00: state
-	// sb01: param (beta)
+	// sb000: param (beta)
 	self->usf0_skip = vkk_uniformSetFactory_new(engine, um,
-	                                            2, ub_array);
+	                                            1, ub_array);
 
-	// sb10: dimX/dimX1
+	// sb100: bs
 	// ...
-	// sb15: X2
-	self->usf1_skip = vkk_uniformSetFactory_new(engine, um,
-	                                            6, ub_array);
+	// sb107: Y
+	self->usf1_skip_fp = vkk_uniformSetFactory_new(engine, um,
+	                                               8, ub_array);
 
-	// sb20: dim_dL_dY
+	// sb100: bs
 	// ...
-	// sb27: dL_dY2
-	self->usf2_skip = vkk_uniformSetFactory_new(engine, um,
-	                                            8, ub_array);
+	// sb109: dL_dY2
+	self->usf1_skip_bp = vkk_uniformSetFactory_new(engine, um,
+	                                               10, ub_array);
 
 	// sb000: dimX
 	// ...
@@ -253,8 +252,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_fact_fp      == NULL) ||
 	   (self->usf1_fact_bp      == NULL) ||
 	   (self->usf0_skip         == NULL) ||
-	   (self->usf1_skip         == NULL) ||
-	   (self->usf2_skip         == NULL) ||
+	   (self->usf1_skip_fp      == NULL) ||
+	   (self->usf1_skip_bp      == NULL) ||
 	   (self->usf0_weight       == NULL) ||
 	   (self->usf1_weight_fp    == NULL) ||
 	   (self->usf1_weight_bp    == NULL) ||
@@ -318,14 +317,21 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_fact_bp = vkk_pipelineLayout_new(engine, 2,
 	                                          usf_array_fact_bp);
 
-	vkk_uniformSetFactory_t* usf_array_skip[] =
+	vkk_uniformSetFactory_t* usf_array_skip_fp[] =
 	{
 		self->usf0_skip,
-		self->usf1_skip,
-		self->usf2_skip,
+		self->usf1_skip_fp,
 	};
-	self->pl_skip = vkk_pipelineLayout_new(engine, 3,
-	                                       usf_array_skip);
+	self->pl_skip_fp = vkk_pipelineLayout_new(engine, 2,
+	                                          usf_array_skip_fp);
+
+	vkk_uniformSetFactory_t* usf_array_skip_bp[] =
+	{
+		self->usf0_skip,
+		self->usf1_skip_bp,
+	};
+	self->pl_skip_bp = vkk_pipelineLayout_new(engine, 2,
+	                                          usf_array_skip_bp);
 
 	vkk_uniformSetFactory_t* usf_array_weight_fp[] =
 	{
@@ -365,7 +371,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_conv_bp      == NULL) ||
 	   (self->pl_fact_fp      == NULL) ||
 	   (self->pl_fact_bp      == NULL) ||
-	   (self->pl_skip         == NULL) ||
+	   (self->pl_skip_fp      == NULL) ||
+	   (self->pl_skip_bp      == NULL) ||
 	   (self->pl_weight_fp    == NULL) ||
 	   (self->pl_weight_bp    == NULL) ||
 	   (self->pl_loss         == NULL) ||
@@ -696,7 +703,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_skip_forwardPassAdd =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_skip,
+		.pl      = self->pl_skip_fp,
 		.cs      = "nn/shaders/nn_skipLayer_forwardPassAdd_comp.spv",
 	};
 
@@ -707,7 +714,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_skip_forwardPassCat =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_skip,
+		.pl      = self->pl_skip_fp,
 		.cs      = "nn/shaders/nn_skipLayer_forwardPassCat_comp.spv",
 	};
 
@@ -718,7 +725,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_skip_backpropAdd =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_skip,
+		.pl      = self->pl_skip_bp,
 		.cs      = "nn/shaders/nn_skipLayer_backpropAdd_comp.spv",
 	};
 
@@ -729,7 +736,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_skip_backpropCat =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_skip,
+		.pl      = self->pl_skip_bp,
 		.cs      = "nn/shaders/nn_skipLayer_backpropCat_comp.spv",
 	};
 
@@ -740,7 +747,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_skip_backpropFork =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_skip,
+		.pl      = self->pl_skip_bp,
 		.cs      = "nn/shaders/nn_skipLayer_backpropFork_comp.spv",
 	};
 
@@ -1120,7 +1127,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_loss);
 		vkk_pipelineLayout_delete(&self->pl_weight_bp);
 		vkk_pipelineLayout_delete(&self->pl_weight_fp);
-		vkk_pipelineLayout_delete(&self->pl_skip);
+		vkk_pipelineLayout_delete(&self->pl_skip_bp);
+		vkk_pipelineLayout_delete(&self->pl_skip_fp);
 		vkk_pipelineLayout_delete(&self->pl_fact_bp);
 		vkk_pipelineLayout_delete(&self->pl_fact_fp);
 		vkk_pipelineLayout_delete(&self->pl_conv_bp);
@@ -1134,8 +1142,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf1_weight_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_weight_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_weight);
-		vkk_uniformSetFactory_delete(&self->usf2_skip);
-		vkk_uniformSetFactory_delete(&self->usf1_skip);
+		vkk_uniformSetFactory_delete(&self->usf1_skip_bp);
+		vkk_uniformSetFactory_delete(&self->usf1_skip_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_skip);
 		vkk_uniformSetFactory_delete(&self->usf1_fact_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_fact_fp);
