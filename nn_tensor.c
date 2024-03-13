@@ -295,22 +295,12 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 			goto fail_data;
 		}
 
-		self->us0 = vkk_uniformSet_new(engine->engine,
-		                               0, 0, NULL,
-		                               engine->usf0_tensor);
-		if(self->us0 == NULL)
-		{
-			nn_tensor_delete(&tmp);
-			goto fail_data;
-		}
-
 		self->sb_dim = vkk_buffer_new(engine->engine, um,
 		                              VKK_BUFFER_USAGE_STORAGE,
 		                              sizeof(nn_dim_t),
 		                              dim);
 		if(self->sb_dim == NULL)
 		{
-			vkk_uniformSet_delete(&self->us0);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -322,7 +312,17 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 		if(self->sb_data == NULL)
 		{
 			vkk_buffer_delete(&self->sb_dim);
-			vkk_uniformSet_delete(&self->us0);
+			nn_tensor_delete(&tmp);
+			goto fail_data;
+		}
+
+		self->us0 = vkk_uniformSet_new(engine->engine,
+		                               0, 0, NULL,
+		                               engine->usf0_tensor);
+		if(self->us0 == NULL)
+		{
+			vkk_buffer_delete(&self->sb_data);
+			vkk_buffer_delete(&self->sb_dim);
 			nn_tensor_delete(&tmp);
 			goto fail_data;
 		}
@@ -365,15 +365,15 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	nn_tensor_t* self = *_self;
 	if(self)
 	{
+		vkk_uniformSet_delete(&self->us2);
 		vkk_buffer_delete(&self->sb24_c);
 		vkk_buffer_delete(&self->sb23_data_v2);
 		vkk_buffer_delete(&self->sb22_data_u2);
 		vkk_buffer_delete(&self->sb21_data_v1);
 		vkk_buffer_delete(&self->sb20_data_u1);
-		vkk_uniformSet_delete(&self->us2);
+		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
-		vkk_uniformSet_delete(&self->us0);
 		FREE(self->data);
 		FREE(self);
 		*_self = NULL;
@@ -672,18 +672,6 @@ int nn_tensor_normalize(nn_tensor_t* self,
 		return 0;
 	}
 
-	// create us2 on demand
-	if(self->us2 == NULL)
-	{
-		self->us2 = vkk_uniformSet_new(engine->engine,
-		                               2, 0, NULL,
-		                               engine->usf2_tensor);
-		if(self->us2 == NULL)
-		{
-			return 0;
-		}
-	}
-
 	// create sb20_data_u1 on demand
 	if(self->sb20_data_u1 == NULL)
 	{
@@ -789,6 +777,18 @@ int nn_tensor_normalize(nn_tensor_t* self,
 	{
 		vkk_buffer_writeStorage(self->sb24_c, 0, sizeof(float),
 		                        &c);
+	}
+
+	// create us2 on demand
+	if(self->us2 == NULL)
+	{
+		self->us2 = vkk_uniformSet_new(engine->engine,
+		                               2, 0, NULL,
+		                               engine->usf2_tensor);
+		if(self->us2 == NULL)
+		{
+			return 0;
+		}
 	}
 
 	// sb00: dimX

@@ -64,17 +64,17 @@ typedef struct nn_tensor_s
 	// compute tensor (optional)
 	// sb_dim/sb_data index varies by layer but are
 	// sb00_dim/sb01_data for tensor compute shaders
-	vkk_uniformSet_t* us0;
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;
+	vkk_uniformSet_t* us0;
 
 	// spectral normalization (optional)
-	vkk_uniformSet_t* us2;
 	vkk_buffer_t*     sb20_data_u1;
 	vkk_buffer_t*     sb21_data_v1;
 	vkk_buffer_t*     sb22_data_u2;
 	vkk_buffer_t*     sb23_data_v2;
 	vkk_buffer_t*     sb24_c;
+	vkk_uniformSet_t* us2;
 } nn_tensor_t;
 
 nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
