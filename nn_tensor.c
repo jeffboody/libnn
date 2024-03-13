@@ -307,7 +307,7 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 
 		self->sb_data = vkk_buffer_new(engine->engine, um,
 		                               VKK_BUFFER_USAGE_STORAGE,
-		                               nn_dim_sizeof(dim),
+		                               nn_dim_sizeBytes(dim),
 		                               tmp->data);
 		if(self->sb_data == NULL)
 		{
@@ -332,7 +332,7 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 	else
 	{
 		self->data = (float*)
-		             CALLOC(1, nn_dim_sizeof(dim));
+		             CALLOC(1, nn_dim_sizeBytes(dim));
 		if(self->data == NULL)
 		{
 			LOGE("CALLOC failed");
@@ -517,9 +517,9 @@ int nn_tensor_load(nn_tensor_t* self, jsmn_val_t* val)
 	}
 
 	nn_dim_t dim;
-	if((nn_dim_load(&dim, val_dim)         == 0) ||
-	   (nn_dim_equals(&self->dim, &dim)    == 0) ||
-	   (nn_tensor_loadData(self, val_data) == 0))
+	if((nn_dim_load(&dim, val_dim)          == 0) ||
+	   (nn_dim_sizeEquals(&self->dim, &dim) == 0) ||
+	   (nn_tensor_loadData(self, val_data)  == 0))
 	{
 		return 0;
 	}
@@ -1030,6 +1030,7 @@ float nn_tensor_get(nn_tensor_t* self,
                     uint32_t j, uint32_t k)
 {
 	ASSERT(self);
+	ASSERT(nn_dim_validate(&self->dim, n, i, j, k));
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
@@ -1051,6 +1052,7 @@ void nn_tensor_set(nn_tensor_t* self,
                    float v)
 {
 	ASSERT(self);
+	ASSERT(nn_dim_validate(&self->dim, n, i, j, k));
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{

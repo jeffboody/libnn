@@ -47,7 +47,7 @@ nn_reshapeLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 	nn_tensor_t*       Y    = &self->Y;
 
-	if(nn_dim_equals(nn_tensor_dim(X), &self->dimX) == 0)
+	if(nn_dim_sizeEquals(nn_tensor_dim(X), &self->dimX) == 0)
 	{
 		LOGE("invalid");
 		return NULL;
@@ -135,8 +135,8 @@ nn_reshapeLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	ASSERT(dimX);
 	ASSERT(dimY);
 
-	size_t sizeX = nn_dim_sizeof(dimX);
-	size_t sizeY = nn_dim_sizeof(dimY);
+	size_t sizeX = nn_dim_sizeBytes(dimX);
+	size_t sizeY = nn_dim_sizeBytes(dimY);
 	if(sizeY > sizeX)
 	{
 		LOGE("invalid sizeX=%u, sizeY=%u",

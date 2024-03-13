@@ -33,6 +33,91 @@
 * public                                                   *
 ***********************************************************/
 
+int nn_dim_validate(nn_dim_t* self,
+                    uint32_t n, uint32_t i,
+                    uint32_t j, uint32_t k)
+{
+	ASSERT(self);
+
+	if((n >= self->count) || (i >= self->height) ||
+	   (j >= self->width) || (k >= self->depth))
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+size_t nn_dim_sizeBytes(nn_dim_t* self)
+{
+	ASSERT(self);
+
+	return sizeof(float)*nn_dim_sizeElements(self);
+}
+
+uint32_t nn_dim_sizeElements(nn_dim_t* self)
+{
+	ASSERT(self);
+
+	return self->count*self->height*self->width*self->depth;
+}
+
+int nn_dim_sizeEquals(nn_dim_t* self,
+                      nn_dim_t* dim)
+{
+	ASSERT(self);
+	ASSERT(dim);
+
+	if((self->count  != dim->count)  ||
+	   (self->height != dim->height) ||
+	   (self->width  != dim->width)  ||
+	   (self->depth  != dim->depth))
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+size_t nn_dim_strideBytes(nn_dim_t* self)
+{
+	return sizeof(float)*nn_dim_strideElements(self);
+}
+
+uint32_t nn_dim_strideElements(nn_dim_t* self)
+{
+	ASSERT(self);
+
+	return self->height*self->width*self->depth;
+}
+
+int nn_dim_strideEquals(nn_dim_t* self, nn_dim_t* dim)
+{
+	ASSERT(self);
+	ASSERT(dim);
+
+	if((self->height != dim->height) ||
+	   (self->width  != dim->width)  ||
+	   (self->depth  != dim->depth))
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+void nn_dim_copy(nn_dim_t* src,
+                 nn_dim_t* dst)
+{
+	ASSERT(src);
+	ASSERT(dst);
+
+	dst->count  = src->count;
+	dst->height = src->height;
+	dst->width  = src->width;
+	dst->depth  = src->depth;
+}
+
 int nn_dim_load(nn_dim_t* self, jsmn_val_t* val)
 {
 	ASSERT(self);
@@ -114,40 +199,4 @@ int nn_dim_store(nn_dim_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_dim_copy(nn_dim_t* src,
-                 nn_dim_t* dst)
-{
-	ASSERT(src);
-	ASSERT(dst);
-
-	dst->count  = src->count;
-	dst->height = src->height;
-	dst->width  = src->width;
-	dst->depth  = src->depth;
-}
-
-size_t nn_dim_sizeof(nn_dim_t* self)
-{
-	ASSERT(self);
-
-	return self->count*self->height*self->width*
-	       self->depth*sizeof(float);
-}
-
-int nn_dim_equals(nn_dim_t* self, nn_dim_t* dim)
-{
-	ASSERT(self);
-	ASSERT(dim);
-
-	if((self->count  == dim->count)  &&
-	   (self->height == dim->height) &&
-	   (self->width  == dim->width)  &&
-	   (self->depth  == dim->depth))
-	{
-		return 1;
-	}
-
-	return 0;
 }

@@ -77,8 +77,8 @@ nn_arch_init(nn_arch_t* self,
 	{
 		if(self->X)
 		{
-			if(nn_dim_equals(nn_tensor_dim(self->X),
-			                 nn_tensor_dim(X)) == 0)
+			if(nn_dim_sizeEquals(nn_tensor_dim(self->X),
+			                     nn_tensor_dim(X)) == 0)
 			{
 				nn_tensor_delete(&self->X);
 			}
@@ -106,8 +106,8 @@ nn_arch_init(nn_arch_t* self,
 	{
 		if(self->Yt)
 		{
-			if(nn_dim_equals(nn_tensor_dim(self->Yt),
-			                 nn_tensor_dim(Yt)) == 0)
+			if(nn_dim_sizeEquals(nn_tensor_dim(self->Yt),
+			                     nn_tensor_dim(Yt)) == 0)
 			{
 				nn_tensor_delete(&self->Yt);
 			}
@@ -376,11 +376,10 @@ int nn_arch_attachLayer(nn_arch_t* self,
 	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
 	if(tail)
 	{
-		if(nn_dim_equals(nn_layer_dimY(tail),
-		                 nn_layer_dimX(layer)) == 0)
+		nn_dim_t* dimY = nn_layer_dimY(tail);
+		nn_dim_t* dimX = nn_layer_dimX(layer);
+		if(nn_dim_sizeEquals(dimY, dimX) == 0)
 		{
-			nn_dim_t* dimY = nn_layer_dimY(tail);
-			nn_dim_t* dimX = nn_layer_dimX(layer);
 			LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
 			     dimX->count,  dimY->count,
 			     dimX->height, dimY->height,
@@ -414,8 +413,8 @@ int nn_arch_attachLoss(nn_arch_t* self,
 	nn_layer_t* tail;
 	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
 	if((tail == NULL) ||
-	   (nn_dim_equals(nn_layer_dimY(tail),
-	                  nn_loss_dimY(loss)) == 0))
+	   (nn_dim_sizeEquals(nn_layer_dimY(tail),
+	                      nn_loss_dimY(loss)) == 0))
 	{
 		LOGE("invalid");
 		return 0;
