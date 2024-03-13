@@ -362,6 +362,21 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	return NULL;
 }
 
+void nn_factLayer_delete(nn_factLayer_t** _self)
+{
+	ASSERT(_self);
+
+	nn_factLayer_t* self = *_self;
+	if(self)
+	{
+		vkk_uniformSet_delete(&self->us1_bp);
+		vkk_uniformSet_delete(&self->us1_fp);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensor_delete(&self->Y);
+		nn_layer_delete((nn_layer_t**) _self);
+	}
+}
+
 nn_factLayer_t*
 nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
@@ -442,19 +457,4 @@ int nn_factLayer_export(nn_factLayer_t* self,
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_factLayer_delete(nn_factLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_factLayer_t* self = *_self;
-	if(self)
-	{
-		vkk_uniformSet_delete(&self->us1_bp);
-		vkk_uniformSet_delete(&self->us1_fp);
-		vkk_uniformSet_delete(&self->us0);
-		nn_tensor_delete(&self->Y);
-		nn_layer_delete((nn_layer_t**) _self);
-	}
 }

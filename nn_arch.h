@@ -84,12 +84,12 @@ typedef struct nn_arch_s
 nn_arch_t*   nn_arch_new(nn_engine_t* engine,
                          size_t base_size,
                          nn_archState_t* state);
+void         nn_arch_delete(nn_arch_t** _self);
 nn_arch_t*   nn_arch_import(nn_engine_t* engine,
                             size_t base_size,
                             jsmn_val_t* val);
 int          nn_arch_export(nn_arch_t* self,
                             jsmn_stream_t* stream);
-void         nn_arch_delete(nn_arch_t** _self);
 int          nn_arch_attachLayer(nn_arch_t* self,
                                  nn_layer_t* layer);
 int          nn_arch_attachLoss(nn_arch_t* self,

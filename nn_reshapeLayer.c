@@ -179,6 +179,18 @@ nn_reshapeLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	return NULL;
 }
 
+void nn_reshapeLayer_delete(nn_reshapeLayer_t** _self)
+{
+	ASSERT(_self);
+
+	nn_reshapeLayer_t* self = *_self;
+	if(self)
+	{
+		nn_reshapeLayer_deleteCompute(self);
+		nn_layer_delete((nn_layer_t**) _self);
+	}
+}
+
 nn_reshapeLayer_t*
 nn_reshapeLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
@@ -255,16 +267,4 @@ int nn_reshapeLayer_export(nn_reshapeLayer_t* self,
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_reshapeLayer_delete(nn_reshapeLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_reshapeLayer_t* self = *_self;
-	if(self)
-	{
-		nn_reshapeLayer_deleteCompute(self);
-		nn_layer_delete((nn_layer_t**) _self);
-	}
 }

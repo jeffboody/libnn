@@ -106,10 +106,10 @@ nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,
                                  nn_dim_t* dimW,
                                  uint32_t stride,
                                  int flags);
+void            nn_convLayer_delete(nn_convLayer_t** _self);
 nn_convLayer_t* nn_convLayer_import(nn_arch_t* arch,
                                     jsmn_val_t* val);
 int             nn_convLayer_export(nn_convLayer_t* self,
                                     jsmn_stream_t* stream);
-void            nn_convLayer_delete(nn_convLayer_t** _self);
 
 #endif

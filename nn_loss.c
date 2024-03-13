@@ -163,6 +163,22 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	return NULL;
 }
 
+void nn_loss_delete(nn_loss_t** _self)
+{
+	ASSERT(_self);
+
+	nn_loss_t* self = *_self;
+	if(self)
+	{
+		vkk_buffer_delete(&self->sb07_loss);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensorStats_delete(&self->stats_dL_dY);
+		nn_tensor_delete(&self->dL_dY);
+		FREE(self);
+		*_self = self;
+	}
+}
+
 nn_loss_t*
 nn_loss_import(nn_arch_t* arch, jsmn_val_t* val)
 {
@@ -244,22 +260,6 @@ int nn_loss_export(nn_loss_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_loss_delete(nn_loss_t** _self)
-{
-	ASSERT(_self);
-
-	nn_loss_t* self = *_self;
-	if(self)
-	{
-		vkk_buffer_delete(&self->sb07_loss);
-		vkk_uniformSet_delete(&self->us0);
-		nn_tensorStats_delete(&self->stats_dL_dY);
-		nn_tensor_delete(&self->dL_dY);
-		FREE(self);
-		*_self = self;
-	}
 }
 
 nn_tensor_t*

@@ -44,10 +44,10 @@ typedef struct nn_reshapeLayer_s
 nn_reshapeLayer_t* nn_reshapeLayer_new(nn_arch_t* arch,
                                        nn_dim_t* dimX,
                                        nn_dim_t* dimY);
+void               nn_reshapeLayer_delete(nn_reshapeLayer_t** _self);
 nn_reshapeLayer_t* nn_reshapeLayer_import(nn_arch_t* arch,
                                           jsmn_val_t* val);
 int                nn_reshapeLayer_export(nn_reshapeLayer_t* self,
                                           jsmn_stream_t* stream);
-void               nn_reshapeLayer_delete(nn_reshapeLayer_t** _self);
 
 #endif

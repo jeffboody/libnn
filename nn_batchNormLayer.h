@@ -94,10 +94,10 @@ typedef struct nn_batchNormLayer_s
 nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,
                                            nn_batchNormMode_e bn_mode,
                                            nn_dim_t* dimX);
+void                 nn_batchNormLayer_delete(nn_batchNormLayer_t** _self);
 nn_batchNormLayer_t* nn_batchNormLayer_import(nn_arch_t* arch,
                                               jsmn_val_t* val);
 int                  nn_batchNormLayer_export(nn_batchNormLayer_t* self,
                                               jsmn_stream_t* stream);
-void                 nn_batchNormLayer_delete(nn_batchNormLayer_t** _self);
 
 #endif

@@ -227,6 +227,25 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 	return NULL;
 }
 
+void nn_arch_delete(nn_arch_t** _self)
+{
+	ASSERT(_self);
+
+	nn_arch_t* self = *_self;
+	if(self)
+	{
+		nn_tensor_delete(&self->Yt);
+		nn_tensor_delete(&self->X);
+		cc_list_discard(self->layers);
+		cc_list_delete(&self->layers);
+		vkk_buffer_delete(&self->sb00_state);
+		vkk_buffer_delete(&self->sb101_state);
+		vkk_buffer_delete(&self->sb100_bs);
+		FREE(self);
+		*_self = NULL;
+	}
+}
+
 nn_arch_t*
 nn_arch_import(nn_engine_t* engine,
                size_t base_size, jsmn_val_t* val)
@@ -353,25 +372,6 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_arch_delete(nn_arch_t** _self)
-{
-	ASSERT(_self);
-
-	nn_arch_t* self = *_self;
-	if(self)
-	{
-		nn_tensor_delete(&self->Yt);
-		nn_tensor_delete(&self->X);
-		cc_list_discard(self->layers);
-		cc_list_delete(&self->layers);
-		vkk_buffer_delete(&self->sb00_state);
-		vkk_buffer_delete(&self->sb101_state);
-		vkk_buffer_delete(&self->sb100_bs);
-		FREE(self);
-		*_self = NULL;
-	}
 }
 
 int nn_arch_attachLayer(nn_arch_t* self,

@@ -764,6 +764,35 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	return NULL;
 }
 
+void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)
+{
+	ASSERT(_self);
+
+	nn_batchNormLayer_t* self = *_self;
+	if(self)
+	{
+		vkk_uniformSet_delete(&self->us1_bp);
+		vkk_uniformSet_delete(&self->us1_fp);
+		vkk_uniformSet_delete(&self->us0);
+		nn_tensor_delete(&self->Csum);
+		nn_tensor_delete(&self->Bsum);
+		nn_tensor_delete(&self->dL_dXhat);
+		nn_tensor_delete(&self->Xvar_ra);
+		nn_tensor_delete(&self->Xmean_ra);
+		nn_tensor_delete(&self->Xvar_mb);
+		nn_tensor_delete(&self->Xmean_mb);
+		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->MB);
+		nn_tensor_delete(&self->VG);
+		nn_tensor_delete(&self->MG);
+		nn_tensor_delete(&self->Y);
+		nn_tensor_delete(&self->Xhat);
+		nn_tensor_delete(&self->B);
+		nn_tensor_delete(&self->G);
+		nn_layer_delete((nn_layer_t**) &self);
+	}
+}
+
 nn_batchNormLayer_t*
 nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
@@ -954,33 +983,4 @@ int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_batchNormLayer_delete(nn_batchNormLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_batchNormLayer_t* self = *_self;
-	if(self)
-	{
-		vkk_uniformSet_delete(&self->us1_bp);
-		vkk_uniformSet_delete(&self->us1_fp);
-		vkk_uniformSet_delete(&self->us0);
-		nn_tensor_delete(&self->Csum);
-		nn_tensor_delete(&self->Bsum);
-		nn_tensor_delete(&self->dL_dXhat);
-		nn_tensor_delete(&self->Xvar_ra);
-		nn_tensor_delete(&self->Xmean_ra);
-		nn_tensor_delete(&self->Xvar_mb);
-		nn_tensor_delete(&self->Xmean_mb);
-		nn_tensor_delete(&self->VB);
-		nn_tensor_delete(&self->MB);
-		nn_tensor_delete(&self->VG);
-		nn_tensor_delete(&self->MG);
-		nn_tensor_delete(&self->Y);
-		nn_tensor_delete(&self->Xhat);
-		nn_tensor_delete(&self->B);
-		nn_tensor_delete(&self->G);
-		nn_layer_delete((nn_layer_t**) &self);
-	}
 }

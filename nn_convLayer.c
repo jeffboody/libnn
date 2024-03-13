@@ -1090,6 +1090,32 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	return NULL;
 }
 
+void nn_convLayer_delete(nn_convLayer_t** _self)
+{
+	ASSERT(_self);
+
+	nn_convLayer_t* self = *_self;
+	if(self)
+	{
+		vkk_uniformSet_delete(&self->us1_bp);
+		vkk_uniformSet_delete(&self->us1_fp);
+		vkk_uniformSet_delete(&self->us0);
+		vkk_buffer_delete(&self->sb013_param);
+		nn_tensorStats_delete(&self->stats_dL_dX);
+		nn_tensor_delete(&self->dL_dX);
+		nn_tensor_delete(&self->dL_dB);
+		nn_tensor_delete(&self->dL_dW);
+		nn_tensor_delete(&self->VB);
+		nn_tensor_delete(&self->MB);
+		nn_tensor_delete(&self->VW);
+		nn_tensor_delete(&self->MW);
+		nn_tensor_delete(&self->Y);
+		nn_tensor_delete(&self->B);
+		nn_tensor_delete(&self->W);
+		nn_layer_delete((nn_layer_t**) _self);
+	}
+}
+
 nn_convLayer_t*
 nn_convLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
@@ -1258,30 +1284,4 @@ int nn_convLayer_export(nn_convLayer_t* self,
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
-}
-
-void nn_convLayer_delete(nn_convLayer_t** _self)
-{
-	ASSERT(_self);
-
-	nn_convLayer_t* self = *_self;
-	if(self)
-	{
-		vkk_uniformSet_delete(&self->us1_bp);
-		vkk_uniformSet_delete(&self->us1_fp);
-		vkk_uniformSet_delete(&self->us0);
-		vkk_buffer_delete(&self->sb013_param);
-		nn_tensorStats_delete(&self->stats_dL_dX);
-		nn_tensor_delete(&self->dL_dX);
-		nn_tensor_delete(&self->dL_dB);
-		nn_tensor_delete(&self->dL_dW);
-		nn_tensor_delete(&self->VB);
-		nn_tensor_delete(&self->MB);
-		nn_tensor_delete(&self->VW);
-		nn_tensor_delete(&self->MW);
-		nn_tensor_delete(&self->Y);
-		nn_tensor_delete(&self->B);
-		nn_tensor_delete(&self->W);
-		nn_layer_delete((nn_layer_t**) _self);
-	}
 }
