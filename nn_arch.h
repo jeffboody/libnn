@@ -44,27 +44,23 @@
 // https://arxiv.org/pdf/1711.05101.pdf
 typedef struct nn_archState_s
 {
-	// TODO - remove bs
-	uint32_t bs;
-	float    adam_alpha;    // learning rate
-	float    adam_beta1;    // first moment decay rate
-	float    adam_beta2;    // second moment decay rate
-	float    adam_beta1t;   // beta1^t
-	float    adam_beta2t;   // beta2^t
-	float    adam_lambda;   // AdamW decoupled weight decay
-	float    adam_nu;       // AdamW schedule multiplier
-	float    bn_momentum;
+	float adam_alpha;    // learning rate
+	float adam_beta1;    // first moment decay rate
+	float adam_beta2;    // second moment decay rate
+	float adam_beta1t;   // beta1^t
+	float adam_beta2t;   // beta2^t
+	float adam_lambda;   // AdamW decoupled weight decay
+	float adam_nu;       // AdamW schedule multiplier
+	float bn_momentum;
 } nn_archState_t;
 
 typedef struct nn_arch_s
 {
 	nn_engine_t* engine;
 
-	// TODO - remove sb00_state
 	nn_archState_t state;
 	vkk_buffer_t*  sb100_bs;
 	vkk_buffer_t*  sb101_state;
-	vkk_buffer_t*  sb00_state;
 
 	// references
 	cc_list_t* layers;

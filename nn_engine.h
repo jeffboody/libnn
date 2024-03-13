@@ -59,6 +59,7 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf1_weight_fp;
 	vkk_uniformSetFactory_t* usf1_weight_bp;
 	vkk_uniformSetFactory_t* usf0_loss;
+	vkk_uniformSetFactory_t* usf1_loss;
 	vkk_uniformSetFactory_t* usf0_tensor;
 	vkk_uniformSetFactory_t* usf1_tensor;
 	vkk_uniformSetFactory_t* usf2_tensor;

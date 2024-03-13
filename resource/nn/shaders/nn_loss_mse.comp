@@ -12,42 +12,29 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
-{
-	uint  state_bs;
-	float state_adam_alpha;
-	float state_adam_beta1;
-	float state_adam_beta2;
-	float state_adam_beta1t;
-	float state_adam_beta2t;
-	float state_adam_lambda;
-	float state_adam_nu;
-	float state_bn_momentum;
-};
-
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
 	nn_dim_t dimY;
 };
 
-layout(std430, set=0, binding=2) readonly buffer sb02
+layout(std430, set=0, binding=2) writeonly buffer sb002
+{
+	float loss;
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb102
 {
 	float Y[];
 };
 
-layout(std430, set=0, binding=3) readonly buffer sb03
-{
-	nn_dim_t dimYt;
-};
-
-layout(std430, set=0, binding=4) readonly buffer sb04
+layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float Yt[];
-};
-
-layout(std430, set=0, binding=7) writeonly buffer sb07
-{
-	float loss;
 };
 
 float getY(uint n, uint i, uint j, uint k)
@@ -60,9 +47,9 @@ float getY(uint n, uint i, uint j, uint k)
 
 float getYt(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimYt.height*dimYt.width*dimYt.depth;
-	uint sy = dimYt.width*dimYt.depth;
-	uint sx = dimYt.depth;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
 	return Yt[n*sn + i*sy + j*sx + k];
 }
 
@@ -91,7 +78,7 @@ void main()
 	uint i;
 	uint j;
 	uint k;
-	for(m = 0; m < state_bs; ++m)
+	for(m = 0; m < bs; ++m)
 	{
 		for(i = p; i < yh; i += 8)
 		{
@@ -111,7 +98,7 @@ void main()
 	if(idx == 0)
 	{
 		float sum = 0.0;
-		float M   = float(state_bs*yh*yw*yd);
+		float M   = float(bs*yh*yw*yd);
 
 		uint n;
 		for(n = 0; n < 64; ++n)

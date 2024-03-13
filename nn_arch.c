@@ -132,7 +132,6 @@ nn_arch_init(nn_arch_t* self,
 
 	// update global state
 	nn_archState_t* state = &self->state;
-	state->bs = bs;
 	if(Yt)
 	{
 		state->adam_beta1t *= state->adam_beta1;
@@ -141,8 +140,6 @@ nn_arch_init(nn_arch_t* self,
 	vkk_buffer_writeStorage(self->sb100_bs, 0,
 	                        sizeof(uint32_t), &bs);
 	vkk_buffer_writeStorage(self->sb101_state, 0,
-	                        sizeof(nn_archState_t), state);
-	vkk_buffer_writeStorage(self->sb00_state, 0,
 	                        sizeof(nn_archState_t), state);
 
 	return nn_engine_begin(engine);
@@ -197,15 +194,6 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 		goto fail_sb101_state;
 	}
 
-	self->sb00_state = vkk_buffer_new(engine->engine, um,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(nn_archState_t),
-	                                  NULL);
-	if(self->sb00_state == NULL)
-	{
-		goto fail_sb00_state;
-	}
-
 	self->layers = cc_list_new();
 	if(self->layers == NULL)
 	{
@@ -217,8 +205,6 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 
 	// failure
 	fail_layers:
-		vkk_buffer_delete(&self->sb00_state);
-	fail_sb00_state:
 		vkk_buffer_delete(&self->sb101_state);
 	fail_sb101_state:
 		vkk_buffer_delete(&self->sb100_bs);
@@ -238,7 +224,6 @@ void nn_arch_delete(nn_arch_t** _self)
 		nn_tensor_delete(&self->X);
 		cc_list_discard(self->layers);
 		cc_list_delete(&self->layers);
-		vkk_buffer_delete(&self->sb00_state);
 		vkk_buffer_delete(&self->sb101_state);
 		vkk_buffer_delete(&self->sb100_bs);
 		FREE(self);

@@ -55,8 +55,9 @@ typedef struct nn_loss_s
 	// backprop stats
 	nn_tensorStats_t* stats_dL_dY;
 
+	vkk_buffer_t*     sb002_loss;
 	vkk_uniformSet_t* us0;
-	vkk_buffer_t*     sb07_loss;
+	vkk_uniformSet_t* us1;
 } nn_loss_t;
 
 nn_loss_t*   nn_loss_new(nn_arch_t* arch,

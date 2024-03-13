@@ -195,11 +195,17 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_weight_bp = vkk_uniformSetFactory_new(engine, um,
 	                                                 4, ub_array);
 
-	// sb00: state
+	// sb000: dimY
 	// ...
-	// sb07: loss
+	// sb002: loss
 	self->usf0_loss = vkk_uniformSetFactory_new(engine, um,
-	                                            8, ub_array);
+	                                            3, ub_array);
+
+	// sb100: bs
+	// ...
+	// sb103: Yt
+	self->usf1_loss = vkk_uniformSetFactory_new(engine, um,
+	                                            4, ub_array);
 
 	// sb00: dimX
 	// ...
@@ -235,6 +241,7 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_weight_fp    == NULL) ||
 	   (self->usf1_weight_bp    == NULL) ||
 	   (self->usf0_loss         == NULL) ||
+	   (self->usf1_loss         == NULL) ||
 	   (self->usf0_tensor       == NULL) ||
 	   (self->usf1_tensor       == NULL) ||
 	   (self->usf2_tensor       == NULL))
@@ -329,8 +336,9 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_uniformSetFactory_t* usf_array_loss[] =
 	{
 		self->usf0_loss,
+		self->usf1_loss,
 	};
-	self->pl_loss = vkk_pipelineLayout_new(engine, 1,
+	self->pl_loss = vkk_pipelineLayout_new(engine, 2,
 	                                       usf_array_loss);
 
 	vkk_uniformSetFactory_t* usf_array_tensor[] =
@@ -1112,6 +1120,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf2_tensor);
 		vkk_uniformSetFactory_delete(&self->usf1_tensor);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
+		vkk_uniformSetFactory_delete(&self->usf1_loss);
 		vkk_uniformSetFactory_delete(&self->usf0_loss);
 		vkk_uniformSetFactory_delete(&self->usf1_weight_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_weight_fp);

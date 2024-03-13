@@ -212,14 +212,14 @@ Loss
 
 Uniforms
 
-* sb00: state
-* sb01: dimY
-* sb02: Y
-* sb03: dimYt
-* sb04: Yt
-* sb05: dim_dL_dY
-* sb06: dL_dY
-* sb07: loss
+* sb000: dimY
+* sb001: dL_dY
+* sb002: loss
+
+* sb100: bs
+* sb101: state
+* sb102: Y
+* sb103: Yt
 
 Backprop Dispatch Order
 

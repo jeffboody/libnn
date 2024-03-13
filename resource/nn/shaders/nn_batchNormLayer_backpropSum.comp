@@ -77,7 +77,6 @@ layout(std430, set=1, binding=0) readonly buffer sb100
 
 layout(std430, set=1, binding=1) readonly buffer sb101
 {
-	uint  state_bs;
 	float state_adam_alpha;
 	float state_adam_beta1;
 	float state_adam_beta2;
