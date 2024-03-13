@@ -130,15 +130,15 @@ typedef struct nn_engine_s
 
 	nn_tensor_t* Null;
 
-	cc_map_t* map_batchNormIdx;
-	cc_map_t* map_convIdx;
+	cc_map_t* map_bn_us2;
+	cc_map_t* map_conv_us2;
 } nn_engine_t;
 
 nn_engine_t*      nn_engine_new(vkk_engine_t* engine);
 void              nn_engine_delete(nn_engine_t** _self);
-vkk_uniformSet_t* nn_engine_getBatchNormIdx(nn_engine_t* self,
+vkk_uniformSet_t* nn_engine_getBatchNormUs2(nn_engine_t* self,
                                             uint32_t k);
-vkk_uniformSet_t* nn_engine_getConvIdx(nn_engine_t* self,
+vkk_uniformSet_t* nn_engine_getConvUs2(nn_engine_t* self,
                                        uint32_t f, uint32_t fi,
                                        uint32_t fj, uint32_t k);
 int               nn_engine_begin(nn_engine_t* self);

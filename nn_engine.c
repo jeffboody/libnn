@@ -28,6 +28,8 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "../libvkk/vkk.h"
+#include "nn_batchNormLayer.h"
+#include "nn_convLayer.h"
 #include "nn_engine.h"
 #include "nn_layer.h"
 #include "nn_loss.h"
@@ -44,31 +46,6 @@
 /***********************************************************
 * private                                                  *
 ***********************************************************/
-
-typedef struct
-{
-	uint32_t k;
-} nn_batchNormIdxKey_t;
-
-typedef struct
-{
-	vkk_buffer_t*     sb200;
-	vkk_uniformSet_t* us2;
-} nn_batchNormIdxData_t;
-
-typedef struct
-{
-	uint32_t f;
-	uint32_t fi;
-	uint32_t fj;
-	uint32_t k;
-} nn_convIdxKey_t;
-
-typedef struct
-{
-	vkk_buffer_t*     sb200;
-	vkk_uniformSet_t* us2;
-} nn_convIdxData_t;
 
 static void
 nn_engine_initUbArray(vkk_uniformBinding_t* ub_array,
@@ -1012,14 +989,14 @@ nn_engine_new(vkk_engine_t* engine)
 		goto failure;
 	}
 
-	self->map_batchNormIdx = cc_map_new();
-	if(self->map_batchNormIdx == NULL)
+	self->map_bn_us2 = cc_map_new();
+	if(self->map_bn_us2 == NULL)
 	{
 		goto failure;
 	}
 
-	self->map_convIdx = cc_map_new();
-	if(self->map_convIdx == NULL)
+	self->map_conv_us2 = cc_map_new();
+	if(self->map_conv_us2 == NULL)
 	{
 		goto failure;
 	}
@@ -1041,34 +1018,31 @@ void nn_engine_delete(nn_engine_t** _self)
 	if(self)
 	{
 		cc_mapIter_t* miter;
-		if(self->map_batchNormIdx)
+		if(self->map_bn_us2)
 		{
-			miter = cc_map_head(self->map_batchNormIdx);
+			miter = cc_map_head(self->map_bn_us2);
 			while(miter)
 			{
-				nn_batchNormIdxData_t* data;
-				data = (nn_batchNormIdxData_t*)
-				       cc_map_remove(self->map_batchNormIdx, &miter);
-				vkk_uniformSet_delete(&data->us2);
-				vkk_buffer_delete(&data->sb200);
-				FREE(data);
+				nn_batchNormUs2Data_t* data;
+				data = (nn_batchNormUs2Data_t*)
+				       cc_map_remove(self->map_bn_us2,
+				                     &miter);
+				nn_batchNormUs2Data_delete(&data);
 			}
-			cc_map_delete(&self->map_batchNormIdx);
+			cc_map_delete(&self->map_bn_us2);
 		}
 
-		if(self->map_convIdx)
+		if(self->map_conv_us2)
 		{
-			miter = cc_map_head(self->map_convIdx);
+			miter = cc_map_head(self->map_conv_us2);
 			while(miter)
 			{
-				nn_convIdxData_t* data;
-				data = (nn_convIdxData_t*)
-				       cc_map_remove(self->map_convIdx, &miter);
-				vkk_uniformSet_delete(&data->us2);
-				vkk_buffer_delete(&data->sb200);
-				FREE(data);
+				nn_convUs2Data_t* data;
+				data = (nn_convUs2Data_t*)
+				       cc_map_remove(self->map_conv_us2, &miter);
+				nn_convUs2Data_delete(&data);
 			}
-			cc_map_delete(&self->map_convIdx);
+			cc_map_delete(&self->map_conv_us2);
 		}
 
 		nn_tensor_delete(&self->Null);
@@ -1163,96 +1137,60 @@ void nn_engine_delete(nn_engine_t** _self)
 }
 
 vkk_uniformSet_t*
-nn_engine_getBatchNormIdx(nn_engine_t* self, uint32_t k)
+nn_engine_getBatchNormUs2(nn_engine_t* self, uint32_t k)
 {
 	ASSERT(self);
 
-	nn_batchNormIdxData_t* data;
+	nn_batchNormUs2Data_t* data;
 
-	nn_batchNormIdxKey_t key =
+	nn_batchNormUs2Key_t key =
 	{
 		.k = k,
 	};
 
-	// find an existing idx
+	// find existing data
 	cc_mapIter_t* miter;
-	miter = cc_map_findp(self->map_batchNormIdx,
-	                     sizeof(nn_batchNormIdxKey_t),
+	miter = cc_map_findp(self->map_bn_us2,
+	                     sizeof(nn_batchNormUs2Key_t),
 	                     &key);
 	if(miter)
 	{
-		data = (nn_batchNormIdxData_t*) cc_map_val(miter);
+		data = (nn_batchNormUs2Data_t*) cc_map_val(miter);
 		return data->us2;
 	}
 
-	data = (nn_batchNormIdxData_t*)
-	       CALLOC(1, sizeof(nn_batchNormIdxData_t));
+	data = nn_batchNormUs2Data_new(self, &key);
 	if(data == NULL)
 	{
-		LOGE("CALLOC failed");
 		return NULL;
 	}
 
-	data->sb200 = vkk_buffer_new(self->engine,
-	                            VKK_UPDATE_MODE_STATIC,
-	                            VKK_BUFFER_USAGE_STORAGE,
-	                            sizeof(nn_batchNormIdxKey_t),
-	                            &key);
-	if(data->sb200 == NULL)
-	{
-		goto fail_sb200;
-	}
-
-	data->us2 = vkk_uniformSet_new(self->engine, 2, 0, NULL,
-	                               self->usf2_batchNorm);
-	if(data->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	if(cc_map_addp(self->map_batchNormIdx,
-	               data, sizeof(nn_batchNormIdxKey_t),
+	if(cc_map_addp(self->map_bn_us2,
+	               data, sizeof(nn_batchNormUs2Key_t),
 	               &key) == NULL)
 	{
 		goto fail_add;
 	}
-
-	// sb200: idx (k)
-	vkk_uniformAttachment_t ua2_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = data->sb200,
-		},
-	};
-
-	vkk_compute_updateUniformSetRefs(self->compute, data->us2,
-	                                 1, ua2_array);
 
 	// success
 	return data->us2;
 
 	// failure
 	fail_add:
-		vkk_uniformSet_delete(&data->us2);
-	fail_us2:
-		vkk_buffer_delete(&data->sb200);
-	fail_sb200:
-		FREE(data);
+		nn_batchNormUs2Data_delete(&data);
 	return NULL;
 }
 
 vkk_uniformSet_t*
-nn_engine_getConvIdx(nn_engine_t* self,
+nn_engine_getConvUs2(nn_engine_t* self,
                      uint32_t f, uint32_t fi,
                      uint32_t fj, uint32_t k)
 {
 	ASSERT(self);
 
-	nn_convIdxData_t* data;
+	nn_convUs2Data_t* data;
 
-	nn_convIdxKey_t key =
+	nn_convUs2Key_t key =
 	{
 		.f  = f,
 		.fi = fi,
@@ -1260,71 +1198,36 @@ nn_engine_getConvIdx(nn_engine_t* self,
 		.k  = k,
 	};
 
-	// find an existing idx
+	// find existing data
 	cc_mapIter_t* miter;
-	miter = cc_map_findp(self->map_convIdx,
-	                     sizeof(nn_convIdxKey_t),
+	miter = cc_map_findp(self->map_conv_us2,
+	                     sizeof(nn_convUs2Key_t),
 	                     &key);
 	if(miter)
 	{
-		data = (nn_convIdxData_t*) cc_map_val(miter);
+		data = (nn_convUs2Data_t*) cc_map_val(miter);
 		return data->us2;
 	}
 
-	data = (nn_convIdxData_t*)
-	       CALLOC(1, sizeof(nn_convIdxData_t));
+	data = nn_convUs2Data_new(self, &key);
 	if(data == NULL)
 	{
-		LOGE("CALLOC failed");
 		return NULL;
 	}
 
-	data->sb200 = vkk_buffer_new(self->engine,
-	                             VKK_UPDATE_MODE_STATIC,
-	                             VKK_BUFFER_USAGE_STORAGE,
-	                             sizeof(nn_convIdxKey_t),
-	                             &key);
-	if(data->sb200 == NULL)
-	{
-		goto fail_sb200;
-	}
-
-	data->us2 = vkk_uniformSet_new(self->engine, 2, 0, NULL,
-	                               self->usf2_conv);
-	if(data->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	if(cc_map_addp(self->map_convIdx,
-	               data, sizeof(nn_convIdxKey_t),
+	if(cc_map_addp(self->map_conv_us2,
+	               data, sizeof(nn_convUs2Key_t),
 	               &key) == NULL)
 	{
 		goto fail_add;
 	}
-
-	vkk_uniformAttachment_t ua2_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = data->sb200,
-		},
-	};
-
-	vkk_compute_updateUniformSetRefs(self->compute, data->us2,
-	                                 1, ua2_array);
 
 	// success
 	return data->us2;
 
 	// failure
 	fail_add:
-		vkk_uniformSet_delete(&data->us2);
-	fail_us2:
-		vkk_buffer_delete(&data->sb200);
-	fail_sb200:
-		FREE(data);
+		nn_convUs2Data_delete(&data);
 	return NULL;
 }
 

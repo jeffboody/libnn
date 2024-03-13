@@ -227,7 +227,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us_array[2] = nn_engine_getConvIdx(engine,
+			us_array[2] = nn_engine_getConvUs2(engine,
 			                                   0, fi, fj, 0);
 			if(us_array[2] == NULL)
 			{
@@ -261,7 +261,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us_array[2] = nn_engine_getConvIdx(engine,
+					us_array[2] = nn_engine_getConvUs2(engine,
 					                                   f, fi, fj, k);
 					if(us_array[2] == NULL)
 					{
@@ -290,7 +290,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 
 		for(f = 0; f < fc; ++f)
 		{
-			us_array[2] = nn_engine_getConvIdx(engine, f, 0, 0, 0);
+			us_array[2] = nn_engine_getConvUs2(engine, f, 0, 0, 0);
 			if(us_array[2] == NULL)
 			{
 				return NULL;
@@ -517,7 +517,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			us_array[2] = nn_engine_getConvIdx(engine,
+			us_array[2] = nn_engine_getConvUs2(engine,
 			                                   0, fi, fj, 0);
 			if(us_array[2] == NULL)
 			{
@@ -551,7 +551,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					us_array[2] = nn_engine_getConvIdx(engine,
+					us_array[2] = nn_engine_getConvUs2(engine,
 					                                   f, fi, fj, k);
 					if(us_array[2] == NULL)
 					{
@@ -580,7 +580,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 
 		for(f = 0; f < fc; ++f)
 		{
-			us_array[2] = nn_engine_getConvIdx(engine,
+			us_array[2] = nn_engine_getConvUs2(engine,
 			                                   f, 0, 0, 0);
 			if(us_array[2] == NULL)
 			{
@@ -672,6 +672,77 @@ nn_convLayer_dimYFn(nn_layer_t* base)
 /***********************************************************
 * public                                                   *
 ***********************************************************/
+
+nn_convUs2Data_t*
+nn_convUs2Data_new(nn_engine_t* engine,
+                   nn_convUs2Key_t* key)
+{
+	ASSERT(engine);
+	ASSERT(key);
+
+	nn_convUs2Data_t* self;
+	self = (nn_convUs2Data_t*)
+	       CALLOC(1, sizeof(nn_convUs2Data_t));
+	if(self == NULL)
+	{
+		LOGE("CALLOC failed");
+		return NULL;
+	}
+
+	self->sb200 = vkk_buffer_new(engine->engine,
+	                             VKK_UPDATE_MODE_STATIC,
+	                             VKK_BUFFER_USAGE_STORAGE,
+	                             sizeof(nn_convUs2Key_t),
+	                             key);
+	if(self->sb200 == NULL)
+	{
+		goto fail_sb200;
+	}
+
+	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
+	                               engine->usf2_conv);
+	if(self->us2 == NULL)
+	{
+		goto fail_us2;
+	}
+
+	vkk_uniformAttachment_t ua2_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb200,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us2,
+	                                 1, ua2_array);
+
+	// success
+	return self;
+
+	// failure
+	fail_us2:
+		vkk_buffer_delete(&self->sb200);
+	fail_sb200:
+		FREE(self);
+	return NULL;
+}
+
+void nn_convUs2Data_delete(nn_convUs2Data_t** _self)
+{
+	ASSERT(_self);
+
+	nn_convUs2Data_t* self = *_self;
+	if(self)
+	{
+		vkk_uniformSet_delete(&self->us2);
+		vkk_buffer_delete(&self->sb200);
+		FREE(self);
+		*_self = NULL;
+	}
+}
 
 nn_convLayer_t*
 nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,

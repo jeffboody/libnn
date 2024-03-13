@@ -36,6 +36,21 @@ typedef enum
 	NN_BATCH_NORM_MODE_INSTANCE = 2,
 } nn_batchNormMode_e;
 
+typedef struct nn_batchNormUs2Key_s
+{
+	uint32_t k;
+} nn_batchNormUs2Key_t;
+
+typedef struct nn_batchNormUs2Data_s
+{
+	vkk_buffer_t*     sb200;
+	vkk_uniformSet_t* us2;
+} nn_batchNormUs2Data_t;
+
+nn_batchNormUs2Data_t* nn_batchNormUs2Data_new(nn_engine_t* engine,
+                                               nn_batchNormUs2Key_t* key);
+void                   nn_batchNormUs2Data_delete(nn_batchNormUs2Data_t** _self);
+
 typedef struct nn_batchNormLayer_s
 {
 	nn_layer_t base;

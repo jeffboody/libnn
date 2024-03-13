@@ -28,7 +28,11 @@
 
 typedef struct nn_arch_s               nn_arch_t;
 typedef struct nn_batchNormLayer_s     nn_batchNormLayer_t;
+typedef struct nn_batchNormUs2Data_s   nn_batchNormUs2Data_t;
+typedef struct nn_batchNormUs2Key_s    nn_batchNormUs2Key_t;
 typedef struct nn_convLayer_s          nn_convLayer_t;
+typedef struct nn_convUs2Data_s        nn_convUs2Data_t;
+typedef struct nn_convUs2Key_s         nn_convUs2Key_t;
 typedef struct nn_coderLayerInfo_s     nn_coderLayerInfo_t;
 typedef struct nn_coderLayer_s         nn_coderLayer_t;
 typedef struct nn_dim_s                nn_dim_t;

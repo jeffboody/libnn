@@ -35,6 +35,24 @@
 #define NN_CONV_LAYER_FLAG_NORM_BSSN    0x0200
 #define NN_CONV_LAYER_FLAG_TRANSPOSE    0x1000
 
+typedef struct nn_convUs2Key_s
+{
+	uint32_t f;
+	uint32_t fi;
+	uint32_t fj;
+	uint32_t k;
+} nn_convUs2Key_t;
+
+typedef struct nn_convUs2Data_s
+{
+	vkk_buffer_t*     sb200;
+	vkk_uniformSet_t* us2;
+} nn_convUs2Data_t;
+
+nn_convUs2Data_t* nn_convUs2Data_new(nn_engine_t* engine,
+                                     nn_convUs2Key_t* key);
+void              nn_convUs2Data_delete(nn_convUs2Data_t** _self);
+
 typedef struct nn_convLayer_s
 {
 	nn_layer_t base;
