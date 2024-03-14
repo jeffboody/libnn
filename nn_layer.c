@@ -27,6 +27,7 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "nn_layer.h"
+#include "nn_tensor.h"
 
 /***********************************************************
 * public                                                   *
@@ -80,6 +81,18 @@ nn_layer_forwardPass(nn_layer_t* self, int flags,
 	ASSERT(self);
 	ASSERT(X);
 
+	nn_dim_t* dimX1 = nn_layer_dimX(self);
+	nn_dim_t* dimX2 = nn_tensor_dim(X);
+	if(nn_dim_sizeEquals(dimX1, dimX2) == 0)
+	{
+		LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
+		     dimX1->count,  dimX2->count,
+		     dimX1->height, dimX2->height,
+		     dimX1->width,  dimX2->width,
+		     dimX1->depth,  dimX2->depth);
+		return NULL;
+	}
+
 	nn_layer_forwardPassFn forward_pass_fn;
 	forward_pass_fn = self->forward_pass_fn;
 	return (*forward_pass_fn)(self, flags, bs, X);
@@ -91,6 +104,18 @@ nn_layer_backprop(nn_layer_t* self, int flags,
 {
 	ASSERT(self);
 	ASSERT(dL_dY);
+
+	nn_dim_t* dimY1 = nn_layer_dimY(self);
+	nn_dim_t* dimY2 = nn_tensor_dim(dL_dY);
+	if(nn_dim_sizeEquals(dimY1, dimY2) == 0)
+	{
+		LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
+		     dimY1->count,  dimY2->count,
+		     dimY1->height, dimY2->height,
+		     dimY1->width,  dimY2->width,
+		     dimY1->depth,  dimY2->depth);
+		return NULL;
+	}
 
 	nn_layer_backpropFn backprop_fn;
 	backprop_fn = self->backprop_fn;

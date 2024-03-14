@@ -311,6 +311,20 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	nn_tensor_t* dL_dY  = self->dL_dY;
 	nn_dim_t*    dimY   = nn_tensor_dim(Y);
 
+	nn_dim_t* dimY1 = nn_loss_dimY(self);
+	nn_dim_t* dimY2 = nn_tensor_dim(Y);
+	nn_dim_t* dimY3 = nn_tensor_dim(Yt);
+	if((nn_dim_sizeEquals(dimY1, dimY2) == 0) ||
+	   (nn_dim_sizeEquals(dimY1, dimY3) == 0))
+	{
+		LOGE("invalid count=%u:%u:%u, height=%u:%u:%u, width=%u:%u:%u, depth=%u:%u:%u",
+		     dimY1->count,  dimY2->count,  dimY3->count,
+		     dimY1->height, dimY2->height, dimY3->height,
+		     dimY1->width,  dimY2->width,  dimY3->width,
+		     dimY1->depth,  dimY2->depth,  dimY3->depth);
+		return NULL;
+	}
+
 	vkk_computePipeline_t* cp;
 	vkk_computePipeline_t* cp_dL_dY;
 	if(self->loss_fn == NN_LOSS_FN_MSE)
