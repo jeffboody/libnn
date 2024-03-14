@@ -45,8 +45,8 @@ nn_tensor_isModeIO(nn_tensor_t* self)
 {
 	ASSERT(self);
 
-	// ignore tensor_mode when compute is disabled
-	if(self->tensor_mode == NN_TENSOR_MODE_COMPUTE)
+	// ignore mode when compute is disabled
+	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		return 0;
 	}
@@ -91,7 +91,7 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 	nn_dim_t* dim = nn_tensor_dim(self);
 
 	nn_tensor_t* tmp = NULL;
-	if(self->tensor_mode == NN_TENSOR_MODE_COMPUTE)
+	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		tmp = nn_tensor_new(self->engine, dim,
 		                    NN_TENSOR_INIT_ZERO,
@@ -263,7 +263,7 @@ nn_tensor_initSN(nn_engine_t* engine, float* buf,
 nn_tensor_t*
 nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
               nn_tensorInit_e init,
-              nn_tensorMode_e tensor_mode)
+              nn_tensorMode_e mode)
 {
 	ASSERT(engine);
 	ASSERT(dim);
@@ -277,15 +277,15 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 		return NULL;
 	}
 
-	self->engine      = engine;
-	self->tensor_mode = tensor_mode;
+	self->engine = engine;
+	self->mode   = mode;
 
 	nn_dim_copy(dim, &self->dim);
 
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
-	if(tensor_mode == NN_TENSOR_MODE_COMPUTE)
+	if(mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		nn_tensor_t* tmp;
 		tmp = nn_tensor_new(engine, dim, init,
@@ -515,7 +515,7 @@ int nn_tensor_store(nn_tensor_t* self,
 
 	int ret = 1;
 	nn_tensor_t* tmp = NULL;
-	if(self->tensor_mode == NN_TENSOR_MODE_COMPUTE)
+	if(self->mode == NN_TENSOR_MODE_COMPUTE)
 	{
 		tmp = nn_tensor_new(self->engine, dim,
 		                    NN_TENSOR_INIT_ZERO,
@@ -1012,8 +1012,7 @@ float nn_tensor_get(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return 0.0f;
 	}
 
@@ -1034,8 +1033,7 @@ void nn_tensor_set(nn_tensor_t* self,
 
 	if(nn_tensor_isModeIO(self) == 0)
 	{
-		LOGE("invalid tensor_mode=%i",
-		     (int) self->tensor_mode);
+		LOGE("invalid mode=%i", (int) self->mode);
 		return;
 	}
 
@@ -1080,20 +1078,20 @@ int nn_tensor_blit(nn_tensor_t* src,
 
 	float* src_data = nn_tensor_data(src, src_offset);
 	float* dst_data = nn_tensor_data(dst, dst_offset);
-	if((src->tensor_mode == NN_TENSOR_MODE_IO) &&
-	   (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
+	if((src->mode == NN_TENSOR_MODE_IO) &&
+	   (dst->mode == NN_TENSOR_MODE_COMPUTE))
 	{
 		vkk_buffer_writeStorage(dst->sb_data, dst_offset, size,
 		                        src_data);
 	}
-	else if((src->tensor_mode == NN_TENSOR_MODE_COMPUTE) &&
-	        (dst->tensor_mode == NN_TENSOR_MODE_IO))
+	else if((src->mode == NN_TENSOR_MODE_COMPUTE) &&
+	        (dst->mode == NN_TENSOR_MODE_IO))
 	{
 		vkk_buffer_readStorage(src->sb_data, src_offset, size,
 		                       dst_data);
 	}
-	else if((src->tensor_mode == NN_TENSOR_MODE_COMPUTE) &&
-	        (dst->tensor_mode == NN_TENSOR_MODE_COMPUTE))
+	else if((src->mode == NN_TENSOR_MODE_COMPUTE) &&
+	        (dst->mode == NN_TENSOR_MODE_COMPUTE))
 	{
 		vkk_buffer_copyStorage(src->sb_data, dst->sb_data,
 		                       src_offset, dst_offset, size);

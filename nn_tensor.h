@@ -54,7 +54,7 @@ typedef struct nn_tensor_s
 {
 	nn_engine_t* engine;
 
-	nn_tensorMode_e tensor_mode;
+	nn_tensorMode_e mode;
 
 	nn_dim_t dim;
 
@@ -80,7 +80,7 @@ typedef struct nn_tensor_s
 nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
                            nn_dim_t* dim,
                            nn_tensorInit_e init,
-                           nn_tensorMode_e tensor_mode);
+                           nn_tensorMode_e mode);
 void         nn_tensor_delete(nn_tensor_t** _self);
 int          nn_tensor_exportPng(nn_tensor_t* self,
                                  const char* fname,

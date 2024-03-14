@@ -73,7 +73,7 @@ nn_arch_init(nn_arch_t* self,
 	nn_engine_t* engine = self->engine;
 
 	// optionally create X
-	if(X && (X->tensor_mode == NN_TENSOR_MODE_IO))
+	if(X && (X->mode == NN_TENSOR_MODE_IO))
 	{
 		if(self->X)
 		{
@@ -102,7 +102,7 @@ nn_arch_init(nn_arch_t* self,
 	}
 
 	// optionally create Yt
-	if(Yt && (Yt->tensor_mode == NN_TENSOR_MODE_IO))
+	if(Yt && (Yt->mode == NN_TENSOR_MODE_IO))
 	{
 		if(self->Yt)
 		{
@@ -446,7 +446,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 		ASSERT(X);
 
 		// optionally replace X with compute tensor
-		if(X->tensor_mode == NN_TENSOR_MODE_IO)
+		if(X->mode == NN_TENSOR_MODE_IO)
 		{
 			X = self->X;
 		}
@@ -477,7 +477,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 	}
 
 	// optionally replace Yt with compute tensor
-	if(Yt->tensor_mode == NN_TENSOR_MODE_IO)
+	if(Yt->mode == NN_TENSOR_MODE_IO)
 	{
 		Yt = self->Yt;
 	}
@@ -556,7 +556,7 @@ int nn_arch_predict(nn_arch_t* self,
 	}
 
 	// replace X with compute tensor
-	if(X->tensor_mode == NN_TENSOR_MODE_IO)
+	if(X->mode == NN_TENSOR_MODE_IO)
 	{
 		X = self->X;
 	}
