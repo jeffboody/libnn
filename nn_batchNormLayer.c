@@ -472,12 +472,12 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	uint32_t k;
 	for(k = 0; k < xd; ++k)
 	{
-		nn_tensor_set(tmpG, 0, 0, 0, k, 1.0f);
+		nn_tensor_ioSet(tmpG, 0, 0, 0, k, 1.0f);
 	}
 
-	if(nn_tensor_blit(tmpG, self->G, 1, 0, 0) == 0)
+	if(nn_tensor_copy(tmpG, self->G, 0, 0, 1) == 0)
 	{
-		goto fail_blitG;
+		goto fail_copyG;
 	}
 
 	self->B = nn_tensor_new(engine, &dim_111d,
@@ -755,7 +755,7 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	fail_Xhat:
 		nn_tensor_delete(&self->B);
 	fail_B:
-	fail_blitG:
+	fail_copyG:
 		nn_tensor_delete(&tmpG);
 	fail_tmpG:
 		nn_tensor_delete(&self->G);

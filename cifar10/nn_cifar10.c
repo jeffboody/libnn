@@ -155,7 +155,7 @@ nn_cifar10_load(nn_engine_t* engine, nn_cifar10Mode_e mode,
 				for(j = 0; j < 32; ++j)
 				{
 					c = ((float) buf[offset++])/255.0f;
-					nn_tensor_set(images, n, i, j, k, c);
+					nn_tensor_ioSet(images, n, i, j, k, c);
 				}
 			}
 		}
@@ -176,9 +176,9 @@ nn_cifar10_load(nn_engine_t* engine, nn_cifar10Mode_e mode,
 			{
 				for(j = 0; j < 32; ++j)
 				{
-					r = nn_tensor_get(images, n, i, j, 0);
-					g = nn_tensor_get(images, n, i, j, 1);
-					b = nn_tensor_get(images, n, i, j, 2);
+					r = nn_tensor_ioGet(images, n, i, j, 0);
+					g = nn_tensor_ioGet(images, n, i, j, 1);
+					b = nn_tensor_ioGet(images, n, i, j, 2);
 
 					r = (r > 0.04045f) ?
 					    powf((r + 0.055f)/1.055f, 2.4f) : r/12.92f;
@@ -195,7 +195,7 @@ nn_cifar10_load(nn_engine_t* engine, nn_cifar10Mode_e mode,
 					labl = cc_clamp((1.0f/100.0f)*(116.0f*yy - 16.0f),
 					                0.0f, 1.0f);
 
-					nn_tensor_set(self->images, n, i, j, 0, labl);
+					nn_tensor_ioSet(self->images, n, i, j, 0, labl);
 				}
 			}
 		}

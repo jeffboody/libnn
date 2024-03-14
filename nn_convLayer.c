@@ -64,20 +64,20 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	// optionally perform Spectral Normalization
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
-		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZARD_NONE,
-		                       NN_TENSOR_NORM_MODE_SN,
-		                       1.0f) == 0)
+		if(nn_tensor_computeNormalize(self->W,
+		                              VKK_HAZARD_NONE,
+		                              NN_TENSOR_NORM_MODE_SN,
+		                              1.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
-		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZARD_NONE,
-		                       NN_TENSOR_NORM_MODE_BSSN,
-		                       1.2f) == 0)
+		if(nn_tensor_computeNormalize(self->W,
+		                              VKK_HAZARD_NONE,
+		                              NN_TENSOR_NORM_MODE_BSSN,
+		                              1.2f) == 0)
 		{
 			return NULL;
 		}
@@ -155,20 +155,23 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	uint32_t  xd   = dimW->depth;
 
 	// clear backprop gradients
-	if(nn_tensor_clear(self->dL_dW, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_NONE,
+	                         0, fc, 0.0f) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(self->dL_dB, VKK_HAZARD_NONE) == 0)
+		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_NONE,
+		                         0, fc, 0.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(self->dL_dX, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_NONE,
+	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
 	}
@@ -330,8 +333,7 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
 
-	if(nn_tensor_computeStats(self->dL_dX, bs,
-	                          VKK_HAZARD_RAW,
+	if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;
@@ -356,20 +358,20 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	// optionally perform Spectral Normalization
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
-		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZARD_NONE,
-		                       NN_TENSOR_NORM_MODE_SN,
-		                       1.0f) == 0)
+		if(nn_tensor_computeNormalize(self->W,
+		                              VKK_HAZARD_NONE,
+		                              NN_TENSOR_NORM_MODE_SN,
+		                              1.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
-		if(nn_tensor_normalize(self->W,
-		                       VKK_HAZARD_NONE,
-		                       NN_TENSOR_NORM_MODE_BSSN,
-		                       1.2f) == 0)
+		if(nn_tensor_computeNormalize(self->W,
+		                              VKK_HAZARD_NONE,
+		                              NN_TENSOR_NORM_MODE_BSSN,
+		                              1.2f) == 0)
 		{
 			return NULL;
 		}
@@ -445,20 +447,23 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	uint32_t  xd   = dimW->depth;
 
 	// clear backprop gradients
-	if(nn_tensor_clear(self->dL_dW, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_NONE,
+	                         0, fc, 0.0f) == 0)
 	{
 		return NULL;
 	}
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_clear(self->dL_dB, VKK_HAZARD_NONE) == 0)
+		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_NONE,
+		                         0, fc, 0.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_clear(self->dL_dX, VKK_HAZARD_NONE) == 0)
+	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_NONE,
+	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
 	}
@@ -621,8 +626,7 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
 	                   fc, 1, 1, 64, 1, 1);
 
-	if(nn_tensor_computeStats(self->dL_dX, bs,
-	                          VKK_HAZARD_RAW,
+	if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
 	                          self->stats_dL_dX) == 0)
 	{
 		return NULL;

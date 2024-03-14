@@ -86,35 +86,52 @@ int          nn_tensor_import(nn_tensor_t* self,
                               jsmn_val_t* val);
 int          nn_tensor_export(nn_tensor_t* self,
                               jsmn_stream_t* stream);
-int          nn_tensor_exportPng(nn_tensor_t* self,
-                                 const char* fname,
-                                 uint32_t n,
-                                 uint32_t k0,
-                                 uint32_t k1,
-                                 float min,
-                                 float max);
-int          nn_tensor_clear(nn_tensor_t* self,
-                             vkk_hazard_e hazard);
-int          nn_tensor_normalize(nn_tensor_t* self,
-                                 vkk_hazard_e hazard,
-                                 nn_tensorNormMode_e norm,
-                                 float c);
-int          nn_tensor_computeStats(nn_tensor_t* self,
-                                    uint32_t count,
-                                    vkk_hazard_e hazard,
-                                    nn_tensorStats_t* stats);
-float        nn_tensor_get(nn_tensor_t* self,
-                           uint32_t n, uint32_t i,
-                           uint32_t j, uint32_t k);
-void         nn_tensor_set(nn_tensor_t* self,
-                           uint32_t n, uint32_t i,
-                           uint32_t j, uint32_t k,
-                           float v);
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
-int          nn_tensor_blit(nn_tensor_t* src,
+int          nn_tensor_copy(nn_tensor_t* src,
                             nn_tensor_t* dst,
-                            uint32_t count,
-                            uint32_t src_offset,
-                            uint32_t dst_offset);
+                            uint32_t src_n,
+                            uint32_t dst_n,
+                            uint32_t count);
+int          nn_tensor_ioClear(nn_tensor_t* self,
+                               uint32_t n,
+                               uint32_t count);
+int          nn_tensor_ioCopy(nn_tensor_t* src,
+                              nn_tensor_t* dst,
+                              uint32_t src_n,
+                              uint32_t dst_n,
+                              uint32_t count);
+float        nn_tensor_ioGet(nn_tensor_t* self,
+                             uint32_t n, uint32_t i,
+                             uint32_t j, uint32_t k);
+void         nn_tensor_ioSet(nn_tensor_t* self,
+                             uint32_t n, uint32_t i,
+                             uint32_t j, uint32_t k,
+                             float v);
+int          nn_tensor_ioExportPng(nn_tensor_t* self,
+                                   const char* fname,
+                                   uint32_t n,
+                                   uint32_t k,
+                                   uint32_t depth,
+                                   float min,
+                                   float max);
+int          nn_tensor_computeFill(nn_tensor_t* self,
+                                   vkk_hazard_e hazard,
+                                   uint32_t n,
+                                   uint32_t count,
+                                   float value);
+int          nn_tensor_computeCopy(nn_tensor_t* src,
+                                   nn_tensor_t* dst,
+                                   vkk_hazard_e hazard,
+                                   uint32_t src_n,
+                                   uint32_t dst_n,
+                                   uint32_t count);
+int          nn_tensor_computeNormalize(nn_tensor_t* self,
+                                        vkk_hazard_e hazard,
+                                        nn_tensorNormMode_e norm,
+                                        float c);
+int          nn_tensor_computeStats(nn_tensor_t* self,
+                                    vkk_hazard_e hazard,
+                                    uint32_t count,
+                                    nn_tensorStats_t* stats);
 
 #endif

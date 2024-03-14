@@ -407,8 +407,7 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	                   bs, dimY->height, dimY->width,
 	                   1, 8, 8);
 
-	if(nn_tensor_computeStats(dL_dY, bs,
-	                          VKK_HAZARD_RAW,
+	if(nn_tensor_computeStats(dL_dY, VKK_HAZARD_RAW, bs,
 	                          self->stats_dL_dY) == 0)
 	{
 		return NULL;

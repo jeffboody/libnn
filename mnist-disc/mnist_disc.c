@@ -63,7 +63,7 @@ static void mnist_disc_initYt(mnist_disc_t* self)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
-				nn_tensor_set(Yt, n, i, j, 0, 1.0f);
+				nn_tensor_ioSet(Yt, n, i, j, 0, 1.0f);
 			}
 		}
 	}
@@ -75,7 +75,7 @@ static void mnist_disc_initYt(mnist_disc_t* self)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
-				nn_tensor_set(Yt, n, i, j, 0, 0.0f);
+				nn_tensor_ioSet(Yt, n, i, j, 0, 0.0f);
 			}
 		}
 	}
@@ -724,8 +724,9 @@ int mnist_disc_exportXd0(mnist_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->X, fname, n, 0,
-	                           xd2 - 1, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->X, fname,
+	                             n, 0, xd2,
+	                             0.0f, 1.0f);
 }
 
 int mnist_disc_exportXd1(mnist_disc_t* self,
@@ -741,8 +742,9 @@ int mnist_disc_exportXd1(mnist_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->X, fname, n, xd2,
-	                           dim->depth - 1, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->X, fname,
+	                             n, xd2, dim->depth - xd2,
+	                             0.0f, 1.0f);
 }
 
 int mnist_disc_export_dL_dY0(mnist_disc_t* self,
@@ -758,8 +760,9 @@ int mnist_disc_export_dL_dY0(mnist_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->dL_dY, fname, n, 0,
-	                           xd2 - 1, -1.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->dL_dY, fname,
+	                             n, 0, xd2,
+	                             -1.0f, 1.0f);
 }
 
 int mnist_disc_export_dL_dY1(mnist_disc_t* self,
@@ -775,8 +778,9 @@ int mnist_disc_export_dL_dY1(mnist_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->dL_dY, fname, n, xd2,
-	                           dim->depth - 1, -1.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->dL_dY, fname,
+	                             n, xd2, dim->depth - xd2,
+	                             -1.0f, 1.0f);
 }
 
 int mnist_disc_exportY(mnist_disc_t* self,
@@ -786,8 +790,9 @@ int mnist_disc_exportY(mnist_disc_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->Y, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->Y, fname,
+	                             n, 0, 1,
+	                             0.0f, 1.0f);
 }
 
 void
@@ -827,10 +832,10 @@ mnist_disc_sampleXt(mnist_disc_t* self,
 			for(j = 0; j < dimX->width; ++j)
 			{
 				// Ytr and Cr
-				x = nn_tensor_get(dnX, n, i, j, 0);
-				y = nn_tensor_get(dnYt, n, i, j, 0);
-				nn_tensor_set(X, n, i, j, 0, y);
-				nn_tensor_set(X, n, i, j, 1, x);
+				x = nn_tensor_ioGet(dnX, n, i, j, 0);
+				y = nn_tensor_ioGet(dnYt, n, i, j, 0);
+				nn_tensor_ioSet(X, n, i, j, 0, y);
+				nn_tensor_ioSet(X, n, i, j, 1, x);
 			}
 		}
 	}
@@ -843,10 +848,10 @@ mnist_disc_sampleXt(mnist_disc_t* self,
 			for(j = 0; j < dimX->width; ++j)
 			{
 				// Yg and Cg
-				x = nn_tensor_get(dnX, n, i, j, 0);
-				y = nn_tensor_get(dnY, n, i, j, 0);
-				nn_tensor_set(X, n, i, j, 0, y);
-				nn_tensor_set(X, n, i, j, 1, x);
+				x = nn_tensor_ioGet(dnX, n, i, j, 0);
+				y = nn_tensor_ioGet(dnY, n, i, j, 0);
+				nn_tensor_ioSet(X, n, i, j, 0, y);
+				nn_tensor_ioSet(X, n, i, j, 1, x);
 			}
 		}
 	}
@@ -867,7 +872,7 @@ int mnist_disc_train(mnist_disc_t* self,
 		return 0;
 	}
 
-	if(nn_tensor_blit(dL_dY, self->dL_dY, self->bs, 0, 0) == 0)
+	if(nn_tensor_copy(dL_dY, self->dL_dY, 0, 0, self->bs) == 0)
 	{
 		return 0;
 	}

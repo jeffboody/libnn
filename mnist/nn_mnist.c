@@ -131,7 +131,7 @@ nn_tensor_t* nn_mnist_load(nn_engine_t* engine)
 			for(j = 0; j < dim.width; ++j)
 			{
 				t = ((float) data[idx++])/255.0f;
-				nn_tensor_set(T, m, i, j, 1, t);
+				nn_tensor_ioSet(T, m, i, j, 1, t);
 			}
 		}
 	}

@@ -89,7 +89,7 @@ cnn_fillXYt(uint32_t m,
 		for(j = 0; j < xw; ++j)
 		{
 			x = cc_rngNormal_rand1F(rng1);
-			nn_tensor_set(X, m, i, j, k, x);
+			nn_tensor_ioSet(X, m, i, j, k, x);
 		}
 	}
 
@@ -132,14 +132,14 @@ cnn_fillXYt(uint32_t m,
 					}
 
 					s = sobel[fi*fw + fj];
-					x = nn_tensor_get(X, m, ii, jj, k);
+					x = nn_tensor_ioGet(X, m, ii, jj, k);
 
 					// add noise
 					x += cc_rngNormal_rand1F(rng2);
 					y += s*x;
 				}
 			}
-			nn_tensor_set(Yt, m, i, j, k, y);
+			nn_tensor_ioSet(Yt, m, i, j, k, y);
 		}
 	}
 
@@ -148,8 +148,8 @@ cnn_fillXYt(uint32_t m,
 	{
 		for(j = 0; j < xw; ++j)
 		{
-			x = nn_tensor_get(X, m, i, j, k);
-			nn_tensor_set(X, m, i, j, k, 100.0f*x + 10.0f);
+			x = nn_tensor_ioGet(X, m, i, j, k);
+			nn_tensor_ioSet(X, m, i, j, k, 100.0f*x + 10.0f);
 		}
 	}
 }

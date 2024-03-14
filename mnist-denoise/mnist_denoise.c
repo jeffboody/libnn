@@ -74,9 +74,9 @@ mnist_denoise_addNoise(mnist_denoise_t* self,
 				{
 					n = cc_rngNormal_rand1F(&self->rngN);
 				}
-				yt = nn_tensor_get(Yt, m, i, j, 0);
+				yt = nn_tensor_ioGet(Yt, m, i, j, 0);
 				x  = cc_clamp(yt + n, 0.0f, 1.0f);
-				nn_tensor_set(X, m, i, j, 0, x);
+				nn_tensor_ioSet(X, m, i, j, 0, x);
 			}
 		}
 	}
@@ -775,8 +775,9 @@ int mnist_denoise_exportX(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->X, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->X, fname,
+	                             n, 0, 1,
+	                             0.0f, 1.0f);
 }
 
 int mnist_denoise_export_dL_dY(mnist_denoise_t* self,
@@ -786,8 +787,9 @@ int mnist_denoise_export_dL_dY(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->dL_dY, fname,
-	                           n, 0, 0, -1.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->dL_dY, fname,
+	                             n, 0, 1,
+	                             -1.0f, 1.0f);
 }
 
 int mnist_denoise_exportYt(mnist_denoise_t* self,
@@ -797,8 +799,9 @@ int mnist_denoise_exportYt(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->Yt, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->Yt, fname,
+	                             n, 0, 1,
+	                             0.0f, 1.0f);
 }
 
 int mnist_denoise_exportY(mnist_denoise_t* self,
@@ -808,8 +811,9 @@ int mnist_denoise_exportY(mnist_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->Y, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->Y, fname,
+	                             n, 0, 1,
+	                             0.0f, 1.0f);
 }
 
 void
@@ -861,7 +865,7 @@ void mnist_denoise_sampleXt2(mnist_denoise_t* self,
 	for(m = 0; m < self->bs; ++m)
 	{
 		n = cc_rngUniform_rand2U(&self->rngU, 0, max);
-		nn_tensor_blit(Xt, Yt, 1, n, m);
+		nn_tensor_copy(Xt, Yt, n, m, 1);
 	}
 
 	// skip layers to perform poorly when noise is added
@@ -883,7 +887,7 @@ int mnist_denoise_train(mnist_denoise_t* self,
 		return 0;
 	}
 
-	if(nn_tensor_blit(dL_dY, self->dL_dY, self->bs, 0, 0) == 0)
+	if(nn_tensor_copy(dL_dY, self->dL_dY, 0, 0, self->bs) == 0)
 	{
 		return 0;
 	}

@@ -95,7 +95,7 @@ nn_arch_init(nn_arch_t* self,
 			}
 		}
 
-		if(nn_tensor_blit(X, self->X, bs, 0, 0) == 0)
+		if(nn_tensor_copy(X, self->X, 0, 0, bs) == 0)
 		{
 			return 0;
 		}
@@ -124,7 +124,7 @@ nn_arch_init(nn_arch_t* self,
 			}
 		}
 
-		if(nn_tensor_blit(Yt, self->Yt, bs, 0, 0) == 0)
+		if(nn_tensor_copy(Yt, self->Yt, 0, 0, bs) == 0)
 		{
 			return 0;
 		}
@@ -509,10 +509,10 @@ nn_arch_train(nn_arch_t* self, int flags,
 	nn_engine_end(self->engine);
 	nn_arch_post(self, flags);
 
-	// optionally blit Y
+	// optionally copy Y
 	if(Y)
 	{
-		if(nn_tensor_blit(X, Y, bs, 0, 0) == 0)
+		if(nn_tensor_copy(X, Y, 0, 0, bs) == 0)
 		{
 			return NULL;
 		}
@@ -583,7 +583,7 @@ int nn_arch_predict(nn_arch_t* self,
 	nn_arch_post(self, NN_LAYER_FLAG_FORWARD_PASS);
 
 	// success
-	return nn_tensor_blit(X, Y, bs, 0, 0);
+	return nn_tensor_copy(X, Y, 0, 0, bs);
 
 	// failure
 	fail_forwardPass:

@@ -872,28 +872,6 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_loss_bce);
 
-	vkk_computePipelineInfo_t cpi_tensor_clear =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_tensor,
-		.cs      = "nn/shaders/nn_tensor_clear_comp.spv",
-	};
-
-	self->cp_tensor_clear =
-		vkk_computePipeline_new(engine,
-		                        &cpi_tensor_clear);
-
-	vkk_computePipelineInfo_t cpi_tensor_clearAligned =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_tensor,
-		.cs      = "nn/shaders/nn_tensor_clearAligned_comp.spv",
-	};
-
-	self->cp_tensor_clearAligned =
-		vkk_computePipeline_new(engine,
-		                        &cpi_tensor_clearAligned);
-
 	vkk_computePipelineInfo_t cpi_tensor_stats =
 	{
 		.compute = self->compute,
@@ -973,8 +951,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_loss_mse                        == NULL) ||
 	   (self->cp_loss_mae                        == NULL) ||
 	   (self->cp_loss_bce                        == NULL) ||
-	   (self->cp_tensor_clear                    == NULL) ||
-	   (self->cp_tensor_clearAligned             == NULL) ||
 	   (self->cp_tensor_stats                    == NULL) ||
 	   (self->cp_tensor_sn                       == NULL) ||
 	   (self->cp_tensor_bssn                     == NULL))
@@ -1057,8 +1033,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_tensor_bssn);
 		vkk_computePipeline_delete(&self->cp_tensor_sn);
 		vkk_computePipeline_delete(&self->cp_tensor_stats);
-		vkk_computePipeline_delete(&self->cp_tensor_clearAligned);
-		vkk_computePipeline_delete(&self->cp_tensor_clear);
 		vkk_computePipeline_delete(&self->cp_loss_bce);
 		vkk_computePipeline_delete(&self->cp_loss_mae);
 		vkk_computePipeline_delete(&self->cp_loss_mse);

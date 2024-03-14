@@ -63,7 +63,7 @@ static void cifar10_disc_initYt(cifar10_disc_t* self)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
-				nn_tensor_set(Yt, n, i, j, 0, 1.0f);
+				nn_tensor_ioSet(Yt, n, i, j, 0, 1.0f);
 			}
 		}
 	}
@@ -75,7 +75,7 @@ static void cifar10_disc_initYt(cifar10_disc_t* self)
 		{
 			for(j = 0; j < dim->width; ++j)
 			{
-				nn_tensor_set(Yt, n, i, j, 0, 0.0f);
+				nn_tensor_ioSet(Yt, n, i, j, 0, 0.0f);
 			}
 		}
 	}
@@ -726,8 +726,9 @@ int cifar10_disc_exportXd0(cifar10_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->X, fname, n, 0,
-	                           xd2 - 1, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->X, fname,
+	                             n, 0, xd2,
+	                             0.0f, 1.0f);
 }
 
 int cifar10_disc_exportXd1(cifar10_disc_t* self,
@@ -743,8 +744,9 @@ int cifar10_disc_exportXd1(cifar10_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->X, fname, n, xd2,
-	                           dim->depth - 1, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->X, fname,
+	                             n, xd2, dim->depth - xd2,
+	                             0.0f, 1.0f);
 }
 
 int cifar10_disc_export_dL_dY0(cifar10_disc_t* self,
@@ -760,8 +762,9 @@ int cifar10_disc_export_dL_dY0(cifar10_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->dL_dY, fname, n, 0,
-	                           xd2 - 1, -1.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->dL_dY, fname,
+	                             n, 0, xd2,
+	                             -1.0f, 1.0f);
 }
 
 int cifar10_disc_export_dL_dY1(cifar10_disc_t* self,
@@ -777,8 +780,9 @@ int cifar10_disc_export_dL_dY1(cifar10_disc_t* self,
 	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
 	uint32_t  xd2 = dim->depth/2;
 
-	return nn_tensor_exportPng(self->dL_dY, fname, n, xd2,
-	                           dim->depth - 1, -1.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->dL_dY, fname,
+	                             n, xd2, dim->depth - xd2,
+	                             -1.0f, 1.0f);
 }
 
 int cifar10_disc_exportY(cifar10_disc_t* self,
@@ -788,8 +792,9 @@ int cifar10_disc_exportY(cifar10_disc_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	return nn_tensor_exportPng(self->Y, fname,
-	                           n, 0, 0, 0.0f, 1.0f);
+	return nn_tensor_ioExportPng(self->Y, fname,
+	                             n, 0, 1,
+	                             0.0f, 1.0f);
 }
 
 void
@@ -833,10 +838,10 @@ cifar10_disc_sampleXt(cifar10_disc_t* self,
 				for(k = 0; k < xd2; ++k)
 				{
 					// Ytr and Cr
-					x = nn_tensor_get(dnX, n, i, j, k);
-					y = nn_tensor_get(dnYt, n, i, j, k);
-					nn_tensor_set(X, n, i, j, k, y);
-					nn_tensor_set(X, n, i, j, k + xd2, x);
+					x = nn_tensor_ioGet(dnX, n, i, j, k);
+					y = nn_tensor_ioGet(dnYt, n, i, j, k);
+					nn_tensor_ioSet(X, n, i, j, k, y);
+					nn_tensor_ioSet(X, n, i, j, k + xd2, x);
 				}
 			}
 		}
@@ -852,10 +857,10 @@ cifar10_disc_sampleXt(cifar10_disc_t* self,
 				for(k = 0; k < xd2; ++k)
 				{
 					// Yg and Cg
-					x = nn_tensor_get(dnX, n, i, j, k);
-					y = nn_tensor_get(dnY, n, i, j, k);
-					nn_tensor_set(X, n, i, j, k, y);
-					nn_tensor_set(X, n, i, j, k + xd2, x);
+					x = nn_tensor_ioGet(dnX, n, i, j, k);
+					y = nn_tensor_ioGet(dnY, n, i, j, k);
+					nn_tensor_ioSet(X, n, i, j, k, y);
+					nn_tensor_ioSet(X, n, i, j, k + xd2, x);
 				}
 			}
 		}
@@ -877,7 +882,7 @@ int cifar10_disc_train(cifar10_disc_t* self,
 		return 0;
 	}
 
-	if(nn_tensor_blit(dL_dY, self->dL_dY, self->bs, 0, 0) == 0)
+	if(nn_tensor_copy(dL_dY, self->dL_dY, 0, 0, self->bs) == 0)
 	{
 		return 0;
 	}

@@ -123,8 +123,6 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_loss_mse;
 	vkk_computePipeline_t* cp_loss_mae;
 	vkk_computePipeline_t* cp_loss_bce;
-	vkk_computePipeline_t* cp_tensor_clear;
-	vkk_computePipeline_t* cp_tensor_clearAligned;
 	vkk_computePipeline_t* cp_tensor_stats;
 	vkk_computePipeline_t* cp_tensor_sn;
 	vkk_computePipeline_t* cp_tensor_bssn;
