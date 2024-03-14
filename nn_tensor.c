@@ -380,28 +380,6 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	}
 }
 
-void nn_tensor_print(nn_tensor_t* self, const char* name)
-{
-	ASSERT(self);
-
-	jsmn_stream_t* stream = jsmn_stream_new();
-	if(stream == NULL)
-	{
-		return;
-	}
-
-	nn_tensor_store(self, stream);
-
-	size_t size = 0;
-	const char* buffer = jsmn_stream_buffer(stream, &size);
-	if(buffer)
-	{
-		printf("%s: %s\n", name, buffer);
-	}
-
-	jsmn_stream_delete(&stream);
-}
-
 int
 nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
                     uint32_t n, uint32_t k0, uint32_t k1,

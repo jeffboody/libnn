@@ -41,10 +41,33 @@
 * private                                                  *
 ***********************************************************/
 
+static void cnn_print(nn_tensor_t* self, const char* name)
+{
+	ASSERT(self);
+	ASSERT(name);
+
+	jsmn_stream_t* stream = jsmn_stream_new();
+	if(stream == NULL)
+	{
+		return;
+	}
+
+	nn_tensor_store(self, stream);
+
+	size_t size = 0;
+	const char* buffer = jsmn_stream_buffer(stream, &size);
+	if(buffer)
+	{
+		printf("%s: %s\n", name, buffer);
+	}
+
+	jsmn_stream_delete(&stream);
+}
+
 static void
-fillXYt(uint32_t m,
-        cc_rngNormal_t* rng1, cc_rngNormal_t* rng2,
-        nn_tensor_t* X, nn_tensor_t* Yt)
+cnn_fillXYt(uint32_t m,
+            cc_rngNormal_t* rng1, cc_rngNormal_t* rng2,
+            nn_tensor_t* X, nn_tensor_t* Yt)
 {
 	ASSERT(rng1);
 	ASSERT(rng2);
@@ -250,7 +273,7 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 	{
 		for(m = 0; m < bs; ++m)
 		{
-			fillXYt(m, &rng1, &rng2, X, Yt);
+			cnn_fillXYt(m, &rng1, &rng2, X, Yt);
 		}
 
 		nn_arch_train(arch, NN_LAYER_FLAG_TRAIN, bs,
@@ -261,33 +284,33 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 			LOGI("train-%u, loss=%f",
 			     idx, nn_arch_loss(arch));
 			#if 0
-			nn_tensor_print(X,"X");
-			nn_tensor_print(Yt, "Yt");
-			nn_tensor_print(bn->G, "bn->G");
-			nn_tensor_print(bn->B, "bn->B");
-			nn_tensor_print(bn->Xhat, "bn->Xhat");
-			nn_tensor_print(bn->Y, "bn->Y");
-			nn_tensor_print(bn->Xmean_mb, "bn->Xmean_mb");
-			nn_tensor_print(bn->Xmean_ra, "bn->Xmean_ra");
-			nn_tensor_print(bn->Xvar_mb, "bn->Xvar_mb");
-			nn_tensor_print(bn->Xvar_ra, "bn->Xvar_ra");
-			nn_tensor_print(bn->dL_dXhat, "bn->dL_dXhat");
-			nn_tensor_print(bn->Bsum, "bn->Bsum");
-			nn_tensor_print(bn->Csum, "bn->Csum");
-			nn_tensor_print(conv->W, "conv->W");
-			nn_tensor_print(conv->B, "conv->B");
-			nn_tensor_print(conv->Y, "conv->Y");
-			nn_tensor_print(conv->VW, "conv->VW");
-			nn_tensor_print(conv->VB, "conv->VB");
-			nn_tensor_print(conv->dL_dW, "conv->dL_dW");
-			nn_tensor_print(conv->dL_dB, "conv->dL_dB");
-			nn_tensor_print(conv->dL_dX, "conv->dL_dX");
-			nn_tensor_print(loss->dL_dY, "loss->dL_dY");
+			cnn_print(X,"X");
+			cnn_print(Yt, "Yt");
+			cnn_print(bn->G, "bn->G");
+			cnn_print(bn->B, "bn->B");
+			cnn_print(bn->Xhat, "bn->Xhat");
+			cnn_print(bn->Y, "bn->Y");
+			cnn_print(bn->Xmean_mb, "bn->Xmean_mb");
+			cnn_print(bn->Xmean_ra, "bn->Xmean_ra");
+			cnn_print(bn->Xvar_mb, "bn->Xvar_mb");
+			cnn_print(bn->Xvar_ra, "bn->Xvar_ra");
+			cnn_print(bn->dL_dXhat, "bn->dL_dXhat");
+			cnn_print(bn->Bsum, "bn->Bsum");
+			cnn_print(bn->Csum, "bn->Csum");
+			cnn_print(conv->W, "conv->W");
+			cnn_print(conv->B, "conv->B");
+			cnn_print(conv->Y, "conv->Y");
+			cnn_print(conv->VW, "conv->VW");
+			cnn_print(conv->VB, "conv->VB");
+			cnn_print(conv->dL_dW, "conv->dL_dW");
+			cnn_print(conv->dL_dB, "conv->dL_dB");
+			cnn_print(conv->dL_dX, "conv->dL_dX");
+			cnn_print(loss->dL_dY, "loss->dL_dY");
 			#else
-			nn_tensor_print(bn->G, "bn->G");
-			nn_tensor_print(bn->B, "bn->B");
-			nn_tensor_print(conv->W, "conv->W");
-			nn_tensor_print(conv->B, "conv->B");
+			cnn_print(bn->G, "bn->G");
+			cnn_print(bn->B, "bn->B");
+			cnn_print(conv->W, "conv->W");
+			cnn_print(conv->B, "conv->B");
 			#endif
 		}
 	}

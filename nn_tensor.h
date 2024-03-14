@@ -82,8 +82,6 @@ nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
                            nn_tensorInit_e init,
                            nn_tensorMode_e tensor_mode);
 void         nn_tensor_delete(nn_tensor_t** _self);
-void         nn_tensor_print(nn_tensor_t* self,
-                             const char* name);
 int          nn_tensor_exportPng(nn_tensor_t* self,
                                  const char* fname,
                                  uint32_t n,
