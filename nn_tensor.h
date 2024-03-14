@@ -82,6 +82,10 @@ nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
                            nn_tensorInit_e init,
                            nn_tensorMode_e mode);
 void         nn_tensor_delete(nn_tensor_t** _self);
+int          nn_tensor_import(nn_tensor_t* self,
+                              jsmn_val_t* val);
+int          nn_tensor_export(nn_tensor_t* self,
+                              jsmn_stream_t* stream);
 int          nn_tensor_exportPng(nn_tensor_t* self,
                                  const char* fname,
                                  uint32_t n,
@@ -89,10 +93,6 @@ int          nn_tensor_exportPng(nn_tensor_t* self,
                                  uint32_t k1,
                                  float min,
                                  float max);
-int          nn_tensor_load(nn_tensor_t* self,
-                            jsmn_val_t* val);
-int          nn_tensor_store(nn_tensor_t* self,
-                             jsmn_stream_t* stream);
 int          nn_tensor_clear(nn_tensor_t* self,
                              vkk_hazard_e hazard);
 int          nn_tensor_normalize(nn_tensor_t* self,

@@ -36,6 +36,10 @@ typedef struct nn_dim_s
 	uint32_t depth;
 } nn_dim_t;
 
+int      nn_dim_import(nn_dim_t* self,
+                       jsmn_val_t* val);
+int      nn_dim_export(nn_dim_t* self,
+                      jsmn_stream_t* stream);
 int      nn_dim_validate(nn_dim_t* self,
                          uint32_t n, uint32_t i,
                          uint32_t j, uint32_t k);
@@ -49,9 +53,5 @@ int      nn_dim_strideEquals(nn_dim_t* self,
                              nn_dim_t* dim);
 void     nn_dim_copy(nn_dim_t* src,
                      nn_dim_t* dst);
-int      nn_dim_load(nn_dim_t* self,
-                     jsmn_val_t* val);
-int      nn_dim_store(nn_dim_t* self,
-                      jsmn_stream_t* stream);
 
 #endif

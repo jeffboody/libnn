@@ -33,6 +33,89 @@
 * public                                                   *
 ***********************************************************/
 
+int nn_dim_import(nn_dim_t* self, jsmn_val_t* val)
+{
+	ASSERT(self);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid type=%i", (int) val->type);
+		return 0;
+	}
+
+	jsmn_val_t* val_count  = NULL;
+	jsmn_val_t* val_height = NULL;
+	jsmn_val_t* val_width  = NULL;
+	jsmn_val_t* val_depth  = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		{
+			if(strcmp(kv->key, "count") == 0)
+			{
+				val_count = kv->val;
+			}
+			else if(strcmp(kv->key, "height") == 0)
+			{
+				val_height = kv->val;
+			}
+			else if(strcmp(kv->key, "width") == 0)
+			{
+				val_width = kv->val;
+			}
+			else if(strcmp(kv->key, "depth") == 0)
+			{
+				val_depth = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_count  == NULL) ||
+	   (val_height == NULL) ||
+	   (val_width  == NULL) ||
+	   (val_depth  == NULL))
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	self->count  = strtol(val_count->data,  NULL, 0);
+	self->height = strtol(val_height->data, NULL, 0);
+	self->width  = strtol(val_width->data,  NULL, 0);
+	self->depth  = strtol(val_depth->data,  NULL, 0);
+
+	return 1;
+}
+
+int nn_dim_export(nn_dim_t* self, jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	int ret = 1;
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "count");
+	ret &= jsmn_stream_int(stream, (int) self->count);
+	ret &= jsmn_stream_key(stream, "%s", "height");
+	ret &= jsmn_stream_int(stream, (int) self->height);
+	ret &= jsmn_stream_key(stream, "%s", "width");
+	ret &= jsmn_stream_int(stream, (int) self->width);
+	ret &= jsmn_stream_key(stream, "%s", "depth");
+	ret &= jsmn_stream_int(stream, (int) self->depth);
+	ret &= jsmn_stream_end(stream);
+
+	return ret;
+}
+
 int nn_dim_validate(nn_dim_t* self,
                     uint32_t n, uint32_t i,
                     uint32_t j, uint32_t k)
@@ -116,87 +199,4 @@ void nn_dim_copy(nn_dim_t* src,
 	dst->height = src->height;
 	dst->width  = src->width;
 	dst->depth  = src->depth;
-}
-
-int nn_dim_load(nn_dim_t* self, jsmn_val_t* val)
-{
-	ASSERT(self);
-	ASSERT(val);
-
-	if(val->type != JSMN_TYPE_OBJECT)
-	{
-		LOGE("invalid type=%i", (int) val->type);
-		return 0;
-	}
-
-	jsmn_val_t* val_count  = NULL;
-	jsmn_val_t* val_height = NULL;
-	jsmn_val_t* val_width  = NULL;
-	jsmn_val_t* val_depth  = NULL;
-
-	cc_listIter_t* iter = cc_list_head(val->obj->list);
-	while(iter)
-	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
-
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
-		{
-			if(strcmp(kv->key, "count") == 0)
-			{
-				val_count = kv->val;
-			}
-			else if(strcmp(kv->key, "height") == 0)
-			{
-				val_height = kv->val;
-			}
-			else if(strcmp(kv->key, "width") == 0)
-			{
-				val_width = kv->val;
-			}
-			else if(strcmp(kv->key, "depth") == 0)
-			{
-				val_depth = kv->val;
-			}
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// check for required parameters
-	if((val_count  == NULL) ||
-	   (val_height == NULL) ||
-	   (val_width  == NULL) ||
-	   (val_depth  == NULL))
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	self->count  = strtol(val_count->data,  NULL, 0);
-	self->height = strtol(val_height->data, NULL, 0);
-	self->width  = strtol(val_width->data,  NULL, 0);
-	self->depth  = strtol(val_depth->data,  NULL, 0);
-
-	return 1;
-}
-
-int nn_dim_store(nn_dim_t* self, jsmn_stream_t* stream)
-{
-	ASSERT(self);
-	ASSERT(stream);
-
-	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "count");
-	ret &= jsmn_stream_int(stream, (int) self->count);
-	ret &= jsmn_stream_key(stream, "%s", "height");
-	ret &= jsmn_stream_int(stream, (int) self->height);
-	ret &= jsmn_stream_key(stream, "%s", "width");
-	ret &= jsmn_stream_int(stream, (int) self->width);
-	ret &= jsmn_stream_key(stream, "%s", "depth");
-	ret &= jsmn_stream_int(stream, (int) self->depth);
-	ret &= jsmn_stream_end(stream);
-
-	return ret;
 }

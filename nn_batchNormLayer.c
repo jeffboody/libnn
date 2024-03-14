@@ -904,7 +904,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_dim_t dimX;
-	if(nn_dim_load(&dimX, val_dimX) == 0)
+	if(nn_dim_import(&dimX, val_dimX) == 0)
 	{
 		return NULL;
 	}
@@ -916,15 +916,14 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	// load tensors
-	if((nn_tensor_load(self->G,        val_G)        == 0) ||
-	   (nn_tensor_load(self->B,        val_B)        == 0) ||
-	   (nn_tensor_load(self->MG,       val_MG)       == 0) ||
-	   (nn_tensor_load(self->VG,       val_VG)       == 0) ||
-	   (nn_tensor_load(self->MB,       val_MB)       == 0) ||
-	   (nn_tensor_load(self->VB,       val_VB)       == 0) ||
-	   (nn_tensor_load(self->Xmean_ra, val_Xmean_ra) == 0) ||
-	   (nn_tensor_load(self->Xvar_ra,  val_Xvar_ra)  == 0))
+	if((nn_tensor_import(self->G,        val_G)        == 0) ||
+	   (nn_tensor_import(self->B,        val_B)        == 0) ||
+	   (nn_tensor_import(self->MG,       val_MG)       == 0) ||
+	   (nn_tensor_import(self->VG,       val_VG)       == 0) ||
+	   (nn_tensor_import(self->MB,       val_MB)       == 0) ||
+	   (nn_tensor_import(self->VB,       val_VB)       == 0) ||
+	   (nn_tensor_import(self->Xmean_ra, val_Xmean_ra) == 0) ||
+	   (nn_tensor_import(self->Xvar_ra,  val_Xvar_ra)  == 0))
 	{
 		goto fail_tensor;
 	}
@@ -963,23 +962,23 @@ int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
 		return 0;
 	}
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
-	ret &= nn_dim_store(dimX, stream);
+	ret &= nn_dim_export(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "G");
-	ret &= nn_tensor_store(self->G, stream);
+	ret &= nn_tensor_export(self->G, stream);
 	ret &= jsmn_stream_key(stream, "%s", "B");
-	ret &= nn_tensor_store(self->B, stream);
+	ret &= nn_tensor_export(self->B, stream);
 	ret &= jsmn_stream_key(stream, "%s", "MG");
-	ret &= nn_tensor_store(self->MG, stream);
+	ret &= nn_tensor_export(self->MG, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VG");
-	ret &= nn_tensor_store(self->VG, stream);
+	ret &= nn_tensor_export(self->VG, stream);
 	ret &= jsmn_stream_key(stream, "%s", "MB");
-	ret &= nn_tensor_store(self->MB, stream);
+	ret &= nn_tensor_export(self->MB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
-	ret &= nn_tensor_store(self->VB, stream);
+	ret &= nn_tensor_export(self->VB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "Xmean_ra");
-	ret &= nn_tensor_store(self->Xmean_ra, stream);
+	ret &= nn_tensor_export(self->Xmean_ra, stream);
 	ret &= jsmn_stream_key(stream, "%s", "Xvar_ra");
-	ret &= nn_tensor_store(self->Xvar_ra, stream);
+	ret &= nn_tensor_export(self->Xvar_ra, stream);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

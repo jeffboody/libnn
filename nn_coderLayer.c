@@ -453,12 +453,12 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 		return NULL;
 	}
 
-	if(nn_dim_load(&self->dimX, val_dimX) == 0)
+	if(nn_dim_import(&self->dimX, val_dimX) == 0)
 	{
 		goto fail_dimX;
 	}
 
-	if(nn_dim_load(&self->dimY, val_dimY) == 0)
+	if(nn_dim_import(&self->dimY, val_dimY) == 0)
 	{
 		goto fail_dimY;
 	}
@@ -532,9 +532,9 @@ int nn_coderLayer_export(nn_coderLayer_t* self,
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
-	ret &= nn_dim_store(&self->dimX, stream);
+	ret &= nn_dim_export(&self->dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimY");
-	ret &= nn_dim_store(&self->dimY, stream);
+	ret &= nn_dim_export(&self->dimY, stream);
 
 	if(self->conv)
 	{

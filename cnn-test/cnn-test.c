@@ -52,7 +52,7 @@ static void cnn_print(nn_tensor_t* self, const char* name)
 		return;
 	}
 
-	nn_tensor_store(self, stream);
+	nn_tensor_export(self, stream);
 
 	size_t size = 0;
 	const char* buffer = jsmn_stream_buffer(stream, &size);

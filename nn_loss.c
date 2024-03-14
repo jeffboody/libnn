@@ -263,7 +263,7 @@ nn_loss_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_dim_t dimY;
-	if(nn_dim_load(&dimY, val_dimY) == 0)
+	if(nn_dim_import(&dimY, val_dimY) == 0)
 	{
 		return NULL;
 	}
@@ -292,7 +292,7 @@ int nn_loss_export(nn_loss_t* self, jsmn_stream_t* stream)
 	ret &= jsmn_stream_key(stream, "%s", "loss_fn");
 	ret &= jsmn_stream_string(stream, "%s", str_loss_fn);
 	ret &= jsmn_stream_key(stream, "%s", "dimY");
-	ret &= nn_dim_store(dimY, stream);
+	ret &= nn_dim_export(dimY, stream);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

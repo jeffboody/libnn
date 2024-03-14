@@ -83,7 +83,7 @@ static size_t nn_tensor_stride(nn_tensor_t* self)
 }
 
 static int
-nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
+nn_tensor_importData(nn_tensor_t* self, jsmn_val_t* val)
 {
 	ASSERT(self);
 	ASSERT(val);
@@ -101,9 +101,9 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 			return 0;
 		}
 
-		if(nn_tensor_loadData(tmp, val) == 0)
+		if(nn_tensor_importData(tmp, val) == 0)
 		{
-			goto fail_loadData;
+			goto fail_importData;
 		}
 
 		if(nn_tensor_blit(tmp, self, dim->count, 0, 0) == 0)
@@ -147,7 +147,7 @@ nn_tensor_loadData(nn_tensor_t* self, jsmn_val_t* val)
 
 	// failure
 	fail_blit:
-	fail_loadData:
+	fail_importData:
 		nn_tensor_delete(&tmp);
 	return 0;
 }
@@ -380,6 +380,126 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	}
 }
 
+int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
+{
+	ASSERT(self);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_OBJECT)
+	{
+		LOGE("invalid type=%i", (int) val->type);
+		return 0;
+	}
+
+	jsmn_val_t* val_dim  = NULL;
+	jsmn_val_t* val_data = NULL;
+
+	cc_listIter_t* iter = cc_list_head(val->obj->list);
+	while(iter)
+	{
+		jsmn_keyval_t* kv;
+		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+
+		if(kv->val->type == JSMN_TYPE_OBJECT)
+		{
+			if(strcmp(kv->key, "dim") == 0)
+			{
+				val_dim = kv->val;
+			}
+		}
+		else if(kv->val->type == JSMN_TYPE_ARRAY)
+		{
+			if(strcmp(kv->key, "data") == 0)
+			{
+				val_data = kv->val;
+			}
+		}
+
+		iter = cc_list_next(iter);
+	}
+
+	// check for required parameters
+	if((val_dim  == NULL) ||
+	   (val_data == NULL))
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t dim;
+	if((nn_dim_import(&dim, val_dim)          == 0) ||
+	   (nn_dim_sizeEquals(&self->dim, &dim) == 0) ||
+	   (nn_tensor_importData(self, val_data)  == 0))
+	{
+		return 0;
+	}
+
+	return 1;
+}
+
+int nn_tensor_export(nn_tensor_t* self,
+                    jsmn_stream_t* stream)
+{
+	ASSERT(self);
+	ASSERT(stream);
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+
+	int ret = 1;
+	nn_tensor_t* tmp = NULL;
+	if(self->mode == NN_TENSOR_MODE_COMPUTE)
+	{
+		tmp = nn_tensor_new(self->engine, dim,
+		                    NN_TENSOR_INIT_ZERO,
+		                    NN_TENSOR_MODE_IO);
+		if(tmp == NULL)
+		{
+			return 0;
+		}
+
+		if(nn_tensor_blit(self, tmp, dim->count, 0, 0) == 0)
+		{
+			goto fail_blit;
+		}
+
+		if(nn_tensor_export(tmp, stream) == 0)
+		{
+			goto fail_export;
+		}
+
+		nn_tensor_delete(&tmp);
+	}
+	else
+	{
+		uint32_t count = dim->count*dim->height*
+		                 dim->width*dim->depth;
+
+		ret &= jsmn_stream_beginObject(stream);
+		ret &= jsmn_stream_key(stream, "%s", "dim");
+		ret &= nn_dim_export(dim, stream);
+		ret &= jsmn_stream_key(stream, "%s", "data");
+		ret &= jsmn_stream_beginArray(stream);
+
+		uint32_t i;
+		for(i = 0; i < count; ++i)
+		{
+			ret &= jsmn_stream_float(stream, self->data[i]);
+		}
+
+		ret &= jsmn_stream_end(stream);
+		ret &= jsmn_stream_end(stream);
+	}
+
+	// success
+	return ret;
+
+	// failure
+	fail_export:
+	fail_blit:
+		nn_tensor_delete(&tmp);
+	return 0;
+}
+
 int
 nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
                     uint32_t n, uint32_t k0, uint32_t k1,
@@ -445,126 +565,6 @@ nn_tensor_exportPng(nn_tensor_t* self, const char* fname,
 	// failure
 	fail_export:
 		texgz_tex_delete(&tex);
-	return 0;
-}
-
-int nn_tensor_load(nn_tensor_t* self, jsmn_val_t* val)
-{
-	ASSERT(self);
-	ASSERT(val);
-
-	if(val->type != JSMN_TYPE_OBJECT)
-	{
-		LOGE("invalid type=%i", (int) val->type);
-		return 0;
-	}
-
-	jsmn_val_t* val_dim  = NULL;
-	jsmn_val_t* val_data = NULL;
-
-	cc_listIter_t* iter = cc_list_head(val->obj->list);
-	while(iter)
-	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
-
-		if(kv->val->type == JSMN_TYPE_OBJECT)
-		{
-			if(strcmp(kv->key, "dim") == 0)
-			{
-				val_dim = kv->val;
-			}
-		}
-		else if(kv->val->type == JSMN_TYPE_ARRAY)
-		{
-			if(strcmp(kv->key, "data") == 0)
-			{
-				val_data = kv->val;
-			}
-		}
-
-		iter = cc_list_next(iter);
-	}
-
-	// check for required parameters
-	if((val_dim  == NULL) ||
-	   (val_data == NULL))
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	nn_dim_t dim;
-	if((nn_dim_load(&dim, val_dim)          == 0) ||
-	   (nn_dim_sizeEquals(&self->dim, &dim) == 0) ||
-	   (nn_tensor_loadData(self, val_data)  == 0))
-	{
-		return 0;
-	}
-
-	return 1;
-}
-
-int nn_tensor_store(nn_tensor_t* self,
-                    jsmn_stream_t* stream)
-{
-	ASSERT(self);
-	ASSERT(stream);
-
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	int ret = 1;
-	nn_tensor_t* tmp = NULL;
-	if(self->mode == NN_TENSOR_MODE_COMPUTE)
-	{
-		tmp = nn_tensor_new(self->engine, dim,
-		                    NN_TENSOR_INIT_ZERO,
-		                    NN_TENSOR_MODE_IO);
-		if(tmp == NULL)
-		{
-			return 0;
-		}
-
-		if(nn_tensor_blit(self, tmp, dim->count, 0, 0) == 0)
-		{
-			goto fail_blit;
-		}
-
-		if(nn_tensor_store(tmp, stream) == 0)
-		{
-			goto fail_store;
-		}
-
-		nn_tensor_delete(&tmp);
-	}
-	else
-	{
-		uint32_t count = dim->count*dim->height*
-		                 dim->width*dim->depth;
-
-		ret &= jsmn_stream_beginObject(stream);
-		ret &= jsmn_stream_key(stream, "%s", "dim");
-		ret &= nn_dim_store(dim, stream);
-		ret &= jsmn_stream_key(stream, "%s", "data");
-		ret &= jsmn_stream_beginArray(stream);
-
-		uint32_t i;
-		for(i = 0; i < count; ++i)
-		{
-			ret &= jsmn_stream_float(stream, self->data[i]);
-		}
-
-		ret &= jsmn_stream_end(stream);
-		ret &= jsmn_stream_end(stream);
-	}
-
-	// success
-	return ret;
-
-	// failure
-	fail_store:
-	fail_blit:
-		nn_tensor_delete(&tmp);
 	return 0;
 }
 

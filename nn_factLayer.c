@@ -424,7 +424,7 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_dim_t dimX;
-	if(nn_dim_load(&dimX, val_dimX) == 0)
+	if(nn_dim_import(&dimX, val_dimX) == 0)
 	{
 		return NULL;
 	}
@@ -451,7 +451,7 @@ int nn_factLayer_export(nn_factLayer_t* self,
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
-	ret &= nn_dim_store(dimX, stream);
+	ret &= nn_dim_export(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "fn");
 	ret &= jsmn_stream_string(stream, "%s", str_fn);
 	ret &= jsmn_stream_end(stream);

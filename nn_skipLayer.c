@@ -1091,7 +1091,7 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 	float skip_beta = strtof(val_skip_beta->data, NULL);
 
 	nn_dim_t dimX;
-	if(nn_dim_load(&dimX, val_dimX) == 0)
+	if(nn_dim_import(&dimX, val_dimX) == 0)
 	{
 		return NULL;
 	}
@@ -1133,7 +1133,7 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
-	ret &= nn_dim_store(dimX, stream);
+	ret &= nn_dim_export(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "skip_mode");
 	if(self->skip_mode == NN_SKIP_MODE_FORK_ADD)
 	{

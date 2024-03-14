@@ -720,8 +720,8 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 	nn_dim_t dimX;
 	nn_dim_t dimW;
-	if((nn_dim_load(&dimX, val_dimX) == 0) ||
-	   (nn_dim_load(&dimW, val_dimW) == 0))
+	if((nn_dim_import(&dimX, val_dimX) == 0) ||
+	   (nn_dim_import(&dimW, val_dimW) == 0))
 	{
 		return NULL;
 	}
@@ -733,13 +733,12 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	// load tensors
-	if((nn_tensor_load(self->W,  val_W)  == 0) ||
-	   (nn_tensor_load(self->B,  val_B)  == 0) ||
-	   (nn_tensor_load(self->MW, val_MW) == 0) ||
-	   (nn_tensor_load(self->VW, val_VW) == 0) ||
-	   (nn_tensor_load(self->MB, val_MB) == 0) ||
-	   (nn_tensor_load(self->VB, val_VB) == 0))
+	if((nn_tensor_import(self->W,  val_W)  == 0) ||
+	   (nn_tensor_import(self->B,  val_B)  == 0) ||
+	   (nn_tensor_import(self->MW, val_MW) == 0) ||
+	   (nn_tensor_import(self->VW, val_VW) == 0) ||
+	   (nn_tensor_import(self->MB, val_MB) == 0) ||
+	   (nn_tensor_import(self->VB, val_VB) == 0))
 	{
 		goto fail_tensor;
 	}
@@ -765,23 +764,23 @@ int nn_weightLayer_export(nn_weightLayer_t* self,
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
-	ret &= nn_dim_store(dimX, stream);
+	ret &= nn_dim_export(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimW");
-	ret &= nn_dim_store(dimW, stream);
+	ret &= nn_dim_export(dimW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "flags");
 	ret &= jsmn_stream_int(stream, self->flags);
 	ret &= jsmn_stream_key(stream, "%s", "W");
-	ret &= nn_tensor_store(self->W, stream);
+	ret &= nn_tensor_export(self->W, stream);
 	ret &= jsmn_stream_key(stream, "%s", "B");
-	ret &= nn_tensor_store(self->B, stream);
+	ret &= nn_tensor_export(self->B, stream);
 	ret &= jsmn_stream_key(stream, "%s", "MW");
-	ret &= nn_tensor_store(self->MW, stream);
+	ret &= nn_tensor_export(self->MW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VW");
-	ret &= nn_tensor_store(self->VW, stream);
+	ret &= nn_tensor_export(self->VW, stream);
 	ret &= jsmn_stream_key(stream, "%s", "MB");
-	ret &= nn_tensor_store(self->MB, stream);
+	ret &= nn_tensor_export(self->MB, stream);
 	ret &= jsmn_stream_key(stream, "%s", "VB");
-	ret &= nn_tensor_store(self->VB, stream);
+	ret &= nn_tensor_export(self->VB, stream);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;
