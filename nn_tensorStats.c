@@ -70,7 +70,7 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 
 	self->us1 = vkk_uniformSet_new(engine->engine,
 	                               1, 0, NULL,
-	                               engine->usf1_tensor);
+	                               engine->usf1_tensor_stats);
 	if(self->us1 == NULL)
 	{
 		goto fail_us1;

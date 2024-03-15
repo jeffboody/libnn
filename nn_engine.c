@@ -214,14 +214,16 @@ nn_engine_new(vkk_engine_t* engine)
 	                                              3, ub_array);
 
 	// sb10: stats
-	self->usf1_tensor = vkk_uniformSetFactory_new(engine, um,
-	                                              1, ub_array);
+	self->usf1_tensor_stats = vkk_uniformSetFactory_new(engine,
+	                                                    um, 1,
+	                                                    ub_array);
 
 	// sb20: u1
 	// ...
 	// sb24: c
-	self->usf2_tensor = vkk_uniformSetFactory_new(engine, um,
-	                                              5, ub_array);
+	self->usf1_tensor_norm = vkk_uniformSetFactory_new(engine,
+	                                                   um, 5,
+	                                                   ub_array);
 
 	if((self->usf0_batchNorm    == NULL) ||
 	   (self->usf1_batchNorm_fp == NULL) ||
@@ -243,8 +245,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf0_loss         == NULL) ||
 	   (self->usf1_loss         == NULL) ||
 	   (self->usf0_tensor       == NULL) ||
-	   (self->usf1_tensor       == NULL) ||
-	   (self->usf2_tensor       == NULL))
+	   (self->usf1_tensor_stats == NULL) ||
+	   (self->usf1_tensor_norm  == NULL))
 	{
 		goto failure;
 	}
@@ -341,14 +343,21 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_loss = vkk_pipelineLayout_new(engine, 2,
 	                                       usf_array_loss);
 
-	vkk_uniformSetFactory_t* usf_array_tensor[] =
+	vkk_uniformSetFactory_t* usf_array_tensor_stats[] =
 	{
 		self->usf0_tensor,
-		self->usf1_tensor,
-		self->usf2_tensor,
+		self->usf1_tensor_stats,
 	};
-	self->pl_tensor = vkk_pipelineLayout_new(engine, 3,
-	                                         usf_array_tensor);
+	self->pl_tensor_stats = vkk_pipelineLayout_new(engine, 2,
+	                                               usf_array_tensor_stats);
+
+	vkk_uniformSetFactory_t* usf_array_tensor_norm[] =
+	{
+		self->usf0_tensor,
+		self->usf1_tensor_norm,
+	};
+	self->pl_tensor_norm = vkk_pipelineLayout_new(engine, 2,
+	                                              usf_array_tensor_norm);
 
 	if((self->pl_batchNorm_fp == NULL) ||
 	   (self->pl_batchNorm_bp == NULL) ||
@@ -361,7 +370,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_weight_fp    == NULL) ||
 	   (self->pl_weight_bp    == NULL) ||
 	   (self->pl_loss         == NULL) ||
-	   (self->pl_tensor       == NULL))
+	   (self->pl_tensor_stats == NULL) ||
+	   (self->pl_tensor_norm  == NULL))
 	{
 		goto failure;
 	}
@@ -875,7 +885,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_tensor_stats =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_tensor,
+		.pl      = self->pl_tensor_stats,
 		.cs      = "nn/shaders/nn_tensor_stats_comp.spv",
 	};
 
@@ -886,7 +896,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_tensor_sn =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_tensor,
+		.pl      = self->pl_tensor_norm,
 		.cs      = "nn/shaders/nn_tensor_sn_comp.spv",
 	};
 
@@ -897,7 +907,7 @@ nn_engine_new(vkk_engine_t* engine)
 	vkk_computePipelineInfo_t cpi_tensor_bssn =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_tensor,
+		.pl      = self->pl_tensor_norm,
 		.cs      = "nn/shaders/nn_tensor_bssn_comp.spv",
 	};
 
@@ -1079,7 +1089,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXhat);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvar);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmean);
-		vkk_pipelineLayout_delete(&self->pl_tensor);
+		vkk_pipelineLayout_delete(&self->pl_tensor_norm);
+		vkk_pipelineLayout_delete(&self->pl_tensor_stats);
 		vkk_pipelineLayout_delete(&self->pl_loss);
 		vkk_pipelineLayout_delete(&self->pl_weight_bp);
 		vkk_pipelineLayout_delete(&self->pl_weight_fp);
@@ -1091,8 +1102,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_conv_fp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_bp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_fp);
-		vkk_uniformSetFactory_delete(&self->usf2_tensor);
-		vkk_uniformSetFactory_delete(&self->usf1_tensor);
+		vkk_uniformSetFactory_delete(&self->usf1_tensor_norm);
+		vkk_uniformSetFactory_delete(&self->usf1_tensor_stats);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
 		vkk_uniformSetFactory_delete(&self->usf1_loss);
 		vkk_uniformSetFactory_delete(&self->usf0_loss);

@@ -23,12 +23,12 @@ layout(std430, set=0, binding=1) buffer sb01
 	float X[];
 };
 
-layout(std430, set=2, binding=0) buffer sb20
+layout(std430, set=1, binding=0) buffer sb10
 {
 	float u1[];
 };
 
-layout(std430, set=2, binding=1) buffer sb21
+layout(std430, set=1, binding=1) buffer sb11
 {
 	float v1[];
 };

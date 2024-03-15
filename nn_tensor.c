@@ -313,6 +313,26 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 			goto fail_data;
 		}
 
+		// sb00: dimX
+		// sb01: X
+		vkk_uniformAttachment_t ua0_array[] =
+		{
+			{
+				.binding = 0,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = self->sb_dim,
+			},
+			{
+				.binding = 1,
+				.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+				.buffer  = self->sb_data,
+			},
+		};
+
+		vkk_compute_updateUniformSetRefs(engine->compute,
+		                                 self->us0,
+		                                 2, ua0_array);
+
 		nn_tensor_delete(&tmp);
 	}
 	else
@@ -351,12 +371,12 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	nn_tensor_t* self = *_self;
 	if(self)
 	{
-		vkk_uniformSet_delete(&self->us2);
-		vkk_buffer_delete(&self->sb24_c);
-		vkk_buffer_delete(&self->sb23_data_v2);
-		vkk_buffer_delete(&self->sb22_data_u2);
-		vkk_buffer_delete(&self->sb21_data_v1);
-		vkk_buffer_delete(&self->sb20_data_u1);
+		vkk_uniformSet_delete(&self->us1_norm);
+		vkk_buffer_delete(&self->sb14_c);
+		vkk_buffer_delete(&self->sb13_data_v2);
+		vkk_buffer_delete(&self->sb12_data_u2);
+		vkk_buffer_delete(&self->sb11_data_v1);
+		vkk_buffer_delete(&self->sb10_data_u1);
 		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
@@ -859,10 +879,10 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 
-	// create sb20_data_u1 on demand
+	// create sb10_data_u1 on demand
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
-	if(self->sb20_data_u1 == NULL)
+	if(self->sb10_data_u1 == NULL)
 	{
 		// dim(fc)
 		uint32_t n = dim->count;
@@ -875,11 +895,11 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		}
 		nn_tensor_initSN(engine, buf, n);
 
-		self->sb20_data_u1 = vkk_buffer_new(engine->engine, um,
+		self->sb10_data_u1 = vkk_buffer_new(engine->engine, um,
 		                                    VKK_BUFFER_USAGE_STORAGE,
 		                                    n*sizeof(float),
 		                                    buf);
-		if(self->sb20_data_u1 == NULL)
+		if(self->sb10_data_u1 == NULL)
 		{
 			FREE(buf);
 			return 0;
@@ -888,26 +908,26 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		FREE(buf);
 	}
 
-	// create sb21_data_v1 on demand
-	if(self->sb21_data_v1 == NULL)
+	// create sb11_data_v1 on demand
+	if(self->sb11_data_v1 == NULL)
 	{
 		// dim(fh*fw*xd)
 		uint32_t n = dim->height*dim->width*dim->depth;
 
-		self->sb21_data_v1 = vkk_buffer_new(engine->engine, um,
+		self->sb11_data_v1 = vkk_buffer_new(engine->engine, um,
 		                                    VKK_BUFFER_USAGE_STORAGE,
 		                                    n*sizeof(float),
 		                                    NULL);
-		if(self->sb21_data_v1 == NULL)
+		if(self->sb11_data_v1 == NULL)
 		{
 			return 0;
 		}
 	}
 
-	// create sb22_data_u2 and sb23_data_v2 on demand
+	// create sb12_data_u2 and sb13_data_v2 on demand
 	if(norm == NN_TENSOR_NORM_MODE_BSSN)
 	{
-		if(self->sb22_data_u2 == NULL)
+		if(self->sb12_data_u2 == NULL)
 		{
 			// dim(xd)
 			uint32_t n = dim->depth;
@@ -920,11 +940,11 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 			}
 			nn_tensor_initSN(engine, buf, n);
 
-			self->sb22_data_u2 = vkk_buffer_new(engine->engine, um,
+			self->sb12_data_u2 = vkk_buffer_new(engine->engine, um,
 			                                    VKK_BUFFER_USAGE_STORAGE,
 			                                    n*sizeof(float),
 			                                    buf);
-			if(self->sb22_data_u2 == NULL)
+			if(self->sb12_data_u2 == NULL)
 			{
 				FREE(buf);
 				return 0;
@@ -933,103 +953,93 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 			FREE(buf);
 		}
 
-		if(self->sb23_data_v2 == NULL)
+		if(self->sb13_data_v2 == NULL)
 		{
 			// dim(fc*fh*fw)
 			uint32_t n = dim->count*dim->height*dim->width;
 
-			self->sb23_data_v2 = vkk_buffer_new(engine->engine, um,
+			self->sb13_data_v2 = vkk_buffer_new(engine->engine, um,
 			                                    VKK_BUFFER_USAGE_STORAGE,
 			                                    n*sizeof(float),
 			                                    NULL);
-			if(self->sb23_data_v2 == NULL)
+			if(self->sb13_data_v2 == NULL)
 			{
 				return 0;
 			}
 		}
 	}
 
-	// create sb24_c on demand
+	// create sb14_c on demand
 	// c is only used by BSSN but is still bound for SN
-	if(self->sb24_c == NULL)
+	if(self->sb14_c == NULL)
 	{
-		self->sb24_c = vkk_buffer_new(engine->engine, um,
+		self->sb14_c = vkk_buffer_new(engine->engine, um,
 		                              VKK_BUFFER_USAGE_STORAGE,
 		                              sizeof(float),
 		                              &c);
-		if(self->sb24_c == NULL)
+		if(self->sb14_c == NULL)
 		{
 			return 0;
 		}
 	}
 	else
 	{
-		vkk_buffer_writeStorage(self->sb24_c, 0, sizeof(float),
+		vkk_buffer_writeStorage(self->sb14_c, 0, sizeof(float),
 		                        &c);
 	}
 
-	// create us2 on demand
-	if(self->us2 == NULL)
+	// create us1_norm on demand
+	if(self->us1_norm == NULL)
 	{
-		self->us2 = vkk_uniformSet_new(engine->engine,
-		                               2, 0, NULL,
-		                               engine->usf2_tensor);
-		if(self->us2 == NULL)
+		self->us1_norm = vkk_uniformSet_new(engine->engine,
+		                                    1, 0, NULL,
+		                                    engine->usf1_tensor_norm);
+		if(self->us1_norm == NULL)
 		{
 			return 0;
 		}
 	}
 
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_array[] =
+	// sb10: u1
+	// sb11: v1
+	// sb12: u2 (optional)
+	// sb13: v2 (optional)
+	// sb14: c
+	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb_dim,
+			.buffer  = self->sb10_data_u1,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb_data,
-		},
-	};
-
-	// sb20: u1
-	// sb21: v1
-	// sb22: u2 (optional)
-	// sb23: v2 (optional)
-	// sb24: c
-	vkk_uniformAttachment_t ua2_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb20_data_u1,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb21_data_v1,
+			.buffer  = self->sb11_data_v1,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb22_data_u2 ?
-			           self->sb22_data_u2 : self->sb20_data_u1,
+			.buffer  = self->sb12_data_u2 ?
+			           self->sb12_data_u2 : self->sb10_data_u1,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb23_data_v2 ?
-			           self->sb23_data_v2 : self->sb21_data_v1,
+			.buffer  = self->sb13_data_v2 ?
+			           self->sb13_data_v2 : self->sb11_data_v1,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb24_c,
+			.buffer  = self->sb14_c,
 		},
+	};
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		self->us0,
+		self->us1_norm,
 	};
 
 	// dispatch(hazard, 1, 1, 1, 64, 1, 1)
@@ -1044,15 +1054,10 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 2, ua0_array);
-	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us2,
-	                                 5, ua2_array);
-	vkk_compute_bindUniformSets(engine->compute, 1,
-	                            &self->us0);
-	vkk_compute_bindUniformSets(engine->compute, 1,
-	                            &self->us2);
+	                                 self->us1_norm,
+	                                 5, ua1_array);
+	vkk_compute_bindUniformSets(engine->compute, 2,
+	                            us_array);
 	nn_engine_dispatch(engine, hazard,
 	                   1, 1, 1, 64, 1, 1);
 
@@ -1093,22 +1098,6 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	                        sizeof(nn_tensorStatsData_t),
 	                        &stats->data);
 
-	// sb00: dimX
-	// sb01: X
-	vkk_uniformAttachment_t ua0_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb_dim,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb_data,
-		},
-	};
-
 	// sb10: stats
 	vkk_uniformAttachment_t ua1_array[] =
 	{
@@ -1131,9 +1120,6 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	{
 		return 0;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 2, ua0_array);
 	vkk_compute_updateUniformSetRefs(engine->compute,
 	                                 stats->us1,
 	                                 1, ua1_array);

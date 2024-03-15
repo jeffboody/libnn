@@ -69,12 +69,12 @@ typedef struct nn_tensor_s
 	vkk_uniformSet_t* us0;
 
 	// spectral normalization (optional)
-	vkk_buffer_t*     sb20_data_u1;
-	vkk_buffer_t*     sb21_data_v1;
-	vkk_buffer_t*     sb22_data_u2;
-	vkk_buffer_t*     sb23_data_v2;
-	vkk_buffer_t*     sb24_c;
-	vkk_uniformSet_t* us2;
+	vkk_buffer_t*     sb10_data_u1;
+	vkk_buffer_t*     sb11_data_v1;
+	vkk_buffer_t*     sb12_data_u2;
+	vkk_buffer_t*     sb13_data_v2;
+	vkk_buffer_t*     sb14_c;
+	vkk_uniformSet_t* us1_norm;
 } nn_tensor_t;
 
 nn_tensor_t* nn_tensor_new(nn_engine_t* engine,

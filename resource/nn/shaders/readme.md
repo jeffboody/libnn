@@ -240,8 +240,8 @@ Stats
 
 Spectral Normalization
 
-* sb20: u1
-* sb21: v1
-* sb22: u2
-* sb23: v2
-* sb24: c
+* sb10: u1
+* sb11: v1
+* sb12: u2
+* sb13: v2
+* sb14: c
