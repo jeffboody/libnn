@@ -242,6 +242,145 @@ nn_tensor_initSN(nn_engine_t* engine, float* buf,
 	}
 }
 
+static int
+nn_tensor_initNormMode(nn_tensor_t* self,
+                       nn_tensorNormMode_e norm,
+                       float c)
+{
+	ASSERT(self);
+
+	nn_engine_t* engine = self->engine;
+
+	nn_dim_t* dim = &self->dim;
+	uint32_t  fc  = dim->count;
+	uint32_t  fh  = dim->height;
+	uint32_t  fw  = dim->width;
+	uint32_t  xd  = dim->depth;
+
+	// check the norm mode
+	if(norm == NN_TENSOR_NORM_MODE_NONE)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+	else if(norm == self->norm)
+	{
+		vkk_buffer_writeStorage(self->sb14_c, 0,
+		                        sizeof(float), &c);
+		return 1;
+	}
+
+	// reset norm state
+	self->norm = NN_TENSOR_NORM_MODE_NONE;
+	vkk_buffer_delete(&self->sb10_data_u1);
+	vkk_buffer_delete(&self->sb11_data_v1);
+	vkk_buffer_delete(&self->sb12_data_u2);
+	vkk_buffer_delete(&self->sb13_data_v2);
+	vkk_buffer_delete(&self->sb14_c);
+	vkk_uniformSet_delete(&self->us1_norm);
+
+	float* tmp_u1 = CALLOC(fc, sizeof(float));
+	if(tmp_u1 == NULL)
+	{
+		LOGE("CALLOC failed");
+		return 0;
+	}
+	nn_tensor_initSN(engine, tmp_u1, fc);
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(engine->compute);
+	self->sb10_data_u1 = vkk_buffer_new(engine->engine, um,
+	                                    VKK_BUFFER_USAGE_STORAGE,
+	                                    fc*sizeof(float),
+	                                    tmp_u1);
+	if(self->sb10_data_u1 == NULL)
+	{
+		goto fail_sb10_data_u1;
+	}
+
+	self->sb11_data_v1 = vkk_buffer_new(engine->engine, um,
+	                                    VKK_BUFFER_USAGE_STORAGE,
+	                                    fh*fw*xd*sizeof(float),
+	                                    NULL);
+	if(self->sb11_data_v1 == NULL)
+	{
+		goto fail_sb11_data_v1;
+	}
+
+	float* tmp_u2 = NULL;
+	if(norm == NN_TENSOR_NORM_MODE_BSSN)
+	{
+		tmp_u2 = CALLOC(xd, sizeof(float));
+		if(tmp_u2 == NULL)
+		{
+			goto fail_tmp_u2;
+		}
+		nn_tensor_initSN(engine, tmp_u2, xd);
+
+		self->sb12_data_u2 = vkk_buffer_new(engine->engine, um,
+		                                    VKK_BUFFER_USAGE_STORAGE,
+		                                    xd*sizeof(float),
+		                                    tmp_u2);
+		if(self->sb12_data_u2 == NULL)
+		{
+			goto fail_sb12_data_u2;
+		}
+
+		self->sb13_data_v2 = vkk_buffer_new(engine->engine, um,
+		                                    VKK_BUFFER_USAGE_STORAGE,
+		                                    fc*fw*fh*sizeof(float),
+		                                    NULL);
+		if(self->sb13_data_v2 == NULL)
+		{
+			goto fail_sb13_data_v2;
+		}
+	}
+
+	// c is only used by BSSN but is still bound for SN
+	self->sb14_c = vkk_buffer_new(engine->engine, um,
+	                              VKK_BUFFER_USAGE_STORAGE,
+	                              sizeof(float),
+	                              &c);
+	if(self->sb14_c == NULL)
+	{
+		goto fail_sb14_c;
+	}
+
+	self->us1_norm = vkk_uniformSet_new(engine->engine,
+	                                    1, 0, NULL,
+	                                    engine->usf1_tensor_norm);
+	if(self->us1_norm == NULL)
+	{
+		goto fail_us1_norm;
+	}
+
+	// free tmp buffers
+	FREE(tmp_u2);
+	FREE(tmp_u1);
+
+	self->norm = norm;
+
+	// success
+	return 1;
+
+	// failure
+	fail_us1_norm:
+		vkk_buffer_delete(&self->sb14_c);
+	fail_sb14_c:
+		vkk_buffer_delete(&self->sb13_data_v2);
+	fail_sb13_data_v2:
+		vkk_buffer_delete(&self->sb12_data_u2);
+	fail_sb12_data_u2:
+		FREE(tmp_u2);
+	fail_tmp_u2:
+		vkk_buffer_delete(&self->sb11_data_v1);
+	fail_sb11_data_v1:
+		vkk_buffer_delete(&self->sb10_data_u1);
+	fail_sb10_data_u1:
+		FREE(tmp_u1);
+	return 0;
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -865,8 +1004,6 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 
 	nn_engine_t* engine = self->engine;
 
-	nn_dim_t* dim = &self->dim;
-
 	if(self->mode != NN_TENSOR_MODE_COMPUTE)
 	{
 		LOGE("invalid");
@@ -879,125 +1016,9 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 
-	// create sb10_data_u1 on demand
-	vkk_updateMode_e um;
-	um = vkk_compute_updateMode(engine->compute);
-	if(self->sb10_data_u1 == NULL)
+	if(nn_tensor_initNormMode(self, norm, c) == 0)
 	{
-		// dim(fc)
-		uint32_t n = dim->count;
-
-		float* buf = CALLOC(n, sizeof(float));
-		if(buf == NULL)
-		{
-			LOGE("CALLOC failed");
-			return 0;
-		}
-		nn_tensor_initSN(engine, buf, n);
-
-		self->sb10_data_u1 = vkk_buffer_new(engine->engine, um,
-		                                    VKK_BUFFER_USAGE_STORAGE,
-		                                    n*sizeof(float),
-		                                    buf);
-		if(self->sb10_data_u1 == NULL)
-		{
-			FREE(buf);
-			return 0;
-		}
-
-		FREE(buf);
-	}
-
-	// create sb11_data_v1 on demand
-	if(self->sb11_data_v1 == NULL)
-	{
-		// dim(fh*fw*xd)
-		uint32_t n = dim->height*dim->width*dim->depth;
-
-		self->sb11_data_v1 = vkk_buffer_new(engine->engine, um,
-		                                    VKK_BUFFER_USAGE_STORAGE,
-		                                    n*sizeof(float),
-		                                    NULL);
-		if(self->sb11_data_v1 == NULL)
-		{
-			return 0;
-		}
-	}
-
-	// create sb12_data_u2 and sb13_data_v2 on demand
-	if(norm == NN_TENSOR_NORM_MODE_BSSN)
-	{
-		if(self->sb12_data_u2 == NULL)
-		{
-			// dim(xd)
-			uint32_t n = dim->depth;
-
-			float* buf = CALLOC(n, sizeof(float));
-			if(buf == NULL)
-			{
-				LOGE("CALLOC failed");
-				return 0;
-			}
-			nn_tensor_initSN(engine, buf, n);
-
-			self->sb12_data_u2 = vkk_buffer_new(engine->engine, um,
-			                                    VKK_BUFFER_USAGE_STORAGE,
-			                                    n*sizeof(float),
-			                                    buf);
-			if(self->sb12_data_u2 == NULL)
-			{
-				FREE(buf);
-				return 0;
-			}
-
-			FREE(buf);
-		}
-
-		if(self->sb13_data_v2 == NULL)
-		{
-			// dim(fc*fh*fw)
-			uint32_t n = dim->count*dim->height*dim->width;
-
-			self->sb13_data_v2 = vkk_buffer_new(engine->engine, um,
-			                                    VKK_BUFFER_USAGE_STORAGE,
-			                                    n*sizeof(float),
-			                                    NULL);
-			if(self->sb13_data_v2 == NULL)
-			{
-				return 0;
-			}
-		}
-	}
-
-	// create sb14_c on demand
-	// c is only used by BSSN but is still bound for SN
-	if(self->sb14_c == NULL)
-	{
-		self->sb14_c = vkk_buffer_new(engine->engine, um,
-		                              VKK_BUFFER_USAGE_STORAGE,
-		                              sizeof(float),
-		                              &c);
-		if(self->sb14_c == NULL)
-		{
-			return 0;
-		}
-	}
-	else
-	{
-		vkk_buffer_writeStorage(self->sb14_c, 0, sizeof(float),
-		                        &c);
-	}
-
-	// create us1_norm on demand
-	if(self->us1_norm == NULL)
-	{
-		self->us1_norm = vkk_uniformSet_new(engine->engine,
-		                                    1, 0, NULL,
-		                                    engine->usf1_tensor_norm);
-		if(self->us1_norm == NULL)
-		{
-			return 0;
-		}
+		return 0;
 	}
 
 	// sb10: u1

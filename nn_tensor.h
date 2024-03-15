@@ -46,15 +46,17 @@ typedef enum
 // BSSN: Bidirectional Scaled Spectral Normalization
 typedef enum
 {
-	NN_TENSOR_NORM_MODE_SN   = 0,
-	NN_TENSOR_NORM_MODE_BSSN = 1,
+	NN_TENSOR_NORM_MODE_NONE = 0,
+	NN_TENSOR_NORM_MODE_SN   = 1,
+	NN_TENSOR_NORM_MODE_BSSN = 2,
 } nn_tensorNormMode_e;
 
 typedef struct nn_tensor_s
 {
 	nn_engine_t* engine;
 
-	nn_tensorMode_e mode;
+	nn_tensorMode_e     mode;
+	nn_tensorNormMode_e norm;
 
 	nn_dim_t dim;
 
