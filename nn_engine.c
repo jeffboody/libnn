@@ -225,6 +225,15 @@ nn_engine_new(vkk_engine_t* engine)
 	                                                   um, 5,
 	                                                   ub_array);
 
+	// sb000: dimX
+	// sb001: X
+	// sb002: dimY
+	// sb003: Y
+	// sb004: idx (xn,yn,count,xk,yk,depth,value)
+	self->usf0_tensor_opk = vkk_uniformSetFactory_new(engine,
+	                                                  um, 5,
+	                                                  ub_array);
+
 	if((self->usf0_batchNorm    == NULL) ||
 	   (self->usf1_batchNorm_fp == NULL) ||
 	   (self->usf1_batchNorm_bp == NULL) ||
@@ -246,7 +255,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf1_loss         == NULL) ||
 	   (self->usf0_tensor       == NULL) ||
 	   (self->usf1_tensor_stats == NULL) ||
-	   (self->usf1_tensor_norm  == NULL))
+	   (self->usf1_tensor_norm  == NULL) ||
+	   (self->usf0_tensor_opk   == NULL))
 	{
 		goto failure;
 	}
@@ -359,6 +369,13 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_tensor_norm = vkk_pipelineLayout_new(engine, 2,
 	                                              usf_array_tensor_norm);
 
+	vkk_uniformSetFactory_t* usf_array_tensor_opk[] =
+	{
+		self->usf0_tensor_opk,
+	};
+	self->pl_tensor_opk = vkk_pipelineLayout_new(engine, 1,
+	                                             usf_array_tensor_opk);
+
 	if((self->pl_batchNorm_fp == NULL) ||
 	   (self->pl_batchNorm_bp == NULL) ||
 	   (self->pl_conv_fp      == NULL) ||
@@ -371,7 +388,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_weight_bp    == NULL) ||
 	   (self->pl_loss         == NULL) ||
 	   (self->pl_tensor_stats == NULL) ||
-	   (self->pl_tensor_norm  == NULL))
+	   (self->pl_tensor_norm  == NULL) ||
+	   (self->pl_tensor_opk   == NULL))
 	{
 		goto failure;
 	}
@@ -915,6 +933,39 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_bssn);
 
+	vkk_computePipelineInfo_t cpi_tensor_fillk =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_opk,
+		.cs      = "nn/shaders/nn_tensor_fillK_comp.spv",
+	};
+
+	self->cp_tensor_fillk =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_fillk);
+
+	vkk_computePipelineInfo_t cpi_tensor_copyk =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_opk,
+		.cs      = "nn/shaders/nn_tensor_copyK_comp.spv",
+	};
+
+	self->cp_tensor_copyk =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_copyk);
+
+	vkk_computePipelineInfo_t cpi_tensor_addk =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_opk,
+		.cs      = "nn/shaders/nn_tensor_addK_comp.spv",
+	};
+
+	self->cp_tensor_addk =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_addk);
+
 	if((self->cp_batchNorm_forwardPassXmean      == NULL) ||
 	   (self->cp_batchNorm_forwardPassXvar       == NULL) ||
 	   (self->cp_batchNorm_forwardPassXhat       == NULL) ||
@@ -963,7 +1014,10 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_loss_bce                        == NULL) ||
 	   (self->cp_tensor_stats                    == NULL) ||
 	   (self->cp_tensor_sn                       == NULL) ||
-	   (self->cp_tensor_bssn                     == NULL))
+	   (self->cp_tensor_bssn                     == NULL) ||
+	   (self->cp_tensor_fillk                    == NULL) ||
+	   (self->cp_tensor_copyk                    == NULL) ||
+	   (self->cp_tensor_addk                     == NULL))
 	{
 		goto failure;
 	}
@@ -995,6 +1049,18 @@ nn_engine_new(vkk_engine_t* engine)
 		goto failure;
 	}
 
+	self->list_tensorOpK_us0[0] = cc_list_new();
+	if(self->list_tensorOpK_us0[0] == NULL)
+	{
+		goto failure;
+	}
+
+	self->list_tensorOpK_us0[1] = cc_list_new();
+	if(self->list_tensorOpK_us0[1] == NULL)
+	{
+		goto failure;
+	}
+
 	// success
 	return self;
 
@@ -1011,6 +1077,29 @@ void nn_engine_delete(nn_engine_t** _self)
 	nn_engine_t* self = *_self;
 	if(self)
 	{
+		if(self->list_tensorOpK_us0[0] &&
+		   self->list_tensorOpK_us0[1])
+		{
+			cc_list_appendList(self->list_tensorOpK_us0[0],
+			                   self->list_tensorOpK_us0[1]);
+			cc_list_delete(&self->list_tensorOpK_us0[1]);
+		}
+
+		nn_tensorOpKUs0Data_t* data;
+		cc_listIter_t*         iter;
+		if(self->list_tensorOpK_us0[0])
+		{
+			iter = cc_list_head(self->list_tensorOpK_us0[0]);
+			while(iter)
+			{
+				data = (nn_tensorOpKUs0Data_t*)
+				       cc_list_remove(self->list_tensorOpK_us0[0],
+				                      &iter);
+				nn_tensorOpKUs0Data_delete(&data);
+			}
+			cc_list_delete(&self->list_tensorOpK_us0[0]);
+		}
+
 		cc_mapIter_t* miter;
 		if(self->map_bn_us2)
 		{
@@ -1040,6 +1129,9 @@ void nn_engine_delete(nn_engine_t** _self)
 		}
 
 		nn_tensor_delete(&self->Null);
+		vkk_computePipeline_delete(&self->cp_tensor_addk);
+		vkk_computePipeline_delete(&self->cp_tensor_copyk);
+		vkk_computePipeline_delete(&self->cp_tensor_fillk);
 		vkk_computePipeline_delete(&self->cp_tensor_bssn);
 		vkk_computePipeline_delete(&self->cp_tensor_sn);
 		vkk_computePipeline_delete(&self->cp_tensor_stats);
@@ -1089,6 +1181,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXhat);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvar);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmean);
+		vkk_pipelineLayout_delete(&self->pl_tensor_opk);
 		vkk_pipelineLayout_delete(&self->pl_tensor_norm);
 		vkk_pipelineLayout_delete(&self->pl_tensor_stats);
 		vkk_pipelineLayout_delete(&self->pl_loss);
@@ -1102,6 +1195,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_conv_fp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_bp);
 		vkk_pipelineLayout_delete(&self->pl_batchNorm_fp);
+		vkk_uniformSetFactory_delete(&self->usf0_tensor_opk);
 		vkk_uniformSetFactory_delete(&self->usf1_tensor_norm);
 		vkk_uniformSetFactory_delete(&self->usf1_tensor_stats);
 		vkk_uniformSetFactory_delete(&self->usf0_tensor);
@@ -1225,6 +1319,70 @@ nn_engine_getConvUs2(nn_engine_t* self,
 	return NULL;
 }
 
+vkk_uniformSet_t*
+nn_engine_getTensorOpKUs0(nn_engine_t* self,
+                          nn_tensor_t* X, nn_tensor_t* Y,
+                          uint32_t xn, uint32_t yn,
+                          uint32_t count,
+                          uint32_t xk, uint32_t yk,
+                          uint32_t depth, float value)
+{
+	// Y may be NULL
+	ASSERT(self);
+	ASSERT(X);
+
+	nn_tensorOpKUs0Idx_t idx =
+	{
+		.xn    = xn,
+		.yn    = yn,
+		.count = count,
+		.xk    = xk,
+		.yk    = yk,
+		.depth = depth,
+		.value = value,
+	};
+
+	nn_tensorOpKUs0Data_t* data;
+	cc_listIter_t*         iter;
+	iter = cc_list_head(self->list_tensorOpK_us0[0]);
+	if(iter)
+	{
+		data = (nn_tensorOpKUs0Data_t*)
+		       cc_list_peekIter(iter);
+
+		if(nn_tensorOpKUs0Data_update(data, X, Y, &idx) == 0)
+		{
+			return NULL;
+		}
+
+		cc_list_swapn(self->list_tensorOpK_us0[0],
+		              self->list_tensorOpK_us0[1],
+		              iter, NULL);
+	}
+	else
+	{
+		data = nn_tensorOpKUs0Data_new(X, Y, &idx);
+		if(data == NULL)
+		{
+			return NULL;
+		}
+
+		if(cc_list_append(self->list_tensorOpK_us0[1], NULL,
+		                  data) == NULL)
+		{
+			goto fail_append;
+		}
+	}
+
+	// success
+	return data->us0;
+
+	// failure
+	fail_append:
+		nn_tensorOpKUs0Data_delete(&data);
+	return NULL;
+}
+
 int nn_engine_begin(nn_engine_t* self)
 {
 	ASSERT(self);
@@ -1243,6 +1401,10 @@ void nn_engine_end(nn_engine_t* self)
 	}
 
 	vkk_compute_end(self->compute);
+
+	// make data available for next pass
+	cc_list_appendList(self->list_tensorOpK_us0[0],
+	                   self->list_tensorOpK_us0[1]);
 }
 
 void nn_engine_dispatch(nn_engine_t* self,

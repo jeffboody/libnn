@@ -385,6 +385,179 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 * public                                                   *
 ***********************************************************/
 
+nn_tensorOpKUs0Data_t*
+nn_tensorOpKUs0Data_new(nn_tensor_t* X, nn_tensor_t* Y,
+                        nn_tensorOpKUs0Idx_t* idx)
+{
+	// Y may be NULL
+	ASSERT(X);
+	ASSERT(idx);
+
+	nn_engine_t* engine = X->engine;
+
+	nn_tensorOpKUs0Data_t* self;
+	self = (nn_tensorOpKUs0Data_t*)
+	       CALLOC(1, sizeof(nn_tensorOpKUs0Data_t));
+	if(self == NULL)
+	{
+		LOGE("CALLOC failed");
+		return NULL;
+	}
+
+	vkk_updateMode_e um;
+	um = vkk_compute_updateMode(engine->compute);
+	self->sb004_idx = vkk_buffer_new(engine->engine, um,
+	                                 VKK_BUFFER_USAGE_STORAGE,
+	                                 sizeof(nn_tensorOpKUs0Idx_t),
+	                                 idx);
+	if(self->sb004_idx == NULL)
+	{
+		goto fail_sb004_idx;
+	}
+
+	// optionally replace Y with the Null tensor
+	if(Y == NULL)
+	{
+		Y = engine->Null;
+	}
+
+	self->us0 = vkk_uniformSet_new(engine->engine,
+	                               0, 0, NULL,
+	                               engine->usf0_tensor_opk);
+	if(self->us0 == NULL)
+	{
+		goto fail_us0;
+	}
+
+	// sb000: dimX
+	// sb001: X
+	// sb002: dimY
+	// sb003: Y
+	// sb004: idx (xn,yn,count,xk,yk,depth,value)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb004_idx,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0,
+	                                 5, ua0_array);
+
+	// success
+	return self;
+
+	// failure:
+	fail_us0:
+		vkk_buffer_delete(&self->sb004_idx);
+	fail_sb004_idx:
+		FREE(self);
+	return NULL;
+}
+
+void
+nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self)
+{
+	ASSERT(_self);
+
+	nn_tensorOpKUs0Data_t* self = *_self;
+	if(self)
+	{
+		vkk_uniformSet_delete(&self->us0);
+		vkk_buffer_delete(&self->sb004_idx);
+		FREE(self);
+		*_self = NULL;
+	}
+}
+
+int
+nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
+                           nn_tensor_t* X, nn_tensor_t* Y,
+                           nn_tensorOpKUs0Idx_t* idx)
+{
+	// Y may be NULL
+	ASSERT(self);
+	ASSERT(X);
+	ASSERT(idx);
+
+	nn_engine_t* engine = X->engine;
+
+	if(vkk_buffer_writeStorage(self->sb004_idx, 0,
+	                           sizeof(nn_tensorOpKUs0Idx_t),
+	                           idx) == 0)
+	{
+		return 0;
+	}
+
+	// optionally replace Y with the Null tensor
+	if(Y == NULL)
+	{
+		Y = engine->Null;
+	}
+
+	// sb000: dimX
+	// sb001: X
+	// sb002: dimY
+	// sb003: Y
+	// sb004: idx (xn,yn,count,xk,yk,depth,value)
+	vkk_uniformAttachment_t ua0_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_dim,
+		},
+		{
+			.binding = 1,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = X->sb_data,
+		},
+		{
+			.binding = 2,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = Y->sb_data,
+		},
+		{
+			.binding = 4,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb004_idx,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0,
+	                                 5, ua0_array);
+	return 1;
+}
+
 nn_tensor_t*
 nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
               nn_tensorInit_e init,
@@ -941,6 +1114,72 @@ int nn_tensor_computeFill(nn_tensor_t* self,
 	return 1;
 }
 
+int nn_tensor_computeFillK(nn_tensor_t* self,
+                           vkk_hazard_e hazard,
+                           uint32_t n,
+                           uint32_t count,
+                           uint32_t k,
+                           uint32_t depth,
+                           float value)
+{
+	ASSERT(self);
+
+	nn_engine_t* engine = self->engine;
+
+	if(self->mode != NN_TENSOR_MODE_COMPUTE)
+	{
+		LOGE("invalid mode=%i", self->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dim = nn_tensor_dim(self);
+	if((count == 0) || ((n + count) > dim->count))
+	{
+		LOGE("invalid n=%u, count=%u:%u", n, count, dim->count);
+		return 0;
+	}
+	if((depth == 0) || ((k + depth) > dim->depth))
+	{
+		LOGE("invalid k=%u, depth=%u:%u", k, depth, dim->depth);
+		return 0;
+	}
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpKUs0(engine, self, NULL,
+	                                n, 0, count,
+	                                k, 0, depth, value);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// nn_tensor_fill.comp
+	// dispatch(hazard, count, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp = engine->cp_tensor_fillk;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_dispatch(engine, hazard,
+	                   count, dim->height, dim->width,
+	                   1, 8, 8);
+
+	return 1;
+}
+
 int nn_tensor_computeCopy(nn_tensor_t* src,
                           nn_tensor_t* dst,
                           vkk_hazard_e hazard,
@@ -991,6 +1230,180 @@ int nn_tensor_computeCopy(nn_tensor_t* src,
 	                        src_n*bytes,
 	                        dst_n*bytes,
 	                        count*bytes);
+
+	return 1;
+}
+
+int nn_tensor_computeCopyK(nn_tensor_t* src,
+                           nn_tensor_t* dst,
+                           vkk_hazard_e hazard,
+                           uint32_t src_n,
+                           uint32_t dst_n,
+                           uint32_t count,
+                           uint32_t src_k,
+                           uint32_t dst_k,
+                           uint32_t depth)
+{
+	ASSERT(src);
+	ASSERT(dst);
+
+	nn_engine_t* engine = src->engine;
+
+	if((src->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (dst->mode != NN_TENSOR_MODE_COMPUTE))
+	{
+		LOGE("invalid mode=%i:%i", src->mode, dst->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dim_src = nn_tensor_dim(src);
+	nn_dim_t* dim_dst = nn_tensor_dim(dst);
+	if((count == 0)                       ||
+	   ((src_n + count) > dim_src->count) ||
+	   ((dst_n + count) > dim_dst->count))
+	{
+		LOGE("invalid n=%u:%u, count=%u:%u:%u",
+		     src_n, dst_n,
+		     count, dim_src->count, dim_dst->count);
+		return 0;
+	}
+	if((depth == 0)                       ||
+	   ((src_k + depth) > dim_src->depth) ||
+	   ((dst_k + depth) > dim_dst->depth))
+	{
+		LOGE("invalid k=%u:%u, depth=%u:%u:%u",
+		     src_k, dst_k,
+		     depth, dim_src->depth, dim_dst->depth);
+		return 0;
+	}
+	if((dim_src->height != dim_dst->height) ||
+	   (dim_src->width  != dim_dst->width))
+	{
+		LOGE("invalid height=%u:%u, width=%u:%u",
+		     dim_src->height, dim_dst->height,
+		     dim_src->width,  dim_dst->width);
+		return 0;
+	}
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpKUs0(engine, src, dst,
+	                                src_n, dst_n, count,
+	                                src_k, dst_k, depth,
+	                                0.0f);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// nn_tensor_copy.comp
+	// dispatch(hazard, count, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp = engine->cp_tensor_copyk;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_dispatch(engine, hazard, count,
+	                   dim_src->height, dim_src->width,
+	                   1, 8, 8);
+
+	return 1;
+}
+
+int nn_tensor_computeAddK(nn_tensor_t* x,
+                          nn_tensor_t* v,
+                          vkk_hazard_e hazard,
+                          uint32_t xn,
+                          uint32_t vn,
+                          uint32_t count,
+                          uint32_t xk,
+                          uint32_t vk,
+                          uint32_t depth)
+{
+	ASSERT(x);
+	ASSERT(v);
+
+	nn_engine_t* engine = x->engine;
+
+	if((x->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (v->mode != NN_TENSOR_MODE_COMPUTE))
+	{
+		LOGE("invalid mode=%i:%i", x->mode, v->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dim_x = nn_tensor_dim(x);
+	nn_dim_t* dim_v = nn_tensor_dim(v);
+	if((count == 0)                       ||
+	   ((xn + count) > dim_x->count) ||
+	   ((vn + count) > dim_v->count))
+	{
+		LOGE("invalid n=%u:%u, count=%u:%u:%u",
+		     xn, vn, count, dim_x->count, dim_v->count);
+		return 0;
+	}
+	if((depth == 0)                       ||
+	   ((xk + depth) > dim_x->depth) ||
+	   ((vk + depth) > dim_v->depth))
+	{
+		LOGE("invalid k=%u:%u, depth=%u:%u:%u",
+		     xk, vk, depth, dim_x->depth, dim_v->depth);
+		return 0;
+	}
+	if((dim_x->height != dim_v->height) ||
+	   (dim_x->width  != dim_v->width))
+	{
+		LOGE("invalid height=%u:%u, width=%u:%u",
+		     dim_x->height, dim_v->height,
+		     dim_x->width,  dim_v->width);
+		return 0;
+	}
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpKUs0(engine, x, v,
+	                                xn, vn, count,
+	                                xk, vk, depth,
+	                                0.0f);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// nn_tensor_copy.comp
+	// dispatch(hazard, count, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp = engine->cp_tensor_addk;
+	if(nn_engine_bind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_dispatch(engine, hazard, count,
+	                   dim_x->height, dim_x->width,
+	                   1, 8, 8);
 
 	return 1;
 }

@@ -26,6 +26,7 @@
 
 #include "../libcc/rng/cc_rngNormal.h"
 #include "../libcc/rng/cc_rngUniform.h"
+#include "../libcc/cc_list.h"
 #include "../libcc/cc_map.h"
 #include "../libvkk/vkk.h"
 #include "nn.h"
@@ -63,6 +64,7 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf0_tensor;
 	vkk_uniformSetFactory_t* usf1_tensor_stats;
 	vkk_uniformSetFactory_t* usf1_tensor_norm;
+	vkk_uniformSetFactory_t* usf0_tensor_opk;
 
 	vkk_pipelineLayout_t* pl_batchNorm_fp;
 	vkk_pipelineLayout_t* pl_batchNorm_bp;
@@ -77,6 +79,7 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_loss;
 	vkk_pipelineLayout_t* pl_tensor_stats;
 	vkk_pipelineLayout_t* pl_tensor_norm;
+	vkk_pipelineLayout_t* pl_tensor_opk;
 
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXmean;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXvar;
@@ -127,11 +130,15 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_tensor_stats;
 	vkk_computePipeline_t* cp_tensor_sn;
 	vkk_computePipeline_t* cp_tensor_bssn;
+	vkk_computePipeline_t* cp_tensor_fillk;
+	vkk_computePipeline_t* cp_tensor_copyk;
+	vkk_computePipeline_t* cp_tensor_addk;
 
 	nn_tensor_t* Null;
 
-	cc_map_t* map_bn_us2;
-	cc_map_t* map_conv_us2;
+	cc_map_t*  map_bn_us2;
+	cc_map_t*  map_conv_us2;
+	cc_list_t* list_tensorOpK_us0[2];
 } nn_engine_t;
 
 nn_engine_t*      nn_engine_new(vkk_engine_t* engine);
@@ -141,6 +148,16 @@ vkk_uniformSet_t* nn_engine_getBatchNormUs2(nn_engine_t* self,
 vkk_uniformSet_t* nn_engine_getConvUs2(nn_engine_t* self,
                                        uint32_t f, uint32_t fi,
                                        uint32_t fj, uint32_t k);
+vkk_uniformSet_t* nn_engine_getTensorOpKUs0(nn_engine_t* self,
+                                            nn_tensor_t* X,
+                                            nn_tensor_t* Y,
+                                            uint32_t xn,
+                                            uint32_t yn,
+                                            uint32_t count,
+                                            uint32_t xk,
+                                            uint32_t yk,
+                                            uint32_t depth,
+                                            float value);
 int               nn_engine_begin(nn_engine_t* self);
 void              nn_engine_end(nn_engine_t* self);
 void              nn_engine_dispatch(nn_engine_t* self,

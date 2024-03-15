@@ -51,6 +51,32 @@ typedef enum
 	NN_TENSOR_NORM_MODE_BSSN = 2,
 } nn_tensorNormMode_e;
 
+typedef struct nn_tensorOpKUs0Idx_s
+{
+	uint32_t xn;
+	uint32_t yn;
+	uint32_t count;
+	uint32_t xk;
+	uint32_t yk;
+	uint32_t depth;
+	float    value;
+} nn_tensorOpKUs0Idx_t;
+
+typedef struct nn_tensorOpKUs0Data_s
+{
+	vkk_buffer_t*     sb004_idx;
+	vkk_uniformSet_t* us0;
+} nn_tensorOpKUs0Data_t;
+
+nn_tensorOpKUs0Data_t* nn_tensorOpKUs0Data_new(nn_tensor_t* X,
+                                               nn_tensor_t* Y,
+                                               nn_tensorOpKUs0Idx_t* idx);
+void                   nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self);
+int                    nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
+                                                  nn_tensor_t* X,
+                                                  nn_tensor_t* Y,
+                                                  nn_tensorOpKUs0Idx_t* idx);
+
 typedef struct nn_tensor_s
 {
 	nn_engine_t* engine;
@@ -121,12 +147,37 @@ int          nn_tensor_computeFill(nn_tensor_t* self,
                                    uint32_t n,
                                    uint32_t count,
                                    float value);
+int          nn_tensor_computeFillK(nn_tensor_t* self,
+                                    vkk_hazard_e hazard,
+                                    uint32_t n,
+                                    uint32_t count,
+                                    uint32_t k,
+                                    uint32_t depth,
+                                    float value);
 int          nn_tensor_computeCopy(nn_tensor_t* src,
                                    nn_tensor_t* dst,
                                    vkk_hazard_e hazard,
                                    uint32_t src_n,
                                    uint32_t dst_n,
                                    uint32_t count);
+int          nn_tensor_computeCopyK(nn_tensor_t* src,
+                                    nn_tensor_t* dst,
+                                    vkk_hazard_e hazard,
+                                    uint32_t src_n,
+                                    uint32_t dst_n,
+                                    uint32_t count,
+                                    uint32_t src_k,
+                                    uint32_t dst_k,
+                                    uint32_t depth);
+int          nn_tensor_computeAddK(nn_tensor_t* x,
+                                   nn_tensor_t* v,
+                                   vkk_hazard_e hazard,
+                                   uint32_t xn,
+                                   uint32_t vn,
+                                   uint32_t count,
+                                   uint32_t xk,
+                                   uint32_t vk,
+                                   uint32_t depth);
 int          nn_tensor_computeNormalize(nn_tensor_t* self,
                                         vkk_hazard_e hazard,
                                         nn_tensorNormMode_e norm,
