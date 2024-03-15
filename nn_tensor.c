@@ -782,7 +782,7 @@ int nn_tensor_ioCopy(nn_tensor_t* src,
 
 	float* src_data = nn_tensor_data(src, src_n);
 	float* dst_data = nn_tensor_data(dst, dst_n);
-	if((dst_data == NULL) || (dst_data == NULL))
+	if((src_data == NULL) || (dst_data == NULL))
 	{
 		return 0;
 	}
