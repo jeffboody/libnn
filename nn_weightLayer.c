@@ -117,13 +117,13 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs*nc, 1, 1, 64, 1, 1)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_weight_forwardPass;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs*nc, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs*nc, 1, 1, 64, 1, 1);
 
 	// store reference
 	self->X = X;
@@ -211,24 +211,24 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs*xd, 1, 1, 64, 1, 1)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_weight_backprop_dL_dX;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs*xd, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs*xd, 1, 1, 64, 1, 1);
 
 	// nn_weightLayer_backprop_dL_dW
 	// RAW hazard handled by nn_weightLayer_backprop_dL_dX
 	// dispatch(NONE, nc*xd, 1, 1, 64, 1, 1)
 	cp = engine->cp_weight_backprop_dL_dW;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
-	                   nc*xd, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	                          nc*xd, 1, 1, 64, 1, 1);
 
 	// nn_weightLayer_backprop_dL_dB
 	// RAW hazard handled by nn_weightLayer_backprop_dL_dX
@@ -236,12 +236,12 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		cp = engine->cp_weight_backprop_dL_dB;
-		if(nn_engine_bind(engine, cp) == 0)
+		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-		nn_engine_dispatch(engine, VKK_HAZARD_NONE,
-		                   nc, 1, 1, 64, 1, 1);
+		nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+		                          nc, 1, 1, 64, 1, 1);
 	}
 
 	// optionally skip parameter update
@@ -253,23 +253,23 @@ nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
 	// nn_weightLayer_backpropUpdateW
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
 	cp = engine->cp_weight_backpropUpdateW;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   nc, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          nc, 1, 1, 64, 1, 1);
 
 	// nn_weightLayer_backpropUpdateB
 	// RAW hazard handled by nn_weightLayer_backpropUpdateW
 	// dispatch(NONE, nc, 1, 1, 64, 1, 1)
 	cp = engine->cp_weight_backpropUpdateB;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
-	                   nc, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	                          nc, 1, 1, 64, 1, 1);
 
 	return self->dL_dX;
 }

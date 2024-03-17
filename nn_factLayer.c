@@ -101,14 +101,14 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	// nn_factLayer_forwardPass
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	if(nn_engine_bind(engine, cp[self->fn]) == 0)
+	if(nn_engine_computeBind(engine, cp[self->fn]) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	// reference for backprop
 	self->X = X;
@@ -178,14 +178,14 @@ nn_factLayer_backpropFn(nn_layer_t* base, int flags,
 
 	// nn_factLayer_backprop
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
-	if(nn_engine_bind(engine, cp[self->fn]) == 0)
+	if(nn_engine_computeBind(engine, cp[self->fn]) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	// dL_dY replaced by dL_dX
 	return dL_dY;

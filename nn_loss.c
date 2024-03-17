@@ -388,24 +388,24 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 
 	// nn_loss
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   1, 1, 1, 8, 8, 1);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          1, 1, 1, 8, 8, 1);
 
 	// nn_loss_dL_dY
 	// RAW hazard handled by nn_loss
 	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
-	if(nn_engine_bind(engine, cp_dL_dY) == 0)
+	if(nn_engine_computeBind(engine, cp_dL_dY) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_dispatch(engine, VKK_HAZARD_NONE,
-	                   bs, dimY->height, dimY->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	                          bs, dimY->height, dimY->width,
+	                          1, 8, 8);
 
 	if(nn_tensor_computeStats(dL_dY, VKK_HAZARD_RAW, bs,
 	                          self->stats_dL_dY) == 0)

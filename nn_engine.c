@@ -1383,14 +1383,14 @@ nn_engine_getTensorOpKUs0(nn_engine_t* self,
 	return NULL;
 }
 
-int nn_engine_begin(nn_engine_t* self)
+int nn_engine_computeBegin(nn_engine_t* self)
 {
 	ASSERT(self);
 
 	return vkk_compute_begin(self->compute);
 }
 
-void nn_engine_end(nn_engine_t* self)
+void nn_engine_computeEnd(nn_engine_t* self)
 {
 	ASSERT(self);
 
@@ -1407,14 +1407,14 @@ void nn_engine_end(nn_engine_t* self)
 	                   self->list_tensorOpK_us0[1]);
 }
 
-void nn_engine_dispatch(nn_engine_t* self,
-                        vkk_hazard_e hazard,
-                        uint32_t count_x,
-                        uint32_t count_y,
-                        uint32_t count_z,
-                        uint32_t local_size_x,
-                        uint32_t local_size_y,
-                        uint32_t local_size_z)
+void nn_engine_computeDispatch(nn_engine_t* self,
+                               vkk_hazard_e hazard,
+                               uint32_t count_x,
+                               uint32_t count_y,
+                               uint32_t count_z,
+                               uint32_t local_size_x,
+                               uint32_t local_size_y,
+                               uint32_t local_size_z)
 {
 	ASSERT(self);
 
@@ -1426,8 +1426,8 @@ void nn_engine_dispatch(nn_engine_t* self,
 }
 
 int
-nn_engine_bind(nn_engine_t* self,
-               vkk_computePipeline_t* cp)
+nn_engine_computeBind(nn_engine_t* self,
+                      vkk_computePipeline_t* cp)
 {
 	ASSERT(self);
 	ASSERT(cp);

@@ -142,7 +142,7 @@ nn_arch_init(nn_arch_t* self,
 	vkk_buffer_writeStorage(self->sb101_state, 0,
 	                        sizeof(nn_archState_t), state);
 
-	return nn_engine_begin(engine);
+	return nn_engine_computeBegin(engine);
 }
 
 /***********************************************************
@@ -506,7 +506,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 		iter = cc_list_prev(iter);
 	}
 
-	nn_engine_end(self->engine);
+	nn_engine_computeEnd(self->engine);
 	nn_arch_post(self, flags);
 
 	// optionally copy Y
@@ -525,7 +525,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 	fail_backprop:
 	fail_loss:
 	fail_forwardPass:
-		nn_engine_end(self->engine);
+		nn_engine_computeEnd(self->engine);
 	return NULL;
 }
 
@@ -579,7 +579,7 @@ int nn_arch_predict(nn_arch_t* self,
 	}
 	self->O = X;
 
-	nn_engine_end(self->engine);
+	nn_engine_computeEnd(self->engine);
 	nn_arch_post(self, NN_LAYER_FLAG_FORWARD_PASS);
 
 	// success
@@ -587,6 +587,6 @@ int nn_arch_predict(nn_arch_t* self,
 
 	// failure
 	fail_forwardPass:
-		nn_engine_end(self->engine);
+		nn_engine_computeEnd(self->engine);
 	return 0;
 }

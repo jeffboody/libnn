@@ -158,17 +158,17 @@ vkk_uniformSet_t* nn_engine_getTensorOpKUs0(nn_engine_t* self,
                                             uint32_t yk,
                                             uint32_t depth,
                                             float value);
-int               nn_engine_begin(nn_engine_t* self);
-void              nn_engine_end(nn_engine_t* self);
-void              nn_engine_dispatch(nn_engine_t* self,
-                                     vkk_hazard_e hazard,
-                                     uint32_t count_x,
-                                     uint32_t count_y,
-                                     uint32_t count_z,
-                                     uint32_t local_size_x,
-                                     uint32_t local_size_y,
-                                     uint32_t local_size_z);
-int               nn_engine_bind(nn_engine_t* self,
-                                 vkk_computePipeline_t* cp);
+int               nn_engine_computeBegin(nn_engine_t* self);
+void              nn_engine_computeEnd(nn_engine_t* self);
+void              nn_engine_computeDispatch(nn_engine_t* self,
+                                            vkk_hazard_e hazard,
+                                            uint32_t count_x,
+                                            uint32_t count_y,
+                                            uint32_t count_z,
+                                            uint32_t local_size_x,
+                                            uint32_t local_size_y,
+                                            uint32_t local_size_z);
+int               nn_engine_computeBind(nn_engine_t* self,
+                                        vkk_computePipeline_t* cp);
 
 #endif

@@ -1330,15 +1330,15 @@ int nn_tensor_computeFillK(nn_tensor_t* self,
 	// nn_tensor_fill.comp
 	// dispatch(hazard, count, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp = engine->cp_tensor_fillk;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_dispatch(engine, hazard,
-	                   count, dim->height, dim->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, dim->height, dim->width,
+	                          1, 8, 8);
 
 	return 1;
 }
@@ -1472,15 +1472,15 @@ int nn_tensor_computeCopyK(nn_tensor_t* src,
 	// nn_tensor_copy.comp
 	// dispatch(hazard, count, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp = engine->cp_tensor_copyk;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_dispatch(engine, hazard, count,
-	                   dim_src->height, dim_src->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, hazard, count,
+	                          dim_src->height, dim_src->width,
+	                          1, 8, 8);
 
 	return 1;
 }
@@ -1558,15 +1558,15 @@ int nn_tensor_computeAddK(nn_tensor_t* x,
 	// nn_tensor_copy.comp
 	// dispatch(hazard, count, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp = engine->cp_tensor_addk;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_dispatch(engine, hazard, count,
-	                   dim_x->height, dim_x->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, hazard, count,
+	                          dim_x->height, dim_x->width,
+	                          1, 8, 8);
 
 	return 1;
 }
@@ -1646,7 +1646,7 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		cp = engine->cp_tensor_bssn;
 	}
 
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
@@ -1655,8 +1655,8 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 	                                 5, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2,
 	                            us_array);
-	nn_engine_dispatch(engine, hazard,
-	                   1, 1, 1, 64, 1, 1);
+	nn_engine_computeDispatch(engine, hazard,
+	                          1, 1, 1, 64, 1, 1);
 
 	return 1;
 }
@@ -1713,7 +1713,7 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 
 	// dispatch(hazard, 1, 1, 1, 8, 8, 1)
 	vkk_computePipeline_t* cp = engine->cp_tensor_stats;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
@@ -1722,8 +1722,8 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	                                 1, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2,
 	                            us_array);
-	nn_engine_dispatch(engine, hazard,
-	                   1, 1, 1, 8, 8, 1);
+	nn_engine_computeDispatch(engine, hazard,
+	                          1, 1, 1, 8, 8, 1);
 
 	stats->dirty = 1;
 

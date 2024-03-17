@@ -167,14 +167,14 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_skip_backpropFork;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	return self->dL_dX1;
 }
@@ -273,14 +273,14 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_skip_forwardPassAdd;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	return Y;
 }
@@ -406,14 +406,14 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_skip_backpropAdd;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	return dL_dX1;
 }
@@ -512,14 +512,14 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_skip_forwardPassCat;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	return Y;
 }
@@ -627,14 +627,14 @@ nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_skip_backpropCat;
-	if(nn_engine_bind(engine, cp) == 0)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_dispatch(engine, VKK_HAZARD_RAW,
-	                   bs, dimX->height, dimX->width,
-	                   1, 8, 8);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	return dL_dX1;
 }
