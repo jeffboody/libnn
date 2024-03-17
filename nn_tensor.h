@@ -51,6 +51,8 @@ typedef enum
 	NN_TENSOR_NORM_BSSN = 2,
 } nn_tensorNorm_e;
 
+#define NN_TENSOR_NORM_COUNT 3
+
 typedef struct nn_tensorOpKUs0Idx_s
 {
 	uint32_t xn;

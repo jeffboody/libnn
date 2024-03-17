@@ -42,6 +42,10 @@ typedef union
 	uint32_t u32;
 } nn_tensorValue_t;
 
+const char* NN_TENSOR_NORM_STRING_NONE = "none";
+const char* NN_TENSOR_NORM_STRING_SN   = "sn";
+const char* NN_TENSOR_NORM_STRING_BSSN = "bssn";
+
 /***********************************************************
 * private                                                  *
 ***********************************************************/
@@ -69,73 +73,161 @@ nn_tensor_data(nn_tensor_t* self, uint32_t n)
 }
 
 static int
-nn_tensor_importData(nn_tensor_t* self, jsmn_val_t* val)
+nn_tensor_importStorage(nn_tensor_t* self, jsmn_val_t* val,
+                        vkk_buffer_t* buf)
 {
 	ASSERT(self);
 	ASSERT(val);
+	ASSERT(buf);
 
-	nn_dim_t* dim = nn_tensor_dim(self);
-
-	nn_tensor_t* tmp = NULL;
-	if(self->mode == NN_TENSOR_MODE_COMPUTE)
+	if(val->type != JSMN_TYPE_ARRAY)
 	{
-		tmp = nn_tensor_new(self->engine, dim,
-		                    NN_TENSOR_INIT_ZERO,
-		                    NN_TENSOR_MODE_IO);
-		if(tmp == NULL)
-		{
-			return 0;
-		}
-
-		if(nn_tensor_importData(tmp, val) == 0)
-		{
-			goto fail_importData;
-		}
-
-		if(nn_tensor_copy(tmp, self, 0, 0, dim->count) == 0)
-		{
-			goto fail_copy;
-		}
-
-		nn_tensor_delete(&tmp);
+		LOGE("invalid type=%i", val->type);
+		return 0;
 	}
-	else
+
+	size_t   size  = vkk_buffer_size(buf);
+	uint32_t count = (uint32_t) (size/sizeof(float));
+	float*   tmp   = (float*) CALLOC(1, size);
+	if(tmp == NULL)
 	{
-		uint32_t count = dim->count*dim->height*
-		                 dim->width*dim->depth;
-
-		uint32_t       i;
-		cc_listIter_t* iter = cc_list_head(val->array->list);
-		for(i = 0; i < count; ++i)
-		{
-			if(iter == NULL)
-			{
-				LOGE("invalid");
-				return 0;
-			}
-
-			jsmn_val_t* elem;
-			elem = (jsmn_val_t*) cc_list_peekIter(iter);
-			if(elem->type != JSMN_TYPE_PRIMITIVE)
-			{
-				LOGE("invalid");
-				return 0;
-			}
-
-			self->data[i] = strtof(elem->data, NULL);
-
-			iter = cc_list_next(iter);
-		}
+		LOGE("CALLOC failed");
+		return 0;
 	}
+
+	// fill tmp
+	uint32_t       i;
+	cc_listIter_t* iter  = cc_list_head(val->array->list);
+	for(i = 0; i < count; ++i)
+	{
+		if(iter == NULL)
+		{
+			LOGE("invalid");
+			goto fail_array;
+		}
+
+		jsmn_val_t* elem;
+		elem = (jsmn_val_t*) cc_list_peekIter(iter);
+		if(elem->type != JSMN_TYPE_PRIMITIVE)
+		{
+			LOGE("invalid");
+			goto fail_array;
+		}
+
+		tmp[i] = strtof(elem->data, NULL);
+
+		iter = cc_list_next(iter);
+	}
+
+	if(vkk_buffer_writeStorage(buf, 0, size, tmp) == 0)
+	{
+		goto fail_write;
+	}
+
+	FREE(tmp);
 
 	// success
 	return 1;
 
 	// failure
-	fail_copy:
-	fail_importData:
-		nn_tensor_delete(&tmp);
+	fail_write:
+	fail_array:
+		FREE(tmp);
 	return 0;
+}
+
+static int
+nn_tensor_exportStorage(nn_tensor_t* self,
+                        jsmn_stream_t* stream,
+                        const char* name,
+                        vkk_buffer_t* buf)
+{
+	ASSERT(self);
+	ASSERT(stream);
+	ASSERT(name);
+	ASSERT(buf);
+
+	size_t   size  = vkk_buffer_size(buf);
+	uint32_t count = (uint32_t) (size/sizeof(float));
+	float*   tmp   = (float*) CALLOC(1, size);
+	if(tmp == NULL)
+	{
+		LOGE("CALLOC failed");
+		return 0;
+	}
+
+	if(vkk_buffer_readStorage(buf, 0, size, tmp) == 0)
+	{
+		goto fail_read;
+	}
+
+	int ret = 0;
+	ret &= jsmn_stream_key(stream, "%s", name);
+	ret &= jsmn_stream_beginArray(stream);
+
+	uint32_t i;
+	for(i = 0; i < count; ++i)
+	{
+		ret &= jsmn_stream_float(stream, tmp[i]);
+	}
+	ret &= jsmn_stream_end(stream);
+
+	FREE(tmp);
+
+	// success
+	return ret;
+
+	// failure
+	fail_read:
+		FREE(tmp);
+	return 0;
+}
+
+static int
+nn_tensor_importData(nn_tensor_t* self, jsmn_val_t* val)
+{
+	ASSERT(self);
+	ASSERT(val);
+
+	if(val->type != JSMN_TYPE_ARRAY)
+	{
+		LOGE("invalid type=%i", val->type);
+		return 0;
+	}
+
+	if(self->mode == NN_TENSOR_MODE_COMPUTE)
+	{
+		return nn_tensor_importStorage(self, val,
+		                               self->sb_data);
+	}
+
+	// fill data
+	uint32_t       i;
+	nn_dim_t*      dim   = nn_tensor_dim(self);
+	uint32_t       count = nn_dim_sizeElements(dim);
+	cc_listIter_t* iter  = cc_list_head(val->array->list);
+	for(i = 0; i < count; ++i)
+	{
+		if(iter == NULL)
+		{
+			LOGE("invalid");
+			return 0;
+		}
+
+		jsmn_val_t* elem;
+		elem = (jsmn_val_t*) cc_list_peekIter(iter);
+		if(elem->type != JSMN_TYPE_PRIMITIVE)
+		{
+			LOGE("invalid");
+			return 0;
+		}
+
+		self->data[i] = strtof(elem->data, NULL);
+
+		iter = cc_list_next(iter);
+	}
+
+	return 1;
 }
 
 static void
@@ -245,7 +337,7 @@ nn_tensor_initSN(nn_engine_t* engine, float* buf,
 static int
 nn_tensor_initNormMode(nn_tensor_t* self,
                        nn_tensorNorm_e norm,
-                       float c)
+                       float c, int init_sn)
 {
 	ASSERT(self);
 
@@ -279,13 +371,17 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	vkk_buffer_delete(&self->sb14_c);
 	vkk_uniformSet_delete(&self->us1_norm);
 
-	float* tmp_u1 = CALLOC(fc, sizeof(float));
-	if(tmp_u1 == NULL)
+	float* tmp_u1 = NULL;
+	if(init_sn)
 	{
-		LOGE("CALLOC failed");
-		return 0;
+		tmp_u1 = CALLOC(fc, sizeof(float));
+		if(tmp_u1 == NULL)
+		{
+			LOGE("CALLOC failed");
+			return 0;
+		}
+		nn_tensor_initSN(engine, tmp_u1, fc);
 	}
-	nn_tensor_initSN(engine, tmp_u1, fc);
 
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
@@ -310,12 +406,15 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	float* tmp_u2 = NULL;
 	if(norm == NN_TENSOR_NORM_BSSN)
 	{
-		tmp_u2 = CALLOC(xd, sizeof(float));
-		if(tmp_u2 == NULL)
+		if(init_sn)
 		{
-			goto fail_tmp_u2;
+			tmp_u2 = CALLOC(xd, sizeof(float));
+			if(tmp_u2 == NULL)
+			{
+				goto fail_tmp_u2;
+			}
+			nn_tensor_initSN(engine, tmp_u2, xd);
 		}
-		nn_tensor_initSN(engine, tmp_u2, xd);
 
 		self->sb12_data_u2 = vkk_buffer_new(engine->engine, um,
 		                                    VKK_BUFFER_USAGE_STORAGE,
@@ -711,6 +810,11 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 
 	jsmn_val_t* val_dim  = NULL;
 	jsmn_val_t* val_data = NULL;
+	jsmn_val_t* val_norm = NULL;
+	jsmn_val_t* val_u1   = NULL;
+	jsmn_val_t* val_v1   = NULL;
+	jsmn_val_t* val_u2   = NULL;
+	jsmn_val_t* val_v2   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -730,6 +834,29 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 			if(strcmp(kv->key, "data") == 0)
 			{
 				val_data = kv->val;
+			}
+			else if(strcmp(kv->key, "u1") == 0)
+			{
+				val_u1 = kv->val;
+			}
+			else if(strcmp(kv->key, "v1") == 0)
+			{
+				val_v1 = kv->val;
+			}
+			else if(strcmp(kv->key, "u2") == 0)
+			{
+				val_u2 = kv->val;
+			}
+			else if(strcmp(kv->key, "v2") == 0)
+			{
+				val_v2 = kv->val;
+			}
+		}
+		else if(kv->val->type == JSMN_TYPE_STRING)
+		{
+			if(strcmp(kv->key, "norm") == 0)
+			{
+				val_norm = kv->val;
 			}
 		}
 
@@ -752,6 +879,49 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 		return 0;
 	}
 
+	nn_tensorNorm_e norm = NN_TENSOR_NORM_NONE;
+	if(val_norm)
+	{
+		if(strcmp(val_norm->data,
+		          NN_TENSOR_NORM_STRING_SN) == 0)
+		{
+			norm = NN_TENSOR_NORM_SN;
+		}
+		else if(strcmp(val_norm->data,
+		               NN_TENSOR_NORM_STRING_BSSN) == 0)
+		{
+			norm = NN_TENSOR_NORM_BSSN;
+		}
+	}
+
+	// optional norm working buffers
+	if(norm && (self->mode == NN_TENSOR_MODE_COMPUTE))
+	{
+		if((val_u1 == NULL) || (val_v1 == NULL) ||
+		   (val_u2 == NULL) || (val_v2 == NULL))
+		{
+			LOGE("invalid");
+			return 0;
+		}
+
+		if(nn_tensor_initNormMode(self, norm, 1.0, 0) == 0)
+		{
+			return 0;
+		}
+
+		if((nn_tensor_importStorage(self, val_u1,
+		                            self->sb10_data_u1) == 0) ||
+		   (nn_tensor_importStorage(self, val_v1,
+		                            self->sb11_data_v1) == 0) ||
+		   (nn_tensor_importStorage(self, val_u2,
+		                            self->sb12_data_u2) == 0) ||
+		   (nn_tensor_importStorage(self, val_v2,
+		                            self->sb13_data_v2) == 0))
+		{
+			return 0;
+		}
+	}
+
 	return 1;
 }
 
@@ -763,59 +933,52 @@ int nn_tensor_export(nn_tensor_t* self,
 
 	nn_dim_t* dim = nn_tensor_dim(self);
 
+	const char* norm_array[NN_TENSOR_NORM_COUNT] =
+	{
+		NN_TENSOR_NORM_STRING_NONE,
+		NN_TENSOR_NORM_STRING_SN,
+		NN_TENSOR_NORM_STRING_BSSN,
+	};
+
 	int ret = 1;
-	nn_tensor_t* tmp = NULL;
-	if(self->mode == NN_TENSOR_MODE_COMPUTE)
+	ret &= jsmn_stream_beginObject(stream);
+	ret &= jsmn_stream_key(stream, "%s", "dim");
+	ret &= nn_dim_export(dim, stream);
+	if(self->mode == NN_TENSOR_MODE_IO)
 	{
-		tmp = nn_tensor_new(self->engine, dim,
-		                    NN_TENSOR_INIT_ZERO,
-		                    NN_TENSOR_MODE_IO);
-		if(tmp == NULL)
-		{
-			return 0;
-		}
-
-		if(nn_tensor_copy(self, tmp, 0, 0, dim->count) == 0)
-		{
-			goto fail_copy;
-		}
-
-		if(nn_tensor_export(tmp, stream) == 0)
-		{
-			goto fail_export;
-		}
-
-		nn_tensor_delete(&tmp);
-	}
-	else
-	{
-		uint32_t count = dim->count*dim->height*
-		                 dim->width*dim->depth;
-
-		ret &= jsmn_stream_beginObject(stream);
-		ret &= jsmn_stream_key(stream, "%s", "dim");
-		ret &= nn_dim_export(dim, stream);
 		ret &= jsmn_stream_key(stream, "%s", "data");
 		ret &= jsmn_stream_beginArray(stream);
 
 		uint32_t i;
-		for(i = 0; i < count; ++i)
+		for(i = 0; i < nn_dim_sizeElements(dim); ++i)
 		{
 			ret &= jsmn_stream_float(stream, self->data[i]);
 		}
-
-		ret &= jsmn_stream_end(stream);
 		ret &= jsmn_stream_end(stream);
 	}
+	else
+	{
+		ret &= nn_tensor_exportStorage(self, stream, "data",
+		                               self->sb_data);
 
-	// success
+		if(self->norm)
+		{
+			ret &= jsmn_stream_key(stream, "%s", "norm");
+			ret &= jsmn_stream_string(stream, "%s",
+			                          norm_array[self->norm]);
+			ret &= nn_tensor_exportStorage(self, stream, "u1",
+			                               self->sb10_data_u1);
+			ret &= nn_tensor_exportStorage(self, stream, "v1",
+			                               self->sb11_data_v1);
+			ret &= nn_tensor_exportStorage(self, stream, "u2",
+			                               self->sb12_data_u2);
+			ret &= nn_tensor_exportStorage(self, stream, "v2",
+			                               self->sb13_data_v2);
+		}
+	}
+	ret &= jsmn_stream_end(stream);
+
 	return ret;
-
-	// failure
-	fail_export:
-	fail_copy:
-		nn_tensor_delete(&tmp);
-	return 0;
 }
 
 nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
@@ -1429,7 +1592,7 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 
-	if(nn_tensor_initNormMode(self, norm, c) == 0)
+	if(nn_tensor_initNormMode(self, norm, c, 1) == 0)
 	{
 		return 0;
 	}
