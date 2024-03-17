@@ -46,10 +46,10 @@ typedef enum
 // BSSN: Bidirectional Scaled Spectral Normalization
 typedef enum
 {
-	NN_TENSOR_NORM_MODE_NONE = 0,
-	NN_TENSOR_NORM_MODE_SN   = 1,
-	NN_TENSOR_NORM_MODE_BSSN = 2,
-} nn_tensorNormMode_e;
+	NN_TENSOR_NORM_NONE = 0,
+	NN_TENSOR_NORM_SN   = 1,
+	NN_TENSOR_NORM_BSSN = 2,
+} nn_tensorNorm_e;
 
 typedef struct nn_tensorOpKUs0Idx_s
 {
@@ -81,8 +81,7 @@ typedef struct nn_tensor_s
 {
 	nn_engine_t* engine;
 
-	nn_tensorMode_e     mode;
-	nn_tensorNormMode_e norm;
+	nn_tensorMode_e mode;
 
 	nn_dim_t dim;
 
@@ -97,6 +96,7 @@ typedef struct nn_tensor_s
 	vkk_uniformSet_t* us0;
 
 	// spectral normalization (optional)
+	nn_tensorNorm_e   norm;
 	vkk_buffer_t*     sb10_data_u1;
 	vkk_buffer_t*     sb11_data_v1;
 	vkk_buffer_t*     sb12_data_u2;
@@ -180,7 +180,7 @@ int          nn_tensor_computeAddK(nn_tensor_t* x,
                                    uint32_t depth);
 int          nn_tensor_computeNormalize(nn_tensor_t* self,
                                         vkk_hazard_e hazard,
-                                        nn_tensorNormMode_e norm,
+                                        nn_tensorNorm_e norm,
                                         float c);
 int          nn_tensor_computeStats(nn_tensor_t* self,
                                     vkk_hazard_e hazard,

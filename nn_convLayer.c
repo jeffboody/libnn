@@ -66,7 +66,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		if(nn_tensor_computeNormalize(self->W,
 		                              VKK_HAZARD_NONE,
-		                              NN_TENSOR_NORM_MODE_SN,
+		                              NN_TENSOR_NORM_SN,
 		                              1.0f) == 0)
 		{
 			return NULL;
@@ -76,7 +76,7 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 	{
 		if(nn_tensor_computeNormalize(self->W,
 		                              VKK_HAZARD_NONE,
-		                              NN_TENSOR_NORM_MODE_BSSN,
+		                              NN_TENSOR_NORM_BSSN,
 		                              1.2f) == 0)
 		{
 			return NULL;
@@ -360,7 +360,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	{
 		if(nn_tensor_computeNormalize(self->W,
 		                              VKK_HAZARD_NONE,
-		                              NN_TENSOR_NORM_MODE_SN,
+		                              NN_TENSOR_NORM_SN,
 		                              1.0f) == 0)
 		{
 			return NULL;
@@ -370,7 +370,7 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 	{
 		if(nn_tensor_computeNormalize(self->W,
 		                              VKK_HAZARD_NONE,
-		                              NN_TENSOR_NORM_MODE_BSSN,
+		                              NN_TENSOR_NORM_BSSN,
 		                              1.2f) == 0)
 		{
 			return NULL;

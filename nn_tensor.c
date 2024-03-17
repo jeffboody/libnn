@@ -244,7 +244,7 @@ nn_tensor_initSN(nn_engine_t* engine, float* buf,
 
 static int
 nn_tensor_initNormMode(nn_tensor_t* self,
-                       nn_tensorNormMode_e norm,
+                       nn_tensorNorm_e norm,
                        float c)
 {
 	ASSERT(self);
@@ -258,7 +258,7 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	uint32_t  xd  = dim->depth;
 
 	// check the norm mode
-	if(norm == NN_TENSOR_NORM_MODE_NONE)
+	if(norm == NN_TENSOR_NORM_NONE)
 	{
 		LOGE("invalid");
 		return 0;
@@ -271,7 +271,7 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	}
 
 	// reset norm state
-	self->norm = NN_TENSOR_NORM_MODE_NONE;
+	self->norm = NN_TENSOR_NORM_NONE;
 	vkk_buffer_delete(&self->sb10_data_u1);
 	vkk_buffer_delete(&self->sb11_data_v1);
 	vkk_buffer_delete(&self->sb12_data_u2);
@@ -308,7 +308,7 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	}
 
 	float* tmp_u2 = NULL;
-	if(norm == NN_TENSOR_NORM_MODE_BSSN)
+	if(norm == NN_TENSOR_NORM_BSSN)
 	{
 		tmp_u2 = CALLOC(xd, sizeof(float));
 		if(tmp_u2 == NULL)
@@ -1410,7 +1410,7 @@ int nn_tensor_computeAddK(nn_tensor_t* x,
 
 int nn_tensor_computeNormalize(nn_tensor_t* self,
                                vkk_hazard_e hazard,
-                               nn_tensorNormMode_e norm,
+                               nn_tensorNorm_e norm,
                                float c)
 {
 	ASSERT(self);
@@ -1478,7 +1478,7 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 
 	// dispatch(hazard, 1, 1, 1, 64, 1, 1)
 	vkk_computePipeline_t* cp = engine->cp_tensor_sn;
-	if(norm == NN_TENSOR_NORM_MODE_BSSN)
+	if(norm == NN_TENSOR_NORM_BSSN)
 	{
 		cp = engine->cp_tensor_bssn;
 	}
