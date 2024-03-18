@@ -45,12 +45,14 @@ typedef struct nn_tensorStats_s
 
 	nn_tensorStatsData_t data;
 
-	vkk_uniformSet_t* us1;
 	vkk_buffer_t*     sb10_stats;
+	vkk_uniformSet_t* us1;
 } nn_tensorStats_t;
 
 nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine);
 void              nn_tensorStats_delete(nn_tensorStats_t** _self);
+void              nn_tensorStats_update(nn_tensorStats_t* self,
+                                        uint32_t count);
 float             nn_tensorStats_min(nn_tensorStats_t* self);
 float             nn_tensorStats_max(nn_tensorStats_t* self);
 float             nn_tensorStats_mean(nn_tensorStats_t* self);

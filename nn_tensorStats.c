@@ -33,7 +33,7 @@
 * private                                                  *
 ***********************************************************/
 
-static void nn_tensorStats_update(nn_tensorStats_t* self)
+static void nn_tensorStats_sync(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
@@ -68,14 +68,6 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
-	self->us1 = vkk_uniformSet_new(engine->engine,
-	                               1, 0, NULL,
-	                               engine->usf1_tensor_stats);
-	if(self->us1 == NULL)
-	{
-		goto fail_us1;
-	}
-
 	self->sb10_stats = vkk_buffer_new(engine->engine, um,
 	                                  VKK_BUFFER_USAGE_STORAGE,
 	                                  sizeof(nn_tensorStatsData_t),
@@ -85,13 +77,35 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 		goto fail_sb10_stats;
 	}
 
+	self->us1 = vkk_uniformSet_new(engine->engine,
+	                               1, 0, NULL,
+	                               engine->usf1_tensor_stats);
+	if(self->us1 == NULL)
+	{
+		goto fail_us1;
+	}
+
+	// sb10: stats
+	vkk_uniformAttachment_t ua1_array[] =
+	{
+		{
+			.binding = 0,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->sb10_stats,
+		},
+	};
+
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us1,
+	                                 1, ua1_array);
+
 	// success
 	return self;
 
 	// failure
-	fail_sb10_stats:
-		vkk_uniformSet_delete(&self->us1);
 	fail_us1:
+		vkk_buffer_delete(&self->sb10_stats);
+	fail_sb10_stats:
 		FREE(self);
 	return NULL;
 }
@@ -103,18 +117,30 @@ void nn_tensorStats_delete(nn_tensorStats_t** _self)
 	nn_tensorStats_t* self = *_self;
 	if(self)
 	{
-		vkk_buffer_delete(&self->sb10_stats);
 		vkk_uniformSet_delete(&self->us1);
+		vkk_buffer_delete(&self->sb10_stats);
 		FREE(self);
 		*_self = NULL;
 	}
+}
+
+void nn_tensorStats_update(nn_tensorStats_t* self,
+                           uint32_t count)
+{
+	ASSERT(self);
+
+	self->data.count = count;
+	vkk_buffer_writeStorage(self->sb10_stats, 0,
+	                        sizeof(nn_tensorStatsData_t),
+	                        &self->data);
+	self->dirty = 1;
 }
 
 float nn_tensorStats_min(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_tensorStats_update(self);
+	nn_tensorStats_sync(self);
 
 	return self->data.min;
 }
@@ -123,7 +149,7 @@ float nn_tensorStats_max(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_tensorStats_update(self);
+	nn_tensorStats_sync(self);
 
 	return self->data.max;
 }
@@ -132,7 +158,7 @@ float nn_tensorStats_mean(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_tensorStats_update(self);
+	nn_tensorStats_sync(self);
 
 	return self->data.mean;
 }
@@ -141,7 +167,7 @@ float nn_tensorStats_stddev(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_tensorStats_update(self);
+	nn_tensorStats_sync(self);
 
 	return self->data.stddev;
 }
@@ -150,7 +176,7 @@ float nn_tensorStats_norm(nn_tensorStats_t* self)
 {
 	ASSERT(self);
 
-	nn_tensorStats_update(self);
+	nn_tensorStats_sync(self);
 
 	return self->data.norm;
 }

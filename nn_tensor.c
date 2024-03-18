@@ -1690,20 +1690,7 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 		return 0;
 	}
 
-	stats->data.count = count;
-	vkk_buffer_writeStorage(stats->sb10_stats, 0,
-	                        sizeof(nn_tensorStatsData_t),
-	                        &stats->data);
-
-	// sb10: stats
-	vkk_uniformAttachment_t ua1_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = stats->sb10_stats,
-		},
-	};
+	nn_tensorStats_update(stats, count);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -1717,15 +1704,10 @@ int nn_tensor_computeStats(nn_tensor_t* self,
 	{
 		return 0;
 	}
-	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 stats->us1,
-	                                 1, ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard,
 	                          1, 1, 1, 8, 8, 1);
-
-	stats->dirty = 1;
 
 	return 1;
 }
