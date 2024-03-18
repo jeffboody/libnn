@@ -35,7 +35,6 @@
 // bce: binary cross-entropy
 typedef enum
 {
-	NN_LOSS_FN_ERROR = -1,
 	NN_LOSS_FN_MSE   = 0,
 	NN_LOSS_FN_MAE   = 1,
 	NN_LOSS_FN_BCE   = 2,

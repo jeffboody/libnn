@@ -60,9 +60,11 @@ static const char* nn_loss_string(nn_lossFn_e fn)
 	return str_array[fn];
 }
 
-static nn_lossFn_e nn_loss_function(const char* str)
+static int
+nn_loss_function(const char* str, nn_lossFn_e* _loss_fn)
 {
 	ASSERT(str);
+	ASSERT(_loss_fn);
 
 	const char* str_fn[NN_LOSS_FN_COUNT] =
 	{
@@ -76,12 +78,13 @@ static nn_lossFn_e nn_loss_function(const char* str)
 	{
 		if(strcmp(str, str_fn[i]) == 0)
 		{
-			return (nn_lossFn_e) i;
+			*_loss_fn = (nn_lossFn_e) i;
+			return 1;
 		}
 	}
 
 	LOGE("invalid %s", str);
-	return NN_LOSS_FN_ERROR;
+	return 0;
 }
 
 /***********************************************************
@@ -96,13 +99,6 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	ASSERT(dimY);
 
 	nn_engine_t* engine = arch->engine;
-
-	if(((int) loss_fn < 0) ||
-	   ((int) loss_fn >= NN_LOSS_FN_COUNT))
-	{
-		LOGE("invalid loss_fn=%i", (int) loss_fn);
-		return NULL;
-	}
 
 	nn_loss_t* self;
 	self = (nn_loss_t*) CALLOC(1, sizeof(nn_loss_t));
@@ -269,7 +265,11 @@ nn_loss_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_lossFn_e loss_fn;
-	loss_fn = nn_loss_function(val_loss_fn->data);
+	if(nn_loss_function(val_loss_fn->data, &loss_fn) == 0)
+	{
+		return NULL;
+	}
+
 	return nn_loss_new(arch, &dimY, loss_fn);
 }
 
