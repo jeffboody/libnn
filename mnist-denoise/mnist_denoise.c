@@ -284,8 +284,7 @@ mnist_denoise_parse(nn_engine_t* engine,
 		goto fail_factO;
 	}
 
-	self->loss = nn_loss_import(&self->base,
-	                            val_loss);
+	self->loss = nn_loss_import(engine, val_loss);
 	if(self->loss == NULL)
 	{
 		goto fail_loss;
@@ -528,7 +527,7 @@ mnist_denoise_new(nn_engine_t* engine,
 		goto fail_factO;
 	}
 
-	self->loss = nn_loss_new(&self->base, dim, NN_LOSS_FN_MSE);
+	self->loss = nn_loss_new(engine, dim, NN_LOSS_FN_MSE);
 	if(self->loss == NULL)
 	{
 		goto fail_loss;

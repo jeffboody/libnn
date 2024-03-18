@@ -92,13 +92,11 @@ nn_loss_function(const char* str, nn_lossFn_e* _loss_fn)
 ***********************************************************/
 
 nn_loss_t*
-nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
+nn_loss_new(nn_engine_t* engine, nn_dim_t* dimY,
             nn_lossFn_e loss_fn)
 {
-	ASSERT(arch);
+	ASSERT(engine);
 	ASSERT(dimY);
-
-	nn_engine_t* engine = arch->engine;
 
 	nn_loss_t* self;
 	self = (nn_loss_t*) CALLOC(1, sizeof(nn_loss_t));
@@ -108,7 +106,7 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 		return NULL;
 	}
 
-	self->arch    = arch;
+	self->engine  = engine;
 	self->loss_fn = loss_fn;
 
 	self->dL_dY = nn_tensor_new(engine, dimY,
@@ -128,13 +126,20 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
-	float loss = 0.0f;
-	self->sb002_loss = vkk_buffer_new(engine->engine, um,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(float), &loss);
-	if(self->sb002_loss == NULL)
+	self->sb000_bs = vkk_buffer_new(engine->engine, um,
+	                                VKK_BUFFER_USAGE_STORAGE,
+	                                sizeof(uint32_t), NULL);
+	if(self->sb000_bs == NULL)
 	{
-		goto fail_sb002_loss;
+		goto fail_sb000_bs;
+	}
+
+	self->sb001_loss = vkk_buffer_new(engine->engine, um,
+	                                  VKK_BUFFER_USAGE_STORAGE,
+	                                  sizeof(float), NULL);
+	if(self->sb001_loss == NULL)
+	{
+		goto fail_sb001_loss;
 	}
 
 	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
@@ -151,30 +156,36 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 		goto fail_us1;
 	}
 
-	// sb000: dimY
-	// sb001: dL_dY
-	// sb002: loss
+	// sb000: bs
+	// sb001: loss
+	// sb002: dimY
+	// sb003: dL_dY
 	vkk_uniformAttachment_t ua0_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->dL_dY->sb_dim,
+			.buffer  = self->sb000_bs,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->dL_dY->sb_data,
+			.buffer  = self->sb001_loss,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb002_loss,
+			.buffer  = self->dL_dY->sb_dim,
+		},
+		{
+			.binding = 3,
+			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
+			.buffer  = self->dL_dY->sb_data,
 		},
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0, 3,
+	                                 self->us0, 4,
 	                                 ua0_array);
 
 	// success
@@ -184,8 +195,10 @@ nn_loss_new(nn_arch_t* arch, nn_dim_t* dimY,
 	fail_us1:
 		vkk_uniformSet_delete(&self->us0);
 	fail_us0:
-		vkk_buffer_delete(&self->sb002_loss);
-	fail_sb002_loss:
+		vkk_buffer_delete(&self->sb001_loss);
+	fail_sb001_loss:
+		vkk_buffer_delete(&self->sb000_bs);
+	fail_sb000_bs:
 		nn_tensorStats_delete(&self->stats_dL_dY);
 	fail_stats_dL_dY:
 		nn_tensor_delete(&self->dL_dY);
@@ -203,7 +216,8 @@ void nn_loss_delete(nn_loss_t** _self)
 	{
 		vkk_uniformSet_delete(&self->us1);
 		vkk_uniformSet_delete(&self->us0);
-		vkk_buffer_delete(&self->sb002_loss);
+		vkk_buffer_delete(&self->sb001_loss);
+		vkk_buffer_delete(&self->sb000_bs);
 		nn_tensorStats_delete(&self->stats_dL_dY);
 		nn_tensor_delete(&self->dL_dY);
 		FREE(self);
@@ -212,9 +226,9 @@ void nn_loss_delete(nn_loss_t** _self)
 }
 
 nn_loss_t*
-nn_loss_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_loss_import(nn_engine_t* engine, jsmn_val_t* val)
 {
-	ASSERT(arch);
+	ASSERT(engine);
 	ASSERT(val);
 
 	if(val->type != JSMN_TYPE_OBJECT)
@@ -270,7 +284,7 @@ nn_loss_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	return nn_loss_new(arch, &dimY, loss_fn);
+	return nn_loss_new(engine, &dimY, loss_fn);
 }
 
 int nn_loss_export(nn_loss_t* self, jsmn_stream_t* stream)
@@ -306,8 +320,7 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	ASSERT(Y);
 	ASSERT(Yt);
 
-	nn_arch_t*   arch   = self->arch;
-	nn_engine_t* engine = arch->engine;
+	nn_engine_t* engine = self->engine;
 	nn_tensor_t* dL_dY  = self->dL_dY;
 	nn_dim_t*    dimY   = nn_tensor_dim(Y);
 
@@ -348,36 +361,27 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 		return NULL;
 	}
 
-	// sb100: bs
-	// sb101: state
-	// sb102: Y
-	// sb103: Yt
+	vkk_buffer_writeStorage(self->sb000_bs, 0,
+	                        sizeof(uint32_t), &bs);
+
+	// sb100: Y
+	// sb101: Yt
 	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb100_bs,
-		},
-		{
-			.binding = 1,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = arch->sb101_state,
-		},
-		{
-			.binding = 2,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = Y->sb_data,
 		},
 		{
-			.binding = 3,
+			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
 			.buffer  = Yt->sb_data,
 		},
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1, 4,
+	                                 self->us1, 2,
 	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
@@ -420,7 +424,7 @@ void nn_loss_post(nn_loss_t* self, int flags)
 {
 	ASSERT(self);
 
-	vkk_buffer_readStorage(self->sb002_loss, 0,
+	vkk_buffer_readStorage(self->sb001_loss, 0,
 	                       sizeof(float), &self->loss);
 
 	if(flags & NN_LAYER_FLAG_BACKPROP)

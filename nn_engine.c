@@ -195,17 +195,16 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_weight_bp = vkk_uniformSetFactory_new(engine, um,
 	                                                 4, ub_array);
 
-	// sb000: dimY
+	// sb000: bs
 	// ...
-	// sb002: loss
+	// sb003: dL_dY
 	self->usf0_loss = vkk_uniformSetFactory_new(engine, um,
-	                                            3, ub_array);
-
-	// sb100: bs
-	// ...
-	// sb103: Yt
-	self->usf1_loss = vkk_uniformSetFactory_new(engine, um,
 	                                            4, ub_array);
+
+	// sb100: Y
+	// sb101: Yt
+	self->usf1_loss = vkk_uniformSetFactory_new(engine, um,
+	                                            2, ub_array);
 
 	// sb00: dimX
 	// ...

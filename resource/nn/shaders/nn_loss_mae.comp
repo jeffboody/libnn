@@ -14,25 +14,25 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb000
 {
-	nn_dim_t dimY;
+	uint bs;
 };
 
-layout(std430, set=0, binding=2) writeonly buffer sb002
+layout(std430, set=0, binding=1) writeonly buffer sb001
 {
 	float loss;
 };
 
-layout(std430, set=1, binding=0) readonly buffer sb100
+layout(std430, set=0, binding=2) readonly buffer sb002
 {
-	uint bs;
+	nn_dim_t dimY;
 };
 
-layout(std430, set=1, binding=2) readonly buffer sb102
+layout(std430, set=1, binding=0) readonly buffer sb100
 {
 	float Y[];
 };
 
-layout(std430, set=1, binding=3) readonly buffer sb103
+layout(std430, set=1, binding=1) readonly buffer sb101
 {
 	float Yt[];
 };

@@ -44,7 +44,8 @@ typedef enum
 
 typedef struct nn_loss_s
 {
-	nn_arch_t*  arch;
+	nn_engine_t* engine;
+
 	nn_lossFn_e loss_fn;
 	float       loss;
 
@@ -54,16 +55,17 @@ typedef struct nn_loss_s
 	// backprop stats
 	nn_tensorStats_t* stats_dL_dY;
 
-	vkk_buffer_t*     sb002_loss;
+	vkk_buffer_t*     sb000_bs;
+	vkk_buffer_t*     sb001_loss;
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1;
 } nn_loss_t;
 
-nn_loss_t*   nn_loss_new(nn_arch_t* arch,
+nn_loss_t*   nn_loss_new(nn_engine_t* engine,
                          nn_dim_t* dimY,
                          nn_lossFn_e loss_fn);
 void         nn_loss_delete(nn_loss_t** _self);
-nn_loss_t*   nn_loss_import(nn_arch_t* arch,
+nn_loss_t*   nn_loss_import(nn_engine_t* engine,
                             jsmn_val_t* val);
 int          nn_loss_export(nn_loss_t* self,
                             jsmn_stream_t* stream);
