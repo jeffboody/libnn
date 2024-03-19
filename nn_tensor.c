@@ -988,6 +988,13 @@ nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
 	return &self->dim;
 }
 
+int nn_tensor_mode(nn_tensor_t* self)
+{
+	ASSERT(self);
+
+	return self->mode;
+}
+
 int nn_tensor_copy(nn_tensor_t* src,
                    nn_tensor_t* dst,
                    uint32_t src_n,
@@ -1068,6 +1075,12 @@ int nn_tensor_ioClear(nn_tensor_t* self,
 {
 	ASSERT(self);
 
+	if(self->mode != NN_TENSOR_MODE_IO)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
 	nn_dim_t* dim = nn_tensor_dim(self);
 	if((count + n) > dim->count)
 	{
@@ -1095,6 +1108,13 @@ int nn_tensor_ioCopy(nn_tensor_t* src,
 {
 	ASSERT(src);
 	ASSERT(dst);
+
+	if((src->mode != NN_TENSOR_MODE_IO) ||
+	   (dst->mode != NN_TENSOR_MODE_IO))
+	{
+		LOGE("invalid");
+		return 0;
+	}
 
 	nn_dim_t* dim_src = nn_tensor_dim(src);
 	nn_dim_t* dim_dst = nn_tensor_dim(dst);

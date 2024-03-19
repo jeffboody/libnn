@@ -91,8 +91,7 @@ typedef struct nn_tensor_s
 	float* data;
 
 	// compute tensor (optional)
-	// sb_dim/sb_data index varies by layer but are
-	// sb00_dim/sb01_data for tensor compute shaders
+	// sb_dim/sb_data index varies by use case
 	vkk_buffer_t*     sb_dim;
 	vkk_buffer_t*     sb_data;
 	vkk_uniformSet_t* us0;
@@ -117,6 +116,7 @@ int          nn_tensor_import(nn_tensor_t* self,
 int          nn_tensor_export(nn_tensor_t* self,
                               jsmn_stream_t* stream);
 nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
+int          nn_tensor_mode(nn_tensor_t* self);
 int          nn_tensor_copy(nn_tensor_t* src,
                             nn_tensor_t* dst,
                             uint32_t src_n,
