@@ -40,7 +40,7 @@
 ***********************************************************/
 
 static void
-nn_arch_post(nn_arch_t* self, int flags)
+nn_arch_post(nn_arch_t* self, int flags, uint32_t bs)
 {
 	ASSERT(self);
 
@@ -50,7 +50,7 @@ nn_arch_post(nn_arch_t* self, int flags)
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_post(layer, flags);
+		nn_layer_post(layer, flags, bs);
 
 		iter = cc_list_next(iter);
 	}
@@ -458,7 +458,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 			nn_layer_t* layer;
 			layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-			X = nn_layer_forwardPass(layer, flags, bs, X);
+			X = nn_layer_computeFp(layer, flags, bs, X);
 			if(X == NULL)
 			{
 				goto fail_forwardPass;
@@ -497,7 +497,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		dL_dY = nn_layer_backprop(layer, flags, bs, dL_dY);
+		dL_dY = nn_layer_computeBp(layer, flags, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			goto fail_backprop;
@@ -507,7 +507,7 @@ nn_arch_train(nn_arch_t* self, int flags,
 	}
 
 	nn_engine_computeEnd(self->engine);
-	nn_arch_post(self, flags);
+	nn_arch_post(self, flags, bs);
 
 	// optionally copy Y
 	if(Y)
@@ -567,9 +567,9 @@ int nn_arch_predict(nn_arch_t* self,
 		nn_layer_t* layer;
 		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		X = nn_layer_forwardPass(layer,
-		                         NN_LAYER_FLAG_FORWARD_PASS,
-		                         bs, X);
+		X = nn_layer_computeFp(layer,
+		                       NN_LAYER_FLAG_FORWARD_PASS,
+		                       bs, X);
 		if(X == NULL)
 		{
 			goto fail_forwardPass;
@@ -580,7 +580,7 @@ int nn_arch_predict(nn_arch_t* self,
 	self->O = X;
 
 	nn_engine_computeEnd(self->engine);
-	nn_arch_post(self, NN_LAYER_FLAG_FORWARD_PASS);
+	nn_arch_post(self, NN_LAYER_FLAG_FORWARD_PASS, bs);
 
 	// success
 	return nn_tensor_copy(X, Y, 0, 0, bs);

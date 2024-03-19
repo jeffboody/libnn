@@ -41,8 +41,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_coderLayer_computeFpFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -51,8 +51,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	if(self->conv)
 	{
-		X = nn_layer_forwardPass(&self->conv->base, flags,
-		                         bs, X);
+		X = nn_layer_computeFp(&self->conv->base, flags,
+		                       bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -63,8 +63,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 	   ((self->skip->skip_mode == NN_SKIP_MODE_FORK_ADD) ||
 	    (self->skip->skip_mode == NN_SKIP_MODE_ADD)))
 	{
-		X = nn_layer_forwardPass(&self->skip->base, flags,
-		                         bs, X);
+		X = nn_layer_computeFp(&self->skip->base, flags,
+		                       bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -73,8 +73,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	if(self->bn)
 	{
-		X = nn_layer_forwardPass(&self->bn->base, flags,
-		                         bs, X);
+		X = nn_layer_computeFp(&self->bn->base, flags,
+		                       bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -83,8 +83,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 
 	if(self->fact)
 	{
-		X = nn_layer_forwardPass(&self->fact->base, flags,
-		                         bs, X);
+		X = nn_layer_computeFp(&self->fact->base, flags,
+		                       bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -95,8 +95,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 	   ((self->skip->skip_mode == NN_SKIP_MODE_FORK_CAT) ||
 	    (self->skip->skip_mode == NN_SKIP_MODE_CAT)))
 	{
-		X = nn_layer_forwardPass(&self->skip->base, flags,
-		                         bs, X);
+		X = nn_layer_computeFp(&self->skip->base, flags,
+		                       bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -107,8 +107,8 @@ nn_coderLayer_forwardPassFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* dL_dY)
+nn_coderLayer_computeBpFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -119,8 +119,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 	   ((self->skip->skip_mode == NN_SKIP_MODE_FORK_CAT) ||
 	    (self->skip->skip_mode == NN_SKIP_MODE_CAT)))
 	{
-		dL_dY = nn_layer_backprop(&self->skip->base, flags,
-		                          bs, dL_dY);
+		dL_dY = nn_layer_computeBp(&self->skip->base, flags,
+		                           bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -129,8 +129,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 
 	if(self->fact)
 	{
-		dL_dY = nn_layer_backprop(&self->fact->base, flags,
-		                          bs, dL_dY);
+		dL_dY = nn_layer_computeBp(&self->fact->base, flags,
+		                           bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -139,8 +139,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 
 	if(self->bn)
 	{
-		dL_dY = nn_layer_backprop(&self->bn->base, flags,
-		                          bs, dL_dY);
+		dL_dY = nn_layer_computeBp(&self->bn->base, flags,
+		                           bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -151,8 +151,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 	   ((self->skip->skip_mode == NN_SKIP_MODE_FORK_ADD) ||
 	    (self->skip->skip_mode == NN_SKIP_MODE_ADD)))
 	{
-		dL_dY = nn_layer_backprop(&self->skip->base, flags,
-		                          bs, dL_dY);
+		dL_dY = nn_layer_computeBp(&self->skip->base, flags,
+		                           bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -161,8 +161,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 
 	if(self->conv)
 	{
-		dL_dY = nn_layer_backprop(&self->conv->base, flags,
-		                          bs, dL_dY);
+		dL_dY = nn_layer_computeBp(&self->conv->base, flags,
+		                           bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -173,7 +173,8 @@ nn_coderLayer_backpropFn(nn_layer_t* base, int flags,
 }
 
 static void
-nn_coderLayer_postFn(nn_layer_t* base, int flags)
+nn_coderLayer_postFn(nn_layer_t* base, int flags,
+                     uint32_t bs)
 {
 	ASSERT(base);
 
@@ -181,22 +182,22 @@ nn_coderLayer_postFn(nn_layer_t* base, int flags)
 
 	if(self->conv)
 	{
-		nn_layer_post(&self->conv->base, flags);
+		nn_layer_post(&self->conv->base, flags, bs);
 	}
 
 	if(self->skip)
 	{
-		nn_layer_post(&self->skip->base, flags);
+		nn_layer_post(&self->skip->base, flags, bs);
 	}
 
 	if(self->bn)
 	{
-		nn_layer_post(&self->bn->base, flags);
+		nn_layer_post(&self->bn->base, flags, bs);
 	}
 
 	if(self->fact)
 	{
-		nn_layer_post(&self->fact->base, flags);
+		nn_layer_post(&self->fact->base, flags, bs);
 	}
 }
 
@@ -231,12 +232,12 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 
 	nn_layerInfo_t layer_info =
 	{
-		.arch            = info->arch,
-		.forward_pass_fn = nn_coderLayer_forwardPassFn,
-		.backprop_fn     = nn_coderLayer_backpropFn,
-		.post_fn         = nn_coderLayer_postFn,
-		.dimX_fn         = nn_coderLayer_dimXFn,
-		.dimY_fn         = nn_coderLayer_dimYFn,
+		.arch          = info->arch,
+		.compute_fp_fn = nn_coderLayer_computeFpFn,
+		.compute_bp_fn = nn_coderLayer_computeBpFn,
+		.post_fn       = nn_coderLayer_postFn,
+		.dimX_fn       = nn_coderLayer_dimXFn,
+		.dimY_fn       = nn_coderLayer_dimYFn,
 	};
 
 	nn_coderLayer_t* self;
@@ -436,12 +437,12 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 
 	nn_layerInfo_t layer_info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_coderLayer_forwardPassFn,
-		.backprop_fn     = nn_coderLayer_backpropFn,
-		.post_fn         = nn_coderLayer_postFn,
-		.dimX_fn         = nn_coderLayer_dimXFn,
-		.dimY_fn         = nn_coderLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_coderLayer_computeFpFn,
+		.compute_bp_fn = nn_coderLayer_computeBpFn,
+		.post_fn       = nn_coderLayer_postFn,
+		.dimX_fn       = nn_coderLayer_dimXFn,
+		.dimY_fn       = nn_coderLayer_dimYFn,
 	};
 
 	nn_coderLayer_t*  self;

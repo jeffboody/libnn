@@ -40,8 +40,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
-                                uint32_t bs, nn_tensor_t* X)
+nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
+                              uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -202,10 +202,10 @@ nn_batchNormLayer_forwardPassFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_batchNormLayer_backpropFn(nn_layer_t* base,
-                             int flags,
-                             uint32_t bs,
-                             nn_tensor_t* dL_dY)
+nn_batchNormLayer_computeBpFn(nn_layer_t* base,
+                              int flags,
+                              uint32_t bs,
+                              nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -434,11 +434,11 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_batchNormLayer_forwardPassFn,
-		.backprop_fn     = nn_batchNormLayer_backpropFn,
-		.dimX_fn         = nn_batchNormLayer_dimXFn,
-		.dimY_fn         = nn_batchNormLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_batchNormLayer_computeFpFn,
+		.compute_bp_fn = nn_batchNormLayer_computeBpFn,
+		.dimX_fn       = nn_batchNormLayer_dimXFn,
+		.dimY_fn       = nn_batchNormLayer_dimYFn,
 	};
 
 	nn_batchNormLayer_t* self;

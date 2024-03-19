@@ -46,8 +46,8 @@ typedef struct
 } nn_weightLayerParam_t;
 
 static nn_tensor_t*
-nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
-                             uint32_t bs, nn_tensor_t* X)
+nn_weightLayer_computeFpFn(nn_layer_t* base, int flags,
+                           uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -132,9 +132,9 @@ nn_weightLayer_forwardPassFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_weightLayer_backpropFn(nn_layer_t* base, int flags,
-                          uint32_t bs,
-                          nn_tensor_t* dL_dY)
+nn_weightLayer_computeBpFn(nn_layer_t* base, int flags,
+                           uint32_t bs,
+                           nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,1,1,nc)
@@ -318,11 +318,11 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_weightLayer_forwardPassFn,
-		.backprop_fn     = nn_weightLayer_backpropFn,
-		.dimX_fn         = nn_weightLayer_dimXFn,
-		.dimY_fn         = nn_weightLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_weightLayer_computeFpFn,
+		.compute_bp_fn = nn_weightLayer_computeBpFn,
+		.dimX_fn       = nn_weightLayer_dimXFn,
+		.dimY_fn       = nn_weightLayer_dimYFn,
 	};
 
 	nn_weightLayer_t* self;

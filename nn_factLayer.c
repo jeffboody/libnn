@@ -46,8 +46,8 @@ const char* NN_FACT_LAYER_STRING_SINK     = "sink";
 ***********************************************************/
 
 static nn_tensor_t*
-nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* X)
+nn_factLayer_computeFpFn(nn_layer_t* base, int flags,
+                         uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -117,8 +117,8 @@ nn_factLayer_forwardPassFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_factLayer_backpropFn(nn_layer_t* base, int flags,
-                        uint32_t bs, nn_tensor_t* dL_dY)
+nn_factLayer_computeBpFn(nn_layer_t* base, int flags,
+                         uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY);
@@ -279,11 +279,11 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_factLayer_forwardPassFn,
-		.backprop_fn     = nn_factLayer_backpropFn,
-		.dimX_fn         = nn_factLayer_dimXFn,
-		.dimY_fn         = nn_factLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_factLayer_computeFpFn,
+		.compute_bp_fn = nn_factLayer_computeBpFn,
+		.dimX_fn       = nn_factLayer_dimXFn,
+		.dimY_fn       = nn_factLayer_dimYFn,
 	};
 
 	nn_factLayer_t* self;

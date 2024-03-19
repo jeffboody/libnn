@@ -49,8 +49,8 @@ typedef struct
 } nn_convLayerParam_t;
 
 static nn_tensor_t*
-nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* X)
+nn_convLayer_computeFpFn(nn_layer_t* base, int flags,
+                         uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -135,10 +135,10 @@ nn_convLayer_forwardPassFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropFn(nn_layer_t* base,
-                        int flags,
-                        uint32_t bs,
-                        nn_tensor_t* dL_dY)
+nn_convLayer_computeBpFn(nn_layer_t* base,
+                         int flags,
+                         uint32_t bs,
+                         nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
@@ -343,8 +343,8 @@ nn_convLayer_backpropFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_convLayer_computeFpTFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -429,8 +429,8 @@ nn_convLayer_forwardPassTFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* dL_dY)
+nn_convLayer_computeBpTFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
@@ -636,7 +636,8 @@ nn_convLayer_backpropTFn(nn_layer_t* base, int flags,
 }
 
 static void
-nn_convLayer_postFn(nn_layer_t* base, int flags)
+nn_convLayer_postFn(nn_layer_t* base, int flags,
+                    uint32_t bs)
 {
 	ASSERT(base);
 
@@ -779,18 +780,18 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_convLayer_forwardPassFn,
-		.backprop_fn     = nn_convLayer_backpropFn,
-		.post_fn         = nn_convLayer_postFn,
-		.dimX_fn         = nn_convLayer_dimXFn,
-		.dimY_fn         = nn_convLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_convLayer_computeFpFn,
+		.compute_bp_fn = nn_convLayer_computeBpFn,
+		.post_fn       = nn_convLayer_postFn,
+		.dimX_fn       = nn_convLayer_dimXFn,
+		.dimY_fn       = nn_convLayer_dimYFn,
 	};
 
 	if(flags & NN_CONV_LAYER_FLAG_TRANSPOSE)
 	{
-		info.forward_pass_fn = nn_convLayer_forwardPassTFn;
-		info.backprop_fn     = nn_convLayer_backpropTFn;
+		info.compute_fp_fn = nn_convLayer_computeFpTFn;
+		info.compute_bp_fn = nn_convLayer_computeBpTFn;
 	}
 
 	nn_convLayer_t* self;

@@ -36,8 +36,8 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_urrdbLayer_forwardPassFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_urrdbLayer_computeFpFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -45,8 +45,8 @@ nn_urrdbLayer_forwardPassFn(nn_layer_t* base, int flags,
 	nn_urrdbLayer_t* self;
 	self = (nn_urrdbLayer_t*) base;
 
-	X = nn_layer_forwardPass(&self->coder0->base,
-	                         flags, bs, X);
+	X = nn_layer_computeFp(&self->coder0->base,
+	                       flags, bs, X);
 	if(X == NULL)
 	{
 		return NULL;
@@ -58,7 +58,7 @@ nn_urrdbLayer_forwardPassFn(nn_layer_t* base, int flags,
 		nn_layer_t* block;
 		block = (nn_layer_t*) cc_list_peekIter(iter);
 
-		X = nn_layer_forwardPass(block, flags, bs, X);
+		X = nn_layer_computeFp(block, flags, bs, X);
 		if(X == NULL)
 		{
 			return NULL;
@@ -67,20 +67,20 @@ nn_urrdbLayer_forwardPassFn(nn_layer_t* base, int flags,
 		iter = cc_list_next(iter);
 	}
 
-	X = nn_layer_forwardPass(&self->coder1->base,
-	                         flags, bs, X);
+	X = nn_layer_computeFp(&self->coder1->base,
+	                       flags, bs, X);
 	if(X == NULL)
 	{
 		return NULL;
 	}
 
-	return nn_layer_forwardPass(&self->coder2->base,
-	                            flags, bs, X);
+	return nn_layer_computeFp(&self->coder2->base,
+	                          flags, bs, X);
 }
 
 static nn_tensor_t*
-nn_urrdbLayer_backpropFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* dL_dY)
+nn_urrdbLayer_computeBpFn(nn_layer_t* base, int flags,
+                          uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -88,15 +88,15 @@ nn_urrdbLayer_backpropFn(nn_layer_t* base, int flags,
 	nn_urrdbLayer_t* self;
 	self = (nn_urrdbLayer_t*) base;
 
-	dL_dY = nn_layer_backprop(&self->coder2->base, flags,
-	                          bs, dL_dY);
+	dL_dY = nn_layer_computeBp(&self->coder2->base, flags,
+	                           bs, dL_dY);
 	if(dL_dY == NULL)
 	{
 		return NULL;
 	}
 
-	dL_dY = nn_layer_backprop(&self->coder1->base, flags,
-	                          bs, dL_dY);
+	dL_dY = nn_layer_computeBp(&self->coder1->base, flags,
+	                           bs, dL_dY);
 	if(dL_dY == NULL)
 	{
 		return NULL;
@@ -108,7 +108,7 @@ nn_urrdbLayer_backpropFn(nn_layer_t* base, int flags,
 		nn_layer_t* block;
 		block = (nn_layer_t*) cc_list_peekIter(iter);
 
-		dL_dY = nn_layer_backprop(block, flags, bs, dL_dY);
+		dL_dY = nn_layer_computeBp(block, flags, bs, dL_dY);
 		if(dL_dY == NULL)
 		{
 			return NULL;
@@ -117,19 +117,20 @@ nn_urrdbLayer_backpropFn(nn_layer_t* base, int flags,
 		iter = cc_list_prev(iter);
 	}
 
-	return nn_layer_backprop(&self->coder0->base, flags,
-	                         bs, dL_dY);
+	return nn_layer_computeBp(&self->coder0->base, flags,
+	                          bs, dL_dY);
 }
 
 static void
-nn_urrdbLayer_postFn(nn_layer_t* base, int flags)
+nn_urrdbLayer_postFn(nn_layer_t* base, int flags,
+                     uint32_t bs)
 {
 	ASSERT(base);
 
 	nn_urrdbLayer_t* self;
 	self = (nn_urrdbLayer_t*) base;
 
-	nn_layer_post(&self->coder0->base, flags);
+	nn_layer_post(&self->coder0->base, flags, bs);
 
 	cc_listIter_t* iter = cc_list_head(self->blocks);
 	while(iter)
@@ -137,13 +138,13 @@ nn_urrdbLayer_postFn(nn_layer_t* base, int flags)
 		nn_layer_t* block;
 		block = (nn_layer_t*) cc_list_peekIter(iter);
 
-		nn_layer_post(block, flags);
+		nn_layer_post(block, flags, bs);
 
 		iter = cc_list_next(iter);
 	}
 
-	nn_layer_post(&self->coder1->base, flags);
-	nn_layer_post(&self->coder2->base, flags);
+	nn_layer_post(&self->coder1->base, flags, bs);
+	nn_layer_post(&self->coder2->base, flags, bs);
 }
 
 static nn_dim_t*
@@ -225,12 +226,12 @@ nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info)
 
 	nn_layerInfo_t layer_info =
 	{
-		.arch            = info->arch,
-		.forward_pass_fn = nn_urrdbLayer_forwardPassFn,
-		.backprop_fn     = nn_urrdbLayer_backpropFn,
-		.post_fn         = nn_urrdbLayer_postFn,
-		.dimX_fn         = nn_urrdbLayer_dimXFn,
-		.dimY_fn         = nn_urrdbLayer_dimYFn,
+		.arch          = info->arch,
+		.compute_fp_fn = nn_urrdbLayer_computeFpFn,
+		.compute_bp_fn = nn_urrdbLayer_computeBpFn,
+		.post_fn       = nn_urrdbLayer_postFn,
+		.dimX_fn       = nn_urrdbLayer_dimXFn,
+		.dimY_fn       = nn_urrdbLayer_dimYFn,
 	};
 
 	nn_urrdbLayer_t* self;
@@ -410,12 +411,12 @@ nn_urrdbLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 	nn_layerInfo_t layer_info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_urrdbLayer_forwardPassFn,
-		.backprop_fn     = nn_urrdbLayer_backpropFn,
-		.post_fn         = nn_urrdbLayer_postFn,
-		.dimX_fn         = nn_urrdbLayer_dimXFn,
-		.dimY_fn         = nn_urrdbLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_urrdbLayer_computeFpFn,
+		.compute_bp_fn = nn_urrdbLayer_computeBpFn,
+		.post_fn       = nn_urrdbLayer_postFn,
+		.dimX_fn       = nn_urrdbLayer_dimXFn,
+		.dimY_fn       = nn_urrdbLayer_dimYFn,
 	};
 
 	nn_urrdbLayer_t* self;

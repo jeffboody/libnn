@@ -51,12 +51,12 @@ nn_layer_t* nn_layer_new(size_t base_size,
 		return NULL;
 	}
 
-	self->arch            = info->arch;
-	self->forward_pass_fn = info->forward_pass_fn;
-	self->backprop_fn     = info->backprop_fn;
-	self->post_fn         = info->post_fn;
-	self->dimX_fn         = info->dimX_fn;
-	self->dimY_fn         = info->dimY_fn;
+	self->arch          = info->arch;
+	self->compute_fp_fn = info->compute_fp_fn;
+	self->compute_bp_fn = info->compute_bp_fn;
+	self->post_fn       = info->post_fn;
+	self->dimX_fn       = info->dimX_fn;
+	self->dimY_fn       = info->dimY_fn;
 
 	// success
 	return self;
@@ -74,9 +74,25 @@ void nn_layer_delete(nn_layer_t** _self)
 	}
 }
 
+nn_dim_t* nn_layer_dimX(nn_layer_t* self)
+{
+	ASSERT(self);
+
+	nn_layerDim_fn dimX_fn = self->dimX_fn;
+	return (*dimX_fn)(self);
+}
+
+nn_dim_t* nn_layer_dimY(nn_layer_t* self)
+{
+	ASSERT(self);
+
+	nn_layerDim_fn dimY_fn = self->dimY_fn;
+	return (*dimY_fn)(self);
+}
+
 nn_tensor_t*
-nn_layer_forwardPass(nn_layer_t* self, int flags,
-                     uint32_t bs, nn_tensor_t* X)
+nn_layer_computeFp(nn_layer_t* self, int flags,
+                   uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(self);
 	ASSERT(X);
@@ -93,14 +109,14 @@ nn_layer_forwardPass(nn_layer_t* self, int flags,
 		return NULL;
 	}
 
-	nn_layer_forwardPassFn forward_pass_fn;
-	forward_pass_fn = self->forward_pass_fn;
-	return (*forward_pass_fn)(self, flags, bs, X);
+	nn_layerComputeFp_fn compute_fp_fn;
+	compute_fp_fn = self->compute_fp_fn;
+	return (*compute_fp_fn)(self, flags, bs, X);
 }
 
 nn_tensor_t*
-nn_layer_backprop(nn_layer_t* self, int flags,
-                  uint32_t bs, nn_tensor_t* dL_dY)
+nn_layer_computeBp(nn_layer_t* self, int flags,
+                   uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(self);
 	ASSERT(dL_dY);
@@ -117,35 +133,19 @@ nn_layer_backprop(nn_layer_t* self, int flags,
 		return NULL;
 	}
 
-	nn_layer_backpropFn backprop_fn;
-	backprop_fn = self->backprop_fn;
-	return (*backprop_fn)(self, flags, bs, dL_dY);
+	nn_layerComputeBp_fn compute_bp_fn;
+	compute_bp_fn = self->compute_bp_fn;
+	return (*compute_bp_fn)(self, flags, bs, dL_dY);
 }
 
-void nn_layer_post(nn_layer_t* self, int flags)
+void nn_layer_post(nn_layer_t* self, int flags, uint32_t bs)
 {
 	ASSERT(self);
 
 	// optional post training/prediction operation
-	nn_layer_postFn post_fn = self->post_fn;
+	nn_layerPost_fn post_fn = self->post_fn;
 	if(post_fn)
 	{
-		return (*post_fn)(self, flags);
+		return (*post_fn)(self, flags, bs);
 	}
-}
-
-nn_dim_t* nn_layer_dimX(nn_layer_t* self)
-{
-	ASSERT(self);
-
-	nn_layer_dimFn dimX_fn = self->dimX_fn;
-	return (*dimX_fn)(self);
-}
-
-nn_dim_t* nn_layer_dimY(nn_layer_t* self)
-{
-	ASSERT(self);
-
-	nn_layer_dimFn dimY_fn = self->dimY_fn;
-	return (*dimY_fn)(self);
 }

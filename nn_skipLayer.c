@@ -44,8 +44,8 @@ typedef struct
 } nn_skipLayerParam_t;
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int flags,
-                               uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpForkFn(nn_layer_t* base, int flags,
+                             uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -59,8 +59,8 @@ nn_skipLayer_forwardPassForkFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpForkFn(nn_layer_t* base, int flags,
+                             uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -180,8 +180,8 @@ nn_skipLayer_backpropForkFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpAddFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -286,8 +286,8 @@ nn_skipLayer_forwardPassAddFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpAddFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -419,8 +419,8 @@ nn_skipLayer_backpropAddFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpCatFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -525,8 +525,8 @@ nn_skipLayer_forwardPassCatFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_backpropCatFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpCatFn(nn_layer_t* base, int flags,
+                            uint32_t bs, nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,x1d + x2d)
@@ -749,11 +749,11 @@ nn_skipLayer_newFork(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_skipLayer_forwardPassForkFn,
-		.backprop_fn     = nn_skipLayer_backpropForkFn,
-		.dimX_fn         = nn_skipLayer_dimXFn,
-		.dimY_fn         = nn_skipLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_skipLayer_computeFpForkFn,
+		.compute_bp_fn = nn_skipLayer_computeBpForkFn,
+		.dimX_fn       = nn_skipLayer_dimXFn,
+		.dimY_fn       = nn_skipLayer_dimYFn,
 	};
 
 	nn_skipLayer_t* self;
@@ -830,11 +830,11 @@ nn_skipLayer_newAdd(nn_arch_t* arch,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_skipLayer_forwardPassAddFn,
-		.backprop_fn     = nn_skipLayer_backpropAddFn,
-		.dimX_fn         = nn_skipLayer_dimXFn,
-		.dimY_fn         = nn_skipLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_skipLayer_computeFpAddFn,
+		.compute_bp_fn = nn_skipLayer_computeBpAddFn,
+		.dimX_fn       = nn_skipLayer_dimXFn,
+		.dimY_fn       = nn_skipLayer_dimYFn,
 	};
 
 	nn_skipLayer_t* self;
@@ -925,11 +925,11 @@ nn_skipLayer_newCat(nn_arch_t* arch,
 
 	nn_layerInfo_t info =
 	{
-		.arch            = arch,
-		.forward_pass_fn = nn_skipLayer_forwardPassCatFn,
-		.backprop_fn     = nn_skipLayer_backpropCatFn,
-		.dimX_fn         = nn_skipLayer_dimXFn,
-		.dimY_fn         = nn_skipLayer_dimYFn,
+		.arch          = arch,
+		.compute_fp_fn = nn_skipLayer_computeFpCatFn,
+		.compute_bp_fn = nn_skipLayer_computeBpCatFn,
+		.dimX_fn       = nn_skipLayer_dimXFn,
+		.dimY_fn       = nn_skipLayer_dimYFn,
 	};
 
 	nn_skipLayer_t* self;

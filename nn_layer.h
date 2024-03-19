@@ -35,51 +35,51 @@
 #define NN_LAYER_FLAG_TRAIN        3
 #define NN_LAYER_FLAG_BACKPROP_NOP 6
 
-typedef nn_tensor_t* (*nn_layer_forwardPassFn)
+typedef nn_tensor_t* (*nn_layerComputeFp_fn)
                      (nn_layer_t* base, int flags,
                       uint32_t bs, nn_tensor_t* X);
-typedef nn_tensor_t* (*nn_layer_backpropFn)
+typedef nn_tensor_t* (*nn_layerComputeBp_fn)
                      (nn_layer_t* base, int flags,
                       uint32_t bs, nn_tensor_t* dL_dY);
-typedef void (*nn_layer_postFn)(nn_layer_t* base,
-                                int flags);
-typedef nn_dim_t* (*nn_layer_dimFn)
+typedef void (*nn_layerPost_fn)(nn_layer_t* base,
+                                int flags, uint32_t bs);
+typedef nn_dim_t* (*nn_layerDim_fn)
                   (nn_layer_t* base);
 
 typedef struct nn_layerInfo_s
 {
-	nn_arch_t*             arch;
-	nn_layer_forwardPassFn forward_pass_fn;
-	nn_layer_backpropFn    backprop_fn;
-	nn_layer_postFn        post_fn;
-	nn_layer_dimFn         dimX_fn;
-	nn_layer_dimFn         dimY_fn;
+	nn_arch_t*           arch;
+	nn_layerComputeFp_fn compute_fp_fn;
+	nn_layerComputeBp_fn compute_bp_fn;
+	nn_layerPost_fn      post_fn;
+	nn_layerDim_fn       dimX_fn;
+	nn_layerDim_fn       dimY_fn;
 } nn_layerInfo_t;
 
 typedef struct nn_layer_s
 {
-	nn_arch_t*             arch;
-	nn_layer_forwardPassFn forward_pass_fn;
-	nn_layer_backpropFn    backprop_fn;
-	nn_layer_postFn        post_fn;
-	nn_layer_dimFn         dimX_fn;
-	nn_layer_dimFn         dimY_fn;
+	nn_arch_t*           arch;
+	nn_layerComputeFp_fn compute_fp_fn;
+	nn_layerComputeBp_fn compute_bp_fn;
+	nn_layerPost_fn      post_fn;
+	nn_layerDim_fn       dimX_fn;
+	nn_layerDim_fn       dimY_fn;
 } nn_layer_t;
 
 nn_layer_t*  nn_layer_new(size_t base_size,
                           nn_layerInfo_t* info);
 void         nn_layer_delete(nn_layer_t** _self);
-nn_tensor_t* nn_layer_forwardPass(nn_layer_t* self,
-                                  int flags,
-                                  uint32_t bs,
-                                  nn_tensor_t* X);
-nn_tensor_t* nn_layer_backprop(nn_layer_t* self,
-                               int flags,
-                               uint32_t bs,
-                               nn_tensor_t* dL_dY);
-void         nn_layer_post(nn_layer_t* self,
-                           int flags);
 nn_dim_t*    nn_layer_dimX(nn_layer_t* self);
 nn_dim_t*    nn_layer_dimY(nn_layer_t* self);
+nn_tensor_t* nn_layer_computeFp(nn_layer_t* self,
+                                int flags,
+                                uint32_t bs,
+                                nn_tensor_t* X);
+nn_tensor_t* nn_layer_computeBp(nn_layer_t* self,
+                                int flags,
+                                uint32_t bs,
+                                nn_tensor_t* dL_dY);
+void         nn_layer_post(nn_layer_t* self,
+                           int flags, uint32_t bs);
 
 #endif
