@@ -87,6 +87,25 @@ nn_loss_function(const char* str, nn_lossFn_e* _loss_fn)
 	return 0;
 }
 
+static void
+nn_loss_post(nn_loss_t* self, int flags, uint32_t bs)
+{
+	ASSERT(self);
+
+	vkk_buffer_readStorage(self->sb001_loss, 0,
+	                       sizeof(float), &self->loss);
+
+	if(flags & NN_LOSS_FLAG_STATS)
+	{
+		LOGI("dL_dY min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_dL_dY),
+		     nn_tensorStats_max(self->stats_dL_dY),
+		     nn_tensorStats_mean(self->stats_dL_dY),
+		     nn_tensorStats_stddev(self->stats_dL_dY),
+		     nn_tensorStats_norm(self->stats_dL_dY));
+	}
+}
+
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -312,8 +331,23 @@ int nn_loss_export(nn_loss_t* self, jsmn_stream_t* stream)
 	return ret;
 }
 
+nn_dim_t* nn_loss_dimY(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	return nn_tensor_dim(self->dL_dY);
+}
+
+float nn_loss_loss(nn_loss_t* self)
+{
+	ASSERT(self);
+
+	return self->loss;
+}
+
 nn_tensor_t*
-nn_loss_loss(nn_loss_t* self, uint32_t bs,
+nn_loss_pass(nn_loss_t* self,
+             int flags, uint32_t bs,
              nn_tensor_t* Y, nn_tensor_t* Yt)
 {
 	ASSERT(self);
@@ -323,6 +357,13 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	nn_engine_t* engine = self->engine;
 	nn_tensor_t* dL_dY  = self->dL_dY;
 	nn_dim_t*    dimY   = nn_tensor_dim(Y);
+
+	if((nn_tensor_mode(Y)  != NN_TENSOR_MODE_COMPUTE) ||
+	   (nn_tensor_mode(Yt) != NN_TENSOR_MODE_COMPUTE))
+	{
+		LOGE("invalid");
+		return NULL;
+	}
 
 	nn_dim_t* dimY1 = nn_loss_dimY(self);
 	nn_dim_t* dimY2 = nn_tensor_dim(Y);
@@ -363,6 +404,11 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 
 	vkk_buffer_writeStorage(self->sb000_bs, 0,
 	                        sizeof(uint32_t), &bs);
+
+	if(nn_engine_computeBegin(engine) == 0)
+	{
+		return NULL;
+	}
 
 	// sb100: Y
 	// sb101: Yt
@@ -411,36 +457,24 @@ nn_loss_loss(nn_loss_t* self, uint32_t bs,
 	                          bs, dimY->height, dimY->width,
 	                          1, 8, 8);
 
-	if(nn_tensor_computeStats(dL_dY, VKK_HAZARD_RAW, bs,
-	                          self->stats_dL_dY) == 0)
+	// optionally compute stats
+	if(flags & NN_LOSS_FLAG_STATS)
 	{
-		return NULL;
+		if(nn_tensor_computeStats(dL_dY, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dY) == 0)
+		{
+			goto fail_stats;
+		}
 	}
 
+	nn_engine_computeEnd(engine);
+	nn_loss_post(self, flags, bs);
+
+	// success
 	return dL_dY;
-}
 
-void nn_loss_post(nn_loss_t* self, int flags)
-{
-	ASSERT(self);
-
-	vkk_buffer_readStorage(self->sb001_loss, 0,
-	                       sizeof(float), &self->loss);
-
-	if(flags & NN_LAYER_FLAG_BACKPROP)
-	{
-		LOGI("dL_dY min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
-		     nn_tensorStats_min(self->stats_dL_dY),
-		     nn_tensorStats_max(self->stats_dL_dY),
-		     nn_tensorStats_mean(self->stats_dL_dY),
-		     nn_tensorStats_stddev(self->stats_dL_dY),
-		     nn_tensorStats_norm(self->stats_dL_dY));
-	}
-}
-
-nn_dim_t* nn_loss_dimY(nn_loss_t* self)
-{
-	ASSERT(self);
-
-	return nn_tensor_dim(self->dL_dY);
+	// failure
+	fail_stats:
+		nn_engine_computeEnd(engine);
+	return NULL;
 }

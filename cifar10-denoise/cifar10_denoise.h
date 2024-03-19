@@ -40,8 +40,8 @@ typedef struct
 	double mu;
 	double sigma;
 
+	nn_tensor_t*         Xio;
 	nn_tensor_t*         X;
-	nn_tensor_t*         dL_dY;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     enc1;
 	nn_coderLayer_t*     enc2;
@@ -50,8 +50,9 @@ typedef struct
 	nn_convLayer_t*      convO;
 	nn_factLayer_t*      factO;
 	nn_loss_t*           loss;
+	nn_tensor_t*         Ytio;
 	nn_tensor_t*         Yt;
-	nn_tensor_t*         Y;
+	nn_tensor_t*         Yio;
 
 	cc_rngNormal_t  rngN;
 	cc_rngUniform_t rngU;
@@ -82,9 +83,6 @@ int                cifar10_denoise_exportYt(cifar10_denoise_t* self,
 int                cifar10_denoise_exportY(cifar10_denoise_t* self,
                                            const char* fname,
                                            uint32_t n);
-int                cifar10_denoise_export_dL_dY(cifar10_denoise_t* self,
-                                                const char* fname,
-                                                uint32_t n);
 void               cifar10_denoise_sampleXt(cifar10_denoise_t* self,
                                             nn_tensor_t* Xt);
 void               cifar10_denoise_sampleXt2(cifar10_denoise_t* self,

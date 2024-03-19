@@ -81,8 +81,10 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_tensor_norm;
 	vkk_pipelineLayout_t* pl_tensor_opk;
 
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXmean;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXvar;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanTrain;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarTrain;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanInstance;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarInstance;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXhat;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassY;
 	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dX;

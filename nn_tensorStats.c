@@ -96,8 +96,8 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1,
-	                                 1, ua1_array);
+	                                 self->us1, 1,
+	                                 ua1_array);
 
 	// success
 	return self;

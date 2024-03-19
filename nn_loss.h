@@ -29,6 +29,8 @@
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
+#define NN_LOSS_FLAG_STATS 0x0001
+
 // loss functions
 // mse: mean squared error
 // mae: mean absolute error
@@ -49,10 +51,8 @@ typedef struct nn_loss_s
 	nn_lossFn_e loss_fn;
 	float       loss;
 
-	// backprop gradients
 	nn_tensor_t* dL_dY; // dim(bs,yh,yw,yd)
 
-	// backprop stats
 	nn_tensorStats_t* stats_dL_dY;
 
 	vkk_buffer_t*     sb000_bs;
@@ -69,10 +69,12 @@ nn_loss_t*   nn_loss_import(nn_engine_t* engine,
                             jsmn_val_t* val);
 int          nn_loss_export(nn_loss_t* self,
                             jsmn_stream_t* stream);
-nn_tensor_t* nn_loss_loss(nn_loss_t* self, uint32_t bs,
+nn_dim_t*    nn_loss_dimY(nn_loss_t* self);
+float        nn_loss_loss(nn_loss_t* self);
+nn_tensor_t* nn_loss_pass(nn_loss_t* self,
+                          int flags,
+                          uint32_t bs,
                           nn_tensor_t* Y,
                           nn_tensor_t* Yt);
-void         nn_loss_post(nn_loss_t* self, int flags);
-nn_dim_t*    nn_loss_dimY(nn_loss_t* self);
 
 #endif

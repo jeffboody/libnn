@@ -158,19 +158,6 @@ cifar10_disc_onMain(vkk_engine_t* ve, int argc,
 				snprintf(fname, 256, "data/Y-%u-%u-%u.png",
 				         epoch, step, bs2);
 				cifar10_disc_exportY(disc, fname, bs2);
-
-				snprintf(fname, 256, "data/dL_dY_Ytr-%u-%u-%u.png",
-				         epoch, step, 0);
-				cifar10_disc_export_dL_dY0(disc, fname, 0);
-				snprintf(fname, 256, "data/dL_dY_Cr-%u-%u-%u.png",
-				         epoch, step, 0);
-				cifar10_disc_export_dL_dY1(disc, fname, 0);
-				snprintf(fname, 256, "data/dL_dY_Yg-%u-%u-%u.png",
-				         epoch, step, bs2);
-				cifar10_disc_export_dL_dY0(disc, fname, bs2);
-				snprintf(fname, 256, "data/dL_dY_Cg-%u-%u-%u.png",
-				         epoch, step, bs2);
-				cifar10_disc_export_dL_dY1(disc, fname, bs2);
 			}
 
 			// plot loss

@@ -46,8 +46,9 @@ typedef struct
 } nn_weightLayerParam_t;
 
 static nn_tensor_t*
-nn_weightLayer_computeFpFn(nn_layer_t* base, int flags,
-                           uint32_t bs, nn_tensor_t* X)
+nn_weightLayer_computeFpFn(nn_layer_t* base,
+                           int flags, uint32_t bs,
+                           nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -104,8 +105,8 @@ nn_weightLayer_computeFpFn(nn_layer_t* base, int flags,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_fp,
-	                                 3, ua1_array);
+	                                 self->us1_fp, 3,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -132,8 +133,8 @@ nn_weightLayer_computeFpFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_weightLayer_computeBpFn(nn_layer_t* base, int flags,
-                           uint32_t bs,
+nn_weightLayer_computeBpFn(nn_layer_t* base,
+                           int flags, uint32_t bs,
                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -198,8 +199,8 @@ nn_weightLayer_computeBpFn(nn_layer_t* base, int flags,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_bp,
-	                                 4, ua1_array);
+	                                 self->us1_bp, 4,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -245,7 +246,7 @@ nn_weightLayer_computeBpFn(nn_layer_t* base, int flags,
 	}
 
 	// optionally skip parameter update
-	if(flags & NN_LAYER_FLAG_NOP)
+	if(flags & NN_ARCH_FLAG_BP_NOP)
 	{
 		return self->dL_dX;
 	}
@@ -567,8 +568,8 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 14, ua0_array);
+	                                 self->us0, 14,
+	                                 ua0_array);
 
 	// success
 	return self;

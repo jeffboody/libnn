@@ -91,8 +91,9 @@ nn_dim_t* nn_layer_dimY(nn_layer_t* self)
 }
 
 nn_tensor_t*
-nn_layer_computeFp(nn_layer_t* self, int flags,
-                   uint32_t bs, nn_tensor_t* X)
+nn_layer_computeFp(nn_layer_t* self,
+                   int flags, uint32_t bs,
+                   nn_tensor_t* X)
 {
 	ASSERT(self);
 	ASSERT(X);
@@ -115,8 +116,9 @@ nn_layer_computeFp(nn_layer_t* self, int flags,
 }
 
 nn_tensor_t*
-nn_layer_computeBp(nn_layer_t* self, int flags,
-                   uint32_t bs, nn_tensor_t* dL_dY)
+nn_layer_computeBp(nn_layer_t* self,
+                   int flags, uint32_t bs,
+                   nn_tensor_t* dL_dY)
 {
 	ASSERT(self);
 	ASSERT(dL_dY);

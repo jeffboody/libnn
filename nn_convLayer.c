@@ -49,8 +49,9 @@ typedef struct
 } nn_convLayerParam_t;
 
 static nn_tensor_t*
-nn_convLayer_computeFpFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* X)
+nn_convLayer_computeFpFn(nn_layer_t* base,
+                         int flags, uint32_t bs,
+                         nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -106,8 +107,8 @@ nn_convLayer_computeFpFn(nn_layer_t* base, int flags,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_fp,
-	                                 3, ua1_array);
+	                                 self->us1_fp, 3,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -136,8 +137,7 @@ nn_convLayer_computeFpFn(nn_layer_t* base, int flags,
 
 static nn_tensor_t*
 nn_convLayer_computeBpFn(nn_layer_t* base,
-                         int flags,
-                         uint32_t bs,
+                         int flags, uint32_t bs,
                          nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -205,8 +205,8 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_bp,
-	                                 4, ua1_array);
+	                                 self->us1_bp, 4,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -306,7 +306,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	}
 
 	// optionally skip parameter update
-	if(flags & NN_LAYER_FLAG_NOP)
+	if(flags & NN_ARCH_FLAG_BP_NOP)
 	{
 		return self->dL_dX;
 	}
@@ -333,18 +333,23 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
 	                          fc, 1, 1, 64, 1, 1);
 
-	if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
-	                          self->stats_dL_dX) == 0)
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
-		return NULL;
+		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dX) == 0)
+		{
+			return NULL;
+		}
 	}
 
 	return self->dL_dX;
 }
 
 static nn_tensor_t*
-nn_convLayer_computeFpTFn(nn_layer_t* base, int flags,
-                          uint32_t bs, nn_tensor_t* X)
+nn_convLayer_computeFpTFn(nn_layer_t* base,
+                          int flags, uint32_t bs,
+                          nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -400,8 +405,8 @@ nn_convLayer_computeFpTFn(nn_layer_t* base, int flags,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_fp,
-	                                 3, ua1_array);
+	                                 self->us1_fp, 3,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -429,8 +434,9 @@ nn_convLayer_computeFpTFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_convLayer_computeBpTFn(nn_layer_t* base, int flags,
-                          uint32_t bs, nn_tensor_t* dL_dY)
+nn_convLayer_computeBpTFn(nn_layer_t* base,
+                          int flags, uint32_t bs,
+                          nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,fc)
@@ -497,8 +503,8 @@ nn_convLayer_computeBpTFn(nn_layer_t* base, int flags,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_bp,
-	                                 4, ua1_array);
+	                                 self->us1_bp, 4,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -599,7 +605,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base, int flags,
 	}
 
 	// optionally skip parameter update
-	if(flags & NN_LAYER_FLAG_NOP)
+	if(flags & NN_ARCH_FLAG_BP_NOP)
 	{
 		return self->dL_dX;
 	}
@@ -626,24 +632,28 @@ nn_convLayer_computeBpTFn(nn_layer_t* base, int flags,
 	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
 	                          fc, 1, 1, 64, 1, 1);
 
-	if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
-	                          self->stats_dL_dX) == 0)
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
-		return NULL;
+		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dX) == 0)
+		{
+			return NULL;
+		}
 	}
 
 	return self->dL_dX;
 }
 
 static void
-nn_convLayer_postFn(nn_layer_t* base, int flags,
-                    uint32_t bs)
+nn_convLayer_postFn(nn_layer_t* base,
+                    int flags, uint32_t bs)
 {
 	ASSERT(base);
 
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
 
-	if(flags & NN_LAYER_FLAG_BACKPROP)
+	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
 		LOGI("dL_dX min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
 		     nn_tensorStats_min(self->stats_dL_dX),
@@ -721,8 +731,8 @@ nn_convUs2Data_new(nn_engine_t* engine,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us2,
-	                                 1, ua2_array);
+	                                 self->us2, 1,
+	                                 ua2_array);
 
 	// success
 	return self;
@@ -1055,8 +1065,9 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		},
 	};
 
-	vkk_compute_updateUniformSetRefs(engine->compute, self->us0,
-	                                 14, ua0_array);
+	vkk_compute_updateUniformSetRefs(engine->compute,
+	                                 self->us0, 14,
+	                                 ua0_array);
 
 	// success
 	return self;

@@ -36,8 +36,8 @@ typedef struct
 	uint32_t bs;
 	uint32_t fc;
 
+	nn_tensor_t*         Xio;
 	nn_tensor_t*         X;
-	nn_tensor_t*         dL_dY;
 	nn_batchNormLayer_t* bn0;
 	nn_coderLayer_t*     coder1;
 	nn_coderLayer_t*     coder2;
@@ -45,8 +45,9 @@ typedef struct
 	nn_convLayer_t*      convO;
 	nn_factLayer_t*      factO;
 	nn_loss_t*           loss;
+	nn_tensor_t*         Ytio;
 	nn_tensor_t*         Yt;
-	nn_tensor_t*         Y;
+	nn_tensor_t*         Yio;
 } mnist_disc_t;
 
 mnist_disc_t* mnist_disc_new(nn_engine_t* engine,
@@ -70,12 +71,6 @@ int           mnist_disc_exportXd0(mnist_disc_t* self,
 int           mnist_disc_exportXd1(mnist_disc_t* self,
                                    const char* fname,
                                    uint32_t n);
-int           mnist_disc_export_dL_dY0(mnist_disc_t* self,
-                                       const char* fname,
-                                       uint32_t n);
-int           mnist_disc_export_dL_dY1(mnist_disc_t* self,
-                                       const char* fname,
-                                       uint32_t n);
 int           mnist_disc_exportY(mnist_disc_t* self,
                                  const char* fname,
                                  uint32_t n);

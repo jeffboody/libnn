@@ -44,8 +44,9 @@ typedef struct
 } nn_skipLayerParam_t;
 
 static nn_tensor_t*
-nn_skipLayer_computeFpForkFn(nn_layer_t* base, int flags,
-                             uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpForkFn(nn_layer_t* base,
+                             int flags, uint32_t bs,
+                             nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -59,8 +60,9 @@ nn_skipLayer_computeFpForkFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_computeBpForkFn(nn_layer_t* base, int flags,
-                             uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpForkFn(nn_layer_t* base,
+                             int flags, uint32_t bs,
+                             nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -180,8 +182,9 @@ nn_skipLayer_computeBpForkFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_computeFpAddFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpAddFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -286,8 +289,9 @@ nn_skipLayer_computeFpAddFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_computeBpAddFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpAddFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,xd)
@@ -419,8 +423,9 @@ nn_skipLayer_computeBpAddFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_computeFpCatFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_skipLayer_computeFpCatFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -525,8 +530,9 @@ nn_skipLayer_computeFpCatFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_skipLayer_computeBpCatFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* dL_dY)
+nn_skipLayer_computeBpCatFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,xh,xw,x1d + x2d)

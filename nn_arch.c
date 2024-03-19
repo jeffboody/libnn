@@ -54,95 +54,6 @@ nn_arch_post(nn_arch_t* self, int flags, uint32_t bs)
 
 		iter = cc_list_next(iter);
 	}
-
-	if(self->loss)
-	{
-		nn_loss_post(self->loss, flags);
-	}
-}
-
-static int
-nn_arch_init(nn_arch_t* self,
-             uint32_t bs,
-             nn_tensor_t* X,
-             nn_tensor_t* Yt)
-{
-	// X and Yt may be NULL
-	ASSERT(self);
-
-	nn_engine_t* engine = self->engine;
-
-	// optionally create X
-	if(X && (X->mode == NN_TENSOR_MODE_IO))
-	{
-		if(self->X)
-		{
-			if(nn_dim_sizeEquals(nn_tensor_dim(self->X),
-			                     nn_tensor_dim(X)) == 0)
-			{
-				nn_tensor_delete(&self->X);
-			}
-		}
-
-		if(self->X == NULL)
-		{
-			self->X = nn_tensor_new(engine, nn_tensor_dim(X),
-			                        NN_TENSOR_INIT_ZERO,
-			                        NN_TENSOR_MODE_COMPUTE);
-			if(self->X == NULL)
-			{
-				return 0;
-			}
-		}
-
-		if(nn_tensor_copy(X, self->X, 0, 0, bs) == 0)
-		{
-			return 0;
-		}
-	}
-
-	// optionally create Yt
-	if(Yt && (Yt->mode == NN_TENSOR_MODE_IO))
-	{
-		if(self->Yt)
-		{
-			if(nn_dim_sizeEquals(nn_tensor_dim(self->Yt),
-			                     nn_tensor_dim(Yt)) == 0)
-			{
-				nn_tensor_delete(&self->Yt);
-			}
-		}
-
-		if(self->Yt == NULL)
-		{
-			self->Yt = nn_tensor_new(engine, nn_tensor_dim(Yt),
-			                         NN_TENSOR_INIT_ZERO,
-			                         NN_TENSOR_MODE_COMPUTE);
-			if(self->Yt == NULL)
-			{
-				return 0;
-			}
-		}
-
-		if(nn_tensor_copy(Yt, self->Yt, 0, 0, bs) == 0)
-		{
-			return 0;
-		}
-	}
-
-	// update global state
-	nn_archState_t* state = &self->state;
-	if(Yt)
-	{
-		state->adam_beta1t *= state->adam_beta1;
-		state->adam_beta2t *= state->adam_beta2;
-	}
-	vkk_buffer_writeStorage(self->sb100_bs, 0,
-	                        sizeof(uint32_t), &bs);
-	vkk_buffer_writeStorage(self->sb101_state, 0,
-	                        sizeof(nn_archState_t), state);
-
-	return nn_engine_computeBegin(engine);
 }
 
 /***********************************************************
@@ -173,9 +84,14 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 
 	memcpy(&self->state, state, sizeof(nn_archState_t));
 
+	self->layers = cc_list_new();
+	if(self->layers == NULL)
+	{
+		goto fail_layers;
+	}
+
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
-
 	self->sb100_bs = vkk_buffer_new(engine->engine, um,
 	                                VKK_BUFFER_USAGE_STORAGE,
 	                                sizeof(uint32_t),
@@ -194,21 +110,15 @@ nn_arch_t* nn_arch_new(nn_engine_t* engine,
 		goto fail_sb101_state;
 	}
 
-	self->layers = cc_list_new();
-	if(self->layers == NULL)
-	{
-		goto fail_layers;
-	}
-
 	// success
 	return self;
 
 	// failure
-	fail_layers:
-		vkk_buffer_delete(&self->sb101_state);
 	fail_sb101_state:
 		vkk_buffer_delete(&self->sb100_bs);
 	fail_sb100_bs:
+		cc_list_delete(&self->layers);
+	fail_layers:
 		FREE(self);
 	return NULL;
 }
@@ -220,15 +130,45 @@ void nn_arch_delete(nn_arch_t** _self)
 	nn_arch_t* self = *_self;
 	if(self)
 	{
-		nn_tensor_delete(&self->Yt);
-		nn_tensor_delete(&self->X);
-		cc_list_discard(self->layers);
-		cc_list_delete(&self->layers);
 		vkk_buffer_delete(&self->sb101_state);
 		vkk_buffer_delete(&self->sb100_bs);
+		cc_list_discard(self->layers);
+		cc_list_delete(&self->layers);
 		FREE(self);
 		*_self = NULL;
 	}
+}
+
+int nn_arch_attachLayer(nn_arch_t* self,
+                        nn_layer_t* layer)
+{
+	ASSERT(self);
+	ASSERT(layer);
+
+	// validate dimensions
+	nn_layer_t* tail;
+	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
+	if(tail)
+	{
+		nn_dim_t* dimY = nn_layer_dimY(tail);
+		nn_dim_t* dimX = nn_layer_dimX(layer);
+		if(nn_dim_sizeEquals(dimY, dimX) == 0)
+		{
+			LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
+			     dimX->count,  dimY->count,
+			     dimX->height, dimY->height,
+			     dimX->width,  dimY->width,
+			     dimX->depth,  dimY->depth);
+			return 0;
+		}
+	}
+
+	if(cc_list_append(self->layers, NULL, layer) == NULL)
+	{
+		return 0;
+	}
+
+	return 1;
 }
 
 nn_arch_t*
@@ -359,139 +299,98 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	return ret;
 }
 
-int nn_arch_attachLayer(nn_arch_t* self,
-                        nn_layer_t* layer)
+nn_archState_t* nn_arch_state(nn_arch_t* self)
 {
 	ASSERT(self);
-	ASSERT(layer);
 
-	if(self->loss)
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	// validate dimensions
-	nn_layer_t* tail;
-	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
-	if(tail)
-	{
-		nn_dim_t* dimY = nn_layer_dimY(tail);
-		nn_dim_t* dimX = nn_layer_dimX(layer);
-		if(nn_dim_sizeEquals(dimY, dimX) == 0)
-		{
-			LOGE("invalid count=%u:%u, height=%u:%u, width=%u:%u, depth=%u:%u",
-			     dimX->count,  dimY->count,
-			     dimX->height, dimY->height,
-			     dimX->width,  dimY->width,
-			     dimX->depth,  dimY->depth);
-			return 0;
-		}
-	}
-
-	if(cc_list_append(self->layers, NULL, layer) == NULL)
-	{
-		return 0;
-	}
-
-	return 1;
-}
-
-int nn_arch_attachLoss(nn_arch_t* self,
-                       nn_loss_t* loss)
-{
-	ASSERT(self);
-	ASSERT(loss);
-
-	if(self->loss)
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	// validate dimensions
-	nn_layer_t* tail;
-	tail = (nn_layer_t*) cc_list_peekTail(self->layers);
-	if((tail == NULL) ||
-	   (nn_dim_sizeEquals(nn_layer_dimY(tail),
-	                      nn_loss_dimY(loss)) == 0))
-	{
-		LOGE("invalid");
-		return 0;
-	}
-
-	self->loss = loss;
-
-	return 1;
+	return &self->state;
 }
 
 nn_tensor_t*
-nn_arch_train(nn_arch_t* self, int flags,
-              uint32_t bs, nn_tensor_t* X,
-              nn_tensor_t* Yt, nn_tensor_t* Y)
+nn_arch_forwardPass(nn_arch_t* self,
+                    int flags, uint32_t bs,
+                    nn_tensor_t* X)
 {
-	// X and Y may be NULL
 	ASSERT(self);
-	ASSERT(flags & NN_LAYER_FLAG_BACKPROP);
-	ASSERT(Yt);
+	ASSERT(X);
 
-	if(nn_arch_init(self, bs, X, Yt) == 0)
+	if(nn_tensor_mode(X) != NN_TENSOR_MODE_COMPUTE)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	nn_archState_t* state = &self->state;
+	vkk_buffer_writeStorage(self->sb100_bs, 0,
+	                        sizeof(uint32_t), &bs);
+	vkk_buffer_writeStorage(self->sb101_state, 0,
+	                        sizeof(nn_archState_t), state);
+
+	if(nn_engine_computeBegin(self->engine) == 0)
 	{
 		return NULL;
 	}
 
-	cc_listIter_t* iter;
-	if(flags & NN_LAYER_FLAG_FORWARD_PASS)
+	// perform forward pass
+	cc_listIter_t* iter = cc_list_head(self->layers);
+	while(iter)
 	{
-		ASSERT(X);
+		nn_layer_t* layer;
+		layer = (nn_layer_t*) cc_list_peekIter(iter);
 
-		// optionally replace X with compute tensor
-		if(X->mode == NN_TENSOR_MODE_IO)
+		X = nn_layer_computeFp(layer, flags, bs, X);
+		if(X == NULL)
 		{
-			X = self->X;
+			goto fail_forwardPass;
 		}
 
-		// perform forward pass
-		iter = cc_list_head(self->layers);
-		while(iter)
-		{
-			nn_layer_t* layer;
-			layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-			X = nn_layer_computeFp(layer, flags, bs, X);
-			if(X == NULL)
-			{
-				goto fail_forwardPass;
-			}
-
-			iter = cc_list_next(iter);
-		}
-		self->O = X;
+		iter = cc_list_next(iter);
 	}
-	else
+
+	nn_engine_computeEnd(self->engine);
+	nn_arch_post(self, flags, bs);
+
+	// success
+	return X;
+
+	// failure
+	fail_forwardPass:
+		nn_engine_computeEnd(self->engine);
+	return NULL;
+}
+
+nn_tensor_t*
+nn_arch_backprop(nn_arch_t* self,
+                 int flags, uint32_t bs,
+                 nn_tensor_t* dL_dY)
+{
+	ASSERT(self);
+	ASSERT(dL_dY);
+
+	if(nn_tensor_mode(dL_dY) != NN_TENSOR_MODE_COMPUTE)
 	{
-		ASSERT(self->O);
-
-		// see NN_LAYER_FLAG_BACKPROP_NOP
-		X = self->O;
+		LOGE("invalid");
+		return NULL;
 	}
 
-	// optionally replace Yt with compute tensor
-	if(Yt->mode == NN_TENSOR_MODE_IO)
+	nn_archState_t* state = &self->state;
+	if((flags & NN_ARCH_FLAG_BP_NOP) == 0)
 	{
-		Yt = self->Yt;
+		state->adam_beta1t *= state->adam_beta1;
+		state->adam_beta2t *= state->adam_beta2;
 	}
+	vkk_buffer_writeStorage(self->sb100_bs, 0,
+	                        sizeof(uint32_t), &bs);
+	vkk_buffer_writeStorage(self->sb101_state, 0,
+	                        sizeof(nn_archState_t), state);
 
-	// compute loss
-	nn_tensor_t* dL_dY;
-	dL_dY = nn_loss_loss(self->loss, bs, X, Yt);
-	if(dL_dY == NULL)
+	if(nn_engine_computeBegin(self->engine) == 0)
 	{
-		goto fail_loss;
+		return NULL;
 	}
 
-	// perform backpropagation
-	iter = cc_list_tail(self->layers);
+	// perform backprop
+	cc_listIter_t* iter = cc_list_tail(self->layers);
 	while(iter)
 	{
 		nn_layer_t* layer;
@@ -509,84 +408,11 @@ nn_arch_train(nn_arch_t* self, int flags,
 	nn_engine_computeEnd(self->engine);
 	nn_arch_post(self, flags, bs);
 
-	// optionally copy Y
-	if(Y)
-	{
-		if(nn_tensor_copy(X, Y, 0, 0, bs) == 0)
-		{
-			return NULL;
-		}
-	}
-
 	// success
 	return dL_dY;
 
 	// failure
 	fail_backprop:
-	fail_loss:
-	fail_forwardPass:
 		nn_engine_computeEnd(self->engine);
 	return NULL;
-}
-
-float nn_arch_loss(nn_arch_t* self)
-{
-	ASSERT(self);
-
-	if(self->loss)
-	{
-		return self->loss->loss;
-	}
-
-	return 0.0f;
-}
-
-int nn_arch_predict(nn_arch_t* self,
-                    uint32_t bs,
-                    nn_tensor_t* X,
-                    nn_tensor_t* Y)
-{
-	ASSERT(self);
-	ASSERT(X);
-	ASSERT(Y);
-
-	if(nn_arch_init(self, bs, X, NULL) == 0)
-	{
-		return 0;
-	}
-
-	// replace X with compute tensor
-	if(X->mode == NN_TENSOR_MODE_IO)
-	{
-		X = self->X;
-	}
-
-	cc_listIter_t* iter = cc_list_head(self->layers);
-	while(iter)
-	{
-		nn_layer_t* layer;
-		layer = (nn_layer_t*) cc_list_peekIter(iter);
-
-		X = nn_layer_computeFp(layer,
-		                       NN_LAYER_FLAG_FORWARD_PASS,
-		                       bs, X);
-		if(X == NULL)
-		{
-			goto fail_forwardPass;
-		}
-
-		iter = cc_list_next(iter);
-	}
-	self->O = X;
-
-	nn_engine_computeEnd(self->engine);
-	nn_arch_post(self, NN_LAYER_FLAG_FORWARD_PASS, bs);
-
-	// success
-	return nn_tensor_copy(X, Y, 0, 0, bs);
-
-	// failure
-	fail_forwardPass:
-		nn_engine_computeEnd(self->engine);
-	return 0;
 }

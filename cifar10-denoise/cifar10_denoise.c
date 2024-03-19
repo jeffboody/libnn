@@ -221,20 +221,20 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		.depth  = xd,
 	};
 
+	self->Xio = nn_tensor_new(engine, &dim,
+	                          NN_TENSOR_INIT_ZERO,
+	                          NN_TENSOR_MODE_IO);
+	if(self->Xio == NULL)
+	{
+		goto fail_Xio;
+	}
+
 	self->X = nn_tensor_new(engine, &dim,
 	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_IO);
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->X == NULL)
 	{
 		goto fail_X;
-	}
-
-	self->dL_dY = nn_tensor_new(engine, &dim,
-	                            NN_TENSOR_INIT_ZERO,
-	                            NN_TENSOR_MODE_IO);
-	if(self->dL_dY == NULL)
-	{
-		goto fail_dL_dY;
 	}
 
 	self->bn0 = nn_batchNormLayer_import(&self->base,
@@ -292,20 +292,28 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		goto fail_loss;
 	}
 
+	self->Ytio = nn_tensor_new(engine, &dim,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_IO);
+	if(self->Ytio == NULL)
+	{
+		goto fail_Ytio;
+	}
+
 	self->Yt = nn_tensor_new(engine, &dim,
 	                         NN_TENSOR_INIT_ZERO,
-	                         NN_TENSOR_MODE_IO);
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Yt == NULL)
 	{
 		goto fail_Yt;
 	}
 
-	self->Y = nn_tensor_new(engine, &dim,
-	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_IO);
-	if(self->Y == NULL)
+	self->Yio = nn_tensor_new(engine, &dim,
+	                          NN_TENSOR_INIT_ZERO,
+	                          NN_TENSOR_MODE_IO);
+	if(self->Yio == NULL)
 	{
-		goto fail_Y;
+		goto fail_Yio;
 	}
 
 	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
@@ -314,8 +322,7 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0) ||
-	   (nn_arch_attachLoss(&self->base,  self->loss)         == 0))
+	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0))
 	{
 		goto fail_attach;
 	}
@@ -328,10 +335,12 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 
 	// failure
 	fail_attach:
-		nn_tensor_delete(&self->Y);
-	fail_Y:
+		nn_tensor_delete(&self->Yio);
+	fail_Yio:
 		nn_tensor_delete(&self->Yt);
 	fail_Yt:
+		nn_tensor_delete(&self->Ytio);
+	fail_Ytio:
 		nn_loss_delete(&self->loss);
 	fail_loss:
 		nn_factLayer_delete(&self->factO);
@@ -348,10 +357,10 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	fail_enc1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
-		nn_tensor_delete(&self->dL_dY);
-	fail_dL_dY:
 		nn_tensor_delete(&self->X);
 	fail_X:
+		nn_tensor_delete(&self->Xio);
+	fail_Xio:
 		nn_arch_delete((nn_arch_t**) &self);
 	return 0;
 }
@@ -402,26 +411,25 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.depth  = xd,
 	};
 
+	self->Xio = nn_tensor_new(engine, &dimX,
+	                          NN_TENSOR_INIT_ZERO,
+	                          NN_TENSOR_MODE_IO);
+	if(self->Xio == NULL)
+	{
+		goto fail_Xio;
+	}
+
 	self->X = nn_tensor_new(engine, &dimX,
 	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_IO);
+	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->X == NULL)
 	{
 		goto fail_X;
 	}
 
-	self->dL_dY = nn_tensor_new(engine, &dimX,
-	                            NN_TENSOR_INIT_ZERO,
-	                            NN_TENSOR_MODE_IO);
-	if(self->dL_dY == NULL)
-	{
-		goto fail_dL_dY;
-	}
-
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
 	self->bn0 = nn_batchNormLayer_new(&self->base,
-	                                  NN_BATCH_NORM_MODE_INSTANCE,
 	                                  dim);
 	if(self->bn0 == NULL)
 	{
@@ -436,7 +444,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
 		.conv_size   = 3,
 		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
 		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
@@ -455,7 +463,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
 		.conv_size   = 3,
 		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
 		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
@@ -475,7 +483,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		               NN_CONV_LAYER_FLAG_TRANSPOSE,
 		.conv_size   = 2,
 		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
 		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
@@ -495,7 +503,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		               NN_CONV_LAYER_FLAG_TRANSPOSE,
 		.conv_size   = 2,
 		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_INSTANCE,
+		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
 		.fact_fn     = NN_FACT_LAYER_FN_RELU,
 	};
 
@@ -535,20 +543,28 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		goto fail_loss;
 	}
 
+	self->Ytio = nn_tensor_new(engine, dim,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_IO);
+	if(self->Ytio == NULL)
+	{
+		goto fail_Ytio;
+	}
+
 	self->Yt = nn_tensor_new(engine, dim,
 	                         NN_TENSOR_INIT_ZERO,
-	                         NN_TENSOR_MODE_IO);
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Yt == NULL)
 	{
 		goto fail_Yt;
 	}
 
-	self->Y = nn_tensor_new(engine, dim,
-	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_IO);
-	if(self->Y == NULL)
+	self->Yio = nn_tensor_new(engine, dim,
+	                          NN_TENSOR_INIT_ZERO,
+	                          NN_TENSOR_MODE_IO);
+	if(self->Yio == NULL)
 	{
-		goto fail_Y;
+		goto fail_Yio;
 	}
 
 	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
@@ -557,8 +573,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0) ||
-	   (nn_arch_attachLoss(&self->base,  self->loss)         == 0))
+	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0))
 	{
 		goto fail_attach;
 	}
@@ -571,10 +586,12 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 
 	// failure
 	fail_attach:
-		nn_tensor_delete(&self->Y);
-	fail_Y:
+		nn_tensor_delete(&self->Yio);
+	fail_Yio:
 		nn_tensor_delete(&self->Yt);
 	fail_Yt:
+		nn_tensor_delete(&self->Ytio);
+	fail_Ytio:
 		nn_loss_delete(&self->loss);
 	fail_loss:
 		nn_factLayer_delete(&self->factO);
@@ -591,10 +608,10 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	fail_enc1:
 		nn_batchNormLayer_delete(&self->bn0);
 	fail_bn0:
-		nn_tensor_delete(&self->dL_dY);
-	fail_dL_dY:
 		nn_tensor_delete(&self->X);
 	fail_X:
+		nn_tensor_delete(&self->Xio);
+	fail_Xio:
 		nn_arch_delete((nn_arch_t**) &self);
 	return NULL;
 }
@@ -606,8 +623,9 @@ void cifar10_denoise_delete(cifar10_denoise_t** _self)
 	cifar10_denoise_t* self = *_self;
 	if(self)
 	{
-		nn_tensor_delete(&self->Y);
+		nn_tensor_delete(&self->Yio);
 		nn_tensor_delete(&self->Yt);
+		nn_tensor_delete(&self->Ytio);
 		nn_loss_delete(&self->loss);
 		nn_factLayer_delete(&self->factO);
 		nn_convLayer_delete(&self->convO);
@@ -616,8 +634,8 @@ void cifar10_denoise_delete(cifar10_denoise_t** _self)
 		nn_coderLayer_delete(&self->enc2);
 		nn_coderLayer_delete(&self->enc1);
 		nn_batchNormLayer_delete(&self->bn0);
-		nn_tensor_delete(&self->dL_dY);
 		nn_tensor_delete(&self->X);
+		nn_tensor_delete(&self->Xio);
 		nn_arch_delete((nn_arch_t**) &self);
 	}
 }
@@ -777,25 +795,11 @@ int cifar10_denoise_exportX(cifar10_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	nn_dim_t* dim = nn_tensor_dim(self->X);
+	nn_dim_t* dim = nn_tensor_dim(self->Xio);
 
-	return nn_tensor_ioExportPng(self->X, fname,
+	return nn_tensor_ioExportPng(self->Xio, fname,
 	                             n, 0, dim->depth,
 	                             0.0f, 1.0f);
-}
-
-int cifar10_denoise_export_dL_dY(cifar10_denoise_t* self,
-                                 const char* fname,
-                                 uint32_t n)
-{
-	ASSERT(self);
-	ASSERT(fname);
-
-	nn_dim_t* dim = nn_tensor_dim(self->dL_dY);
-
-	return nn_tensor_ioExportPng(self->dL_dY, fname,
-	                             n, 0, dim->depth,
-	                             -1.0f, 1.0f);
 }
 
 int cifar10_denoise_exportYt(cifar10_denoise_t* self,
@@ -805,9 +809,9 @@ int cifar10_denoise_exportYt(cifar10_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	nn_dim_t* dim = nn_tensor_dim(self->Yt);
+	nn_dim_t* dim = nn_tensor_dim(self->Ytio);
 
-	return nn_tensor_ioExportPng(self->Yt, fname,
+	return nn_tensor_ioExportPng(self->Ytio, fname,
 	                             n, 0, dim->depth,
 	                             0.0f, 1.0f);
 }
@@ -819,9 +823,9 @@ int cifar10_denoise_exportY(cifar10_denoise_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	nn_dim_t* dim = nn_tensor_dim(self->Y);
+	nn_dim_t* dim = nn_tensor_dim(self->Yio);
 
-	return nn_tensor_ioExportPng(self->Y, fname,
+	return nn_tensor_ioExportPng(self->Yio, fname,
 	                             n, 0, dim->depth,
 	                             0.0f, 1.0f);
 }
@@ -833,7 +837,7 @@ cifar10_denoise_sampleXt(cifar10_denoise_t* self,
 	ASSERT(self);
 	ASSERT(Xt);
 
-	cifar10_denoise_sampleXt2(self, Xt, self->X, self->Yt);
+	cifar10_denoise_sampleXt2(self, Xt, self->Xio, self->Ytio);
 }
 
 void cifar10_denoise_sampleXt2(cifar10_denoise_t* self,
@@ -887,23 +891,42 @@ int cifar10_denoise_train(cifar10_denoise_t* self,
 	// _loss may be NULL
 	ASSERT(self);
 
+	uint32_t bs = self->bs;
+
+	if((nn_tensor_copy(self->Xio, self->X, 0, 0, bs) == 0) ||
+	   (nn_tensor_copy(self->Ytio, self->Yt, 0, 0, bs) == 0))
+	{
+		return 0;
+	}
+
+	nn_tensor_t* Y;
+	Y = nn_arch_forwardPass(&self->base, 0, bs, self->X);
+	if(Y == NULL)
+	{
+		return 0;
+	}
+
+	if(nn_tensor_copy(Y, self->Yio, 0, 0, bs) == 0)
+	{
+		return 0;
+	}
+
 	nn_tensor_t* dL_dY;
-	dL_dY = nn_arch_train(&self->base, NN_LAYER_FLAG_TRAIN,
-	                      self->bs, self->X, self->Yt,
-	                      self->Y);
+	dL_dY = nn_loss_pass(self->loss, 0, bs, Y, self->Yt);
 	if(dL_dY == NULL)
 	{
 		return 0;
 	}
 
-	if(nn_tensor_copy(dL_dY, self->dL_dY, 0, 0, self->bs) == 0)
+	dL_dY = nn_arch_backprop(&self->base, 0, bs, dL_dY);
+	if(dL_dY == NULL)
 	{
 		return 0;
 	}
 
 	if(_loss)
 	{
-		*_loss = nn_arch_loss(&self->base);
+		*_loss = nn_loss_loss(self->loss);
 	}
 
 	return 1;
@@ -920,8 +943,26 @@ int cifar10_denoise_predict(cifar10_denoise_t* self,
 		return 0;
 	}
 
-	return nn_arch_predict(&self->base, bs,
-	                       self->X, self->Y);
+	if(nn_tensor_copy(self->Xio, self->X, 0, 0, bs) == 0)
+	{
+		return 0;
+	}
+
+	nn_tensor_t* Y;
+	Y = nn_arch_forwardPass(&self->base,
+	                        NN_ARCH_FLAG_FP_BN_RUNNING,
+	                        bs, self->X);
+	if(Y == NULL)
+	{
+		return 0;
+	}
+
+	if(nn_tensor_copy(Y, self->Yio, 0, 0, bs) == 0)
+	{
+		return 0;
+	}
+
+	return 1;
 }
 
 uint32_t cifar10_denoise_bs(cifar10_denoise_t* self)

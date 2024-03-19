@@ -42,15 +42,11 @@ typedef enum
 
 #define NN_CODER_SKIP_MODE_COUNT 5
 
-// see nn_batchNormMode_e
 typedef enum
 {
-	NN_CODER_BATCH_NORM_MODE_NONE     = 0,
-	NN_CODER_BATCH_NORM_MODE_RUNNING  = 1,
-	NN_CODER_BATCH_NORM_MODE_INSTANCE = 2,
+	NN_CODER_BATCH_NORM_MODE_DISABLE = 0,
+	NN_CODER_BATCH_NORM_MODE_ENABLE  = 1,
 } nn_coderBatchNormMode_e;
-
-#define NN_CODER_BATCH_NORMALIZATION_MODE_COUNT 3
 
 typedef struct nn_coderLayerInfo_s
 {

@@ -121,16 +121,6 @@ mnist_denoise_onMain(vkk_engine_t* ve, int argc,
 				snprintf(fname, 256, "data/Y-%u-%u.png",
 				         epoch, step);
 				mnist_denoise_exportY(self, fname, 0);
-				snprintf(fname, 256, "data/dL_dY-%u-%u.png",
-				         epoch, step);
-				mnist_denoise_export_dL_dY(self, fname, 0);
-
-				if(mnist_denoise_predict(self, 1))
-				{
-					snprintf(fname, 256, "data/Yp-%u-%u.png",
-					         epoch, step);
-					mnist_denoise_exportY(self, fname, 0);
-				}
 			}
 
 			// plot loss

@@ -563,8 +563,8 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X, nn_tensor_t* Y,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 5, ua0_array);
+	                                 self->us0, 5,
+	                                 ua0_array);
 
 	// success
 	return self;
@@ -652,8 +652,8 @@ nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 5, ua0_array);
+	                                 self->us0, 5,
+	                                 ua0_array);
 	return 1;
 }
 
@@ -741,8 +741,8 @@ nn_tensor_new(nn_engine_t* engine, nn_dim_t* dim,
 		};
 
 		vkk_compute_updateUniformSetRefs(engine->compute,
-		                                 self->us0,
-		                                 2, ua0_array);
+		                                 self->us0, 2,
+		                                 ua0_array);
 
 		nn_tensor_delete(&tmp);
 	}
@@ -1671,8 +1671,8 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_norm,
-	                                 5, ua1_array);
+	                                 self->us1_norm, 5,
+	                                 ua1_array);
 	vkk_compute_bindUniformSets(engine->compute, 2,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard,

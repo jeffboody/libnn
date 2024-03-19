@@ -26,15 +26,6 @@
 
 #include "nn.h"
 
-// basic flags
-#define NN_LAYER_FLAG_FORWARD_PASS 1
-#define NN_LAYER_FLAG_BACKPROP     2
-#define NN_LAYER_FLAG_NOP          4
-
-// combined flags
-#define NN_LAYER_FLAG_TRAIN        3
-#define NN_LAYER_FLAG_BACKPROP_NOP 6
-
 typedef nn_tensor_t* (*nn_layerComputeFp_fn)
                      (nn_layer_t* base, int flags,
                       uint32_t bs, nn_tensor_t* X);
@@ -66,6 +57,7 @@ typedef struct nn_layer_s
 	nn_layerDim_fn       dimY_fn;
 } nn_layer_t;
 
+// flags defined by arch
 nn_layer_t*  nn_layer_new(size_t base_size,
                           nn_layerInfo_t* info);
 void         nn_layer_delete(nn_layer_t** _self);

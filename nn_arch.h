@@ -29,6 +29,32 @@
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
+// Flag Usage
+//
+// NN_ARCH_FLAG_FP_BN (Forward Pass Batch Normalization)
+// * AVERAGE: Inference pass uses running averages for
+//            mean/variance and does not update the running
+//            average.
+// * INSTANCE: Inference pass performs instance
+//             normalization which uses the test-batch for
+//             mean/variance and does not update the running
+//             average.
+// Only one of AVERAGE/INSTANCE should be set. If neither
+// flag is set then batch normalization defaults to training
+// which updates running average but uses mini-batch for
+// mean and variance.
+//
+// NN_ARCH_FLAG_BP_NOP (Backprop No Parameter Update)
+// * Disable beta1t and beta2t Update
+// * Disable Parameter Update
+//
+// NN_ARCH_FLAG_BP_STATS (Backprop Statistics)
+// * Compute and log statistics during backprop
+#define NN_ARCH_FLAG_FP_BN_RUNNING   0x0001
+#define NN_ARCH_FLAG_FP_BN_INSTANCE  0x0002
+#define NN_ARCH_FLAG_BP_NOP          0x0010
+#define NN_ARCH_FLAG_BP_STATS        0x0020
+
 // Recommended Defaults
 // adam_alpha:  0.0001f
 // adam_beta1:  0.9f
@@ -59,47 +85,33 @@ typedef struct nn_arch_s
 	nn_engine_t* engine;
 
 	nn_archState_t state;
-	vkk_buffer_t*  sb100_bs;
-	vkk_buffer_t*  sb101_state;
 
 	// references
 	cc_list_t* layers;
-	nn_loss_t* loss;
 
-	// cached output reference
-	// see NN_LAYER_FLAG_BACKPROP_NOP
-	nn_tensor_t* O;
-
-	// compute tensors below are allocated on demand
-
-	// default NN
-	nn_tensor_t* X;
-	nn_tensor_t* Yt;
+	vkk_buffer_t* sb100_bs;
+	vkk_buffer_t* sb101_state;
 } nn_arch_t;
 
-nn_arch_t*   nn_arch_new(nn_engine_t* engine,
-                         size_t base_size,
-                         nn_archState_t* state);
-void         nn_arch_delete(nn_arch_t** _self);
-nn_arch_t*   nn_arch_import(nn_engine_t* engine,
+nn_arch_t*      nn_arch_new(nn_engine_t* engine,
                             size_t base_size,
-                            jsmn_val_t* val);
-int          nn_arch_export(nn_arch_t* self,
-                            jsmn_stream_t* stream);
-int          nn_arch_attachLayer(nn_arch_t* self,
-                                 nn_layer_t* layer);
-int          nn_arch_attachLoss(nn_arch_t* self,
-                                nn_loss_t* loss);
-nn_tensor_t* nn_arch_train(nn_arch_t* self,
-                           int flags,
-                           uint32_t bs,
-                           nn_tensor_t* X,
-                           nn_tensor_t* Yt,
-                           nn_tensor_t* Y);
-float        nn_arch_loss(nn_arch_t* self);
-int          nn_arch_predict(nn_arch_t* self,
-                             uint32_t bs,
-                             nn_tensor_t* X,
-                             nn_tensor_t* Y);
+                            nn_archState_t* state);
+void            nn_arch_delete(nn_arch_t** _self);
+int             nn_arch_attachLayer(nn_arch_t* self,
+                                    nn_layer_t* layer);
+nn_arch_t*      nn_arch_import(nn_engine_t* engine,
+                               size_t base_size,
+                               jsmn_val_t* val);
+int             nn_arch_export(nn_arch_t* self,
+                               jsmn_stream_t* stream);
+nn_archState_t* nn_arch_state(nn_arch_t* self);
+nn_tensor_t*    nn_arch_forwardPass(nn_arch_t* self,
+                                    int flags,
+                                    uint32_t bs,
+                                    nn_tensor_t* X);
+nn_tensor_t*    nn_arch_backprop(nn_arch_t* self,
+                                 int flags,
+                                 uint32_t bs,
+                                 nn_tensor_t* dL_dY);
 
 #endif

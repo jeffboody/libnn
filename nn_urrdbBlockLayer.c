@@ -37,8 +37,9 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_urrdbBlockLayer_computeFpFn(nn_layer_t* base, int flags,
-                               uint32_t bs, nn_tensor_t* X)
+nn_urrdbBlockLayer_computeFpFn(nn_layer_t* base,
+                               int flags, uint32_t bs,
+                               nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -73,8 +74,8 @@ nn_urrdbBlockLayer_computeFpFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_urrdbBlockLayer_computeBpFn(nn_layer_t* base, int flags,
-                               uint32_t bs,
+nn_urrdbBlockLayer_computeBpFn(nn_layer_t* base,
+                               int flags, uint32_t bs,
                                nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -83,8 +84,8 @@ nn_urrdbBlockLayer_computeBpFn(nn_layer_t* base, int flags,
 	nn_urrdbBlockLayer_t* self;
 	self = (nn_urrdbBlockLayer_t*) base;
 
-	dL_dY = nn_layer_computeBp(&self->coder1->base, flags,
-	                           bs, dL_dY);
+	dL_dY = nn_layer_computeBp(&self->coder1->base,
+	                           flags, bs, dL_dY);
 	if(dL_dY == NULL)
 	{
 		return NULL;
@@ -105,13 +106,13 @@ nn_urrdbBlockLayer_computeBpFn(nn_layer_t* base, int flags,
 		iter = cc_list_prev(iter);
 	}
 
-	return nn_layer_computeBp(&self->coder0->base, flags,
-	                          bs, dL_dY);
+	return nn_layer_computeBp(&self->coder0->base,
+	                          flags, bs, dL_dY);
 }
 
 static void
-nn_urrdbBlockLayer_postFn(nn_layer_t* base, int flags,
-                          uint32_t bs)
+nn_urrdbBlockLayer_postFn(nn_layer_t* base,
+                          int flags, uint32_t bs)
 {
 	ASSERT(base);
 

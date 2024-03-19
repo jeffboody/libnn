@@ -46,8 +46,9 @@ const char* NN_FACT_LAYER_STRING_SINK     = "sink";
 ***********************************************************/
 
 static nn_tensor_t*
-nn_factLayer_computeFpFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* X)
+nn_factLayer_computeFpFn(nn_layer_t* base,
+                         int flags, uint32_t bs,
+                         nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -90,8 +91,8 @@ nn_factLayer_computeFpFn(nn_layer_t* base, int flags,
 		},
 	};
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_fp,
-	                                 3, ua1_array);
+	                                 self->us1_fp, 3,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -117,8 +118,9 @@ nn_factLayer_computeFpFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_factLayer_computeBpFn(nn_layer_t* base, int flags,
-                         uint32_t bs, nn_tensor_t* dL_dY)
+nn_factLayer_computeBpFn(nn_layer_t* base,
+                         int flags, uint32_t bs,
+                         nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY);
@@ -167,8 +169,8 @@ nn_factLayer_computeBpFn(nn_layer_t* base, int flags,
 		},
 	};
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_bp,
-	                                 4, ua1_array);
+	                                 self->us1_bp, 4,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -344,8 +346,8 @@ nn_factLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 2, ua0_array);
+	                                 self->us0, 2,
+	                                 ua0_array);
 
 	// success
 	return self;

@@ -122,9 +122,6 @@ cifar10_denoise_onMain(vkk_engine_t* ve, int argc,
 				snprintf(fname, 256, "data/Y-%u-%u.png",
 				         epoch, step);
 				cifar10_denoise_exportY(self, fname, 0);
-				snprintf(fname, 256, "data/dL_dY-%u-%u.png",
-				         epoch, step);
-				cifar10_denoise_export_dL_dY(self, fname, 0);
 
 				if(cifar10_denoise_predict(self, 1))
 				{

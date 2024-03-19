@@ -40,8 +40,9 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
-                              uint32_t bs, nn_tensor_t* X)
+nn_batchNormLayer_computeFpFn(nn_layer_t* base,
+                              int flags, uint32_t bs,
+                              nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -55,15 +56,19 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 	uint32_t  xw   = dimX->width;
 	uint32_t  xd   = dimX->depth;
 
-	// prediction (running average) or
-	// training (mini-batch) or instance normalization
-	nn_tensor_t* Xmean = self->Xmean_ra;
-	nn_tensor_t* Xvar  = self->Xvar_ra;
-	if((flags & NN_LAYER_FLAG_BACKPROP) ||
-	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
+	// stats used by forward pass
+	nn_tensor_t* Xmean = self->Xmean_mb;
+	nn_tensor_t* Xvar  = self->Xvar_mb;
+	if((flags & NN_ARCH_FLAG_FP_BN_RUNNING) &&
+	   (flags & NN_ARCH_FLAG_FP_BN_INSTANCE))
 	{
-		Xmean = self->Xmean_mb;
-		Xvar  = self->Xvar_mb;
+		LOGE("invalid flags=%i", flags);
+		return NULL;
+	}
+	else if(flags & NN_ARCH_FLAG_FP_BN_RUNNING)
+	{
+		Xmean = self->Xmean_ra;
+		Xvar  = self->Xvar_ra;
 	}
 
 	// sb100: bs
@@ -100,8 +105,8 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 		},
 	};
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_fp,
-	                                 5, ua1_array);
+	                                 self->us1_fp, 5,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -110,17 +115,34 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 		NULL,
 	};
 
+	// optionally compute mean, variance and
+	// running averages
 	uint32_t k;
-	vkk_computePipeline_t* cp;
-	if((flags & NN_LAYER_FLAG_BACKPROP) ||
-	   (self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE))
+	vkk_computePipeline_t* cp_mean = NULL;
+	vkk_computePipeline_t* cp_var  = NULL;
+	if(((flags & NN_ARCH_FLAG_FP_BN_RUNNING)  == 0) &&
+	   ((flags & NN_ARCH_FLAG_FP_BN_INSTANCE) == 0))
 	{
-		// nn_batchNormLayer_forwardPassXmean
+		// nn_batchNormLayer_forwardPassXmeanTrain
+		cp_mean = engine->cp_batchNorm_forwardPassXmeanTrain;
+
+		// nn_batchNormLayer_forwardPassXvarTrain
+		cp_var = engine->cp_batchNorm_forwardPassXvarTrain;
+	}
+	else if(flags & NN_ARCH_FLAG_FP_BN_INSTANCE)
+	{
+		// nn_batchNormLayer_forwardPassXmeanInstance
+		cp_mean = engine->cp_batchNorm_forwardPassXmeanInstance;
+
+		// nn_batchNormLayer_forwardPassXvarInstance
+		cp_var = engine->cp_batchNorm_forwardPassXvarInstance;
+	}
+
+	if(cp_mean)
+	{
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
-
-		cp = engine->cp_batchNorm_forwardPassXmean;
-		if(nn_engine_computeBind(engine, cp) == 0)
+		if(nn_engine_computeBind(engine, cp_mean) == 0)
 		{
 			return NULL;
 		}
@@ -145,12 +167,13 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 				                          1, 1, 1, 8, 8, 1);
 			}
 		}
+	}
 
-		// nn_batchNormLayer_forwardPassXvar
+	if(cp_var)
+	{
 		// dispatch required for each k
 		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
-		cp = engine->cp_batchNorm_forwardPassXvar;
-		if(nn_engine_computeBind(engine, cp) == 0)
+		if(nn_engine_computeBind(engine, cp_var) == 0)
 		{
 			return NULL;
 		}
@@ -179,6 +202,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 
 	// nn_batchNormLayer_forwardPassXhat
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp;
 	cp = engine->cp_batchNorm_forwardPassXhat;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
@@ -203,8 +227,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base, int flags,
 
 static nn_tensor_t*
 nn_batchNormLayer_computeBpFn(nn_layer_t* base,
-                              int flags,
-                              uint32_t bs,
+                              int flags, uint32_t bs,
                               nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
@@ -241,8 +264,8 @@ nn_batchNormLayer_computeBpFn(nn_layer_t* base,
 		},
 	};
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us1_bp,
-	                                 3, ua1_array);
+	                                 self->us1_bp, 3,
+	                                 ua1_array);
 
 	vkk_uniformSet_t* us_array[] =
 	{
@@ -269,7 +292,7 @@ nn_batchNormLayer_computeBpFn(nn_layer_t* base,
 	// dispatch required for each k
 	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
 	uint32_t k;
-	if(flags & NN_LAYER_FLAG_NOP)
+	if(flags & NN_ARCH_FLAG_BP_NOP)
 	{
 		cp = engine->cp_batchNorm_backpropSumNOP;
 	}
@@ -384,8 +407,8 @@ nn_batchNormUs2Data_new(nn_engine_t* engine,
 	};
 
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us2,
-	                                 1, ua2_array);
+	                                 self->us2, 1,
+	                                 ua2_array);
 
 	// success
 	return self;
@@ -413,9 +436,7 @@ void nn_batchNormUs2Data_delete(nn_batchNormUs2Data_t** _self)
 }
 
 nn_batchNormLayer_t*
-nn_batchNormLayer_new(nn_arch_t* arch,
-                      nn_batchNormMode_e bn_mode,
-                      nn_dim_t* dimX)
+nn_batchNormLayer_new(nn_arch_t* arch, nn_dim_t* dimX)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
@@ -448,8 +469,6 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 	{
 		return NULL;
 	}
-
-	self->bn_mode = bn_mode;
 
 	self->G = nn_tensor_new(engine, &dim_111d,
 	                        NN_TENSOR_INIT_ZERO,
@@ -713,8 +732,8 @@ nn_batchNormLayer_new(nn_arch_t* arch,
 		},
 	};
 	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us0,
-	                                 16, ua0_array);
+	                                 self->us0, 16,
+	                                 ua0_array);
 
 	nn_tensor_delete(&tmpG);
 
@@ -805,7 +824,6 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_bn_mode  = NULL;
 	jsmn_val_t* val_dimX     = NULL;
 	jsmn_val_t* val_G        = NULL;
 	jsmn_val_t* val_B        = NULL;
@@ -822,14 +840,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		jsmn_keyval_t* kv;
 		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_STRING)
-		{
-			if(strcmp(kv->key, "bn_mode") == 0)
-			{
-				val_bn_mode = kv->val;
-			}
-		}
-		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
@@ -873,8 +884,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_bn_mode  == NULL) ||
-	   (val_dimX     == NULL) ||
+	if((val_dimX     == NULL) ||
 	   (val_G        == NULL) ||
 	   (val_B        == NULL) ||
 	   (val_MG       == NULL) ||
@@ -888,21 +898,6 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	nn_batchNormMode_e bn_mode;
-	if(strcmp(val_bn_mode->data, "RUNNING") == 0)
-	{
-		bn_mode = NN_BATCH_NORM_MODE_RUNNING;
-	}
-	else if(strcmp(val_bn_mode->data, "INSTANCE") == 0)
-	{
-		bn_mode = NN_BATCH_NORM_MODE_INSTANCE;
-	}
-	else
-	{
-		LOGE("invalid bn_mode=%s", val_bn_mode->data);
-		return NULL;
-	}
-
 	nn_dim_t dimX;
 	if(nn_dim_import(&dimX, val_dimX) == 0)
 	{
@@ -910,7 +905,7 @@ nn_batchNormLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	nn_batchNormLayer_t* self;
-	self = nn_batchNormLayer_new(arch, bn_mode, &dimX);
+	self = nn_batchNormLayer_new(arch, &dimX);
 	if(self == NULL)
 	{
 		return NULL;
@@ -947,20 +942,6 @@ int nn_batchNormLayer_export(nn_batchNormLayer_t* self,
 
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "bn_mode");
-	if(self->bn_mode == NN_BATCH_NORM_MODE_RUNNING)
-	{
-		ret &= jsmn_stream_string(stream, "%s", "RUNNING");
-	}
-	else if(self->bn_mode == NN_BATCH_NORM_MODE_INSTANCE)
-	{
-		ret &= jsmn_stream_string(stream, "%s", "INSTANCE");
-	}
-	else
-	{
-		LOGE("invalid bn_mode=%i", (int) self->bn_mode);
-		return 0;
-	}
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
 	ret &= jsmn_stream_key(stream, "%s", "G");

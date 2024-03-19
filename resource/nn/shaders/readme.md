@@ -43,8 +43,10 @@ Backprop Uniforms
 
 Forward Pass Dispatch Order
 
-* nn_batchNormLayer_forwardPassXmean (training, for each k)
-* nn_batchNormLayer_forwardPassXvar  (training, for each k)
+* nn_batchNormLayer_forwardPassXmean(Train|Instance)
+  (for each k)
+* nn_batchNormLayer_forwardPassXvar(Train|Instance)
+  (for each k)
 * nn_batchNormLayer_forwardPassXhat
 * nn_batchNormLayer_forwardPassY
 

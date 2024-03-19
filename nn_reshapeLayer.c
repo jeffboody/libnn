@@ -38,8 +38,9 @@
 ***********************************************************/
 
 static nn_tensor_t*
-nn_reshapeLayer_computeFpFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* X)
+nn_reshapeLayer_computeFpFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
@@ -60,8 +61,9 @@ nn_reshapeLayer_computeFpFn(nn_layer_t* base, int flags,
 }
 
 static nn_tensor_t*
-nn_reshapeLayer_computeBpFn(nn_layer_t* base, int flags,
-                            uint32_t bs, nn_tensor_t* dL_dY)
+nn_reshapeLayer_computeBpFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY);
