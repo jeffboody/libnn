@@ -988,7 +988,7 @@ nn_dim_t* nn_tensor_dim(nn_tensor_t* self)
 	return &self->dim;
 }
 
-int nn_tensor_mode(nn_tensor_t* self)
+nn_tensorMode_e nn_tensor_mode(nn_tensor_t* self)
 {
 	ASSERT(self);
 

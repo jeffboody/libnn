@@ -106,87 +106,116 @@ typedef struct nn_tensor_s
 	vkk_uniformSet_t* us1_norm;
 } nn_tensor_t;
 
-nn_tensor_t* nn_tensor_new(nn_engine_t* engine,
-                           nn_dim_t* dim,
-                           nn_tensorInit_e init,
-                           nn_tensorMode_e mode);
-void         nn_tensor_delete(nn_tensor_t** _self);
-int          nn_tensor_import(nn_tensor_t* self,
-                              jsmn_val_t* val);
-int          nn_tensor_export(nn_tensor_t* self,
-                              jsmn_stream_t* stream);
-nn_dim_t*    nn_tensor_dim(nn_tensor_t* self);
-int          nn_tensor_mode(nn_tensor_t* self);
-int          nn_tensor_copy(nn_tensor_t* src,
-                            nn_tensor_t* dst,
-                            uint32_t src_n,
-                            uint32_t dst_n,
-                            uint32_t count);
-int          nn_tensor_ioClear(nn_tensor_t* self,
-                               uint32_t n,
+/*
+ * Tensors may be stored in CPU accessible memory or GPU
+ * only memory. The engine, arch, layers and loss will only
+ * accept compute tensors unless specified otherwise. Each
+ * tensor function has different memory requirements in
+ * order operate. The IO and compute functions require the
+ * corresponding mode to be set. The remaining functions may
+ * be used in either case. It is the users responsibility to
+ * copy IO tensors to/from compute tensors as required.
+ *
+ * The compute tensor functions may only be called when the
+ * engine is in the computing state. The auxillary functions
+ * (e.g. import/export/copy) may be called on a compute
+ * tensor which is not in use by the compute engine. Keep in
+ * mind that that the compute pipeline operations are not
+ * guaranteed to complete until the engine compute pass
+ * ends.
+ *
+ * The compute functions submit their commands to be
+ * executed on the GPU in an arbitrary order. In some
+ * scenarios, a set of commands may require a specific
+ * exection order to produce the correct result. The correct
+ * execution order is guaranteed by specifying a hazard flag
+ * which describes write-after-read (WAR) and
+ * read-after-write (RAW) conflicts. The computeOpK
+ * functions may be used to write to separate regions of a
+ * tensor across multiple calls, however, this should be
+ * treated as a RAW conflict.
+ */
+nn_tensor_t*    nn_tensor_new(nn_engine_t* engine,
+                              nn_dim_t* dim,
+                              nn_tensorInit_e init,
+                              nn_tensorMode_e mode);
+void            nn_tensor_delete(nn_tensor_t** _self);
+int             nn_tensor_import(nn_tensor_t* self,
+                                 jsmn_val_t* val);
+int             nn_tensor_export(nn_tensor_t* self,
+                                 jsmn_stream_t* stream);
+nn_dim_t*       nn_tensor_dim(nn_tensor_t* self);
+nn_tensorMode_e nn_tensor_mode(nn_tensor_t* self);
+int             nn_tensor_copy(nn_tensor_t* src,
+                               nn_tensor_t* dst,
+                               uint32_t src_n,
+                               uint32_t dst_n,
                                uint32_t count);
-int          nn_tensor_ioCopy(nn_tensor_t* src,
-                              nn_tensor_t* dst,
-                              uint32_t src_n,
-                              uint32_t dst_n,
-                              uint32_t count);
-float        nn_tensor_ioGet(nn_tensor_t* self,
-                             uint32_t n, uint32_t i,
-                             uint32_t j, uint32_t k);
-void         nn_tensor_ioSet(nn_tensor_t* self,
-                             uint32_t n, uint32_t i,
-                             uint32_t j, uint32_t k,
-                             float v);
-int          nn_tensor_ioExportPng(nn_tensor_t* self,
-                                   const char* fname,
-                                   uint32_t n,
-                                   uint32_t k,
-                                   uint32_t depth,
-                                   float min,
-                                   float max);
-int          nn_tensor_computeFill(nn_tensor_t* self,
-                                   vkk_hazard_e hazard,
-                                   uint32_t n,
-                                   uint32_t count,
-                                   float value);
-int          nn_tensor_computeFillK(nn_tensor_t* self,
-                                    vkk_hazard_e hazard,
-                                    uint32_t n,
-                                    uint32_t count,
-                                    uint32_t k,
-                                    uint32_t depth,
-                                    float value);
-int          nn_tensor_computeCopy(nn_tensor_t* src,
-                                   nn_tensor_t* dst,
-                                   vkk_hazard_e hazard,
-                                   uint32_t src_n,
-                                   uint32_t dst_n,
-                                   uint32_t count);
-int          nn_tensor_computeCopyK(nn_tensor_t* src,
-                                    nn_tensor_t* dst,
-                                    vkk_hazard_e hazard,
-                                    uint32_t src_n,
-                                    uint32_t dst_n,
-                                    uint32_t count,
-                                    uint32_t src_k,
-                                    uint32_t dst_k,
-                                    uint32_t depth);
-int          nn_tensor_computeAddK(nn_tensor_t* x,
-                                   nn_tensor_t* v,
-                                   vkk_hazard_e hazard,
-                                   uint32_t xn,
-                                   uint32_t vn,
-                                   uint32_t count,
-                                   uint32_t xk,
-                                   uint32_t vk,
-                                   uint32_t depth);
-int          nn_tensor_computeNormalize(nn_tensor_t* self,
-                                        vkk_hazard_e hazard,
-                                        nn_tensorNorm_e norm,
-                                        float c);
-int          nn_tensor_computeStats(nn_tensor_t* self,
-                                    vkk_hazard_e hazard,
-                                    uint32_t count,
-                                    nn_tensorStats_t* stats);
+int             nn_tensor_ioClear(nn_tensor_t* self,
+                                  uint32_t n,
+                                  uint32_t count);
+int             nn_tensor_ioCopy(nn_tensor_t* src,
+                                 nn_tensor_t* dst,
+                                 uint32_t src_n,
+                                 uint32_t dst_n,
+                                 uint32_t count);
+float           nn_tensor_ioGet(nn_tensor_t* self,
+                                uint32_t n, uint32_t i,
+                                uint32_t j, uint32_t k);
+void            nn_tensor_ioSet(nn_tensor_t* self,
+                                uint32_t n, uint32_t i,
+                                uint32_t j, uint32_t k,
+                                float v);
+int             nn_tensor_ioExportPng(nn_tensor_t* self,
+                                      const char* fname,
+                                      uint32_t n,
+                                      uint32_t k,
+                                      uint32_t depth,
+                                      float min,
+                                      float max);
+int             nn_tensor_computeFill(nn_tensor_t* self,
+                                      vkk_hazard_e hazard,
+                                      uint32_t n,
+                                      uint32_t count,
+                                      float value);
+int             nn_tensor_computeFillK(nn_tensor_t* self,
+                                       vkk_hazard_e hazard,
+                                       uint32_t n,
+                                       uint32_t count,
+                                       uint32_t k,
+                                       uint32_t depth,
+                                       float value);
+int             nn_tensor_computeCopy(nn_tensor_t* src,
+                                      nn_tensor_t* dst,
+                                      vkk_hazard_e hazard,
+                                      uint32_t src_n,
+                                      uint32_t dst_n,
+                                      uint32_t count);
+int             nn_tensor_computeCopyK(nn_tensor_t* src,
+                                       nn_tensor_t* dst,
+                                       vkk_hazard_e hazard,
+                                       uint32_t src_n,
+                                       uint32_t dst_n,
+                                       uint32_t count,
+                                       uint32_t src_k,
+                                       uint32_t dst_k,
+                                       uint32_t depth);
+int             nn_tensor_computeAddK(nn_tensor_t* x,
+                                      nn_tensor_t* v,
+                                      vkk_hazard_e hazard,
+                                      uint32_t xn,
+                                      uint32_t vn,
+                                      uint32_t count,
+                                      uint32_t xk,
+                                      uint32_t vk,
+                                      uint32_t depth);
+int             nn_tensor_computeNormalize(nn_tensor_t* self,
+                                           vkk_hazard_e hazard,
+                                           nn_tensorNorm_e norm,
+                                           float c);
+int             nn_tensor_computeStats(nn_tensor_t* self,
+                                       vkk_hazard_e hazard,
+                                       uint32_t count,
+                                       nn_tensorStats_t* stats);
 
 #endif
