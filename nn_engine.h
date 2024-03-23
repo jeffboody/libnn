@@ -135,6 +135,7 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_tensor_fillk;
 	vkk_computePipeline_t* cp_tensor_copyk;
 	vkk_computePipeline_t* cp_tensor_addk;
+	vkk_computePipeline_t* cp_tensor_mixk;
 
 	nn_tensor_t* Null;
 
@@ -151,13 +152,16 @@ vkk_uniformSet_t* nn_engine_getConvUs2(nn_engine_t* self,
                                        uint32_t f, uint32_t fi,
                                        uint32_t fj, uint32_t k);
 vkk_uniformSet_t* nn_engine_getTensorOpKUs0(nn_engine_t* self,
-                                            nn_tensor_t* X,
-                                            nn_tensor_t* Y,
-                                            uint32_t xn,
-                                            uint32_t yn,
+                                            nn_tensor_t* X1,
+                                            nn_tensor_t* X2,
+                                            nn_tensor_t* X3,
+                                            uint32_t n1,
+                                            uint32_t n2,
+                                            uint32_t n3,
                                             uint32_t count,
-                                            uint32_t xk,
-                                            uint32_t yk,
+                                            uint32_t k1,
+                                            uint32_t k2,
+                                            uint32_t k3,
                                             uint32_t depth,
                                             float value);
 int               nn_engine_computeBegin(nn_engine_t* self);

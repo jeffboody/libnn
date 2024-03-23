@@ -20,13 +20,15 @@ layout(std430, set=0, binding=1) writeonly buffer sb001
 	float X[];
 };
 
-layout(std430, set=0, binding=4) readonly buffer sb004
+layout(std430, set=0, binding=6) readonly buffer sb006
 {
-	uint  idx_xn;
-	uint  idx_yn;
+	uint  idx_n1;
+	uint  idx_n2;
+	uint  idx_n3;
 	uint  idx_count;
-	uint  idx_xk;
-	uint  idx_yk;
+	uint  idx_k1;
+	uint  idx_k2;
+	uint  idx_k3;
 	uint  idx_depth;
 	float idx_value;
 };
@@ -57,6 +59,6 @@ void main()
 	uint k;
 	for(k = 0; k < idx_depth; ++k)
 	{
-		setX(idx_xn + m, i, j, idx_xk + k, idx_value);
+		setX(idx_n1 + m, i, j, idx_k1 + k, idx_value);
 	}
 }

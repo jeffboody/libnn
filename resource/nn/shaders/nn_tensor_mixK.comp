@@ -12,20 +12,30 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb000
 {
-	nn_dim_t dimSrc;
+	nn_dim_t dimSrc1;
 };
 
 layout(std430, set=0, binding=1) readonly buffer sb001
 {
-	float Src[];
+	float Src1[];
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb002
 {
+	nn_dim_t dimSrc2;
+};
+
+layout(std430, set=0, binding=3) readonly buffer sb003
+{
+	float Src2[];
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
 	nn_dim_t dimDst;
 };
 
-layout(std430, set=0, binding=3) writeonly buffer sb003
+layout(std430, set=0, binding=5) writeonly buffer sb005
 {
 	float Dst[];
 };
@@ -43,12 +53,20 @@ layout(std430, set=0, binding=6) readonly buffer sb006
 	float idx_value;
 };
 
-float getSrc(uint n, uint i, uint j, uint k)
+float getSrc1(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimSrc.height*dimSrc.width*dimSrc.depth;
-	uint sy = dimSrc.width*dimSrc.depth;
-	uint sx = dimSrc.depth;
-	return Src[n*sn + i*sy + j*sx + k];
+	uint sn = dimSrc1.height*dimSrc1.width*dimSrc1.depth;
+	uint sy = dimSrc1.width*dimSrc1.depth;
+	uint sx = dimSrc1.depth;
+	return Src1[n*sn + i*sy + j*sx + k];
+}
+
+float getSrc2(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimSrc2.height*dimSrc2.width*dimSrc2.depth;
+	uint sy = dimSrc2.width*dimSrc2.depth;
+	uint sx = dimSrc2.depth;
+	return Src2[n*sn + i*sy + j*sx + k];
 }
 
 void setDst(uint n, uint i, uint j, uint k, float v)
@@ -66,19 +84,23 @@ void main()
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
-	uint xh = dimSrc.height;
-	uint xw = dimSrc.width;
+	uint xh = dimSrc1.height;
+	uint xw = dimSrc1.width;
 
 	if((i >= xh) || (j >= xw))
 	{
 		return;
 	}
 
-	float src;
+	float src1;
+	float src2;
+	float dst;
 	uint  k;
 	for(k = 0; k < idx_depth; ++k)
 	{
-		src = getSrc(idx_n1 + m, i, j, idx_k1 + k);
-		setDst(idx_n2 + m, i, j, idx_k2 + k, src);
+		src1 = getSrc1(idx_n1 + m, i, j, idx_k1 + k);
+		src2 = getSrc2(idx_n2 + m, i, j, idx_k2 + k);
+		dst  = mix(src1, src2, idx_value);
+		setDst(idx_n3 + m, i, j, idx_k3 + k, dst);
 	}
 }

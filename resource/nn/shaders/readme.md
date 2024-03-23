@@ -247,10 +247,12 @@ Spectral Normalization
 * sb13: v2
 * sb14: c
 
-OpK (FillK, CopyK, AddK)
+OpK (FillK, CopyK, AddK, MixK)
 
-* sb000: dimX
-* sb001: X
-* sb002: dimY
-* sb003: Y
-* sb004: idx (xn,yn,count,xk,yk,depth,value)
+* sb000: dimX1
+* sb001: X1
+* sb002: dimX2
+* sb003: X2
+* sb004: dimX3
+* sb005: X3
+* sb006: idx (n1,n2,n3,count,k1,k2,k3,depth,value)
