@@ -55,13 +55,13 @@ typedef enum
 
 typedef struct nn_tensorOpKUs0Idx_s
 {
-	uint32_t n1;
-	uint32_t n2;
-	uint32_t n3;
+	uint32_t x1n;
+	uint32_t x2n;
+	uint32_t yn;
 	uint32_t count;
-	uint32_t k1;
-	uint32_t k2;
-	uint32_t k3;
+	uint32_t x1k;
+	uint32_t x2k;
+	uint32_t yk;
 	uint32_t depth;
 	float    value;
 } nn_tensorOpKUs0Idx_t;
@@ -74,13 +74,13 @@ typedef struct nn_tensorOpKUs0Data_s
 
 nn_tensorOpKUs0Data_t* nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
                                                nn_tensor_t* X2,
-                                               nn_tensor_t* X3,
+                                               nn_tensor_t* Y,
                                                nn_tensorOpKUs0Idx_t* idx);
 void                   nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self);
 int                    nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
                                                   nn_tensor_t* X1,
                                                   nn_tensor_t* X2,
-                                                  nn_tensor_t* X3,
+                                                  nn_tensor_t* Y,
                                                   nn_tensorOpKUs0Idx_t* idx);
 
 typedef struct nn_tensor_s
@@ -150,18 +150,18 @@ int             nn_tensor_export(nn_tensor_t* self,
                                  jsmn_stream_t* stream);
 nn_dim_t*       nn_tensor_dim(nn_tensor_t* self);
 nn_tensorMode_e nn_tensor_mode(nn_tensor_t* self);
-int             nn_tensor_copy(nn_tensor_t* src,
-                               nn_tensor_t* dst,
-                               uint32_t src_n,
-                               uint32_t dst_n,
+int             nn_tensor_copy(nn_tensor_t* X,
+                               nn_tensor_t* Y,
+                               uint32_t xn,
+                               uint32_t yn,
                                uint32_t count);
 int             nn_tensor_ioClear(nn_tensor_t* self,
                                   uint32_t n,
                                   uint32_t count);
-int             nn_tensor_ioCopy(nn_tensor_t* src,
-                                 nn_tensor_t* dst,
-                                 uint32_t src_n,
-                                 uint32_t dst_n,
+int             nn_tensor_ioCopy(nn_tensor_t* X,
+                                 nn_tensor_t* Y,
+                                 uint32_t xn,
+                                 uint32_t yn,
                                  uint32_t count);
 float           nn_tensor_ioGet(nn_tensor_t* self,
                                 uint32_t n, uint32_t i,
@@ -182,11 +182,11 @@ int             nn_tensor_computeFill(nn_tensor_t* self,
                                       uint32_t n,
                                       uint32_t count,
                                       float value);
-int             nn_tensor_computeCopy(nn_tensor_t* src,
-                                      nn_tensor_t* dst,
+int             nn_tensor_computeCopy(nn_tensor_t* X,
+                                      nn_tensor_t* Y,
                                       vkk_hazard_e hazard,
-                                      uint32_t src_n,
-                                      uint32_t dst_n,
+                                      uint32_t xn,
+                                      uint32_t yn,
                                       uint32_t count);
 int             nn_tensor_computeFillK(nn_tensor_t* self,
                                        vkk_hazard_e hazard,
@@ -195,38 +195,38 @@ int             nn_tensor_computeFillK(nn_tensor_t* self,
                                        uint32_t k,
                                        uint32_t depth,
                                        float value);
-int             nn_tensor_computeCopyK(nn_tensor_t* src,
-                                       nn_tensor_t* dst,
+int             nn_tensor_computeCopyK(nn_tensor_t* X,
+                                       nn_tensor_t* Y,
                                        vkk_hazard_e hazard,
-                                       uint32_t src_n,
-                                       uint32_t dst_n,
+                                       uint32_t xn,
+                                       uint32_t yn,
                                        uint32_t count,
-                                       uint32_t src_k,
-                                       uint32_t dst_k,
+                                       uint32_t xk,
+                                       uint32_t yk,
                                        uint32_t depth);
-int             nn_tensor_computeAddK(nn_tensor_t* src1,
-                                      nn_tensor_t* src2,
-                                      nn_tensor_t* dst,
+int             nn_tensor_computeAddK(nn_tensor_t* X1,
+                                      nn_tensor_t* X2,
+                                      nn_tensor_t* Y,
                                       vkk_hazard_e hazard,
-                                      uint32_t src1_n,
-                                      uint32_t src2_n,
-                                      uint32_t dst_n,
+                                      uint32_t x1n,
+                                      uint32_t x2n,
+                                      uint32_t yn,
                                       uint32_t count,
-                                      uint32_t src1_k,
-                                      uint32_t src2_k,
-                                      uint32_t dst_k,
+                                      uint32_t x1k,
+                                      uint32_t x2k,
+                                      uint32_t yk,
                                       uint32_t depth);
-int             nn_tensor_computeMixK(nn_tensor_t* src1,
-                                      nn_tensor_t* src2,
-                                      nn_tensor_t* dst,
+int             nn_tensor_computeMixK(nn_tensor_t* X1,
+                                      nn_tensor_t* X2,
+                                      nn_tensor_t* Y,
                                       vkk_hazard_e hazard,
-                                      uint32_t src1_n,
-                                      uint32_t src2_n,
-                                      uint32_t dst_n,
+                                      uint32_t x1n,
+                                      uint32_t x2n,
+                                      uint32_t yn,
                                       uint32_t count,
-                                      uint32_t src1_k,
-                                      uint32_t src2_k,
-                                      uint32_t dst_k,
+                                      uint32_t x1k,
+                                      uint32_t x2k,
+                                      uint32_t yk,
                                       uint32_t depth,
                                       float value);
 int             nn_tensor_computeNormalize(nn_tensor_t* self,

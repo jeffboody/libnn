@@ -253,6 +253,6 @@ OpK (FillK, CopyK, AddK, MixK)
 * sb001: X1
 * sb002: dimX2
 * sb003: X2
-* sb004: dimX3
-* sb005: X3
-* sb006: idx (n1,n2,n3,count,k1,k2,k3,depth,value)
+* sb004: dimY
+* sb005: Y
+* sb006: idx (x1n,x2n,yn,count,x1k,x2k,yk,depth,value)

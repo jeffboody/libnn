@@ -487,10 +487,10 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 nn_tensorOpKUs0Data_t*
 nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
                         nn_tensor_t* X2,
-                        nn_tensor_t* X3,
+                        nn_tensor_t* Y,
                         nn_tensorOpKUs0Idx_t* idx)
 {
-	// X2 and X3 may be NULL
+	// X2 and Y may be NULL
 	ASSERT(X1);
 	ASSERT(idx);
 
@@ -516,14 +516,14 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 		goto fail_sb006_idx;
 	}
 
-	// optionally replace X2 and X3 with the Null tensor
+	// optionally replace X2 and Y with the Null tensor
 	if(X2 == NULL)
 	{
 		X2 = engine->Null;
 	}
-	if(X3 == NULL)
+	if(Y == NULL)
 	{
-		X3 = engine->Null;
+		Y = engine->Null;
 	}
 
 	self->us0 = vkk_uniformSet_new(engine->engine,
@@ -538,9 +538,9 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 	// sb001: X1
 	// sb002: dimX2
 	// sb003: X2
-	// sb004: dimX3
-	// sb005: X3
-	// sb006: idx (n1,n2,n3,count,k1,k2,k3,depth,value)
+	// sb004: dimY
+	// sb005: Y
+	// sb006: idx (x1n,x2n,yn,count,x1k,x2k,yk,depth,value)
 	vkk_uniformAttachment_t ua0_array[] =
 	{
 		{
@@ -566,12 +566,12 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X3->sb_dim,
+			.buffer  = Y->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X3->sb_data,
+			.buffer  = Y->sb_data,
 		},
 		{
 			.binding = 6,
@@ -614,10 +614,10 @@ int
 nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
                            nn_tensor_t* X1,
                            nn_tensor_t* X2,
-                           nn_tensor_t* X3,
+                           nn_tensor_t* Y,
                            nn_tensorOpKUs0Idx_t* idx)
 {
-	// X2 and X3 may be NULL
+	// X2 and Y may be NULL
 	ASSERT(self);
 	ASSERT(X1);
 	ASSERT(idx);
@@ -631,23 +631,23 @@ nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
 		return 0;
 	}
 
-	// optionally replace X2 and X3 with the Null tensor
+	// optionally replace X2 and Y with the Null tensor
 	if(X2 == NULL)
 	{
 		X2 = engine->Null;
 	}
-	if(X3 == NULL)
+	if(Y == NULL)
 	{
-		X3 = engine->Null;
+		Y = engine->Null;
 	}
 
 	// sb000: dimX1
 	// sb001: X1
 	// sb002: dimX2
 	// sb003: X2
-	// sb004: dimX3
-	// sb005: X3
-	// sb006: idx (n1,n2,n3,count,k1,k2,k3,depth,value)
+	// sb004: dimY
+	// sb005: Y
+	// sb006: idx (x1n,x2n,yn,count,x1k,x2k,yk,depth,value)
 	vkk_uniformAttachment_t ua0_array[] =
 	{
 		{
@@ -673,12 +673,12 @@ nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X3->sb_dim,
+			.buffer  = Y->sb_dim,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = X3->sb_data,
+			.buffer  = Y->sb_data,
 		},
 		{
 			.binding = 6,
@@ -1031,75 +1031,75 @@ nn_tensorMode_e nn_tensor_mode(nn_tensor_t* self)
 	return self->mode;
 }
 
-int nn_tensor_copy(nn_tensor_t* src,
-                   nn_tensor_t* dst,
-                   uint32_t src_n,
-                   uint32_t dst_n,
+int nn_tensor_copy(nn_tensor_t* X,
+                   nn_tensor_t* Y,
+                   uint32_t xn,
+                   uint32_t yn,
                    uint32_t count)
 {
-	ASSERT(src);
-	ASSERT(dst);
+	ASSERT(X);
+	ASSERT(Y);
 
-	nn_dim_t* dim_src = nn_tensor_dim(src);
-	nn_dim_t* dim_dst = nn_tensor_dim(dst);
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
 
-	size_t src_stride = nn_dim_strideBytes(dim_src);
-	size_t dst_stride = nn_dim_strideBytes(dim_dst);
-	if((count == 0)                     ||
-	   (src_stride != dst_stride)       ||
-	   (src_n + count > src->dim.count) ||
-	   (dst_n + count > dst->dim.count))
+	size_t x_stride = nn_dim_strideBytes(dimX);
+	size_t y_stride = nn_dim_strideBytes(dimY);
+	if((count == 0)                ||
+	   (x_stride != y_stride)      ||
+	   (xn + count > X->dim.count) ||
+	   (yn + count > Y->dim.count))
 	{
 		LOGE("invalid count=%u:%u:%u, n=%u:%u, stride=%u:%u",
-		     count, src->dim.count, dst->dim.count,
-		     src_n, dst_n,
-		     (uint32_t) src_stride,
-		     (uint32_t) dst_stride);
+		     count, X->dim.count, Y->dim.count,
+		     xn, yn,
+		     (uint32_t) x_stride,
+		     (uint32_t) y_stride);
 		return 0;
 	}
 
-	float* src_data = NULL;
-	if(src->mode == NN_TENSOR_MODE_IO)
+	float* x_data = NULL;
+	if(X->mode == NN_TENSOR_MODE_IO)
 	{
-		src_data = nn_tensor_data(src, src_n);
-		if(src_data == NULL)
+		x_data = nn_tensor_data(X, xn);
+		if(x_data == NULL)
 		{
 			return 0;
 		}
 	}
 
-	float* dst_data = NULL;
-	if(dst->mode == NN_TENSOR_MODE_IO)
+	float* y_data = NULL;
+	if(Y->mode == NN_TENSOR_MODE_IO)
 	{
-		dst_data = nn_tensor_data(dst, dst_n);
-		if(dst_data == NULL)
+		y_data = nn_tensor_data(Y, yn);
+		if(y_data == NULL)
 		{
 			return 0;
 		}
 	}
 
-	size_t size = count*src_stride;
-	if((src->mode == NN_TENSOR_MODE_IO) &&
-	   (dst->mode == NN_TENSOR_MODE_COMPUTE))
+	size_t size = count*x_stride;
+	if((X->mode == NN_TENSOR_MODE_IO) &&
+	   (Y->mode == NN_TENSOR_MODE_COMPUTE))
 	{
-		vkk_buffer_writeStorage(dst->sb_data, dst_n, size,
-		                        src_data);
+		vkk_buffer_writeStorage(Y->sb_data, yn, size,
+		                        x_data);
 	}
-	else if((src->mode == NN_TENSOR_MODE_COMPUTE) &&
-	        (dst->mode == NN_TENSOR_MODE_IO))
+	else if((X->mode == NN_TENSOR_MODE_COMPUTE) &&
+	        (Y->mode == NN_TENSOR_MODE_IO))
 	{
-		vkk_buffer_readStorage(src->sb_data, src_n, size,
-		                       dst_data);
+		vkk_buffer_readStorage(X->sb_data, xn, size,
+		                       y_data);
 	}
-	else if((src->mode == NN_TENSOR_MODE_COMPUTE) &&
-	        (dst->mode == NN_TENSOR_MODE_COMPUTE))
+	else if((X->mode == NN_TENSOR_MODE_COMPUTE) &&
+	        (Y->mode == NN_TENSOR_MODE_COMPUTE))
 	{
-		vkk_buffer_copyStorage(src->sb_data, dst->sb_data,
-		                       src_n, dst_n, size);
+		vkk_buffer_copyStorage(X->sb_data, Y->sb_data,
+		                       xn, yn, size);
 	}
 	else
 	{
-		memcpy(dst_data, src_data, size);
+		memcpy(y_data, x_data, size);
 	}
 
 	return 1;
@@ -1136,51 +1136,50 @@ int nn_tensor_ioClear(nn_tensor_t* self,
 	return 1;
 }
 
-int nn_tensor_ioCopy(nn_tensor_t* src,
-                     nn_tensor_t* dst,
-                     uint32_t src_n,
-                     uint32_t dst_n,
+int nn_tensor_ioCopy(nn_tensor_t* X,
+                     nn_tensor_t* Y,
+                     uint32_t xn,
+                     uint32_t yn,
                      uint32_t count)
 {
-	ASSERT(src);
-	ASSERT(dst);
+	ASSERT(X);
+	ASSERT(Y);
 
-	if((src->mode != NN_TENSOR_MODE_IO) ||
-	   (dst->mode != NN_TENSOR_MODE_IO))
+	if((X->mode != NN_TENSOR_MODE_IO) ||
+	   (Y->mode != NN_TENSOR_MODE_IO))
 	{
 		LOGE("invalid");
 		return 0;
 	}
 
-	nn_dim_t* dim_src = nn_tensor_dim(src);
-	nn_dim_t* dim_dst = nn_tensor_dim(dst);
-	if(nn_dim_strideEquals(dim_src, dim_dst) == 0)
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
+	if(nn_dim_strideEquals(dimX, dimY) == 0)
 	{
 		LOGE("invalid height=%u:%u, width=%u:%u, depth=%u:%u",
-		     dim_src->height, dim_dst->height,
-		     dim_src->width,  dim_dst->width,
-		     dim_src->depth,  dim_dst->depth);
+		     dimX->height, dimY->height,
+		     dimX->width,  dimY->width,
+		     dimX->depth,  dimY->depth);
 		return 0;
 	}
 
-	if(((count + src_n) > dim_src->count) ||
-	   ((count + dst_n) > dim_dst->count))
+	if(((count + xn) > dimX->count) ||
+	   ((count + yn) > dimY->count))
 	{
 		LOGE("invalid n=%u:%u, count=%u:%u:%u",
-		     src_n, dst_n,
-		     count, dim_src->count, dim_dst->count);
+		     xn, yn, count, dimX->count, dimY->count);
 		return 0;
 	}
 
-	float* src_data = nn_tensor_data(src, src_n);
-	float* dst_data = nn_tensor_data(dst, dst_n);
-	if((src_data == NULL) || (dst_data == NULL))
+	float* x_data = nn_tensor_data(X, xn);
+	float* y_data = nn_tensor_data(Y, yn);
+	if((x_data == NULL) || (y_data == NULL))
 	{
 		return 0;
 	}
 
-	size_t bytes = nn_dim_strideBytes(dim_src);
-	memcpy(dst_data, src_data, count*bytes);
+	size_t bytes = nn_dim_strideBytes(dimX);
+	memcpy(y_data, x_data, count*bytes);
 
 	return 1;
 }
@@ -1333,23 +1332,23 @@ int nn_tensor_computeFill(nn_tensor_t* self,
 	return 1;
 }
 
-int nn_tensor_computeCopy(nn_tensor_t* src,
-                          nn_tensor_t* dst,
+int nn_tensor_computeCopy(nn_tensor_t* X,
+                          nn_tensor_t* Y,
                           vkk_hazard_e hazard,
-                          uint32_t src_n,
-                          uint32_t dst_n,
+                          uint32_t xn,
+                          uint32_t yn,
                           uint32_t count)
 {
-	ASSERT(src);
-	ASSERT(dst);
+	ASSERT(X);
+	ASSERT(Y);
 
-	nn_engine_t* engine = src->engine;
+	nn_engine_t* engine = X->engine;
 
-	if((src->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (dst->mode != NN_TENSOR_MODE_COMPUTE))
+	if((X->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode != NN_TENSOR_MODE_COMPUTE))
 	{
 		LOGE("invalid mode=%i:%i",
-		     src->mode, dst->mode);
+		     X->mode, Y->mode);
 		return 0;
 	}
 
@@ -1359,29 +1358,28 @@ int nn_tensor_computeCopy(nn_tensor_t* src,
 		return 0;
 	}
 
-	nn_dim_t* dim_src = nn_tensor_dim(src);
-	nn_dim_t* dim_dst = nn_tensor_dim(dst);
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
 
-	size_t src_stride = nn_dim_strideBytes(dim_src);
-	size_t dst_stride = nn_dim_strideBytes(dim_dst);
-	if((count == 0)                     ||
-	   (src_stride != dst_stride)       ||
-	   (src_n + count > src->dim.count) ||
-	   (dst_n + count > dst->dim.count))
+	size_t x_stride = nn_dim_strideBytes(dimX);
+	size_t y_stride = nn_dim_strideBytes(dimY);
+	if((count == 0)                ||
+	   (x_stride != y_stride)      ||
+	   (xn + count > X->dim.count) ||
+	   (yn + count > Y->dim.count))
 	{
 		LOGE("invalid count=%u:%u:%u, n=%u:%u, stride=%u:%u",
-		     count, src->dim.count, dst->dim.count,
-		     src_n, dst_n,
-		     (uint32_t) src_stride,
-		     (uint32_t) dst_stride);
+		     count, X->dim.count, Y->dim.count,
+		     xn, yn,
+		     (uint32_t) x_stride,
+		     (uint32_t) y_stride);
 		return 0;
 	}
 
-	size_t bytes = nn_dim_strideBytes(dim_src);
+	size_t bytes = nn_dim_strideBytes(dimX);
 	vkk_compute_copyStorage(engine->compute, hazard,
-	                        src->sb_data, dst->sb_data,
-	                        src_n*bytes,
-	                        dst_n*bytes,
+	                        X->sb_data, Y->sb_data,
+	                        xn*bytes, yn*bytes,
 	                        count*bytes);
 
 	return 1;
@@ -1453,25 +1451,25 @@ int nn_tensor_computeFillK(nn_tensor_t* self,
 	return 1;
 }
 
-int nn_tensor_computeCopyK(nn_tensor_t* src,
-                           nn_tensor_t* dst,
+int nn_tensor_computeCopyK(nn_tensor_t* X,
+                           nn_tensor_t* Y,
                            vkk_hazard_e hazard,
-                           uint32_t src_n,
-                           uint32_t dst_n,
+                           uint32_t xn,
+                           uint32_t yn,
                            uint32_t count,
-                           uint32_t src_k,
-                           uint32_t dst_k,
+                           uint32_t xk,
+                           uint32_t yk,
                            uint32_t depth)
 {
-	ASSERT(src);
-	ASSERT(dst);
+	ASSERT(X);
+	ASSERT(Y);
 
-	nn_engine_t* engine = src->engine;
+	nn_engine_t* engine = X->engine;
 
-	if((src->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (dst->mode != NN_TENSOR_MODE_COMPUTE))
+	if((X->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode != NN_TENSOR_MODE_COMPUTE))
 	{
-		LOGE("invalid mode=%i:%i", src->mode, dst->mode);
+		LOGE("invalid mode=%i:%i", X->mode, Y->mode);
 		return 0;
 	}
 
@@ -1481,39 +1479,37 @@ int nn_tensor_computeCopyK(nn_tensor_t* src,
 		return 0;
 	}
 
-	nn_dim_t* dim_src = nn_tensor_dim(src);
-	nn_dim_t* dim_dst = nn_tensor_dim(dst);
-	if((count == 0)                       ||
-	   ((src_n + count) > dim_src->count) ||
-	   ((dst_n + count) > dim_dst->count))
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
+	if((count == 0)                 ||
+	   ((xn + count) > dimX->count) ||
+	   ((yn + count) > dimY->count))
 	{
 		LOGE("invalid n=%u:%u, count=%u:%u:%u",
-		     src_n, dst_n,
-		     count, dim_src->count, dim_dst->count);
+		     xn, yn, count, dimX->count, dimY->count);
 		return 0;
 	}
-	if((depth == 0)                       ||
-	   ((src_k + depth) > dim_src->depth) ||
-	   ((dst_k + depth) > dim_dst->depth))
+	if((depth == 0)                 ||
+	   ((xk + depth) > dimX->depth) ||
+	   ((yk + depth) > dimY->depth))
 	{
 		LOGE("invalid k=%u:%u, depth=%u:%u:%u",
-		     src_k, dst_k,
-		     depth, dim_src->depth, dim_dst->depth);
+		     xk, yk, depth, dimX->depth, dimY->depth);
 		return 0;
 	}
-	if((dim_src->height != dim_dst->height) ||
-	   (dim_src->width  != dim_dst->width))
+	if((dimX->height != dimY->height) ||
+	   (dimX->width  != dimY->width))
 	{
 		LOGE("invalid height=%u:%u, width=%u:%u",
-		     dim_src->height, dim_dst->height,
-		     dim_src->width,  dim_dst->width);
+		     dimX->height, dimY->height,
+		     dimX->width,  dimY->width);
 		return 0;
 	}
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, src, dst, NULL,
-	                                src_n, dst_n, 0, count,
-	                                src_k, dst_k, 0, depth,
+	us0 = nn_engine_getTensorOpKUs0(engine, X, NULL, Y,
+	                                xn, 0, yn, count,
+	                                xk, 0, yk, depth,
 	                                0.0f);
 	if(us0 == NULL)
 	{
@@ -1535,37 +1531,37 @@ int nn_tensor_computeCopyK(nn_tensor_t* src,
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard, count,
-	                          dim_src->height, dim_src->width,
+	                          dimX->height, dimX->width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeAddK(nn_tensor_t* src1,
-                          nn_tensor_t* src2,
-                          nn_tensor_t* dst,
+int nn_tensor_computeAddK(nn_tensor_t* X1,
+                          nn_tensor_t* X2,
+                          nn_tensor_t* Y,
                           vkk_hazard_e hazard,
-                          uint32_t src1_n,
-                          uint32_t src2_n,
-                          uint32_t dst_n,
+                          uint32_t x1n,
+                          uint32_t x2n,
+                          uint32_t yn,
                           uint32_t count,
-                          uint32_t src1_k,
-                          uint32_t src2_k,
-                          uint32_t dst_k,
+                          uint32_t x1k,
+                          uint32_t x2k,
+                          uint32_t yk,
                           uint32_t depth)
 {
-	ASSERT(src1);
-	ASSERT(src2);
-	ASSERT(dst);
+	ASSERT(X1);
+	ASSERT(X2);
+	ASSERT(Y);
 
-	nn_engine_t* engine = src1->engine;
+	nn_engine_t* engine = X1->engine;
 
-	if((src1->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (src2->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (dst->mode  != NN_TENSOR_MODE_COMPUTE))
+	if((X1->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (X2->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode  != NN_TENSOR_MODE_COMPUTE))
 	{
 		LOGE("invalid mode=%i:%i:%i",
-		     src1->mode, src2->mode, dst->mode);
+		     X1->mode, X2->mode, Y->mode);
 		return 0;
 	}
 
@@ -1575,49 +1571,46 @@ int nn_tensor_computeAddK(nn_tensor_t* src1,
 		return 0;
 	}
 
-	nn_dim_t* dim_src1 = nn_tensor_dim(src1);
-	nn_dim_t* dim_src2 = nn_tensor_dim(src2);
-	nn_dim_t* dim_dst  = nn_tensor_dim(dst);
-	if((count == 0)                         ||
-	   ((src1_n + count) > dim_src1->count) ||
-	   ((src2_n + count) > dim_src2->count) ||
-	   ((dst_n  + count) > dim_dst->count))
+	nn_dim_t* dimX1 = nn_tensor_dim(X1);
+	nn_dim_t* dimX2 = nn_tensor_dim(X2);
+	nn_dim_t* dimY  = nn_tensor_dim(Y);
+	if((count == 0)                   ||
+	   ((x1n + count) > dimX1->count) ||
+	   ((x2n + count) > dimX2->count) ||
+	   ((yn  + count) > dimY->count))
 	{
 		LOGE("invalid n=%u:%u:%u, count=%u:%u:%u:%u",
-		     src1_n, src2_n, dst_n,
-		     count, dim_src1->count,
-		     dim_src2->count, dim_dst->count);
+		     x1n, x2n, yn, count, dimX1->count,
+		     dimX2->count, dimY->count);
 		return 0;
 	}
-	if((depth == 0)                         ||
-	   ((src1_k + depth) > dim_src1->depth) ||
-	   ((src2_k + depth) > dim_src2->depth) ||
-	   ((dst_k  + depth) > dim_dst->depth))
+	if((depth == 0)                   ||
+	   ((x1k + depth) > dimX1->depth) ||
+	   ((x2k + depth) > dimX2->depth) ||
+	   ((yk  + depth) > dimY->depth))
 	{
 		LOGE("invalid k=%u:%u:%u, depth=%u:%u:%u:%u",
-		     src1_k, src2_k, dst_k,
-		     depth, dim_src1->depth,
-		     dim_src2->depth, dim_dst->depth);
+		     x1k, x2k, yk, depth, dimX1->depth,
+		     dimX2->depth, dimY->depth);
 		return 0;
 	}
-	if((dim_src1->height != dim_src2->height) ||
-	   (dim_src1->height != dim_dst->height)  ||
-	   (dim_src1->width  != dim_src2->width)  ||
-	   (dim_src1->width  != dim_dst->width))
+	if((dimX1->height != dimX2->height) ||
+	   (dimX1->height != dimY->height)  ||
+	   (dimX1->width  != dimX2->width)  ||
+	   (dimX1->width  != dimY->width))
 	{
 		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
-		     dim_src1->height, dim_src2->height,
-		     dim_dst->height, dim_src1->width,
-		     dim_src2->width, dim_dst->width);
+		     dimX1->height, dimX2->height,
+		     dimY->height, dimX1->width,
+		     dimX2->width, dimY->width);
 		return 0;
 	}
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, src1, src2, dst,
-	                                src1_n, src2_n, dst_n,
-	                                count,
-	                                src1_k, src2_k, dst_k,
-	                                depth, 0.0f);
+	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
+	                                x1n, x2n, yn, count,
+	                                x1k, x2k, yk, depth,
+	                                0.0f);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1638,39 +1631,39 @@ int nn_tensor_computeAddK(nn_tensor_t* src1,
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard, count,
-	                          dim_src1->height,
-	                          dim_src1->width,
+	                          dimX1->height,
+	                          dimX1->width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeMixK(nn_tensor_t* src1,
-                          nn_tensor_t* src2,
-                          nn_tensor_t* dst,
+int nn_tensor_computeMixK(nn_tensor_t* X1,
+                          nn_tensor_t* X2,
+                          nn_tensor_t* Y,
                           vkk_hazard_e hazard,
-                          uint32_t src1_n,
-                          uint32_t src2_n,
-                          uint32_t dst_n,
+                          uint32_t x1n,
+                          uint32_t x2n,
+                          uint32_t yn,
                           uint32_t count,
-                          uint32_t src1_k,
-                          uint32_t src2_k,
-                          uint32_t dst_k,
+                          uint32_t x1k,
+                          uint32_t x2k,
+                          uint32_t yk,
                           uint32_t depth,
                           float value)
 {
-	ASSERT(src1);
-	ASSERT(src2);
-	ASSERT(dst);
+	ASSERT(X1);
+	ASSERT(X2);
+	ASSERT(Y);
 
-	nn_engine_t* engine = src1->engine;
+	nn_engine_t* engine = X1->engine;
 
-	if((src1->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (src2->mode != NN_TENSOR_MODE_COMPUTE) ||
-	   (dst->mode  != NN_TENSOR_MODE_COMPUTE))
+	if((X1->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (X2->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode  != NN_TENSOR_MODE_COMPUTE))
 	{
 		LOGE("invalid mode=%i:%i:%i",
-		     src1->mode, src2->mode, dst->mode);
+		     X1->mode, X2->mode, Y->mode);
 		return 0;
 	}
 
@@ -1680,49 +1673,47 @@ int nn_tensor_computeMixK(nn_tensor_t* src1,
 		return 0;
 	}
 
-	nn_dim_t* dim_src1 = nn_tensor_dim(src1);
-	nn_dim_t* dim_src2 = nn_tensor_dim(src2);
-	nn_dim_t* dim_dst  = nn_tensor_dim(dst);
-	if((count == 0)                         ||
-	   ((src1_n + count) > dim_src1->count) ||
-	   ((src2_n + count) > dim_src2->count) ||
-	   ((dst_n  + count) > dim_dst->count))
+	nn_dim_t* dimX1 = nn_tensor_dim(X1);
+	nn_dim_t* dimX2 = nn_tensor_dim(X2);
+	nn_dim_t* dimY  = nn_tensor_dim(Y);
+	if((count == 0)                   ||
+	   ((x1n + count) > dimX1->count) ||
+	   ((x2n + count) > dimX2->count) ||
+	   ((yn  + count) > dimY->count))
 	{
 		LOGE("invalid n=%u:%u:%u, count=%u:%u:%u:%u",
-		     src1_n, src2_n, dst_n,
-		     count, dim_src1->count,
-		     dim_src2->count, dim_dst->count);
+		     x1n, x2n, yn,
+		     count, dimX1->count,
+		     dimX2->count, dimY->count);
 		return 0;
 	}
-	if((depth == 0)                         ||
-	   ((src1_k + depth) > dim_src1->depth) ||
-	   ((src2_k + depth) > dim_src2->depth) ||
-	   ((dst_k  + depth) > dim_dst->depth))
+	if((depth == 0)                   ||
+	   ((x1k + depth) > dimX1->depth) ||
+	   ((x2k + depth) > dimX2->depth) ||
+	   ((yk  + depth) > dimY->depth))
 	{
 		LOGE("invalid k=%u:%u:%u, depth=%u:%u:%u:%u",
-		     src1_k, src2_k, dst_k,
-		     depth, dim_src1->depth,
-		     dim_src2->depth, dim_dst->depth);
+		     x1k, x2k, yk,
+		     depth, dimX1->depth,
+		     dimX2->depth, dimY->depth);
 		return 0;
 	}
-	if((dim_src1->height != dim_src2->height) ||
-	   (dim_src1->height != dim_dst->height)  ||
-	   (dim_src1->width  != dim_src2->width)  ||
-	   (dim_src1->width  != dim_dst->width))
+	if((dimX1->height != dimX2->height) ||
+	   (dimX1->height != dimY->height)  ||
+	   (dimX1->width  != dimX2->width)  ||
+	   (dimX1->width  != dimY->width))
 	{
 		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
-		     dim_src1->height, dim_src2->height,
-		     dim_dst->height, dim_src1->width,
-		     dim_src2->width, dim_dst->width);
+		     dimX1->height, dimX2->height, dimY->height,
+		     dimX1->width, dimX2->width, dimY->width);
 		return 0;
 	}
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, src1, src2, dst,
-	                                src1_n, src2_n, dst_n,
-	                                count,
-	                                src1_k, src2_k, dst_k,
-	                                depth, value);
+	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
+	                                x1n, x2n, yn, count,
+	                                x1k, x2k, yk, depth,
+	                                value);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1743,8 +1734,8 @@ int nn_tensor_computeMixK(nn_tensor_t* src1,
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard, count,
-	                          dim_src1->height,
-	                          dim_src1->width,
+	                          dimX1->height,
+	                          dimX1->width,
 	                          1, 8, 8);
 
 	return 1;

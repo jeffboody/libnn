@@ -12,69 +12,69 @@ struct nn_dim_t
 
 layout(std430, set=0, binding=0) readonly buffer sb000
 {
-	nn_dim_t dimSrc1;
+	nn_dim_t dimX1;
 };
 
 layout(std430, set=0, binding=1) readonly buffer sb001
 {
-	float Src1[];
+	float X1[];
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb002
 {
-	nn_dim_t dimSrc2;
+	nn_dim_t dimX2;
 };
 
 layout(std430, set=0, binding=3) readonly buffer sb003
 {
-	float Src2[];
+	float X2[];
 };
 
 layout(std430, set=0, binding=4) readonly buffer sb004
 {
-	nn_dim_t dimDst;
+	nn_dim_t dimY;
 };
 
 layout(std430, set=0, binding=5) writeonly buffer sb005
 {
-	float Dst[];
+	float Y[];
 };
 
 layout(std430, set=0, binding=6) readonly buffer sb006
 {
-	uint  idx_n1;
-	uint  idx_n2;
-	uint  idx_n3;
+	uint  idx_x1n;
+	uint  idx_x2n;
+	uint  idx_yn;
 	uint  idx_count;
-	uint  idx_k1;
-	uint  idx_k2;
-	uint  idx_k3;
+	uint  idx_x1k;
+	uint  idx_x2k;
+	uint  idx_yk;
 	uint  idx_depth;
 	float idx_value;
 };
 
-float getSrc1(uint n, uint i, uint j, uint k)
+float getX1(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimSrc1.height*dimSrc1.width*dimSrc1.depth;
-	uint sy = dimSrc1.width*dimSrc1.depth;
-	uint sx = dimSrc1.depth;
-	return Src1[n*sn + i*sy + j*sx + k];
+	uint sn = dimX1.height*dimX1.width*dimX1.depth;
+	uint sy = dimX1.width*dimX1.depth;
+	uint sx = dimX1.depth;
+	return X1[n*sn + i*sy + j*sx + k];
 }
 
-float getSrc2(uint n, uint i, uint j, uint k)
+float getX2(uint n, uint i, uint j, uint k)
 {
-	uint sn = dimSrc2.height*dimSrc2.width*dimSrc2.depth;
-	uint sy = dimSrc2.width*dimSrc2.depth;
-	uint sx = dimSrc2.depth;
-	return Src2[n*sn + i*sy + j*sx + k];
+	uint sn = dimX2.height*dimX2.width*dimX2.depth;
+	uint sy = dimX2.width*dimX2.depth;
+	uint sx = dimX2.depth;
+	return X2[n*sn + i*sy + j*sx + k];
 }
 
-void setDst(uint n, uint i, uint j, uint k, float v)
+void setY(uint n, uint i, uint j, uint k, float v)
 {
-	uint sn = dimDst.height*dimDst.width*dimDst.depth;
-	uint sy = dimDst.width*dimDst.depth;
-	uint sx = dimDst.depth;
-	Dst[n*sn + i*sy + j*sx + k] = v;
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
 void main()
@@ -84,23 +84,23 @@ void main()
 	uint m  = gl_GlobalInvocationID.x;
 	uint i  = gl_GlobalInvocationID.y;
 	uint j  = gl_GlobalInvocationID.z;
-	uint xh = dimSrc1.height;
-	uint xw = dimSrc1.width;
+	uint xh = dimX1.height;
+	uint xw = dimX1.width;
 
 	if((i >= xh) || (j >= xw))
 	{
 		return;
 	}
 
-	float src1;
-	float src2;
-	float dst;
+	float x1;
+	float x2;
+	float y;
 	uint  k;
 	for(k = 0; k < idx_depth; ++k)
 	{
-		src1 = getSrc1(idx_n1 + m, i, j, idx_k1 + k);
-		src2 = getSrc2(idx_n2 + m, i, j, idx_k2 + k);
-		dst  = mix(src1, src2, idx_value);
-		setDst(idx_n3 + m, i, j, idx_k3 + k, dst);
+		x1 = getX1(idx_x1n + m, i, j, idx_x1k + k);
+		x2 = getX2(idx_x2n + m, i, j, idx_x2k + k);
+		y  = mix(x1, x2, idx_value);
+		setY(idx_yn + m, i, j, idx_yk + k, y);
 	}
 }
