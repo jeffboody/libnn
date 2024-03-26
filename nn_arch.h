@@ -104,6 +104,8 @@ nn_arch_t*      nn_arch_import(nn_engine_t* engine,
                                jsmn_val_t* val);
 int             nn_arch_export(nn_arch_t* self,
                                jsmn_stream_t* stream);
+nn_dim_t*       nn_arch_dimX(nn_arch_t* self);
+nn_dim_t*       nn_arch_dimY(nn_arch_t* self);
 nn_archState_t* nn_arch_state(nn_arch_t* self);
 nn_tensor_t*    nn_arch_forwardPass(nn_arch_t* self,
                                     int flags,

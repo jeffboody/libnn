@@ -299,6 +299,36 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 	return ret;
 }
 
+nn_dim_t* nn_arch_dimX(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	nn_layer_t* layer;
+	layer = (nn_layer_t*) cc_list_peekHead(self->layers);
+	if(layer == NULL)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	return nn_layer_dimX(layer);
+}
+
+nn_dim_t* nn_arch_dimY(nn_arch_t* self)
+{
+	ASSERT(self);
+
+	nn_layer_t* layer;
+	layer = (nn_layer_t*) cc_list_peekTail(self->layers);
+	if(layer == NULL)
+	{
+		LOGE("invalid");
+		return NULL;
+	}
+
+	return nn_layer_dimY(layer);
+}
+
 nn_archState_t* nn_arch_state(nn_arch_t* self)
 {
 	ASSERT(self);
