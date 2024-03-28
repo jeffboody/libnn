@@ -596,47 +596,10 @@ cifar10_disc_import(nn_engine_t* engine,
 	ASSERT(engine);
 	ASSERT(fname);
 
-	FILE* f = fopen(fname, "r");
-	if(f == NULL)
-	{
-		LOGE("invalid %s", fname);
-		return NULL;
-	}
-
-	// get file size
-	if(fseek(f, (long) 0, SEEK_END) == -1)
-	{
-		LOGE("fseek failed");
-		goto fail_size;
-	}
-	size_t size = ftell(f);
-
-	// rewind to start
-	if(fseek(f, 0, SEEK_SET) == -1)
-	{
-		LOGE("fseek failed");
-		goto fail_rewind;
-	}
-
-	// allocate buffer
-	char* str = (char*) CALLOC(1, size);
-	if(str == NULL)
-	{
-		LOGE("CALLOC failed");
-		goto fail_str;
-	}
-
-	// read file
-	if(fread((void*) str, size, 1, f) != 1)
-	{
-		LOGE("fread failed");
-		goto fail_read;
-	}
-
-	jsmn_val_t* val = jsmn_val_new(str, size);
+	jsmn_val_t* val = jsmn_val_import(fname);
 	if(val == NULL)
 	{
-		goto fail_val;
+		return NULL;
 	}
 
 	cifar10_disc_t* self;
@@ -647,8 +610,6 @@ cifar10_disc_import(nn_engine_t* engine,
 	}
 
 	jsmn_val_delete(&val);
-	FREE(str);
-	fclose(f);
 
 	// success
 	return self;
@@ -656,13 +617,6 @@ cifar10_disc_import(nn_engine_t* engine,
 	// failure
 	fail_parse:
 		jsmn_val_delete(&val);
-	fail_val:
-	fail_read:
-		FREE(str);
-	fail_str:
-	fail_rewind:
-	fail_size:
-		fclose(f);
 	return NULL;
 }
 
@@ -677,7 +631,6 @@ int cifar10_disc_export(cifar10_disc_t* self,
 	{
 		return 0;
 	}
-
 	jsmn_stream_beginObject(stream);
 	jsmn_stream_key(stream, "%s", "base");
 	nn_arch_export(&self->base, stream);
@@ -700,31 +653,17 @@ int cifar10_disc_export(cifar10_disc_t* self,
 	jsmn_stream_key(stream, "%s", "loss");
 	nn_loss_export(self->loss, stream);
 	jsmn_stream_end(stream);
-
-	size_t size = 0;
-	const char* buf = jsmn_stream_buffer(stream, &size);
-	if(buf == NULL)
+	if(jsmn_stream_export(stream, fname) == 0)
 	{
-		goto fail_buf;
+		goto fail_export;
 	}
-
-	FILE* f = fopen(fname, "w");
-	if(f == NULL)
-	{
-		LOGE("invalid %s", fname);
-		goto fail_fopen;
-	}
-
-	fprintf(f, "%s", buf);
-	fclose(f);
 	jsmn_stream_delete(&stream);
 
 	// success
 	return 1;
 
 	// failure
-	fail_fopen:
-	fail_buf:
+	fail_export:
 		jsmn_stream_delete(&stream);
 	return 0;
 }
