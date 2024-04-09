@@ -1189,7 +1189,7 @@ float nn_tensor_ioGet(nn_tensor_t* self,
                       uint32_t j, uint32_t k)
 {
 	ASSERT(self);
-	ASSERT(self->mode & NN_TENSOR_MODE_IO);
+	ASSERT(self->mode == NN_TENSOR_MODE_IO);
 	ASSERT(nn_dim_validate(&self->dim, n, i, j, k));
 
 	uint32_t sn = self->dim.height*self->dim.width*
@@ -1205,7 +1205,7 @@ void nn_tensor_ioSet(nn_tensor_t* self,
                      float v)
 {
 	ASSERT(self);
-	ASSERT(self->mode & NN_TENSOR_MODE_IO);
+	ASSERT(self->mode == NN_TENSOR_MODE_IO);
 	ASSERT(nn_dim_validate(&self->dim, n, i, j, k));
 
 	uint32_t sn = self->dim.height*self->dim.width*
