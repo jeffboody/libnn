@@ -301,6 +301,9 @@ nn_skipLayer_computeBpAddFn(nn_layer_t* base,
 	nn_arch_t*   arch   = base->arch;
 	nn_engine_t* engine = arch->engine;
 
+	// reference
+	self->dL_dX2 = dL_dY;
+
 	nn_tensor_t* Null   = engine->Null;
 	nn_tensor_t* dL_dY1 = dL_dY;
 	nn_tensor_t* dL_dY2 = Null;
@@ -310,9 +313,6 @@ nn_skipLayer_computeBpAddFn(nn_layer_t* base,
 	uint32_t     xh     = dimX->height;
 	uint32_t     xw     = dimX->width;
 	uint32_t     xd     = dimX->depth;
-
-	// reference
-	self->dL_dX2 = dL_dY;
 
 	// add (skip_beta == 1.0): fast path
 	if(self->skip_beta == 1.0f)

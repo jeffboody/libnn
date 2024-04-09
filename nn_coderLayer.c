@@ -289,32 +289,28 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		dim = nn_layer_dimY(&self->conv->base);
 	}
 
-	if(info->skip_mode > NN_CODER_SKIP_MODE_NONE)
+	if(info->skip_mode == NN_CODER_SKIP_MODE_ADD)
 	{
-		if(info->skip_mode == NN_CODER_SKIP_MODE_ADD)
-		{
-			ASSERT(info->skip_coder);
-			self->skip = nn_skipLayer_newAdd(info->arch, dim,
-			                                 info->skip_coder->skip,
-			                                 info->skip_beta);
-		}
-		else if(info->skip_mode == NN_CODER_SKIP_MODE_CAT)
-		{
-			ASSERT(info->skip_coder);
-			self->skip = nn_skipLayer_newCat(info->arch, dim,
-			                                 info->skip_coder->skip);
-		}
-		else
-		{
-			self->skip = nn_skipLayer_newFork(info->arch, dim,
-			                                  (nn_skipMode_e)
-			                                  info->skip_mode);
-		}
-
+		ASSERT(info->skip_coder);
+		self->skip = nn_skipLayer_newAdd(info->arch, dim,
+		                                 info->skip_coder->skip,
+		                                 info->skip_beta);
 		if(self->skip == NULL)
 		{
 			LOGE("invalid");
-			goto fail_skip;
+			goto fail_skip_add;
+		}
+		dim = nn_layer_dimY(&self->skip->base);
+	}
+	else if(info->skip_mode == NN_CODER_SKIP_MODE_FORK_ADD)
+	{
+		self->skip = nn_skipLayer_newFork(info->arch, dim,
+		                                  (nn_skipMode_e)
+		                                  info->skip_mode);
+		if(self->skip == NULL)
+		{
+			LOGE("invalid");
+			goto fail_skip_add;
 		}
 		dim = nn_layer_dimY(&self->skip->base);
 	}
@@ -338,17 +334,44 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		}
 	}
 
+	if(info->skip_mode == NN_CODER_SKIP_MODE_CAT)
+	{
+		ASSERT(info->skip_coder);
+		self->skip = nn_skipLayer_newCat(info->arch, dim,
+		                                 info->skip_coder->skip);
+		if(self->skip == NULL)
+		{
+			LOGE("invalid");
+			goto fail_skip_cat;
+		}
+		dim = nn_layer_dimY(&self->skip->base);
+	}
+	else if(info->skip_mode == NN_CODER_SKIP_MODE_FORK_CAT)
+	{
+		self->skip = nn_skipLayer_newFork(info->arch, dim,
+		                                  (nn_skipMode_e)
+		                                  info->skip_mode);
+		if(self->skip == NULL)
+		{
+			LOGE("invalid");
+			goto fail_skip_cat;
+		}
+		dim = nn_layer_dimY(&self->skip->base);
+	}
+
 	nn_dim_copy(dim, &self->dimY);
 
 	// success
 	return self;
 
 	// failure
+	fail_skip_cat:
+		nn_factLayer_delete(&self->fact);
 	fail_fact:
 		nn_batchNormLayer_delete(&self->bn);
 	fail_bn:
 		nn_skipLayer_delete(&self->skip);
-	fail_skip:
+	fail_skip_add:
 		nn_convLayer_delete(&self->conv);
 	fail_conv:
 		nn_layer_delete((nn_layer_t**) &self);
