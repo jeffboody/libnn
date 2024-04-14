@@ -280,9 +280,8 @@ nn_engine_new(vkk_engine_t* engine)
 	{
 		self->usf0_conv,
 		self->usf1_conv_fp,
-		self->usf2_conv,
 	};
-	self->pl_conv_fp = vkk_pipelineLayout_new(engine, 3,
+	self->pl_conv_fp = vkk_pipelineLayout_new(engine, 2,
 	                                          usf_array_conv_fp);
 
 	vkk_uniformSetFactory_t* usf_array_conv_bp[] =

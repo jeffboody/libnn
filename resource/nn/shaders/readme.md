@@ -6,7 +6,7 @@ Batch Normalization Layer
 
 Layer Uniforms
 
-* sb000: dimX (xbs,xh,xw,xd)
+* sb000: dimX (bs,xh,xw,xd)
 * sb001: G
 * sb002: B
 * sb003: Xhat
@@ -61,7 +61,7 @@ Convolution Layer
 
 Layer Uniforms
 
-* sb000: dimX (xbs,xh,xw,xd)
+* sb000: dimX (bs,xh,xw,xd)
 * sb001: dimW (fc,fh,fw,xd)
 * sb002: W
 * sb003: B

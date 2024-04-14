@@ -26,8 +26,6 @@
 #include <string.h>
 
 #define LOG_TAG "nn"
-#include "../libcc/rng/cc_rngNormal.h"
-#include "../libcc/rng/cc_rngUniform.h"
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "../libvkk/vkk.h"

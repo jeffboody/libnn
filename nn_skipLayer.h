@@ -24,6 +24,8 @@
 #ifndef nn_skipLayer_H
 #define nn_skipLayer_H
 
+#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../jsmn/wrapper/jsmn_wrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
