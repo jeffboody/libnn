@@ -7,6 +7,7 @@ CLASSES = \
 	nn_dim             \
 	nn_engine          \
 	nn_factLayer       \
+	nn_lanczos3Layer   \
 	nn_layer           \
 	nn_loss            \
 	nn_reshapeLayer    \

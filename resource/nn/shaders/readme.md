@@ -134,6 +134,42 @@ Backprop Uniforms
 * sb102: X
 * sb103: dL_dY
 
+Lanczos3 Layer
+--------------
+
+Layer Uniforms
+
+* sb000: dimX (bs,xh,xw,xd)
+* sb001: H    (bs,xh,yw,xd)
+* sb002: dimW (1,1,1,sz)
+* sb003: W
+* sb004: dimY (bs,yh,yw,xd)
+* sb005: Y
+* sb006: dL_dH
+* sb007: dL_dX
+* sb008: param (stride)
+
+Forward Pass Uniforms
+
+* sb100: bs
+* sb101: state
+* sb102: X
+
+Backprop Uniforms
+
+* sb100: bs
+* sb101: state
+* sb102: dL_dY
+
+* sb200: idx (n)
+
+Backprop Dispatch Order
+
+* nn_tensor_clear(hazard=NONE, dL_dH)
+* nn_tensor_clear(hazard=NONE, dL_dX)
+* nn_lanczos3Layer_backprop_dL_dH (for each n)
+* nn_lanczos3Layer_backprop_dL_dX (for each n)
+
 Skip Layer
 ----------
 

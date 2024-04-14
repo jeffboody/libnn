@@ -1,0 +1,116 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	float H[];
+};
+
+layout(std430, set=0, binding=2) readonly buffer sb002
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=3) readonly buffer sb003
+{
+	float W[];
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=5) writeonly buffer sb005
+{
+	float Y[];
+};
+
+layout(std430, set=0, binding=8) readonly buffer sb008
+{
+	uint param_stride;
+};
+
+float getH(uint n, uint i, uint j, uint k)
+{
+	// dim(bs,xh,yw,xd)
+	uint sn = dimX.height*dimY.width*dimX.depth;
+	uint sy = dimY.width*dimX.depth;
+	uint sx = dimX.depth;
+	return H[n*sn + i*sy + j*sx + k];
+}
+
+float getW(uint n)
+{
+	return W[n];
+}
+
+void setY(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	Y[n*sn + i*sy + j*sx + k] = v;
+}
+
+void forwardPassY(uint m, uint i, uint j, uint k)
+{
+	uint xh = dimX.height;
+	uint sz = dimW.depth;
+
+	// compute weighted sum
+	uint  n;
+	uint  ii;
+	float w;
+	float h;
+	float y = 0.0;
+	for(n = 0; n < sz; ++n)
+	{
+		ii = int(param_stride*i + n) - int(sz/2);
+		if((ii < 0) || (ii >= xh))
+		{
+			continue;
+		}
+
+		w  = getW(n);
+		h  = getH(m, ii, j, k);
+		y += w*h;
+	}
+	setY(m, i, j, k, y);
+}
+
+void main()
+{
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint i  = gl_GlobalInvocationID.y;
+	uint j  = gl_GlobalInvocationID.z;
+	uint yh = dimY.height;
+	uint yw = dimY.width;
+	uint xd = dimX.depth;
+
+	if((i >= yh) || (j >= yw))
+	{
+		return;
+	}
+
+	uint k;
+	for(k = 0; k < xd; ++k)
+	{
+		forwardPassY(m, i, j, k);
+	}
+}

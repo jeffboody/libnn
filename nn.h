@@ -39,6 +39,7 @@ typedef struct nn_dim_s                nn_dim_t;
 typedef struct nn_engine_s             nn_engine_t;
 typedef struct nn_factLayer_s          nn_factLayer_t;
 typedef struct nn_reshapeLayer_s       nn_reshapeLayer_t;
+typedef struct nn_lanczos3Layer_s      nn_lanczos3Layer_t;
 typedef struct nn_layerInfo_s          nn_layerInfo_t;
 typedef struct nn_layer_s              nn_layer_t;
 typedef struct nn_loss_s               nn_loss_t;
