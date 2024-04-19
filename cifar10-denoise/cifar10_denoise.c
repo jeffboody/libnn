@@ -33,13 +33,10 @@
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
-#include "libnn/nn_batchNormLayer.h"
 #include "libnn/nn_coderLayer.h"
-#include "libnn/nn_convLayer.h"
-#include "libnn/nn_factLayer.h"
 #include "libnn/nn_loss.h"
-#include "libnn/nn_skipLayer.h"
 #include "libnn/nn_tensor.h"
+#include "libnn/nn_urrdbLayer.h"
 #include "cifar10_denoise.h"
 
 /***********************************************************
@@ -98,19 +95,15 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		return NULL;
 	}
 
-	jsmn_val_t* val_base  = NULL;
-	jsmn_val_t* val_bs    = NULL;
-	jsmn_val_t* val_fc    = NULL;
-	jsmn_val_t* val_mu    = NULL;
-	jsmn_val_t* val_sigma = NULL;
-	jsmn_val_t* val_bn0   = NULL;
-	jsmn_val_t* val_enc1  = NULL;
-	jsmn_val_t* val_enc2  = NULL;
-	jsmn_val_t* val_dec3  = NULL;
-	jsmn_val_t* val_dec4  = NULL;
-	jsmn_val_t* val_convO = NULL;
-	jsmn_val_t* val_factO = NULL;
-	jsmn_val_t* val_loss  = NULL;
+	jsmn_val_t* val_base   = NULL;
+	jsmn_val_t* val_bs     = NULL;
+	jsmn_val_t* val_fc     = NULL;
+	jsmn_val_t* val_mu     = NULL;
+	jsmn_val_t* val_sigma  = NULL;
+	jsmn_val_t* val_urrdb0 = NULL;
+	jsmn_val_t* val_coder1 = NULL;
+	jsmn_val_t* val_coder2 = NULL;
+	jsmn_val_t* val_loss   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -124,33 +117,17 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 			{
 				val_base = kv->val;
 			}
-			else if(strcmp(kv->key, "bn0") == 0)
+			else if(strcmp(kv->key, "urrdb0") == 0)
 			{
-				val_bn0 = kv->val;
+				val_urrdb0 = kv->val;
 			}
-			else if(strcmp(kv->key, "enc1") == 0)
+			else if(strcmp(kv->key, "coder1") == 0)
 			{
-				val_enc1 = kv->val;
+				val_coder1 = kv->val;
 			}
-			else if(strcmp(kv->key, "enc2") == 0)
+			else if(strcmp(kv->key, "coder2") == 0)
 			{
-				val_enc2 = kv->val;
-			}
-			else if(strcmp(kv->key, "dec3") == 0)
-			{
-				val_dec3 = kv->val;
-			}
-			else if(strcmp(kv->key, "dec4") == 0)
-			{
-				val_dec4 = kv->val;
-			}
-			else if(strcmp(kv->key, "convO") == 0)
-			{
-				val_convO = kv->val;
-			}
-			else if(strcmp(kv->key, "factO") == 0)
-			{
-				val_factO = kv->val;
+				val_coder2 = kv->val;
 			}
 			else if(strcmp(kv->key, "loss") == 0)
 			{
@@ -181,19 +158,15 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	}
 
 	// check for required parameters
-	if((val_base  == NULL) ||
-	   (val_bs    == NULL) ||
-	   (val_fc    == NULL) ||
-	   (val_mu    == NULL) ||
-	   (val_sigma == NULL) ||
-	   (val_bn0   == NULL) ||
-	   (val_enc1  == NULL) ||
-	   (val_enc2  == NULL) ||
-	   (val_dec3  == NULL) ||
-	   (val_dec4  == NULL) ||
-	   (val_convO == NULL) ||
-	   (val_factO == NULL) ||
-	   (val_loss  == NULL))
+	if((val_base   == NULL) ||
+	   (val_bs     == NULL) ||
+	   (val_fc     == NULL) ||
+	   (val_mu     == NULL) ||
+	   (val_sigma  == NULL) ||
+	   (val_urrdb0 == NULL) ||
+	   (val_coder1 == NULL) ||
+	   (val_coder2 == NULL) ||
+	   (val_loss   == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
@@ -226,7 +199,7 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	                          NN_TENSOR_MODE_IO);
 	if(self->Xio == NULL)
 	{
-		goto fail_Xio;
+		goto failure;
 	}
 
 	self->X = nn_tensor_new(engine, &dim,
@@ -234,62 +207,34 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->X == NULL)
 	{
-		goto fail_X;
+		goto failure;
 	}
 
-	self->bn0 = nn_batchNormLayer_import(&self->base,
-	                                     val_bn0);
-	if(self->bn0 == NULL)
+	self->urrdb0 = nn_urrdbLayer_import(&self->base,
+	                                    val_urrdb0);
+	if(self->urrdb0 == NULL)
 	{
-		goto fail_bn0;
+		goto failure;
 	}
 
-	self->enc1 = nn_coderLayer_import(&self->base,
-	                                  val_enc1, NULL);
-	if(self->enc1 == NULL)
+	self->coder1 = nn_coderLayer_import(&self->base,
+	                                    val_coder1, NULL);
+	if(self->coder1 == NULL)
 	{
-		goto fail_enc1;
+		goto failure;
 	}
 
-	self->enc2 = nn_coderLayer_import(&self->base,
-	                                  val_enc2, NULL);
-	if(self->enc2 == NULL)
+	self->coder2 = nn_coderLayer_import(&self->base,
+	                                    val_coder2, NULL);
+	if(self->coder2 == NULL)
 	{
-		goto fail_enc2;
-	}
-
-	self->dec3 = nn_coderLayer_import(&self->base,
-	                                  val_dec3, self->enc1);
-	if(self->dec3 == NULL)
-	{
-		goto fail_dec3;
-	}
-
-	self->dec4 = nn_coderLayer_import(&self->base,
-	                                  val_dec4, self->enc1);
-	if(self->dec4 == NULL)
-	{
-		goto fail_dec4;
-	}
-
-	self->convO = nn_convLayer_import(&self->base,
-	                                  val_convO);
-	if(self->convO == NULL)
-	{
-		goto fail_convO;
-	}
-
-	self->factO = nn_factLayer_import(&self->base,
-	                                  val_factO);
-	if(self->factO == NULL)
-	{
-		goto fail_factO;
+		goto failure;
 	}
 
 	self->loss = nn_loss_import(engine, val_loss);
 	if(self->loss == NULL)
 	{
-		goto fail_loss;
+		goto failure;
 	}
 
 	self->Ytio = nn_tensor_new(engine, &dim,
@@ -297,7 +242,7 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	                           NN_TENSOR_MODE_IO);
 	if(self->Ytio == NULL)
 	{
-		goto fail_Ytio;
+		goto failure;
 	}
 
 	self->Yt = nn_tensor_new(engine, &dim,
@@ -305,7 +250,7 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Yt == NULL)
 	{
-		goto fail_Yt;
+		goto failure;
 	}
 
 	self->Yio = nn_tensor_new(engine, &dim,
@@ -313,18 +258,14 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	                          NN_TENSOR_MODE_IO);
 	if(self->Yio == NULL)
 	{
-		goto fail_Yio;
+		goto failure;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc1->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc2->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0))
+	if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
 	{
-		goto fail_attach;
+		goto failure;
 	}
 
 	cc_rngNormal_init(&self->rngN, self->mu, self->sigma);
@@ -334,34 +275,8 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	return self;
 
 	// failure
-	fail_attach:
-		nn_tensor_delete(&self->Yio);
-	fail_Yio:
-		nn_tensor_delete(&self->Yt);
-	fail_Yt:
-		nn_tensor_delete(&self->Ytio);
-	fail_Ytio:
-		nn_loss_delete(&self->loss);
-	fail_loss:
-		nn_factLayer_delete(&self->factO);
-	fail_factO:
-		nn_convLayer_delete(&self->convO);
-	fail_convO:
-		nn_coderLayer_delete(&self->dec4);
-	fail_dec4:
-		nn_coderLayer_delete(&self->dec3);
-	fail_dec3:
-		nn_coderLayer_delete(&self->enc2);
-	fail_enc2:
-		nn_coderLayer_delete(&self->enc1);
-	fail_enc1:
-		nn_batchNormLayer_delete(&self->bn0);
-	fail_bn0:
-		nn_tensor_delete(&self->X);
-	fail_X:
-		nn_tensor_delete(&self->Xio);
-	fail_Xio:
-		nn_arch_delete((nn_arch_t**) &self);
+	failure:
+		cifar10_denoise_delete(&self);
 	return 0;
 }
 
@@ -416,7 +331,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	                          NN_TENSOR_MODE_IO);
 	if(self->Xio == NULL)
 	{
-		goto fail_Xio;
+		goto failure;
 	}
 
 	self->X = nn_tensor_new(engine, &dimX,
@@ -424,123 +339,114 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->X == NULL)
 	{
-		goto fail_X;
+		goto failure;
 	}
 
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
-	self->bn0 = nn_batchNormLayer_new(&self->base,
-	                                  dim);
-	if(self->bn0 == NULL)
+	uint32_t blocks = 2;
+	uint32_t nodes  = 2;
+	nn_urrdbLayerInfo_t urrdb0_info =
 	{
-		goto fail_bn0;
-	}
+		.arch = &self->base,
 
-	nn_coderLayerInfo_t info_enc1 =
+		// blocks: number of dense blocks
+		// nodes:  number of nodes per block (nodes >= 2)
+		.dimX   = dim,
+		.fc     = fc,
+		.blocks = blocks,
+		.nodes  = nodes,
+
+		// begin/end
+		.norm_flags0 = 0,
+		.conv_size0  = 3,
+		.skip_beta0  = 0.2f,
+		.bn_mode0    = NN_CODER_BATCH_NORM_MODE_DISABLE,
+		.fact_fn0    = NN_FACT_LAYER_FN_RELU,
+
+		// dense blocks/nodes
+		.norm_flags1 = 0,
+		.conv_size1  = 3,
+		.skip_beta1  = 0.2f, // add only
+		.bn_mode1    = NN_CODER_BATCH_NORM_MODE_ENABLE,
+		.fact_fn1    = NN_FACT_LAYER_FN_RELU,
+	};
+
+	self->urrdb0 = nn_urrdbLayer_new(&urrdb0_info);
+	if(self->urrdb0 == NULL)
 	{
-		.arch        = &self->base,
-		.dimX        = dim,
-		.fc          = fc,
-		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		goto failure;
+	}
+	dim = nn_layer_dimY(&self->urrdb0->base);
+
+	nn_coderLayerInfo_t coder1_info =
+	{
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = fc,
+
+		// conv layer
+		.conv_flags  = 0,
 		.conv_size   = 3,
-		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
-		.fact_fn     = NN_FACT_LAYER_FN_RELU,
+		.conv_stride = 1,
+
+		// skip layer
+		// skip_coder must be set for add/cat modes
+		.skip_mode  = NN_CODER_SKIP_MODE_NONE,
+		.skip_coder = NULL,
+		.skip_beta  = 0.0f,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_DISABLE,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_RELU,
 	};
 
-	self->enc1 = nn_coderLayer_new(&info_enc1);
-	if(self->enc1 == NULL)
+	self->coder1 = nn_coderLayer_new(&coder1_info);
+	if(self->coder1 == NULL)
 	{
-		goto fail_enc1;
+		goto failure;
 	}
-	dim = nn_layer_dimY(&self->enc1->base);
+	dim = nn_layer_dimY(&self->coder1->base);
 
-	nn_coderLayerInfo_t info_enc2 =
+	nn_coderLayerInfo_t coder2_info =
 	{
-		.arch        = &self->base,
-		.dimX        = dim,
-		.fc          = fc,
-		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN,
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = xd,
+
+		// conv layer
+		.conv_flags  = 0,
 		.conv_size   = 3,
-		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
-		.fact_fn     = NN_FACT_LAYER_FN_RELU,
+		.conv_stride = 1,
+
+		// skip layer
+		// skip_coder must be set for add/cat modes
+		.skip_mode  = NN_CODER_SKIP_MODE_NONE,
+		.skip_coder = NULL,
+		.skip_beta  = 0.0f,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_DISABLE,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_SINK,
 	};
 
-	self->enc2 = nn_coderLayer_new(&info_enc2);
-	if(self->enc2 == NULL)
+	self->coder2 = nn_coderLayer_new(&coder2_info);
+	if(self->coder2 == NULL)
 	{
-		goto fail_enc2;
+		goto failure;
 	}
-	dim = nn_layer_dimY(&self->enc2->base);
-
-	nn_coderLayerInfo_t info_dec3 =
-	{
-		.arch        = &self->base,
-		.dimX        = dim,
-		.fc          = fc,
-		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN |
-		               NN_CONV_LAYER_FLAG_TRANSPOSE,
-		.conv_size   = 2,
-		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
-		.fact_fn     = NN_FACT_LAYER_FN_RELU,
-	};
-
-	self->dec3 = nn_coderLayer_new(&info_dec3);
-	if(self->dec3 == NULL)
-	{
-		goto fail_dec3;
-	}
-	dim = nn_layer_dimY(&self->dec3->base);
-
-	nn_coderLayerInfo_t info_dec4 =
-	{
-		.arch        = &self->base,
-		.dimX        = dim,
-		.fc          = fc,
-		.conv_flags  = NN_CONV_LAYER_FLAG_NORM_BSSN |
-		               NN_CONV_LAYER_FLAG_TRANSPOSE,
-		.conv_size   = 2,
-		.conv_stride = 2,
-		.bn_mode     = NN_CODER_BATCH_NORM_MODE_ENABLE,
-		.fact_fn     = NN_FACT_LAYER_FN_RELU,
-	};
-
-	self->dec4 = nn_coderLayer_new(&info_dec4);
-	if(self->dec4 == NULL)
-	{
-		goto fail_dec4;
-	}
-	dim = nn_layer_dimY(&self->dec4->base);
-
-	nn_dim_t dimWO =
-	{
-		.count  = xd,
-		.width  = 3,
-		.height = 3,
-		.depth  = dim->depth,
-	};
-
-	self->convO = nn_convLayer_new(&self->base, dim, &dimWO, 1,
-	                               NN_CONV_LAYER_FLAG_XAVIER);
-	if(self->convO == NULL)
-	{
-		goto fail_convO;
-	}
-	dim = nn_layer_dimY(&self->convO->base);
-
-	self->factO = nn_factLayer_new(&self->base, dim,
-	                               NN_FACT_LAYER_FN_LOGISTIC);
-	if(self->factO == NULL)
-	{
-		goto fail_factO;
-	}
+	dim = nn_layer_dimY(&self->coder2->base);
 
 	self->loss = nn_loss_new(engine, dim, NN_LOSS_FN_MSE);
 	if(self->loss == NULL)
 	{
-		goto fail_loss;
+		goto failure;
 	}
 
 	self->Ytio = nn_tensor_new(engine, dim,
@@ -548,7 +454,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	                           NN_TENSOR_MODE_IO);
 	if(self->Ytio == NULL)
 	{
-		goto fail_Ytio;
+		goto failure;
 	}
 
 	self->Yt = nn_tensor_new(engine, dim,
@@ -556,7 +462,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Yt == NULL)
 	{
-		goto fail_Yt;
+		goto failure;
 	}
 
 	self->Yio = nn_tensor_new(engine, dim,
@@ -564,18 +470,14 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	                          NN_TENSOR_MODE_IO);
 	if(self->Yio == NULL)
 	{
-		goto fail_Yio;
+		goto failure;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->bn0->base)   == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc1->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->enc2->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec3->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->dec4->base)  == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->convO->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->factO->base) == 0))
+	if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
 	{
-		goto fail_attach;
+		goto failure;
 	}
 
 	cc_rngNormal_init(&self->rngN, mu, sigma);
@@ -585,34 +487,8 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 	return self;
 
 	// failure
-	fail_attach:
-		nn_tensor_delete(&self->Yio);
-	fail_Yio:
-		nn_tensor_delete(&self->Yt);
-	fail_Yt:
-		nn_tensor_delete(&self->Ytio);
-	fail_Ytio:
-		nn_loss_delete(&self->loss);
-	fail_loss:
-		nn_factLayer_delete(&self->factO);
-	fail_factO:
-		nn_convLayer_delete(&self->convO);
-	fail_convO:
-		nn_coderLayer_delete(&self->dec4);
-	fail_dec4:
-		nn_coderLayer_delete(&self->dec3);
-	fail_dec3:
-		nn_coderLayer_delete(&self->enc2);
-	fail_enc2:
-		nn_coderLayer_delete(&self->enc1);
-	fail_enc1:
-		nn_batchNormLayer_delete(&self->bn0);
-	fail_bn0:
-		nn_tensor_delete(&self->X);
-	fail_X:
-		nn_tensor_delete(&self->Xio);
-	fail_Xio:
-		nn_arch_delete((nn_arch_t**) &self);
+	failure:
+		cifar10_denoise_delete(&self);
 	return NULL;
 }
 
@@ -627,13 +503,9 @@ void cifar10_denoise_delete(cifar10_denoise_t** _self)
 		nn_tensor_delete(&self->Yt);
 		nn_tensor_delete(&self->Ytio);
 		nn_loss_delete(&self->loss);
-		nn_factLayer_delete(&self->factO);
-		nn_convLayer_delete(&self->convO);
-		nn_coderLayer_delete(&self->dec4);
-		nn_coderLayer_delete(&self->dec3);
-		nn_coderLayer_delete(&self->enc2);
-		nn_coderLayer_delete(&self->enc1);
-		nn_batchNormLayer_delete(&self->bn0);
+		nn_coderLayer_delete(&self->coder2);
+		nn_coderLayer_delete(&self->coder1);
+		nn_urrdbLayer_delete(&self->urrdb0);
 		nn_tensor_delete(&self->X);
 		nn_tensor_delete(&self->Xio);
 		nn_arch_delete((nn_arch_t**) &self);
@@ -695,20 +567,12 @@ int cifar10_denoise_export(cifar10_denoise_t* self,
 	jsmn_stream_double(stream, self->mu);
 	jsmn_stream_key(stream, "%s", "sigma");
 	jsmn_stream_double(stream, self->sigma);
-	jsmn_stream_key(stream, "%s", "bn0");
-	nn_batchNormLayer_export(self->bn0, stream);
-	jsmn_stream_key(stream, "%s", "enc1");
-	nn_coderLayer_export(self->enc1, stream);
-	jsmn_stream_key(stream, "%s", "enc2");
-	nn_coderLayer_export(self->enc2, stream);
-	jsmn_stream_key(stream, "%s", "dec3");
-	nn_coderLayer_export(self->dec3, stream);
-	jsmn_stream_key(stream, "%s", "dec4");
-	nn_coderLayer_export(self->dec4, stream);
-	jsmn_stream_key(stream, "%s", "convO");
-	nn_convLayer_export(self->convO, stream);
-	jsmn_stream_key(stream, "%s", "factO");
-	nn_factLayer_export(self->factO, stream);
+	jsmn_stream_key(stream, "%s", "urrdb0");
+	nn_urrdbLayer_export(self->urrdb0, stream);
+	jsmn_stream_key(stream, "%s", "coder1");
+	nn_coderLayer_export(self->coder1, stream);
+	jsmn_stream_key(stream, "%s", "coder2");
+	nn_coderLayer_export(self->coder2, stream);
 	jsmn_stream_key(stream, "%s", "loss");
 	nn_loss_export(self->loss, stream);
 	jsmn_stream_end(stream);
@@ -908,7 +772,5 @@ uint32_t cifar10_denoise_bs(cifar10_denoise_t* self)
 {
 	ASSERT(self);
 
-	nn_dim_t* dimX = nn_layer_dimX(&self->bn0->base);
-
-	return dimX->count;
+	return self->bs;
 }
