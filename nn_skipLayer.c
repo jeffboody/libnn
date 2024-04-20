@@ -1145,7 +1145,7 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	{
 		ret &= jsmn_stream_string(stream, "%s", "FORK_ADD");
 	}
-	if(self->skip_mode == NN_SKIP_MODE_FORK_CAT)
+	else if(self->skip_mode == NN_SKIP_MODE_FORK_CAT)
 	{
 		ret &= jsmn_stream_string(stream, "%s", "FORK_CAT");
 	}
@@ -1159,6 +1159,7 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	}
 	else
 	{
+		LOGE("invalid skip_mode=%i", self->skip_mode);
 		return 0;
 	}
 	ret &= jsmn_stream_key(stream, "%s", "skip_beta");
