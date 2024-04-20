@@ -72,6 +72,14 @@ void forwardPassH(uint m, uint i, uint j, uint k)
 	uint xw = dimX.width;
 	uint sz = dimW.depth;
 
+	// 3) Lanczos3 Downsample: stride=2, mw=12
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	//    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B |
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	//    |   |   |   |   |   | C |   |   |   |   |   |   |
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	uint ctr = (sz - param_stride)/2;
+
 	// compute weighted sum
 	uint  n;
 	uint  jj;
@@ -80,7 +88,7 @@ void forwardPassH(uint m, uint i, uint j, uint k)
 	float h = 0.0;
 	for(n = 0; n < sz; ++n)
 	{
-		jj = int(param_stride*j + n) - int(sz/2);
+		jj = int(param_stride*j + n) - int(ctr);
 		if((jj < 0) || (jj >= xw))
 		{
 			continue;

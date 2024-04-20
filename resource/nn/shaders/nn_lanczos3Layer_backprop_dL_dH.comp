@@ -80,7 +80,15 @@ void backprop_dL_dH(uint m, uint i, uint j)
 	uint sz = dimW.count;
 	uint n  = idx_n;
 
-	int ii = int(param_stride*i + n) - int(sz/2);
+	// 3) Lanczos3 Downsample: stride=2, mw=12
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	//    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B |
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	//    |   |   |   |   |   | C |   |   |   |   |   |   |
+	//    +---+---+---+---+---+---+---+---+---+---+---+---+
+	uint ctr = (sz - param_stride)/2;
+
+	int ii = int(param_stride*i + n) - int(ctr);
 	if((ii < 0) || (ii >= xh))
 	{
 		return;
