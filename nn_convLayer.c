@@ -769,6 +769,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	nn_engine_t* engine = arch->engine;
 
 	uint32_t fc = dimW->count;
+	uint32_t fh = dimW->height;
+	uint32_t fw = dimW->width;
 	uint32_t bs = dimX->count;
 	uint32_t xh = dimX->height;
 	uint32_t xw = dimX->width;
@@ -780,10 +782,45 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	if(stride < 1)
+	if(flags & NN_CONV_LAYER_FLAG_TRANSPOSE)
 	{
-		LOGE("invalid stride=%u", stride);
-		return NULL;
+		// TODO - fix convT shaders
+		// convT compute shaders incorrectly calculate sampling
+		// offsets except when fh, fw and stride are 2
+		if((fh != 2) || (fw != 2) || (stride != 2))
+		{
+			LOGE("unsupported fh=%u, fw=%u, stride=%u",
+			     fh, fw, stride);
+			return NULL;
+		}
+
+		if((fh < stride) || (fh%stride) ||
+		   (fw < stride) || (fw%stride) ||
+		   (stride < 1)  || (stride%2))
+		{
+			LOGE("invalid fh=%u, fw=%u, stride=%u",
+			     fh, fw, stride);
+			return NULL;
+		}
+	}
+	else
+	{
+		// TODO - fix conv shaders
+		// conv compute shaders incorrectly calculate the sampling
+		// offsets for even sizes resulting in a pixel shift and
+		// artifacts near the borders
+		if((fh%2 == 0) || (fw%2 == 0))
+		{
+			LOGE("unsupported fh=%u, fw=%u", fh, fw);
+			return NULL;
+		}
+
+		if((fh < stride) || (fw < stride) || (stride < 1))
+		{
+			LOGE("invalid fh=%u, fw=%u, stride=%u",
+			     fh, fw, stride);
+			return NULL;
+		}
 	}
 
 	nn_layerInfo_t info =
