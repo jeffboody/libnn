@@ -17,46 +17,42 @@ layout(std430, set=0, binding=0) readonly buffer sb000
 
 layout(std430, set=0, binding=1) readonly buffer sb001
 {
-	float H[];
+	float T[];
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb002
 {
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=3) readonly buffer sb003
-{
-	float W[];
-};
-
-layout(std430, set=0, binding=4) readonly buffer sb004
-{
 	nn_dim_t dimY;
 };
 
-layout(std430, set=0, binding=5) writeonly buffer sb005
+layout(std430, set=0, binding=3) writeonly buffer sb003
 {
 	float Y[];
 };
 
-layout(std430, set=0, binding=8) readonly buffer sb008
+layout(std430, set=0, binding=5) readonly buffer sb005
 {
-	uint param_stride;
+	float Lh[];
 };
 
-float getH(uint n, uint i, uint j, uint k)
+layout(std430, set=0, binding=8) readonly buffer sb008
+{
+	int param_a;
+	int param_fsw;
+	int param_fsh;
+	int param_fcw;
+	int param_fch;
+	int param_szw;
+	int param_szh;
+};
+
+float getT(uint n, uint i, uint j, uint k)
 {
 	// dim(bs,xh,yw,xd)
 	uint sn = dimX.height*dimY.width*dimX.depth;
 	uint sy = dimY.width*dimX.depth;
 	uint sx = dimX.depth;
-	return H[n*sn + i*sy + j*sx + k];
-}
-
-float getW(uint n)
-{
-	return W[n];
+	return T[n*sn + i*sy + j*sx + k];
 }
 
 void setY(uint n, uint i, uint j, uint k, float v)
@@ -67,38 +63,52 @@ void setY(uint n, uint i, uint j, uint k, float v)
 	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
+uint umod(uint x, uint y)
+{
+	return uint(mod(int(x), int(y)));
+}
+
+float getLh(uint i, uint n)
+ {
+	uint fch = param_fch;
+	uint szh = param_szh;
+
+	// dim(fch,1,1,szh)
+	return Lh[umod(i, fch)*szh + n];
+}
+
 void forwardPassY(uint m, uint i, uint j, uint k)
 {
-	uint xh = dimX.height;
-	uint sz = dimW.depth;
+	// https://github.com/jeffboody/Lanczos
 
-	// 3) Lanczos3 Downsample: stride=2, mw=12
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    |   |   |   |   |   | C |   |   |   |   |   |   |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	uint ctr = (sz - param_stride)/2;
-
-	// compute weighted sum
-	uint  n;
-	uint  ii;
-	float w;
-	float h;
-	float y = 0.0;
-	for(n = 0; n < sz; ++n)
+	int   ii;
+	int   li;
+	int   a  = param_a;
+	int   fs = param_fsh;
+	int   n  = 0;
+	int   xh = int(dimX.height);
+	int   yh = int(dimY.height);
+	float lh;
+	float s1;
+	float s2   = 0.0;
+	float step = float(xh)/float(yh);
+	float y    = (float(i) + 0.5)*step - 0.5;
+	for(li = -(fs*a) + 1; li <= (fs*a); ++li)
 	{
-		ii = int(param_stride*i + n) - int(ctr);
+		ii = int(floor(y)) + li;
 		if((ii < 0) || (ii >= xh))
 		{
+			++n;
 			continue;
 		}
 
-		w  = getW(n);
-		h  = getH(m, ii, j, k);
-		y += w*h;
+		s1  = getT(m, uint(ii), j, k);
+		lh  = getLh(i, n);
+		s2 += s1*lh;
+
+		++n;
 	}
-	setY(m, i, j, k, y);
+	setY(m, i, j, k, s2);
 }
 
 void main()

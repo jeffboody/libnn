@@ -17,27 +17,28 @@ layout(std430, set=0, binding=0) readonly buffer sb000
 
 layout(std430, set=0, binding=1) writeonly buffer sb001
 {
-	float H[];
+	float T[];
 };
 
 layout(std430, set=0, binding=2) readonly buffer sb002
 {
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=3) readonly buffer sb003
-{
-	float W[];
+	nn_dim_t dimY;
 };
 
 layout(std430, set=0, binding=4) readonly buffer sb004
 {
-	nn_dim_t dimY;
+	float Lw[];
 };
 
 layout(std430, set=0, binding=8) readonly buffer sb008
 {
-	uint param_stride;
+	int param_a;
+	int param_fsw;
+	int param_fsh;
+	int param_fcw;
+	int param_fch;
+	int param_szw;
+	int param_szh;
 };
 
 layout(std430, set=1, binding=2) readonly buffer sb102
@@ -53,52 +54,61 @@ float getX(uint n, uint i, uint j, uint k)
 	return X[n*sn + i*sy + j*sx + k];
 }
 
-void setH(uint n, uint i, uint j, uint k, float v)
+void setT(uint n, uint i, uint j, uint k, float v)
 {
 	// dim(bs,xh,yw,xd)
 	uint sn = dimX.height*dimY.width*dimX.depth;
 	uint sy = dimY.width*dimX.depth;
 	uint sx = dimX.depth;
-	H[n*sn + i*sy + j*sx + k] = v;
+	T[n*sn + i*sy + j*sx + k] = v;
 }
 
-float getW(uint n)
+uint umod(uint x, uint y)
 {
-	return W[n];
+	return uint(mod(int(x), int(y)));
 }
 
-void forwardPassH(uint m, uint i, uint j, uint k)
+float getLw(uint j, uint n)
+ {
+	uint fcw = param_fcw;
+	uint szw = param_szw;
+
+	// dim(fcw,1,1,szw)
+	return Lw[umod(j, fcw)*szw + n];
+}
+
+void forwardPassT(uint m, uint i, uint j, uint k)
 {
-	uint xw = dimX.width;
-	uint sz = dimW.depth;
+	// https://github.com/jeffboody/Lanczos
 
-	// 3) Lanczos3 Downsample: stride=2, mw=12
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    |   |   |   |   |   | C |   |   |   |   |   |   |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	uint ctr = (sz - param_stride)/2;
-
-	// compute weighted sum
-	uint  n;
-	uint  jj;
-	float w;
-	float x;
-	float h = 0.0;
-	for(n = 0; n < sz; ++n)
+	int   jj;
+	int   lj;
+	int   a  = param_a;
+	int   fs = param_fsw;
+	int   n  = 0;
+	int   xw = int(dimX.width);
+	int   yw = int(dimY.width);
+	float lw;
+	float s1;
+	float s2   = 0.0;
+	float step = float(xw)/float(yw);
+	float x    = (float(j) + 0.5)*step - 0.5;
+	for(lj = -(fs*a) + 1; lj <= (fs*a); ++lj)
 	{
-		jj = int(param_stride*j + n) - int(ctr);
+		jj = int(floor(x)) + lj;
 		if((jj < 0) || (jj >= xw))
 		{
+			++n;
 			continue;
 		}
 
-		w  = getW(n);
-		x  = getX(m, i, jj, k);
-		h += w*x;
+		s1  = getX(m, i, uint(jj), k);
+		lw  = getLw(j, n);
+		s2 += s1*lw;
+
+		++n;
 	}
-	setH(m, i, j, k, h);
+	setT(m, i, j, k, s2);
 }
 
 void main()
@@ -119,6 +129,6 @@ void main()
 	uint k;
 	for(k = 0; k < xd; ++k)
 	{
-		forwardPassH(m, i, j, k);
+		forwardPassT(m, i, j, k);
 	}
 }

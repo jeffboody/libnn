@@ -31,7 +31,7 @@
 #include "nn_batchNormLayer.h"
 #include "nn_convLayer.h"
 #include "nn_engine.h"
-#include "nn_lanczos3Layer.h"
+#include "nn_lanczosLayer.h"
 #include "nn_layer.h"
 #include "nn_loss.h"
 #include "nn_tensor.h"
@@ -165,24 +165,24 @@ nn_engine_new(vkk_engine_t* engine)
 	// sb000: dimX (bs,xh,xw,xd)
 	// ...
 	// sb008: param (stride)
-	self->usf0_lanczos3 = vkk_uniformSetFactory_new(engine, um,
-	                                                9, ub_array);
+	self->usf0_lanczos = vkk_uniformSetFactory_new(engine, um,
+	                                               9, ub_array);
 
 	// sb100: bs
 	// ...
 	// sb102: X
-	self->usf1_lanczos3_fp = vkk_uniformSetFactory_new(engine, um,
-	                                                   3, ub_array);
+	self->usf1_lanczos_fp = vkk_uniformSetFactory_new(engine, um,
+	                                                  3, ub_array);
 
 	// sb100: bs
 	// ...
 	// sb102: dL_dY
-	self->usf1_lanczos3_bp = vkk_uniformSetFactory_new(engine, um,
-	                                                   3, ub_array);
+	self->usf1_lanczos_bp = vkk_uniformSetFactory_new(engine, um,
+	                                                  3, ub_array);
 
 	// sb200: idx (n)
-	self->usf2_lanczos3 = vkk_uniformSetFactory_new(engine, um,
-	                                                1, ub_array);
+	self->usf2_lanczos = vkk_uniformSetFactory_new(engine, um,
+	                                               1, ub_array);
 
 	// sb000: param (beta)
 	self->usf0_skip = vkk_uniformSetFactory_new(engine, um,
@@ -265,10 +265,10 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf0_fact         == NULL) ||
 	   (self->usf1_fact_fp      == NULL) ||
 	   (self->usf1_fact_bp      == NULL) ||
-	   (self->usf0_lanczos3     == NULL) ||
-	   (self->usf1_lanczos3_fp  == NULL) ||
-	   (self->usf1_lanczos3_bp  == NULL) ||
-	   (self->usf2_lanczos3     == NULL) ||
+	   (self->usf0_lanczos      == NULL) ||
+	   (self->usf1_lanczos_fp   == NULL) ||
+	   (self->usf1_lanczos_bp   == NULL) ||
+	   (self->usf2_lanczos      == NULL) ||
 	   (self->usf0_skip         == NULL) ||
 	   (self->usf1_skip_fp      == NULL) ||
 	   (self->usf1_skip_bp      == NULL) ||
@@ -336,22 +336,22 @@ nn_engine_new(vkk_engine_t* engine)
 	self->pl_fact_bp = vkk_pipelineLayout_new(engine, 2,
 	                                          usf_array_fact_bp);
 
-	vkk_uniformSetFactory_t* usf_array_lanczos3_fp[] =
+	vkk_uniformSetFactory_t* usf_array_lanczos_fp[] =
 	{
-		self->usf0_lanczos3,
-		self->usf1_lanczos3_fp,
+		self->usf0_lanczos,
+		self->usf1_lanczos_fp,
 	};
-	self->pl_lanczos3_fp = vkk_pipelineLayout_new(engine, 2,
-	                                              usf_array_lanczos3_fp);
+	self->pl_lanczos_fp = vkk_pipelineLayout_new(engine, 2,
+	                                             usf_array_lanczos_fp);
 
-	vkk_uniformSetFactory_t* usf_array_lanczos3_bp[] =
+	vkk_uniformSetFactory_t* usf_array_lanczos_bp[] =
 	{
-		self->usf0_lanczos3,
-		self->usf1_lanczos3_bp,
-		self->usf2_lanczos3,
+		self->usf0_lanczos,
+		self->usf1_lanczos_bp,
+		self->usf2_lanczos,
 	};
-	self->pl_lanczos3_bp = vkk_pipelineLayout_new(engine, 3,
-	                                              usf_array_lanczos3_bp);
+	self->pl_lanczos_bp = vkk_pipelineLayout_new(engine, 3,
+	                                             usf_array_lanczos_bp);
 
 	vkk_uniformSetFactory_t* usf_array_skip_fp[] =
 	{
@@ -422,8 +422,8 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->pl_conv_bp      == NULL) ||
 	   (self->pl_fact_fp      == NULL) ||
 	   (self->pl_fact_bp      == NULL) ||
-	   (self->pl_lanczos3_fp  == NULL) ||
-	   (self->pl_lanczos3_bp  == NULL) ||
+	   (self->pl_lanczos_fp   == NULL) ||
+	   (self->pl_lanczos_bp   == NULL) ||
 	   (self->pl_skip_fp      == NULL) ||
 	   (self->pl_skip_bp      == NULL) ||
 	   (self->pl_weight_fp    == NULL) ||
@@ -777,49 +777,49 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_fact_backpropSink);
 
-	vkk_computePipelineInfo_t cpi_lanczos3_forwardPassH =
+	vkk_computePipelineInfo_t cpi_lanczos_forwardPassT =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_lanczos3_fp,
-		.cs      = "nn/shaders/nn_lanczos3Layer_forwardPassH_comp.spv",
+		.pl      = self->pl_lanczos_fp,
+		.cs      = "nn/shaders/nn_lanczosLayer_forwardPassT_comp.spv",
 	};
 
-	self->cp_lanczos3_forwardPassH =
+	self->cp_lanczos_forwardPassT =
 		vkk_computePipeline_new(engine,
-		                        &cpi_lanczos3_forwardPassH);
+		                        &cpi_lanczos_forwardPassT);
 
-	vkk_computePipelineInfo_t cpi_lanczos3_forwardPassY =
+	vkk_computePipelineInfo_t cpi_lanczos_forwardPassY =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_lanczos3_fp,
-		.cs      = "nn/shaders/nn_lanczos3Layer_forwardPassY_comp.spv",
+		.pl      = self->pl_lanczos_fp,
+		.cs      = "nn/shaders/nn_lanczosLayer_forwardPassY_comp.spv",
 	};
 
-	self->cp_lanczos3_forwardPassY =
+	self->cp_lanczos_forwardPassY =
 		vkk_computePipeline_new(engine,
-		                        &cpi_lanczos3_forwardPassY);
+		                        &cpi_lanczos_forwardPassY);
 
-	vkk_computePipelineInfo_t cpi_lanczos3_backprop_dL_dH =
+	vkk_computePipelineInfo_t cpi_lanczos_backprop_dL_dT =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_lanczos3_bp,
-		.cs      = "nn/shaders/nn_lanczos3Layer_backprop_dL_dH_comp.spv",
+		.pl      = self->pl_lanczos_bp,
+		.cs      = "nn/shaders/nn_lanczosLayer_backprop_dL_dT_comp.spv",
 	};
 
-	self->cp_lanczos3_backprop_dL_dH =
+	self->cp_lanczos_backprop_dL_dT =
 		vkk_computePipeline_new(engine,
-		                        &cpi_lanczos3_backprop_dL_dH);
+		                        &cpi_lanczos_backprop_dL_dT);
 
-	vkk_computePipelineInfo_t cpi_lanczos3_backprop_dL_dX =
+	vkk_computePipelineInfo_t cpi_lanczos_backprop_dL_dX =
 	{
 		.compute = self->compute,
-		.pl      = self->pl_lanczos3_bp,
-		.cs      = "nn/shaders/nn_lanczos3Layer_backprop_dL_dX_comp.spv",
+		.pl      = self->pl_lanczos_bp,
+		.cs      = "nn/shaders/nn_lanczosLayer_backprop_dL_dX_comp.spv",
 	};
 
-	self->cp_lanczos3_backprop_dL_dX =
+	self->cp_lanczos_backprop_dL_dX =
 		vkk_computePipeline_new(engine,
-		                        &cpi_lanczos3_backprop_dL_dX);
+		                        &cpi_lanczos_backprop_dL_dX);
 
 	vkk_computePipelineInfo_t cpi_skip_forwardPassAdd =
 	{
@@ -1116,10 +1116,10 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_fact_backpropPReLU                 == NULL) ||
 	   (self->cp_fact_backpropTanh                  == NULL) ||
 	   (self->cp_fact_backpropSink                  == NULL) ||
-	   (self->cp_lanczos3_forwardPassH              == NULL) ||
-	   (self->cp_lanczos3_forwardPassY              == NULL) ||
-	   (self->cp_lanczos3_backprop_dL_dH            == NULL) ||
-	   (self->cp_lanczos3_backprop_dL_dX            == NULL) ||
+	   (self->cp_lanczos_forwardPassT               == NULL) ||
+	   (self->cp_lanczos_forwardPassY               == NULL) ||
+	   (self->cp_lanczos_backprop_dL_dT             == NULL) ||
+	   (self->cp_lanczos_backprop_dL_dX             == NULL) ||
 	   (self->cp_skip_forwardPassAdd                == NULL) ||
 	   (self->cp_skip_forwardPassCat                == NULL) ||
 	   (self->cp_skip_backpropAdd                   == NULL) ||
@@ -1175,8 +1175,8 @@ nn_engine_new(vkk_engine_t* engine)
 		goto failure;
 	}
 
-	self->map_lanczos3_us2 = cc_map_new();
-	if(self->map_lanczos3_us2 == NULL)
+	self->map_lanczos_us2 = cc_map_new();
+	if(self->map_lanczos_us2 == NULL)
 	{
 		goto failure;
 	}
@@ -1260,17 +1260,17 @@ void nn_engine_delete(nn_engine_t** _self)
 			cc_map_delete(&self->map_conv_us2);
 		}
 
-		if(self->map_lanczos3_us2)
+		if(self->map_lanczos_us2)
 		{
-			miter = cc_map_head(self->map_lanczos3_us2);
+			miter = cc_map_head(self->map_lanczos_us2);
 			while(miter)
 			{
-				nn_lanczos3Us2Data_t* data;
-				data = (nn_lanczos3Us2Data_t*)
-				       cc_map_remove(self->map_lanczos3_us2, &miter);
-				nn_lanczos3Us2Data_delete(&data);
+				nn_lanczosUs2Data_t* data;
+				data = (nn_lanczosUs2Data_t*)
+				       cc_map_remove(self->map_lanczos_us2, &miter);
+				nn_lanczosUs2Data_delete(&data);
 			}
-			cc_map_delete(&self->map_lanczos3_us2);
+			cc_map_delete(&self->map_lanczos_us2);
 		}
 
 		nn_tensor_delete(&self->Null);
@@ -1298,10 +1298,10 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_skip_backpropAdd);
 		vkk_computePipeline_delete(&self->cp_skip_forwardPassCat);
 		vkk_computePipeline_delete(&self->cp_skip_forwardPassAdd);
-		vkk_computePipeline_delete(&self->cp_lanczos3_backprop_dL_dX);
-		vkk_computePipeline_delete(&self->cp_lanczos3_backprop_dL_dH);
-		vkk_computePipeline_delete(&self->cp_lanczos3_forwardPassY);
-		vkk_computePipeline_delete(&self->cp_lanczos3_forwardPassH);
+		vkk_computePipeline_delete(&self->cp_lanczos_backprop_dL_dX);
+		vkk_computePipeline_delete(&self->cp_lanczos_backprop_dL_dT);
+		vkk_computePipeline_delete(&self->cp_lanczos_forwardPassY);
+		vkk_computePipeline_delete(&self->cp_lanczos_forwardPassT);
 		vkk_computePipeline_delete(&self->cp_fact_backpropSink);
 		vkk_computePipeline_delete(&self->cp_fact_backpropTanh);
 		vkk_computePipeline_delete(&self->cp_fact_backpropPReLU);
@@ -1341,8 +1341,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_pipelineLayout_delete(&self->pl_weight_fp);
 		vkk_pipelineLayout_delete(&self->pl_skip_bp);
 		vkk_pipelineLayout_delete(&self->pl_skip_fp);
-		vkk_pipelineLayout_delete(&self->pl_lanczos3_bp);
-		vkk_pipelineLayout_delete(&self->pl_lanczos3_fp);
+		vkk_pipelineLayout_delete(&self->pl_lanczos_bp);
+		vkk_pipelineLayout_delete(&self->pl_lanczos_fp);
 		vkk_pipelineLayout_delete(&self->pl_fact_bp);
 		vkk_pipelineLayout_delete(&self->pl_fact_fp);
 		vkk_pipelineLayout_delete(&self->pl_conv_bp);
@@ -1361,10 +1361,10 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf1_skip_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_skip_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_skip);
-		vkk_uniformSetFactory_delete(&self->usf2_lanczos3);
-		vkk_uniformSetFactory_delete(&self->usf1_lanczos3_bp);
-		vkk_uniformSetFactory_delete(&self->usf1_lanczos3_fp);
-		vkk_uniformSetFactory_delete(&self->usf0_lanczos3);
+		vkk_uniformSetFactory_delete(&self->usf2_lanczos);
+		vkk_uniformSetFactory_delete(&self->usf1_lanczos_bp);
+		vkk_uniformSetFactory_delete(&self->usf1_lanczos_fp);
+		vkk_uniformSetFactory_delete(&self->usf0_lanczos);
 		vkk_uniformSetFactory_delete(&self->usf1_fact_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_fact_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_fact);
@@ -1482,32 +1482,32 @@ nn_engine_getLanczos3Us2(nn_engine_t* self, uint32_t n)
 {
 	ASSERT(self);
 
-	nn_lanczos3Us2Data_t* data;
+	nn_lanczosUs2Data_t* data;
 
-	nn_lanczos3Us2Key_t key =
+	nn_lanczosUs2Key_t key =
 	{
 		.n = n,
 	};
 
 	// find existing data
 	cc_mapIter_t* miter;
-	miter = cc_map_findp(self->map_lanczos3_us2,
-	                     sizeof(nn_lanczos3Us2Key_t),
+	miter = cc_map_findp(self->map_lanczos_us2,
+	                     sizeof(nn_lanczosUs2Key_t),
 	                     &key);
 	if(miter)
 	{
-		data = (nn_lanczos3Us2Data_t*) cc_map_val(miter);
+		data = (nn_lanczosUs2Data_t*) cc_map_val(miter);
 		return data->us2;
 	}
 
-	data = nn_lanczos3Us2Data_new(self, &key);
+	data = nn_lanczosUs2Data_new(self, &key);
 	if(data == NULL)
 	{
 		return NULL;
 	}
 
-	if(cc_map_addp(self->map_lanczos3_us2,
-	               data, sizeof(nn_lanczos3Us2Key_t),
+	if(cc_map_addp(self->map_lanczos_us2,
+	               data, sizeof(nn_lanczosUs2Key_t),
 	               &key) == NULL)
 	{
 		goto fail_add;
@@ -1518,7 +1518,7 @@ nn_engine_getLanczos3Us2(nn_engine_t* self, uint32_t n)
 
 	// failure
 	fail_add:
-		nn_lanczos3Us2Data_delete(&data);
+		nn_lanczosUs2Data_delete(&data);
 	return NULL;
 }
 

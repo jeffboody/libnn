@@ -17,22 +17,17 @@ layout(std430, set=0, binding=0) readonly buffer sb000
 
 layout(std430, set=0, binding=2) readonly buffer sb002
 {
-	nn_dim_t dimW;
-};
-
-layout(std430, set=0, binding=3) readonly buffer sb003
-{
-	float W[];
+	nn_dim_t dimY;
 };
 
 layout(std430, set=0, binding=4) readonly buffer sb004
 {
-	nn_dim_t dimY;
+	float Lw[];
 };
 
 layout(std430, set=0, binding=6) readonly buffer sb006
 {
-	float dL_dH[];
+	float dL_dT[];
 };
 
 layout(std430, set=0, binding=7) buffer sb007
@@ -42,7 +37,13 @@ layout(std430, set=0, binding=7) buffer sb007
 
 layout(std430, set=0, binding=8) readonly buffer sb008
 {
-	uint param_stride;
+	int param_a;
+	int param_fsw;
+	int param_fsh;
+	int param_fcw;
+	int param_fch;
+	int param_szw;
+	int param_szh;
 };
 
 layout(std430, set=2, binding=0) readonly buffer sb200
@@ -50,19 +51,28 @@ layout(std430, set=2, binding=0) readonly buffer sb200
 	uint idx_n;
 };
 
-float get_dH_dX(uint n)
+uint umod(uint x, uint y)
 {
-	// dH_dX is W
-	return W[n];
+	return uint(mod(int(x), int(y)));
 }
 
-float get_dL_dH(uint n, uint i, uint j, uint k)
+float get_dT_dX(uint j, uint n)
+{
+	uint fcw = param_fcw;
+	uint szw = param_szw;
+
+	// dT_dX is Lw
+	// dim(fcw,1,1,szw)
+	return Lw[umod(j, fcw)*szw + n];
+}
+
+float get_dL_dT(uint n, uint i, uint j, uint k)
 {
 	// dim(bs,xh,yw,xd)
 	uint sn = dimX.height*dimY.width*dimX.depth;
 	uint sy = dimY.width*dimX.depth;
 	uint sx = dimX.depth;
-	return dL_dH[n*sn + i*sy + j*sx + k];
+	return dL_dT[n*sn + i*sy + j*sx + k];
 }
 
 void add_dL_dX(uint n, uint i, uint j, uint k, float v)
@@ -75,35 +85,33 @@ void add_dL_dX(uint n, uint i, uint j, uint k, float v)
 
 void backprop_dL_dX(uint m, uint i, uint j)
 {
-	uint xw = dimX.width;
-	uint xd = dimX.depth;
-	uint sz = dimW.count;
-	uint n  = idx_n;
+	// https://github.com/jeffboody/Lanczos
 
-	// 3) Lanczos3 Downsample: stride=2, mw=12
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	//    |   |   |   |   |   | C |   |   |   |   |   |   |
-	//    +---+---+---+---+---+---+---+---+---+---+---+---+
-	uint ctr = (sz - param_stride)/2;
-
-	int jj = int(param_stride*j + n) - int(ctr);
+	int   a    = param_a;
+	int   fs   = param_fsw;
+	int   xw   = int(dimX.width);
+	uint  xd   = dimX.depth;
+	int   yw   = int(dimY.width);
+	int   n    = int(idx_n);
+	float step = float(xw)/float(yw);
+	float x    = (float(j) + 0.5)*step - 0.5;
+	int   lj   = -(fs*a) + 1 + n;
+	int   jj   = int(floor(x)) + lj;
 	if((jj < 0) || (jj >= xw))
 	{
 		return;
 	}
 
-	float dh_dx = get_dH_dX(n);
-	float dl_dh;
+	float dt_dx = get_dT_dX(j, n);
+	float dl_dt;
 	float dl_dx;
 
 	uint k;
 	for(k = 0; k < xd; ++k)
 	{
-		dl_dh = get_dL_dH(m, i, j, k);
-		dl_dx = dl_dh*dh_dx;
-		add_dL_dX(m, i, jj, k, dl_dx);
+		dl_dt = get_dL_dT(m, i, j, k);
+		dl_dx = dl_dt*dt_dx;
+		add_dL_dX(m, i, uint(jj), k, dl_dx);
 	}
 }
 

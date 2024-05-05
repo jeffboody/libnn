@@ -53,10 +53,10 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf0_fact;
 	vkk_uniformSetFactory_t* usf1_fact_fp;
 	vkk_uniformSetFactory_t* usf1_fact_bp;
-	vkk_uniformSetFactory_t* usf0_lanczos3;
-	vkk_uniformSetFactory_t* usf1_lanczos3_fp;
-	vkk_uniformSetFactory_t* usf1_lanczos3_bp;
-	vkk_uniformSetFactory_t* usf2_lanczos3;
+	vkk_uniformSetFactory_t* usf0_lanczos;
+	vkk_uniformSetFactory_t* usf1_lanczos_fp;
+	vkk_uniformSetFactory_t* usf1_lanczos_bp;
+	vkk_uniformSetFactory_t* usf2_lanczos;
 	vkk_uniformSetFactory_t* usf0_skip;
 	vkk_uniformSetFactory_t* usf1_skip_fp;
 	vkk_uniformSetFactory_t* usf1_skip_bp;
@@ -76,8 +76,8 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_conv_bp;
 	vkk_pipelineLayout_t* pl_fact_fp;
 	vkk_pipelineLayout_t* pl_fact_bp;
-	vkk_pipelineLayout_t* pl_lanczos3_fp;
-	vkk_pipelineLayout_t* pl_lanczos3_bp;
+	vkk_pipelineLayout_t* pl_lanczos_fp;
+	vkk_pipelineLayout_t* pl_lanczos_bp;
 	vkk_pipelineLayout_t* pl_skip_fp;
 	vkk_pipelineLayout_t* pl_skip_bp;
 	vkk_pipelineLayout_t* pl_weight_fp;
@@ -118,10 +118,10 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_fact_backpropPReLU;
 	vkk_computePipeline_t* cp_fact_backpropTanh;
 	vkk_computePipeline_t* cp_fact_backpropSink;
-	vkk_computePipeline_t* cp_lanczos3_forwardPassH;
-	vkk_computePipeline_t* cp_lanczos3_forwardPassY;
-	vkk_computePipeline_t* cp_lanczos3_backprop_dL_dH;
-	vkk_computePipeline_t* cp_lanczos3_backprop_dL_dX;
+	vkk_computePipeline_t* cp_lanczos_forwardPassT;
+	vkk_computePipeline_t* cp_lanczos_forwardPassY;
+	vkk_computePipeline_t* cp_lanczos_backprop_dL_dT;
+	vkk_computePipeline_t* cp_lanczos_backprop_dL_dX;
 	vkk_computePipeline_t* cp_skip_forwardPassAdd;
 	vkk_computePipeline_t* cp_skip_forwardPassCat;
 	vkk_computePipeline_t* cp_skip_backpropAdd;
@@ -151,7 +151,7 @@ typedef struct nn_engine_s
 
 	cc_map_t*  map_bn_us2;
 	cc_map_t*  map_conv_us2;
-	cc_map_t*  map_lanczos3_us2;
+	cc_map_t*  map_lanczos_us2;
 	cc_list_t* list_tensorOpK_us0[2];
 } nn_engine_t;
 

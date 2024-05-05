@@ -30,9 +30,8 @@
 #include "../libcc/cc_log.h"
 #include "../libcc/cc_memory.h"
 #include "../libvkk/vkk.h"
-#include "../texgz/pil_lanczos.h"
 #include "nn_arch.h"
-#include "nn_lanczos3Layer.h"
+#include "nn_lanczosLayer.h"
 #include "nn_engine.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
@@ -41,22 +40,17 @@
 * private                                                  *
 ***********************************************************/
 
-typedef struct
-{
-	uint32_t stride;
-} nn_lanczos3LayerParam_t;
-
 static nn_tensor_t*
-nn_lanczos3Layer_computeFpFn(nn_layer_t* base,
-                             int flags, uint32_t bs,
-                             nn_tensor_t* X)
+nn_lanczosLayer_computeFpFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* X)
 {
 	ASSERT(base);
 	ASSERT(X);
 
-	nn_lanczos3Layer_t* self   = (nn_lanczos3Layer_t*) base;
-	nn_arch_t*          arch   = base->arch;
-	nn_engine_t*        engine = arch->engine;
+	nn_lanczosLayer_t* self   = (nn_lanczosLayer_t*) base;
+	nn_arch_t*         arch   = base->arch;
+	nn_engine_t*       engine = arch->engine;
 
 	nn_dim_t* dimX = nn_tensor_dim(X);
 	nn_dim_t* dimY = nn_tensor_dim(self->Y);
@@ -93,10 +87,10 @@ nn_lanczos3Layer_computeFpFn(nn_layer_t* base,
 		self->us1_fp,
 	};
 
-	// nn_lanczos3Layer_forwardPassH
+	// nn_lanczosLayer_forwardPassT
 	// dispatch(RAW, bs, xh, yw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = engine->cp_lanczos3_forwardPassH;
+	cp = engine->cp_lanczos_forwardPassT;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
@@ -106,9 +100,9 @@ nn_lanczos3Layer_computeFpFn(nn_layer_t* base,
 	                          bs, dimX->height, dimY->width,
 	                          1, 8, 8);
 
-	// nn_lanczos3Layer_forwardPassY
+	// nn_lanczosLayer_forwardPassY
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	cp = engine->cp_lanczos3_forwardPassY;
+	cp = engine->cp_lanczos_forwardPassY;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
@@ -124,24 +118,23 @@ nn_lanczos3Layer_computeFpFn(nn_layer_t* base,
 }
 
 static nn_tensor_t*
-nn_lanczos3Layer_computeBpFn(nn_layer_t* base,
-                             int flags, uint32_t bs,
-                             nn_tensor_t* dL_dY)
+nn_lanczosLayer_computeBpFn(nn_layer_t* base,
+                            int flags, uint32_t bs,
+                            nn_tensor_t* dL_dY)
 {
 	ASSERT(base);
 	ASSERT(dL_dY); // dim(bs,yh,yw,xd)
 
-	nn_lanczos3Layer_t* self   = (nn_lanczos3Layer_t*) base;
-	nn_arch_t*          arch   = base->arch;
-	nn_engine_t*        engine = arch->engine;
+	nn_lanczosLayer_t* self   = (nn_lanczosLayer_t*) base;
+	nn_lanczosParam_t* param  = &self->param;
+	nn_arch_t*         arch   = base->arch;
+	nn_engine_t*       engine = arch->engine;
 
 	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
-	nn_dim_t* dimW = nn_tensor_dim(self->W);
 	nn_dim_t* dimY = nn_tensor_dim(dL_dY);
-	uint32_t  sz   = dimW->depth;
 
 	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dH, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dT, VKK_HAZARD_NONE,
 	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
@@ -185,17 +178,17 @@ nn_lanczos3Layer_computeBpFn(nn_layer_t* base,
 		NULL,
 	};
 
-	// nn_lanczos3Layer_backprop_dL_dH
+	// nn_lanczosLayer_backprop_dL_dT
 	// dispatch required for each n
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint n;
 	vkk_computePipeline_t* cp;
-	cp = engine->cp_lanczos3_backprop_dL_dH;
+	cp = engine->cp_lanczos_backprop_dL_dT;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	for(n = 0; n < sz; ++n)
+	for(n = 0; n < param->szh; ++n)
 	{
 		us_array[2] = nn_engine_getLanczos3Us2(engine, n);
 		if(us_array[2] == NULL)
@@ -209,15 +202,15 @@ nn_lanczos3Layer_computeBpFn(nn_layer_t* base,
 		                          1, 8, 8);
 	}
 
-	// nn_lanczos3Layer_backprop_dL_dX
+	// nn_lanczosLayer_backprop_dL_dX
 	// dispatch required for each n
 	// dispatch(RAW, bs, xh, yw, 1, 8, 8)
-	cp = engine->cp_lanczos3_backprop_dL_dX;
+	cp = engine->cp_lanczos_backprop_dL_dX;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	for(n = 0; n < sz; ++n)
+	for(n = 0; n < param->szw; ++n)
 	{
 		us_array[2] = nn_engine_getLanczos3Us2(engine, n);
 		if(us_array[2] == NULL)
@@ -235,106 +228,152 @@ nn_lanczos3Layer_computeBpFn(nn_layer_t* base,
 }
 
 static void
-nn_lanczos3Layer_postFn(nn_layer_t* base,
-                        int flags, uint32_t bs)
+nn_lanczosLayer_postFn(nn_layer_t* base,
+                       int flags, uint32_t bs)
 {
 	// ignore
 }
 
 static nn_dim_t*
-nn_lanczos3Layer_dimXFn(nn_layer_t* base)
+nn_lanczosLayer_dimXFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
-	nn_lanczos3Layer_t* self = (nn_lanczos3Layer_t*) base;
+	nn_lanczosLayer_t* self = (nn_lanczosLayer_t*) base;
 
 	return nn_tensor_dim(self->dL_dX);
 }
 
 static nn_dim_t*
-nn_lanczos3Layer_dimYFn(nn_layer_t* base)
+nn_lanczosLayer_dimYFn(nn_layer_t* base)
 {
 	ASSERT(base);
 
-	nn_lanczos3Layer_t* self = (nn_lanczos3Layer_t*) base;
+	nn_lanczosLayer_t* self = (nn_lanczosLayer_t*) base;
 
 	return nn_tensor_dim(self->Y);
 }
 
-static int
-nn_lanczos3Layer_newW(nn_lanczos3Layer_t* self,
-                      nn_engine_t* engine)
+static float nn_lanczosLayer_sinc(float x)
+{
+	if(x == 0.0f)
+	{
+		return 1.0f;
+	}
+
+	return sin(M_PI*x)/(M_PI*x);
+}
+
+static float nn_lanczosLayer_L(float x, float a)
+{
+	if((-a <= x) && (x < a))
+	{
+		return nn_lanczosLayer_sinc(x)*
+		       nn_lanczosLayer_sinc(x/a);
+	}
+
+	return 0.0;
+}
+
+static nn_tensor_t*
+nn_lanczosLayer_newL(nn_lanczosLayer_t* self,
+                     nn_engine_t* engine,
+                     int fs, int fc, int sz,
+                     uint32_t n1, uint32_t n2)
 {
 	ASSERT(self);
 	ASSERT(engine);
 
-	// lanczos3 properties
-	int   scale   = cc_pow2n(self->level);
-	float support = 3.0f;
-	float scalef  = (float) scale;
-	int   n       = (int) (scalef*support + 0.01f);
-	int   sz      = 2*n;
-
-	nn_dim_t dimW =
+	nn_dim_t dimL =
 	{
-		.count  = 1,
+		.count  = fc,
 		.height = 1,
 		.width  = 1,
 		.depth  = sz,
 	};
 
-	nn_tensor_t* Wio;
-	Wio = nn_tensor_new(engine, &dimW, NN_TENSOR_INIT_ZERO,
+	nn_tensor_t* Lio;
+	Lio = nn_tensor_new(engine, &dimL, NN_TENSOR_INIT_ZERO,
 	                    NN_TENSOR_MODE_IO);
-	if(Wio == NULL)
+	if(Lio == NULL)
 	{
 		return 0;
 	}
 
-	self->W = nn_tensor_new(engine, &dimW,
-	                        NN_TENSOR_INIT_ZERO,
-	                        NN_TENSOR_MODE_COMPUTE);
-	if(self->W == NULL)
+	nn_tensor_t* L;
+	L = nn_tensor_new(engine, &dimL, NN_TENSOR_INIT_ZERO,
+	                  NN_TENSOR_MODE_COMPUTE);
+	if(L == NULL)
 	{
-		goto fail_W;
+		goto fail_L;
 	}
 
-	// generate masks (weights)
-	// for example
-	// 1: 0.007,  0.030,
-	//   -0.068, -0.133,
-	//    0.270,  0.890,
-	// 2: 0.002,  0.016,  0.030,  0.020,
-	//   -0.031, -0.105, -0.147, -0.085,
-	//    0.121,  0.437,  0.764,  0.971,
-	float step = 1.0f/scalef;
-	float x    = support - step/2.0f;
-	float y;
-	int   i0;
-	int   i1 = sz - 1;
-	for(i0 = 0; i0 < n; ++i0)
+	// compute L premultiplied by 1/w
+	int      i;
+	int      j;
+	int      a = self->param.a;
+	float    l;
+	float    w;
+	float    x;
+	float    step = ((float) n1)/((float) n2);
+	float    fsf  = (float) fs;
+	uint32_t n;
+	for(j = 0; j < fc; ++j)
 	{
-		y = pil_lanczos3_filter(x)/scale;
-		nn_tensor_ioSet(Wio, 0, 0, 0, i0, y);
-		nn_tensor_ioSet(Wio, 0, 0, 0, i1, y);
-		x -= step;
-		--i1;
+		n = 0;
+		w = 0.0f;
+		x = (((float) j) + 0.5f)*step - 0.5f;
+		for(i = -(fs*a) + 1; i <= (fs*a); ++i)
+		{
+			w += nn_lanczosLayer_L((i - x + floor(x))/fsf, a);
+		}
+		for(i = -(fs*a) + 1; i <= (fs*a); ++i)
+		{
+			l = nn_lanczosLayer_L((i - x + floor(x))/fsf, a);
+			nn_tensor_ioSet(Lio, j, 0, 0, n, (1.0f/w)*l);
+			++n;
+		}
 	}
 
-	if(nn_tensor_copy(Wio, self->W, 0, 0, 1) == 0)
+	if(nn_tensor_copy(Lio, L, 0, 0, fc) == 0)
 	{
 		goto fail_copy;
 	}
 
-	nn_tensor_delete(&Wio);
+	nn_tensor_delete(&Lio);
 
 	// success
-	return 1;
+	return L;
 
 	// failure
 	fail_copy:
-	fail_W:
-		nn_tensor_delete(&Wio);
+		nn_tensor_delete(&L);
+	fail_L:
+		nn_tensor_delete(&Lio);
+	return NULL;
+}
+
+static int
+nn_lanczosLayer_validate(uint32_t x, uint32_t y)
+{
+	// swap order if x > y
+	if(x > y)
+	{
+		return nn_lanczosLayer_validate(y, x);
+	}
+
+	// y must be x*2^n
+	uint32_t x2 = x;
+	while(x2 <= y)
+	{
+		if(x2 == y)
+		{
+			return 1;
+		}
+
+		x2 *= 2;
+	}
+
 	return 0;
 }
 
@@ -342,16 +381,16 @@ nn_lanczos3Layer_newW(nn_lanczos3Layer_t* self,
 * public                                                   *
 ***********************************************************/
 
-nn_lanczos3Us2Data_t*
-nn_lanczos3Us2Data_new(nn_engine_t* engine,
-                       nn_lanczos3Us2Key_t* key)
+nn_lanczosUs2Data_t*
+nn_lanczosUs2Data_new(nn_engine_t* engine,
+                      nn_lanczosUs2Key_t* key)
 {
 	ASSERT(engine);
 	ASSERT(key);
 
-	nn_lanczos3Us2Data_t* self;
-	self = (nn_lanczos3Us2Data_t*)
-	       CALLOC(1, sizeof(nn_lanczos3Us2Data_t));
+	nn_lanczosUs2Data_t* self;
+	self = (nn_lanczosUs2Data_t*)
+	       CALLOC(1, sizeof(nn_lanczosUs2Data_t));
 	if(self == NULL)
 	{
 		LOGE("CALLOC failed");
@@ -361,7 +400,7 @@ nn_lanczos3Us2Data_new(nn_engine_t* engine,
 	self->sb200 = vkk_buffer_new(engine->engine,
 	                             VKK_UPDATE_MODE_STATIC,
 	                             VKK_BUFFER_USAGE_STORAGE,
-	                             sizeof(nn_lanczos3Us2Key_t),
+	                             sizeof(nn_lanczosUs2Key_t),
 	                             key);
 	if(self->sb200 == NULL)
 	{
@@ -369,7 +408,7 @@ nn_lanczos3Us2Data_new(nn_engine_t* engine,
 	}
 
 	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_lanczos3);
+	                               engine->usf2_lanczos);
 	if(self->us2 == NULL)
 	{
 		goto failure;
@@ -393,15 +432,15 @@ nn_lanczos3Us2Data_new(nn_engine_t* engine,
 
 	// failure
 	failure:
-		nn_lanczos3Us2Data_delete(&self);
+		nn_lanczosUs2Data_delete(&self);
 	return NULL;
 }
 
-void nn_lanczos3Us2Data_delete(nn_lanczos3Us2Data_t** _self)
+void nn_lanczosUs2Data_delete(nn_lanczosUs2Data_t** _self)
 {
 	ASSERT(_self);
 
-	nn_lanczos3Us2Data_t* self = *_self;
+	nn_lanczosUs2Data_t* self = *_self;
 	if(self)
 	{
 		vkk_uniformSet_delete(&self->us2);
@@ -411,35 +450,38 @@ void nn_lanczos3Us2Data_delete(nn_lanczos3Us2Data_t** _self)
 	}
 }
 
-nn_lanczos3Layer_t*
-nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
-                     int level)
+nn_lanczosLayer_t*
+nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
+                    nn_dim_t* dimY, int a)
 {
 	ASSERT(arch);
 	ASSERT(dimX);
 
 	nn_engine_t* engine = arch->engine;
 
-	uint32_t stride = cc_pow2n(level);
-	uint32_t bs     = dimX->count;
-	uint32_t xh     = dimX->height;
-	uint32_t xw     = dimX->width;
-	uint32_t xd     = dimX->depth;
-	uint32_t yh     = xh/stride;
-	uint32_t yw     = xw/stride;
+	uint32_t xn = dimX->count;
+	uint32_t xh = dimX->height;
+	uint32_t xw = dimX->width;
+	uint32_t xd = dimX->depth;
+	uint32_t yn = dimY->count;
+	uint32_t yh = dimY->height;
+	uint32_t yw = dimY->width;
+	uint32_t yd = dimY->depth;
 
-	nn_dim_t dimH =
+	// validate a, dimX and dimY
+	if((a < 1) || (xn != yn) || (xd != yd) ||
+	   (nn_lanczosLayer_validate(xh, yh) == 0) ||
+	   (nn_lanczosLayer_validate(xw, yw) == 0))
 	{
-		.count  = bs,
+		LOGE("invalid a=%i, dimX=%u,%u,%u,%u, dimY=%u,%u,%u,%u",
+		     a, xn, xh, xw, xd, yn, yh, yw, yd);
+		return NULL;
+	}
+
+	nn_dim_t dimT =
+	{
+		.count  = xn,
 		.height = xh,
-		.width  = yw,
-		.depth  = xd,
-	};
-
-	nn_dim_t dimY =
-	{
-		.count  = bs,
-		.height = yh,
 		.width  = yw,
 		.depth  = xd,
 	};
@@ -447,37 +489,63 @@ nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	nn_layerInfo_t info =
 	{
 		.arch          = arch,
-		.compute_fp_fn = nn_lanczos3Layer_computeFpFn,
-		.compute_bp_fn = nn_lanczos3Layer_computeBpFn,
-		.post_fn       = nn_lanczos3Layer_postFn,
-		.dimX_fn       = nn_lanczos3Layer_dimXFn,
-		.dimY_fn       = nn_lanczos3Layer_dimYFn,
+		.compute_fp_fn = nn_lanczosLayer_computeFpFn,
+		.compute_bp_fn = nn_lanczosLayer_computeBpFn,
+		.post_fn       = nn_lanczosLayer_postFn,
+		.dimX_fn       = nn_lanczosLayer_dimXFn,
+		.dimY_fn       = nn_lanczosLayer_dimYFn,
 	};
 
-	nn_lanczos3Layer_t* self;
-	self = (nn_lanczos3Layer_t*)
-	       nn_layer_new(sizeof(nn_lanczos3Layer_t), &info);
+	nn_lanczosLayer_t* self;
+	self = (nn_lanczosLayer_t*)
+	       nn_layer_new(sizeof(nn_lanczosLayer_t), &info);
 	if(self == NULL)
 	{
 		return NULL;
 	}
 
-	self->level = level;
+	nn_lanczosParam_t* param = &self->param;
 
-	self->H = nn_tensor_new(engine, &dimH,
+	// support size
+	param->a = a;
+
+	// filter scale
+	param->fsw = xw/yw;
+	param->fsh = xh/yh;
+	if(param->fsw < 1)
+	{
+		param->fsw = 1;
+	}
+	if(param->fsh < 1)
+	{
+		param->fsh = 1;
+	}
+
+	// filter count
+	param->fcw = yw/xw;
+	param->fch = yh/xh;
+	if(param->fcw < 1)
+	{
+		param->fcw = 1;
+	}
+	if(param->fch < 1)
+	{
+		param->fch = 1;
+	}
+
+	// filter size
+	param->szw = 2*param->fsw*param->a;
+	param->szh = 2*param->fsh*param->a;
+
+	self->T = nn_tensor_new(engine, &dimT,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
-	if(self->H == NULL)
+	if(self->T == NULL)
 	{
 		goto failure;
 	}
 
-	if(nn_lanczos3Layer_newW(self, engine) == 0)
-	{
-		goto failure;
-	}
-
-	self->Y = nn_tensor_new(engine, &dimY,
+	self->Y = nn_tensor_new(engine, dimY,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->Y == NULL)
@@ -485,10 +553,26 @@ nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto failure;
 	}
 
-	self->dL_dH = nn_tensor_new(engine, &dimH,
+	self->Lw = nn_lanczosLayer_newL(self, engine,
+	                                param->fsw, param->fcw,
+	                                param->szw, xw, yw);
+	if(self->Lw == NULL)
+	{
+		goto failure;
+	}
+
+	self->Lh = nn_lanczosLayer_newL(self, engine,
+	                                param->fsh, param->fch,
+	                                param->szh, xh, yh);
+	if(self->Lh == NULL)
+	{
+		goto failure;
+	}
+
+	self->dL_dT = nn_tensor_new(engine, &dimT,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
-	if(self->dL_dH == NULL)
+	if(self->dL_dT == NULL)
 	{
 		goto failure;
 	}
@@ -501,50 +585,46 @@ nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto failure;
 	}
 
-	nn_lanczos3LayerParam_t param =
-	{
-		.stride = stride,
-	};
 	self->sb008_param = vkk_buffer_new(engine->engine,
 	                                   VKK_UPDATE_MODE_STATIC,
 	                                   VKK_BUFFER_USAGE_STORAGE,
-	                                   sizeof(nn_lanczos3LayerParam_t),
-	                                   &param);
+	                                   sizeof(nn_lanczosParam_t),
+	                                   param);
 	if(self->sb008_param == NULL)
 	{
 		goto failure;
 	}
 
 	self->us0 = vkk_uniformSet_new(engine->engine, 0, 0, NULL,
-	                               engine->usf0_lanczos3);
+	                               engine->usf0_lanczos);
 	if(self->us0 == NULL)
 	{
 		goto failure;
 	}
 
 	self->us1_fp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                                  engine->usf1_lanczos3_fp);
+	                                  engine->usf1_lanczos_fp);
 	if(self->us1_fp == NULL)
 	{
 		goto failure;
 	}
 
 	self->us1_bp = vkk_uniformSet_new(engine->engine, 1, 0, NULL,
-	                                  engine->usf1_lanczos3_bp);
+	                                  engine->usf1_lanczos_bp);
 	if(self->us1_bp == NULL)
 	{
 		goto failure;
 	}
 
 	// sb000: dimX (bs,xh,xw,xd)
-	// sb001: H    (bs,xh,yw,xd)
-	// sb002: dimW (1,1,1,sz)
-	// sb003: W
-	// sb004: dimY (bs,yh,yw,xd)
-	// sb005: Y
-	// sb006: dL_dH
+	// sb001: T    (bs,xh,yw,xd)
+	// sb002: dimY (bs,yh,yw,xd)
+	// sb003: Y
+	// sb004: Lw
+	// sb005: Lh
+	// sb006: dL_dW
 	// sb007: dL_dX
-	// sb008: param (stride)
+	// sb008: param (a, fsw, fsh, fcw, fch, szw, szh)
 	vkk_uniformAttachment_t ua0_array[] =
 	{
 		{
@@ -555,32 +635,32 @@ nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->H->sb_data,
+			.buffer  = self->T->sb_data,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->W->sb_dim,
+			.buffer  = self->Y->sb_dim,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->W->sb_data,
+			.buffer  = self->Y->sb_data,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Y->sb_dim,
+			.buffer  = self->Lw->sb_data,
 		},
 		{
 			.binding = 5,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->Y->sb_data,
+			.buffer  = self->Lh->sb_data,
 		},
 		{
 			.binding = 6,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->dL_dH->sb_data,
+			.buffer  = self->dL_dT->sb_data,
 		},
 		{
 			.binding = 7,
@@ -607,11 +687,11 @@ nn_lanczos3Layer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	return NULL;
 }
 
-void nn_lanczos3Layer_delete(nn_lanczos3Layer_t** _self)
+void nn_lanczosLayer_delete(nn_lanczosLayer_t** _self)
 {
 	ASSERT(_self);
 
-	nn_lanczos3Layer_t* self = *_self;
+	nn_lanczosLayer_t* self = *_self;
 	if(self)
 	{
 		vkk_uniformSet_delete(&self->us1_bp);
@@ -619,16 +699,17 @@ void nn_lanczos3Layer_delete(nn_lanczos3Layer_t** _self)
 		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb008_param);
 		nn_tensor_delete(&self->dL_dX);
-		nn_tensor_delete(&self->dL_dH);
+		nn_tensor_delete(&self->dL_dT);
+		nn_tensor_delete(&self->Lh);
+		nn_tensor_delete(&self->Lw);
 		nn_tensor_delete(&self->Y);
-		nn_tensor_delete(&self->W);
-		nn_tensor_delete(&self->H);
+		nn_tensor_delete(&self->T);
 		nn_layer_delete((nn_layer_t**) _self);
 	}
 }
 
-nn_lanczos3Layer_t*
-nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_lanczosLayer_t*
+nn_lanczosLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
@@ -639,9 +720,9 @@ nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX  = NULL;
-	jsmn_val_t* val_level = NULL;
-	jsmn_val_t* val_W     = NULL;
+	jsmn_val_t* val_a    = NULL;
+	jsmn_val_t* val_dimX = NULL;
+	jsmn_val_t* val_dimY = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -651,9 +732,9 @@ nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
 
 		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
 		{
-			if(strcmp(kv->key, "level") == 0)
+			if(strcmp(kv->key, "a") == 0)
 			{
-				val_level = kv->val;
+				val_a = kv->val;
 			}
 		}
 		else if(kv->val->type == JSMN_TYPE_OBJECT)
@@ -662,9 +743,9 @@ nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
 			{
 				val_dimX = kv->val;
 			}
-			else if(strcmp(kv->key, "W") == 0)
+			else if(strcmp(kv->key, "dimY") == 0)
 			{
-				val_W = kv->val;
+				val_dimY = kv->val;
 			}
 		}
 
@@ -672,15 +753,15 @@ nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
 	}
 
 	// check for required parameters
-	if((val_dimX  == NULL) ||
-	   (val_level == NULL) ||
-	   (val_W     == NULL))
+	if((val_a    == NULL) ||
+	   (val_dimX == NULL) ||
+	   (val_dimY == NULL))
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	int level = strtol(val_level->data, NULL, 0);
+	int a = (int) strtol(val_a->data, NULL, 0);
 
 	nn_dim_t dimX;
 	if(nn_dim_import(&dimX, val_dimX) == 0)
@@ -688,43 +769,37 @@ nn_lanczos3Layer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	nn_lanczos3Layer_t* self;
-	self = nn_lanczos3Layer_new(arch, &dimX, level);
+	nn_dim_t dimY;
+	if(nn_dim_import(&dimY, val_dimY) == 0)
+	{
+		return NULL;
+	}
+
+	nn_lanczosLayer_t* self;
+	self = nn_lanczosLayer_new(arch, &dimX, &dimY, a);
 	if(self == NULL)
 	{
 		return NULL;
 	}
 
-	if(nn_tensor_import(self->W,  val_W)  == 0)
-	{
-		goto fail_tensor;
-	}
-
-	// success
 	return self;
-
-	// failure
-	fail_tensor:
-		nn_lanczos3Layer_delete(&self);
-	return NULL;
 }
 
-int nn_lanczos3Layer_export(nn_lanczos3Layer_t* self,
-                            jsmn_stream_t* stream)
+int nn_lanczosLayer_export(nn_lanczosLayer_t* self,
+                           jsmn_stream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
+	nn_dim_t* dimY = nn_tensor_dim(self->Y);
 
 	int ret = 1;
 	ret &= jsmn_stream_beginObject(stream);
 	ret &= jsmn_stream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "level");
-	ret &= jsmn_stream_int(stream, self->level);
-	ret &= jsmn_stream_key(stream, "%s", "W");
-	ret &= nn_tensor_export(self->W, stream);
+	ret &= jsmn_stream_key(stream, "%s", "dimY");
+	ret &= nn_dim_export(dimY, stream);
 	ret &= jsmn_stream_end(stream);
 
 	return ret;

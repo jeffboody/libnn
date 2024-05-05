@@ -30,10 +30,10 @@ glslangValidator -V nn_factLayer_backpropReLU.comp -o nn_factLayer_backpropReLU_
 glslangValidator -V nn_factLayer_backpropPReLU.comp -o nn_factLayer_backpropPReLU_comp.spv
 glslangValidator -V nn_factLayer_backpropTanh.comp -o nn_factLayer_backpropTanh_comp.spv
 glslangValidator -V nn_factLayer_backpropSink.comp -o nn_factLayer_backpropSink_comp.spv
-glslangValidator -V nn_lanczos3Layer_forwardPassH.comp -o nn_lanczos3Layer_forwardPassH_comp.spv
-glslangValidator -V nn_lanczos3Layer_forwardPassY.comp -o nn_lanczos3Layer_forwardPassY_comp.spv
-glslangValidator -V nn_lanczos3Layer_backprop_dL_dH.comp -o nn_lanczos3Layer_backprop_dL_dH_comp.spv
-glslangValidator -V nn_lanczos3Layer_backprop_dL_dX.comp -o nn_lanczos3Layer_backprop_dL_dX_comp.spv
+glslangValidator -V nn_lanczosLayer_forwardPassT.comp -o nn_lanczosLayer_forwardPassT_comp.spv
+glslangValidator -V nn_lanczosLayer_forwardPassY.comp -o nn_lanczosLayer_forwardPassY_comp.spv
+glslangValidator -V nn_lanczosLayer_backprop_dL_dT.comp -o nn_lanczosLayer_backprop_dL_dT_comp.spv
+glslangValidator -V nn_lanczosLayer_backprop_dL_dX.comp -o nn_lanczosLayer_backprop_dL_dX_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassAdd.comp -o nn_skipLayer_forwardPassAdd_comp.spv
 glslangValidator -V nn_skipLayer_forwardPassCat.comp -o nn_skipLayer_forwardPassCat_comp.spv
 glslangValidator -V nn_skipLayer_backpropAdd.comp -o nn_skipLayer_backpropAdd_comp.spv
@@ -92,10 +92,10 @@ bfs $1 blobSet nn/shaders/nn_factLayer_backpropReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropPReLU_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropTanh_comp.spv
 bfs $1 blobSet nn/shaders/nn_factLayer_backpropSink_comp.spv
-bfs $1 blobSet nn/shaders/nn_lanczos3Layer_forwardPassH_comp.spv
-bfs $1 blobSet nn/shaders/nn_lanczos3Layer_forwardPassY_comp.spv
-bfs $1 blobSet nn/shaders/nn_lanczos3Layer_backprop_dL_dH_comp.spv
-bfs $1 blobSet nn/shaders/nn_lanczos3Layer_backprop_dL_dX_comp.spv
+bfs $1 blobSet nn/shaders/nn_lanczosLayer_forwardPassT_comp.spv
+bfs $1 blobSet nn/shaders/nn_lanczosLayer_forwardPassY_comp.spv
+bfs $1 blobSet nn/shaders/nn_lanczosLayer_backprop_dL_dT_comp.spv
+bfs $1 blobSet nn/shaders/nn_lanczosLayer_backprop_dL_dX_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassAdd_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_forwardPassCat_comp.spv
 bfs $1 blobSet nn/shaders/nn_skipLayer_backpropAdd_comp.spv
