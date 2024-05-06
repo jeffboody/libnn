@@ -146,6 +146,8 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_tensor_copyk;
 	vkk_computePipeline_t* cp_tensor_addk;
 	vkk_computePipeline_t* cp_tensor_mixk;
+	vkk_computePipeline_t* cp_tensor_scalek;
+	vkk_computePipeline_t* cp_tensor_scaleaddk;
 
 	nn_tensor_t* Null;
 

@@ -283,7 +283,7 @@ Spectral Normalization
 * sb13: v2
 * sb14: c
 
-OpK (FillK, CopyK, AddK, MixK)
+OpK (FillK, CopyK, AddK, MixK, ScaleK, ScaleAddK)
 
 * sb000: dimX1
 * sb001: X1

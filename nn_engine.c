@@ -1085,6 +1085,28 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_mixk);
 
+	vkk_computePipelineInfo_t cpi_tensor_scalek =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_opk,
+		.cs      = "nn/shaders/nn_tensor_scaleK_comp.spv",
+	};
+
+	self->cp_tensor_scalek =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_scalek);
+
+	vkk_computePipelineInfo_t cpi_tensor_scaleaddk =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_opk,
+		.cs      = "nn/shaders/nn_tensor_scaleAddK_comp.spv",
+	};
+
+	self->cp_tensor_scaleaddk =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_scaleaddk);
+
 	if((self->cp_batchNorm_forwardPassXmeanTrain    == NULL) ||
 	   (self->cp_batchNorm_forwardPassXvarTrain     == NULL) ||
 	   (self->cp_batchNorm_forwardPassXmeanInstance == NULL) ||
@@ -1143,7 +1165,9 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_tensor_fillk                       == NULL) ||
 	   (self->cp_tensor_copyk                       == NULL) ||
 	   (self->cp_tensor_addk                        == NULL) ||
-	   (self->cp_tensor_mixk                        == NULL))
+	   (self->cp_tensor_mixk                        == NULL) ||
+	   (self->cp_tensor_scalek                      == NULL) ||
+	   (self->cp_tensor_scaleaddk                   == NULL))
 	{
 		goto failure;
 	}
@@ -1274,6 +1298,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		}
 
 		nn_tensor_delete(&self->Null);
+		vkk_computePipeline_delete(&self->cp_tensor_scaleaddk);
+		vkk_computePipeline_delete(&self->cp_tensor_scalek);
 		vkk_computePipeline_delete(&self->cp_tensor_mixk);
 		vkk_computePipeline_delete(&self->cp_tensor_addk);
 		vkk_computePipeline_delete(&self->cp_tensor_copyk);

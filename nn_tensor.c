@@ -1741,6 +1741,197 @@ int nn_tensor_computeMixK(nn_tensor_t* X1,
 	return 1;
 }
 
+int nn_tensor_computeScaleK(nn_tensor_t* X,
+                            nn_tensor_t* Y,
+                            vkk_hazard_e hazard,
+                            uint32_t xn,
+                            uint32_t yn,
+                            uint32_t count,
+                            uint32_t xk,
+                            uint32_t yk,
+                            uint32_t depth,
+                            float value)
+{
+	ASSERT(X);
+	ASSERT(Y);
+
+	nn_engine_t* engine = X->engine;
+
+	if((X->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode != NN_TENSOR_MODE_COMPUTE))
+	{
+		LOGE("invalid mode=%i:%i",
+		     X->mode, Y->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
+	if((count == 0)                 ||
+	   ((xn + count) > dimX->count) ||
+	   ((yn + count) > dimY->count))
+	{
+		LOGE("invalid n=%u:%u, count=%u:%u:%u",
+		     xn, yn, count, dimX->count, dimY->count);
+		return 0;
+	}
+	if((depth == 0)                 ||
+	   ((xk + depth) > dimX->depth) ||
+	   ((yk + depth) > dimY->depth))
+	{
+		LOGE("invalid k=%u:%u, depth=%u:%u:%u",
+		     xk, yk, depth, dimX->depth, dimY->depth);
+		return 0;
+	}
+	if((dimX->height != dimY->height) ||
+	   (dimX->width  != dimY->width))
+	{
+		LOGE("invalid height=%u:%u, width=%u:%u",
+		     dimX->height, dimY->height,
+		     dimX->width, dimY->width);
+		return 0;
+	}
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpKUs0(engine, X, NULL, Y,
+	                                xn, 0, yn, count,
+	                                xk, 0, yk, depth,
+	                                value);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// nn_tensor_scaleK.comp
+	// dispatch(hazard, count, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp = engine->cp_tensor_scalek;
+	if(nn_engine_computeBind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_computeDispatch(engine, hazard, count,
+	                          dimX->height,
+	                          dimX->width,
+	                          1, 8, 8);
+
+	return 1;
+}
+
+int nn_tensor_computeScaleAddK(nn_tensor_t* X1,
+                               nn_tensor_t* X2,
+                               nn_tensor_t* Y,
+                               vkk_hazard_e hazard,
+                               uint32_t x1n,
+                               uint32_t x2n,
+                               uint32_t yn,
+                               uint32_t count,
+                               uint32_t x1k,
+                               uint32_t x2k,
+                               uint32_t yk,
+                               uint32_t depth,
+                               float value)
+{
+	ASSERT(X1);
+	ASSERT(X2);
+	ASSERT(Y);
+
+	nn_engine_t* engine = X1->engine;
+
+	if((X1->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (X2->mode != NN_TENSOR_MODE_COMPUTE) ||
+	   (Y->mode  != NN_TENSOR_MODE_COMPUTE))
+	{
+		LOGE("invalid mode=%i:%i:%i",
+		     X1->mode, X2->mode, Y->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dimX1 = nn_tensor_dim(X1);
+	nn_dim_t* dimX2 = nn_tensor_dim(X2);
+	nn_dim_t* dimY  = nn_tensor_dim(Y);
+	if((count == 0)                   ||
+	   ((x1n + count) > dimX1->count) ||
+	   ((x2n + count) > dimX2->count) ||
+	   ((yn  + count) > dimY->count))
+	{
+		LOGE("invalid n=%u:%u:%u, count=%u:%u:%u:%u",
+		     x1n, x2n, yn, count, dimX1->count,
+		     dimX2->count, dimY->count);
+		return 0;
+	}
+	if((depth == 0)                   ||
+	   ((x1k + depth) > dimX1->depth) ||
+	   ((x2k + depth) > dimX2->depth) ||
+	   ((yk  + depth) > dimY->depth))
+	{
+		LOGE("invalid k=%u:%u:%u, depth=%u:%u:%u:%u",
+		     x1k, x2k, yk, depth, dimX1->depth,
+		     dimX2->depth, dimY->depth);
+		return 0;
+	}
+	if((dimX1->height != dimX2->height) ||
+	   (dimX1->height != dimY->height)  ||
+	   (dimX1->width  != dimX2->width)  ||
+	   (dimX1->width  != dimY->width))
+	{
+		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
+		     dimX1->height, dimX2->height,
+		     dimY->height, dimX1->width,
+		     dimX2->width, dimY->width);
+		return 0;
+	}
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
+	                                x1n, x2n, yn, count,
+	                                x1k, x2k, yk, depth,
+	                                value);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// nn_tensor_scaleAddK.comp
+	// dispatch(hazard, count, xh, xw, 1, 8, 8)
+	vkk_computePipeline_t* cp = engine->cp_tensor_scaleaddk;
+	if(nn_engine_computeBind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_computeDispatch(engine, hazard, count,
+	                          dimX1->height,
+	                          dimX1->width,
+	                          1, 8, 8);
+
+	return 1;
+}
+
 int nn_tensor_computeNormalize(nn_tensor_t* self,
                                vkk_hazard_e hazard,
                                nn_tensorNorm_e norm,

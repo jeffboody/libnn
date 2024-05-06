@@ -46,6 +46,8 @@ glslangValidator -V nn_tensor_addK.comp -o nn_tensor_addK_comp.spv
 glslangValidator -V nn_tensor_copyK.comp -o nn_tensor_copyK_comp.spv
 glslangValidator -V nn_tensor_fillK.comp -o nn_tensor_fillK_comp.spv
 glslangValidator -V nn_tensor_mixK.comp -o nn_tensor_mixK_comp.spv
+glslangValidator -V nn_tensor_scaleK.comp -o nn_tensor_scaleK_comp.spv
+glslangValidator -V nn_tensor_scaleAddK.comp -o nn_tensor_scaleAddK_comp.spv
 glslangValidator -V nn_weightLayer_forwardPass.comp -o nn_weightLayer_forwardPass_comp.spv
 glslangValidator -V nn_weightLayer_backpropUpdateW.comp -o nn_weightLayer_backpropUpdateW_comp.spv
 glslangValidator -V nn_weightLayer_backpropUpdateB.comp -o nn_weightLayer_backpropUpdateB_comp.spv
@@ -108,6 +110,8 @@ bfs $1 blobSet nn/shaders/nn_tensor_addK_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_copyK_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_fillK_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_mixK_comp.spv
+bfs $1 blobSet nn/shaders/nn_tensor_scaleK_comp.spv
+bfs $1 blobSet nn/shaders/nn_tensor_scaleAddK_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_forwardPass_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backpropUpdateW_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_backpropUpdateB_comp.spv
