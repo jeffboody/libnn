@@ -96,10 +96,13 @@ void forwardPassY(uint m, uint i, uint j, uint k)
 	for(li = -(fs*a) + 1; li <= (fs*a); ++li)
 	{
 		ii = int(floor(y)) + li;
-		if((ii < 0) || (ii >= xh))
+		if(ii < 0)
 		{
-			++n;
-			continue;
+			ii = 0;
+		}
+		else if(ii >= xh)
+		{
+			ii = xh - 1;
 		}
 
 		s1  = getT(m, uint(ii), j, k);

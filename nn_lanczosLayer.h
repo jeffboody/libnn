@@ -64,7 +64,6 @@ typedef struct nn_lanczosLayer_s
 	// Lanczos Resampling
 	// * https://github.com/jeffboody/Lanczos
 	// * only power-of-two resampling is supported
-	// * always use same padding (zero outside bounds)
 	// * support size (a)
 	// * filter scale
 	//   fsw = xw/yw

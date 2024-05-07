@@ -65,7 +65,6 @@ typedef struct nn_convLayer_s
 
 	// weights, bias, output
 	// s  = stride
-	// always use same padding
 	// Standard
 	//   yh = xh/s
 	//   yw = xw/s

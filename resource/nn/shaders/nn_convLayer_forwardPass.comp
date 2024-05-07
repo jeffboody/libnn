@@ -110,17 +110,25 @@ void forwardPass(uint m, uint i, uint j, uint f)
 	for(fi = 0; fi < fh; ++fi)
 	{
 		ii = int(param_stride*i + fi) - int(fh/2);
-		if((ii < 0) || (ii >= xh))
+		if(ii < 0)
 		{
-			continue;
+			ii = 0;
+		}
+		else if(ii >= xh)
+		{
+			ii = int(xh) - 1;
 		}
 
 		for(fj = 0; fj < fw; ++fj)
 		{
 			jj = int(param_stride*j + fj) - int(fw/2);
-			if((jj < 0) || (jj >= xw))
+			if(jj < 0)
 			{
-				continue;
+				jj = 0;
+			}
+			else if(jj >= xw)
+			{
+				jj = int(xw) - 1;
 			}
 
 			for(k = 0; k < xd; ++k)

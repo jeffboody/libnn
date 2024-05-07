@@ -96,10 +96,13 @@ void forwardPassT(uint m, uint i, uint j, uint k)
 	for(lj = -(fs*a) + 1; lj <= (fs*a); ++lj)
 	{
 		jj = int(floor(x)) + lj;
-		if((jj < 0) || (jj >= xw))
+		if(jj < 0)
 		{
-			++n;
-			continue;
+			jj = 0;
+		}
+		else if(jj >= xw)
+		{
+			jj = xw - 1;
 		}
 
 		s1  = getX(m, i, uint(jj), k);
