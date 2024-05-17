@@ -45,7 +45,7 @@ typedef struct nn_tensorStats_s
 
 	nn_tensorStatsData_t data;
 
-	vkk_buffer_t*     sb10_stats;
+	vkk_buffer_t*     sb100_stats;
 	vkk_uniformSet_t* us1;
 } nn_tensorStats_t;
 

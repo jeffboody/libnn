@@ -53,35 +53,43 @@ typedef enum
 
 #define NN_TENSOR_NORM_COUNT 3
 
-typedef struct nn_tensorOpKUs0Idx_s
+typedef struct nn_tensorOpUs0Idx_s
 {
 	uint32_t x1n;
 	uint32_t x2n;
 	uint32_t yn;
 	uint32_t count;
+	uint32_t x1i;
+	uint32_t x2i;
+	uint32_t yi;
+	uint32_t height;
+	uint32_t x1j;
+	uint32_t x2j;
+	uint32_t yj;
+	uint32_t width;
 	uint32_t x1k;
 	uint32_t x2k;
 	uint32_t yk;
 	uint32_t depth;
 	float    value;
-} nn_tensorOpKUs0Idx_t;
+} nn_tensorOpUs0Idx_t;
 
-typedef struct nn_tensorOpKUs0Data_s
+typedef struct nn_tensorOpUs0Data_s
 {
 	vkk_buffer_t*     sb006_idx;
 	vkk_uniformSet_t* us0;
-} nn_tensorOpKUs0Data_t;
+} nn_tensorOpUs0Data_t;
 
-nn_tensorOpKUs0Data_t* nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
-                                               nn_tensor_t* X2,
-                                               nn_tensor_t* Y,
-                                               nn_tensorOpKUs0Idx_t* idx);
-void                   nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self);
-int                    nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
-                                                  nn_tensor_t* X1,
-                                                  nn_tensor_t* X2,
-                                                  nn_tensor_t* Y,
-                                                  nn_tensorOpKUs0Idx_t* idx);
+nn_tensorOpUs0Data_t* nn_tensorOpUs0Data_new(nn_tensor_t* X1,
+                                             nn_tensor_t* X2,
+                                             nn_tensor_t* Y,
+                                             nn_tensorOpUs0Idx_t* idx);
+void                  nn_tensorOpUs0Data_delete(nn_tensorOpUs0Data_t** _self);
+int                   nn_tensorOpUs0Data_update(nn_tensorOpUs0Data_t* self,
+                                                nn_tensor_t* X1,
+                                                nn_tensor_t* X2,
+                                                nn_tensor_t* Y,
+                                                nn_tensorOpUs0Idx_t* idx);
 
 typedef struct nn_tensor_s
 {
@@ -102,11 +110,11 @@ typedef struct nn_tensor_s
 
 	// spectral normalization (optional)
 	nn_tensorNorm_e   norm;
-	vkk_buffer_t*     sb10_data_u1;
-	vkk_buffer_t*     sb11_data_v1;
-	vkk_buffer_t*     sb12_data_u2;
-	vkk_buffer_t*     sb13_data_v2;
-	vkk_buffer_t*     sb14_c;
+	vkk_buffer_t*     sb100_data_u1;
+	vkk_buffer_t*     sb101_data_v1;
+	vkk_buffer_t*     sb102_data_u2;
+	vkk_buffer_t*     sb103_data_v2;
+	vkk_buffer_t*     sb104_c;
 	vkk_uniformSet_t* us1_norm;
 } nn_tensor_t;
 
@@ -134,7 +142,7 @@ typedef struct nn_tensor_s
  * exection order to produce the correct result. The correct
  * execution order is guaranteed by specifying a hazard flag
  * which describes write-after-read (WAR) and
- * read-after-write (RAW) conflicts. The computeOpK
+ * read-after-write (RAW) conflicts. The computeOp
  * functions may be used to write to separate regions of a
  * tensor across multiple calls, however, this should be
  * treated as a RAW conflict.
@@ -188,70 +196,110 @@ int             nn_tensor_computeCopy(nn_tensor_t* X,
                                       uint32_t xn,
                                       uint32_t yn,
                                       uint32_t count);
-int             nn_tensor_computeFillK(nn_tensor_t* self,
-                                       vkk_hazard_e hazard,
-                                       uint32_t n,
-                                       uint32_t count,
-                                       uint32_t k,
-                                       uint32_t depth,
-                                       float value);
-int             nn_tensor_computeCopyK(nn_tensor_t* X,
-                                       nn_tensor_t* Y,
-                                       vkk_hazard_e hazard,
-                                       uint32_t xn,
-                                       uint32_t yn,
-                                       uint32_t count,
-                                       uint32_t xk,
-                                       uint32_t yk,
-                                       uint32_t depth);
-int             nn_tensor_computeAddK(nn_tensor_t* X1,
-                                      nn_tensor_t* X2,
-                                      nn_tensor_t* Y,
-                                      vkk_hazard_e hazard,
-                                      uint32_t x1n,
-                                      uint32_t x2n,
-                                      uint32_t yn,
-                                      uint32_t count,
-                                      uint32_t x1k,
-                                      uint32_t x2k,
-                                      uint32_t yk,
-                                      uint32_t depth);
-int             nn_tensor_computeMixK(nn_tensor_t* X1,
-                                      nn_tensor_t* X2,
-                                      nn_tensor_t* Y,
-                                      vkk_hazard_e hazard,
-                                      uint32_t x1n,
-                                      uint32_t x2n,
-                                      uint32_t yn,
-                                      uint32_t count,
-                                      uint32_t x1k,
-                                      uint32_t x2k,
-                                      uint32_t yk,
-                                      uint32_t depth,
-                                      float value);
-int             nn_tensor_computeScaleK(nn_tensor_t* X,
+int             nn_tensor_computeFillOp(nn_tensor_t* self,
+                                        vkk_hazard_e hazard,
+                                        uint32_t n,
+                                        uint32_t count,
+                                        uint32_t i,
+                                        uint32_t height,
+                                        uint32_t j,
+                                        uint32_t width,
+                                        uint32_t k,
+                                        uint32_t depth,
+                                        float value);
+int             nn_tensor_computeCopyOp(nn_tensor_t* X,
                                         nn_tensor_t* Y,
                                         vkk_hazard_e hazard,
                                         uint32_t xn,
                                         uint32_t yn,
                                         uint32_t count,
+                                        uint32_t xi,
+                                        uint32_t yi,
+                                        uint32_t height,
+                                        uint32_t xj,
+                                        uint32_t yj,
+                                        uint32_t width,
                                         uint32_t xk,
                                         uint32_t yk,
-                                        uint32_t depth,
-                                        float value);
-int             nn_tensor_computeScaleAddK(nn_tensor_t* X1,
-                                           nn_tensor_t* X2,
-                                           nn_tensor_t* Y,
-                                           vkk_hazard_e hazard,
-                                           uint32_t x1n,
-                                           uint32_t x2n,
-                                           uint32_t yn,
-                                           uint32_t count,
-                                           uint32_t x1k,
-                                           uint32_t x2k,
-                                           uint32_t yk,
-                                           uint32_t depth,
-                                           float value);
+                                        uint32_t depth);
+int             nn_tensor_computeAddOp(nn_tensor_t* X1,
+                                       nn_tensor_t* X2,
+                                       nn_tensor_t* Y,
+                                       vkk_hazard_e hazard,
+                                       uint32_t x1n,
+                                       uint32_t x2n,
+                                       uint32_t yn,
+                                       uint32_t count,
+                                       uint32_t x1i,
+                                       uint32_t x2i,
+                                       uint32_t yi,
+                                       uint32_t height,
+                                       uint32_t x1j,
+                                       uint32_t x2j,
+                                       uint32_t yj,
+                                       uint32_t width,
+                                       uint32_t x1k,
+                                       uint32_t x2k,
+                                       uint32_t yk,
+                                       uint32_t depth);
+int             nn_tensor_computeMixOp(nn_tensor_t* X1,
+                                       nn_tensor_t* X2,
+                                       nn_tensor_t* Y,
+                                       vkk_hazard_e hazard,
+                                       uint32_t x1n,
+                                       uint32_t x2n,
+                                       uint32_t yn,
+                                       uint32_t count,
+                                       uint32_t x1i,
+                                       uint32_t x2i,
+                                       uint32_t yi,
+                                       uint32_t height,
+                                       uint32_t x1j,
+                                       uint32_t x2j,
+                                       uint32_t yj,
+                                       uint32_t width,
+                                       uint32_t x1k,
+                                       uint32_t x2k,
+                                       uint32_t yk,
+                                       uint32_t depth,
+                                       float value);
+int             nn_tensor_computeScaleOp(nn_tensor_t* X,
+                                         nn_tensor_t* Y,
+                                         vkk_hazard_e hazard,
+                                         uint32_t xn,
+                                         uint32_t yn,
+                                         uint32_t count,
+                                         uint32_t xi,
+                                         uint32_t yi,
+                                         uint32_t height,
+                                         uint32_t xj,
+                                         uint32_t yj,
+                                         uint32_t width,
+                                         uint32_t xk,
+                                         uint32_t yk,
+                                         uint32_t depth,
+                                         float value);
+int             nn_tensor_computeScaleAddOp(nn_tensor_t* X1,
+                                            nn_tensor_t* X2,
+                                            nn_tensor_t* Y,
+                                            vkk_hazard_e hazard,
+                                            uint32_t x1n,
+                                            uint32_t x2n,
+                                            uint32_t yn,
+                                            uint32_t count,
+                                            uint32_t x1i,
+                                            uint32_t x2i,
+                                            uint32_t yi,
+                                            uint32_t height,
+                                            uint32_t x1j,
+                                            uint32_t x2j,
+                                            uint32_t yj,
+                                            uint32_t width,
+                                            uint32_t x1k,
+                                            uint32_t x2k,
+                                            uint32_t yk,
+                                            uint32_t depth,
+                                            float value);
 int             nn_tensor_computeNormalize(nn_tensor_t* self,
                                            vkk_hazard_e hazard,
                                            nn_tensorNorm_e norm,

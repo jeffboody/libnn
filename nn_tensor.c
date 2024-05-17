@@ -357,18 +357,18 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 	}
 	else if(norm == self->norm)
 	{
-		vkk_buffer_writeStorage(self->sb14_c, 0,
+		vkk_buffer_writeStorage(self->sb104_c, 0,
 		                        sizeof(float), &c);
 		return 1;
 	}
 
 	// reset norm state
 	self->norm = NN_TENSOR_NORM_NONE;
-	vkk_buffer_delete(&self->sb10_data_u1);
-	vkk_buffer_delete(&self->sb11_data_v1);
-	vkk_buffer_delete(&self->sb12_data_u2);
-	vkk_buffer_delete(&self->sb13_data_v2);
-	vkk_buffer_delete(&self->sb14_c);
+	vkk_buffer_delete(&self->sb100_data_u1);
+	vkk_buffer_delete(&self->sb101_data_v1);
+	vkk_buffer_delete(&self->sb102_data_u2);
+	vkk_buffer_delete(&self->sb103_data_v2);
+	vkk_buffer_delete(&self->sb104_c);
 	vkk_uniformSet_delete(&self->us1_norm);
 
 	float* tmp_u1 = NULL;
@@ -385,22 +385,22 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
-	self->sb10_data_u1 = vkk_buffer_new(engine->engine, um,
-	                                    VKK_BUFFER_USAGE_STORAGE,
-	                                    fc*sizeof(float),
-	                                    tmp_u1);
-	if(self->sb10_data_u1 == NULL)
+	self->sb100_data_u1 = vkk_buffer_new(engine->engine, um,
+	                                     VKK_BUFFER_USAGE_STORAGE,
+	                                     fc*sizeof(float),
+	                                     tmp_u1);
+	if(self->sb100_data_u1 == NULL)
 	{
-		goto fail_sb10_data_u1;
+		goto fail_sb100_data_u1;
 	}
 
-	self->sb11_data_v1 = vkk_buffer_new(engine->engine, um,
-	                                    VKK_BUFFER_USAGE_STORAGE,
-	                                    fh*fw*xd*sizeof(float),
-	                                    NULL);
-	if(self->sb11_data_v1 == NULL)
+	self->sb101_data_v1 = vkk_buffer_new(engine->engine, um,
+	                                     VKK_BUFFER_USAGE_STORAGE,
+	                                     fh*fw*xd*sizeof(float),
+	                                     NULL);
+	if(self->sb101_data_v1 == NULL)
 	{
-		goto fail_sb11_data_v1;
+		goto fail_sb101_data_v1;
 	}
 
 	float* tmp_u2 = NULL;
@@ -416,33 +416,33 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 			nn_tensor_initSN(engine, tmp_u2, xd);
 		}
 
-		self->sb12_data_u2 = vkk_buffer_new(engine->engine, um,
-		                                    VKK_BUFFER_USAGE_STORAGE,
-		                                    xd*sizeof(float),
-		                                    tmp_u2);
-		if(self->sb12_data_u2 == NULL)
+		self->sb102_data_u2 = vkk_buffer_new(engine->engine, um,
+		                                     VKK_BUFFER_USAGE_STORAGE,
+		                                     xd*sizeof(float),
+		                                     tmp_u2);
+		if(self->sb102_data_u2 == NULL)
 		{
-			goto fail_sb12_data_u2;
+			goto fail_sb102_data_u2;
 		}
 
-		self->sb13_data_v2 = vkk_buffer_new(engine->engine, um,
-		                                    VKK_BUFFER_USAGE_STORAGE,
-		                                    fc*fw*fh*sizeof(float),
-		                                    NULL);
-		if(self->sb13_data_v2 == NULL)
+		self->sb103_data_v2 = vkk_buffer_new(engine->engine, um,
+		                                     VKK_BUFFER_USAGE_STORAGE,
+		                                     fc*fw*fh*sizeof(float),
+		                                     NULL);
+		if(self->sb103_data_v2 == NULL)
 		{
-			goto fail_sb13_data_v2;
+			goto fail_sb103_data_v2;
 		}
 	}
 
 	// c is only used by BSSN but is still bound for SN
-	self->sb14_c = vkk_buffer_new(engine->engine, um,
-	                              VKK_BUFFER_USAGE_STORAGE,
-	                              sizeof(float),
-	                              &c);
-	if(self->sb14_c == NULL)
+	self->sb104_c = vkk_buffer_new(engine->engine, um,
+	                               VKK_BUFFER_USAGE_STORAGE,
+	                               sizeof(float),
+	                               &c);
+	if(self->sb104_c == NULL)
 	{
-		goto fail_sb14_c;
+		goto fail_sb104_c;
 	}
 
 	self->us1_norm = vkk_uniformSet_new(engine->engine,
@@ -464,18 +464,18 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 
 	// failure
 	fail_us1_norm:
-		vkk_buffer_delete(&self->sb14_c);
-	fail_sb14_c:
-		vkk_buffer_delete(&self->sb13_data_v2);
-	fail_sb13_data_v2:
-		vkk_buffer_delete(&self->sb12_data_u2);
-	fail_sb12_data_u2:
+		vkk_buffer_delete(&self->sb104_c);
+	fail_sb104_c:
+		vkk_buffer_delete(&self->sb103_data_v2);
+	fail_sb103_data_v2:
+		vkk_buffer_delete(&self->sb102_data_u2);
+	fail_sb102_data_u2:
 		FREE(tmp_u2);
 	fail_tmp_u2:
-		vkk_buffer_delete(&self->sb11_data_v1);
-	fail_sb11_data_v1:
-		vkk_buffer_delete(&self->sb10_data_u1);
-	fail_sb10_data_u1:
+		vkk_buffer_delete(&self->sb101_data_v1);
+	fail_sb101_data_v1:
+		vkk_buffer_delete(&self->sb100_data_u1);
+	fail_sb100_data_u1:
 		FREE(tmp_u1);
 	return 0;
 }
@@ -484,11 +484,11 @@ nn_tensor_initNormMode(nn_tensor_t* self,
 * public                                                   *
 ***********************************************************/
 
-nn_tensorOpKUs0Data_t*
-nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
-                        nn_tensor_t* X2,
-                        nn_tensor_t* Y,
-                        nn_tensorOpKUs0Idx_t* idx)
+nn_tensorOpUs0Data_t*
+nn_tensorOpUs0Data_new(nn_tensor_t* X1,
+                       nn_tensor_t* X2,
+                       nn_tensor_t* Y,
+                       nn_tensorOpUs0Idx_t* idx)
 {
 	// X2 and Y may be NULL
 	ASSERT(X1);
@@ -496,9 +496,9 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 
 	nn_engine_t* engine = X1->engine;
 
-	nn_tensorOpKUs0Data_t* self;
-	self = (nn_tensorOpKUs0Data_t*)
-	       CALLOC(1, sizeof(nn_tensorOpKUs0Data_t));
+	nn_tensorOpUs0Data_t* self;
+	self = (nn_tensorOpUs0Data_t*)
+	       CALLOC(1, sizeof(nn_tensorOpUs0Data_t));
 	if(self == NULL)
 	{
 		LOGE("CALLOC failed");
@@ -509,7 +509,7 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 	um = vkk_compute_updateMode(engine->compute);
 	self->sb006_idx = vkk_buffer_new(engine->engine, um,
 	                                 VKK_BUFFER_USAGE_STORAGE,
-	                                 sizeof(nn_tensorOpKUs0Idx_t),
+	                                 sizeof(nn_tensorOpUs0Idx_t),
 	                                 idx);
 	if(self->sb006_idx == NULL)
 	{
@@ -528,7 +528,7 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 
 	self->us0 = vkk_uniformSet_new(engine->engine,
 	                               0, 0, NULL,
-	                               engine->usf0_tensor_opk);
+	                               engine->usf0_tensor_op);
 	if(self->us0 == NULL)
 	{
 		goto fail_us0;
@@ -596,11 +596,11 @@ nn_tensorOpKUs0Data_new(nn_tensor_t* X1,
 }
 
 void
-nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self)
+nn_tensorOpUs0Data_delete(nn_tensorOpUs0Data_t** _self)
 {
 	ASSERT(_self);
 
-	nn_tensorOpKUs0Data_t* self = *_self;
+	nn_tensorOpUs0Data_t* self = *_self;
 	if(self)
 	{
 		vkk_uniformSet_delete(&self->us0);
@@ -611,11 +611,11 @@ nn_tensorOpKUs0Data_delete(nn_tensorOpKUs0Data_t** _self)
 }
 
 int
-nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
-                           nn_tensor_t* X1,
-                           nn_tensor_t* X2,
-                           nn_tensor_t* Y,
-                           nn_tensorOpKUs0Idx_t* idx)
+nn_tensorOpUs0Data_update(nn_tensorOpUs0Data_t* self,
+                          nn_tensor_t* X1,
+                          nn_tensor_t* X2,
+                          nn_tensor_t* Y,
+                          nn_tensorOpUs0Idx_t* idx)
 {
 	// X2 and Y may be NULL
 	ASSERT(self);
@@ -625,7 +625,7 @@ nn_tensorOpKUs0Data_update(nn_tensorOpKUs0Data_t* self,
 	nn_engine_t* engine = X1->engine;
 
 	if(vkk_buffer_writeStorage(self->sb006_idx, 0,
-	                           sizeof(nn_tensorOpKUs0Idx_t),
+	                           sizeof(nn_tensorOpUs0Idx_t),
 	                           idx) == 0)
 	{
 		return 0;
@@ -819,11 +819,11 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	if(self)
 	{
 		vkk_uniformSet_delete(&self->us1_norm);
-		vkk_buffer_delete(&self->sb14_c);
-		vkk_buffer_delete(&self->sb13_data_v2);
-		vkk_buffer_delete(&self->sb12_data_u2);
-		vkk_buffer_delete(&self->sb11_data_v1);
-		vkk_buffer_delete(&self->sb10_data_u1);
+		vkk_buffer_delete(&self->sb104_c);
+		vkk_buffer_delete(&self->sb103_data_v2);
+		vkk_buffer_delete(&self->sb102_data_u2);
+		vkk_buffer_delete(&self->sb101_data_v1);
+		vkk_buffer_delete(&self->sb100_data_u1);
 		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb_data);
 		vkk_buffer_delete(&self->sb_dim);
@@ -946,13 +946,13 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 		}
 
 		if((nn_tensor_importStorage(self, val_u1,
-		                            self->sb10_data_u1) == 0) ||
+		                            self->sb100_data_u1) == 0) ||
 		   (nn_tensor_importStorage(self, val_v1,
-		                            self->sb11_data_v1) == 0) ||
+		                            self->sb101_data_v1) == 0) ||
 		   (nn_tensor_importStorage(self, val_u2,
-		                            self->sb12_data_u2) == 0) ||
+		                            self->sb102_data_u2) == 0) ||
 		   (nn_tensor_importStorage(self, val_v2,
-		                            self->sb13_data_v2) == 0))
+		                            self->sb103_data_v2) == 0))
 		{
 			return 0;
 		}
@@ -1003,13 +1003,13 @@ int nn_tensor_export(nn_tensor_t* self,
 			ret &= jsmn_stream_string(stream, "%s",
 			                          norm_array[self->norm]);
 			ret &= nn_tensor_exportStorage(self, stream, "u1",
-			                               self->sb10_data_u1);
+			                               self->sb100_data_u1);
 			ret &= nn_tensor_exportStorage(self, stream, "v1",
-			                               self->sb11_data_v1);
+			                               self->sb101_data_v1);
 			ret &= nn_tensor_exportStorage(self, stream, "u2",
-			                               self->sb12_data_u2);
+			                               self->sb102_data_u2);
 			ret &= nn_tensor_exportStorage(self, stream, "v2",
-			                               self->sb13_data_v2);
+			                               self->sb103_data_v2);
 		}
 	}
 	ret &= jsmn_stream_end(stream);
@@ -1385,13 +1385,17 @@ int nn_tensor_computeCopy(nn_tensor_t* X,
 	return 1;
 }
 
-int nn_tensor_computeFillK(nn_tensor_t* self,
-                           vkk_hazard_e hazard,
-                           uint32_t n,
-                           uint32_t count,
-                           uint32_t k,
-                           uint32_t depth,
-                           float value)
+int nn_tensor_computeFillOp(nn_tensor_t* self,
+                            vkk_hazard_e hazard,
+                            uint32_t n,
+                            uint32_t count,
+                            uint32_t i,
+                            uint32_t height,
+                            uint32_t j,
+                            uint32_t width,
+                            uint32_t k,
+                            uint32_t depth,
+                            float value)
 {
 	ASSERT(self);
 
@@ -1415,16 +1419,40 @@ int nn_tensor_computeFillK(nn_tensor_t* self,
 		LOGE("invalid n=%u, count=%u:%u", n, count, dim->count);
 		return 0;
 	}
+	if((height == 0) || ((i + height) > dim->height))
+	{
+		LOGE("invalid i=%u, height=%u:%u",
+		     i, height, dim->height);
+		return 0;
+	}
+	if((width == 0) || ((j + width) > dim->width))
+	{
+		LOGE("invalid j=%u, width=%u:%u",
+		     j, width, dim->width);
+		return 0;
+	}
 	if((depth == 0) || ((k + depth) > dim->depth))
 	{
 		LOGE("invalid k=%u, depth=%u:%u", k, depth, dim->depth);
 		return 0;
 	}
 
+	nn_tensorOpUs0Idx_t idx =
+	{
+		.x1n    = n,
+		.count  = count,
+		.x1i    = i,
+		.height = height,
+		.x1j    = j,
+		.width  = width,
+		.x1k    = k,
+		.depth  = depth,
+		.value  = value,
+	};
+
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, self, NULL, NULL,
-	                                n, 0, 0, count,
-	                                k, 0, 0, depth, value);
+	us0 = nn_engine_getTensorOpUs0(engine, self, NULL, NULL,
+	                               &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1435,9 +1463,9 @@ int nn_tensor_computeFillK(nn_tensor_t* self,
 		us0,
 	};
 
-	// nn_tensor_fillK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_fillk;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeFillOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
@@ -1445,21 +1473,27 @@ int nn_tensor_computeFillK(nn_tensor_t* self,
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
 	nn_engine_computeDispatch(engine, hazard,
-	                          count, dim->height, dim->width,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeCopyK(nn_tensor_t* X,
-                           nn_tensor_t* Y,
-                           vkk_hazard_e hazard,
-                           uint32_t xn,
-                           uint32_t yn,
-                           uint32_t count,
-                           uint32_t xk,
-                           uint32_t yk,
-                           uint32_t depth)
+int nn_tensor_computeCopyOp(nn_tensor_t* X,
+                            nn_tensor_t* Y,
+                            vkk_hazard_e hazard,
+                            uint32_t xn,
+                            uint32_t yn,
+                            uint32_t count,
+                            uint32_t xi,
+                            uint32_t yi,
+                            uint32_t height,
+                            uint32_t xj,
+                            uint32_t yj,
+                            uint32_t width,
+                            uint32_t xk,
+                            uint32_t yk,
+                            uint32_t depth)
 {
 	ASSERT(X);
 	ASSERT(Y);
@@ -1489,6 +1523,22 @@ int nn_tensor_computeCopyK(nn_tensor_t* X,
 		     xn, yn, count, dimX->count, dimY->count);
 		return 0;
 	}
+	if((height == 0)                  ||
+	   ((xi + height) > dimX->height) ||
+	   ((yi + height) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u, height=%u:%u:%u",
+		     xi, yi, height, dimX->height, dimY->height);
+		return 0;
+	}
+	if((width == 0)                 ||
+	   ((xj + width) > dimX->width) ||
+	   ((yj + width) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u, width=%u:%u:%u",
+		     xj, yj, width, dimX->width, dimY->width);
+		return 0;
+	}
 	if((depth == 0)                 ||
 	   ((xk + depth) > dimX->depth) ||
 	   ((yk + depth) > dimY->depth))
@@ -1497,20 +1547,25 @@ int nn_tensor_computeCopyK(nn_tensor_t* X,
 		     xk, yk, depth, dimX->depth, dimY->depth);
 		return 0;
 	}
-	if((dimX->height != dimY->height) ||
-	   (dimX->width  != dimY->width))
+
+	nn_tensorOpUs0Idx_t idx =
 	{
-		LOGE("invalid height=%u:%u, width=%u:%u",
-		     dimX->height, dimY->height,
-		     dimX->width,  dimY->width);
-		return 0;
-	}
+		.x1n    = xn,
+		.yn     = yn,
+		.count  = count,
+		.x1i    = xi,
+		.yi     = yi,
+		.height = height,
+		.x1j    = xj,
+		.yj     = yj,
+		.width  = width,
+		.x1k    = xk,
+		.yk     = yk,
+		.depth  = depth,
+	};
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, X, NULL, Y,
-	                                xn, 0, yn, count,
-	                                xk, 0, yk, depth,
-	                                0.0f);
+	us0 = nn_engine_getTensorOpUs0(engine, X, NULL, Y, &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1521,34 +1576,42 @@ int nn_tensor_computeCopyK(nn_tensor_t* X,
 		us0,
 	};
 
-	// nn_tensor_copyK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_copyk;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeCopyOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_computeDispatch(engine, hazard, count,
-	                          dimX->height, dimX->width,
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeAddK(nn_tensor_t* X1,
-                          nn_tensor_t* X2,
-                          nn_tensor_t* Y,
-                          vkk_hazard_e hazard,
-                          uint32_t x1n,
-                          uint32_t x2n,
-                          uint32_t yn,
-                          uint32_t count,
-                          uint32_t x1k,
-                          uint32_t x2k,
-                          uint32_t yk,
-                          uint32_t depth)
+int nn_tensor_computeAddOp(nn_tensor_t* X1,
+                           nn_tensor_t* X2,
+                           nn_tensor_t* Y,
+                           vkk_hazard_e hazard,
+                           uint32_t x1n,
+                           uint32_t x2n,
+                           uint32_t yn,
+                           uint32_t count,
+                           uint32_t x1i,
+                           uint32_t x2i,
+                           uint32_t yi,
+                           uint32_t height,
+                           uint32_t x1j,
+                           uint32_t x2j,
+                           uint32_t yj,
+                           uint32_t width,
+                           uint32_t x1k,
+                           uint32_t x2k,
+                           uint32_t yk,
+                           uint32_t depth)
 {
 	ASSERT(X1);
 	ASSERT(X2);
@@ -1584,6 +1647,26 @@ int nn_tensor_computeAddK(nn_tensor_t* X1,
 		     dimX2->count, dimY->count);
 		return 0;
 	}
+	if((height == 0)                    ||
+	   ((x1i + height) > dimX1->height) ||
+	   ((x2i + height) > dimX2->height) ||
+	   ((yi  + height) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u:%u, height=%u:%u:%u:%u",
+		     x1i, x2i, yi, height, dimX1->height,
+		     dimX2->height, dimY->height);
+		return 0;
+	}
+	if((width == 0)                   ||
+	   ((x1j + width) > dimX1->width) ||
+	   ((x2j + width) > dimX2->width) ||
+	   ((yj  + width) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u:%u, width=%u:%u:%u:%u",
+		     x1j, x2j, yj, width, dimX1->width,
+		     dimX2->width, dimY->width);
+		return 0;
+	}
 	if((depth == 0)                   ||
 	   ((x1k + depth) > dimX1->depth) ||
 	   ((x2k + depth) > dimX2->depth) ||
@@ -1594,23 +1677,29 @@ int nn_tensor_computeAddK(nn_tensor_t* X1,
 		     dimX2->depth, dimY->depth);
 		return 0;
 	}
-	if((dimX1->height != dimX2->height) ||
-	   (dimX1->height != dimY->height)  ||
-	   (dimX1->width  != dimX2->width)  ||
-	   (dimX1->width  != dimY->width))
+
+	nn_tensorOpUs0Idx_t idx =
 	{
-		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
-		     dimX1->height, dimX2->height,
-		     dimY->height, dimX1->width,
-		     dimX2->width, dimY->width);
-		return 0;
-	}
+		.x1n    = x1n,
+		.x2n    = x2n,
+		.yn     = yn,
+		.count  = count,
+		.x1i    = x1i,
+		.x2i    = x2i,
+		.yi     = yi,
+		.height = height,
+		.x1j    = x1j,
+		.x2j    = x2j,
+		.yj     = yj,
+		.width  = width,
+		.x1k    = x1k,
+		.x2k    = x2k,
+		.yk     = yk,
+		.depth  = depth,
+	};
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
-	                                x1n, x2n, yn, count,
-	                                x1k, x2k, yk, depth,
-	                                0.0f);
+	us0 = nn_engine_getTensorOpUs0(engine, X1, X2, Y, &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1621,36 +1710,43 @@ int nn_tensor_computeAddK(nn_tensor_t* X1,
 		us0,
 	};
 
-	// nn_tensor_addK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_addk;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeAddOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_computeDispatch(engine, hazard, count,
-	                          dimX1->height,
-	                          dimX1->width,
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeMixK(nn_tensor_t* X1,
-                          nn_tensor_t* X2,
-                          nn_tensor_t* Y,
-                          vkk_hazard_e hazard,
-                          uint32_t x1n,
-                          uint32_t x2n,
-                          uint32_t yn,
-                          uint32_t count,
-                          uint32_t x1k,
-                          uint32_t x2k,
-                          uint32_t yk,
-                          uint32_t depth,
-                          float value)
+int nn_tensor_computeMixOp(nn_tensor_t* X1,
+                           nn_tensor_t* X2,
+                           nn_tensor_t* Y,
+                           vkk_hazard_e hazard,
+                           uint32_t x1n,
+                           uint32_t x2n,
+                           uint32_t yn,
+                           uint32_t count,
+                           uint32_t x1i,
+                           uint32_t x2i,
+                           uint32_t yi,
+                           uint32_t height,
+                           uint32_t x1j,
+                           uint32_t x2j,
+                           uint32_t yj,
+                           uint32_t width,
+                           uint32_t x1k,
+                           uint32_t x2k,
+                           uint32_t yk,
+                           uint32_t depth,
+                           float value)
 {
 	ASSERT(X1);
 	ASSERT(X2);
@@ -1687,6 +1783,28 @@ int nn_tensor_computeMixK(nn_tensor_t* X1,
 		     dimX2->count, dimY->count);
 		return 0;
 	}
+	if((height == 0)                    ||
+	   ((x1i + height) > dimX1->height) ||
+	   ((x2i + height) > dimX2->height) ||
+	   ((yi  + height) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u:%u, height=%u:%u:%u:%u",
+		     x1i, x2i, yi,
+		     height, dimX1->height,
+		     dimX2->height, dimY->height);
+		return 0;
+	}
+	if((width == 0)                   ||
+	   ((x1j + width) > dimX1->width) ||
+	   ((x2j + width) > dimX2->width) ||
+	   ((yj  + width) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u:%u, width=%u:%u:%u:%u",
+		     x1j, x2j, yj,
+		     width, dimX1->width,
+		     dimX2->width, dimY->width);
+		return 0;
+	}
 	if((depth == 0)                   ||
 	   ((x1k + depth) > dimX1->depth) ||
 	   ((x2k + depth) > dimX2->depth) ||
@@ -1698,22 +1816,30 @@ int nn_tensor_computeMixK(nn_tensor_t* X1,
 		     dimX2->depth, dimY->depth);
 		return 0;
 	}
-	if((dimX1->height != dimX2->height) ||
-	   (dimX1->height != dimY->height)  ||
-	   (dimX1->width  != dimX2->width)  ||
-	   (dimX1->width  != dimY->width))
+
+	nn_tensorOpUs0Idx_t idx =
 	{
-		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
-		     dimX1->height, dimX2->height, dimY->height,
-		     dimX1->width, dimX2->width, dimY->width);
-		return 0;
-	}
+		.x1n    = x1n,
+		.x2n    = x2n,
+		.yn     = yn,
+		.count  = count,
+		.x1i    = x1i,
+		.x2i    = x2i,
+		.yi     = yi,
+		.height = height,
+		.x1j    = x1j,
+		.x2j    = x2j,
+		.yj     = yj,
+		.width  = width,
+		.x1k    = x1k,
+		.x2k    = x2k,
+		.yk     = yk,
+		.depth  = depth,
+		.value  = value,
+	};
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
-	                                x1n, x2n, yn, count,
-	                                x1k, x2k, yk, depth,
-	                                value);
+	us0 = nn_engine_getTensorOpUs0(engine, X1, X2, Y, &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1724,33 +1850,38 @@ int nn_tensor_computeMixK(nn_tensor_t* X1,
 		us0,
 	};
 
-	// nn_tensor_mixK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_mixk;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeMixOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_computeDispatch(engine, hazard, count,
-	                          dimX1->height,
-	                          dimX1->width,
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeScaleK(nn_tensor_t* X,
-                            nn_tensor_t* Y,
-                            vkk_hazard_e hazard,
-                            uint32_t xn,
-                            uint32_t yn,
-                            uint32_t count,
-                            uint32_t xk,
-                            uint32_t yk,
-                            uint32_t depth,
-                            float value)
+int nn_tensor_computeScaleOp(nn_tensor_t* X,
+                             nn_tensor_t* Y,
+                             vkk_hazard_e hazard,
+                             uint32_t xn,
+                             uint32_t yn,
+                             uint32_t count,
+                             uint32_t xi,
+                             uint32_t yi,
+                             uint32_t height,
+                             uint32_t xj,
+                             uint32_t yj,
+                             uint32_t width,
+                             uint32_t xk,
+                             uint32_t yk,
+                             uint32_t depth,
+                             float value)
 {
 	ASSERT(X);
 	ASSERT(Y);
@@ -1781,6 +1912,22 @@ int nn_tensor_computeScaleK(nn_tensor_t* X,
 		     xn, yn, count, dimX->count, dimY->count);
 		return 0;
 	}
+	if((height == 0)                  ||
+	   ((xi + height) > dimX->height) ||
+	   ((yi + height) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u, height=%u:%u:%u",
+		     xi, yi, height, dimX->height, dimY->height);
+		return 0;
+	}
+	if((width == 0)                 ||
+	   ((xj + width) > dimX->width) ||
+	   ((yj + width) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u, width=%u:%u:%u",
+		     xj, yj, width, dimX->width, dimY->width);
+		return 0;
+	}
 	if((depth == 0)                 ||
 	   ((xk + depth) > dimX->depth) ||
 	   ((yk + depth) > dimY->depth))
@@ -1789,20 +1936,26 @@ int nn_tensor_computeScaleK(nn_tensor_t* X,
 		     xk, yk, depth, dimX->depth, dimY->depth);
 		return 0;
 	}
-	if((dimX->height != dimY->height) ||
-	   (dimX->width  != dimY->width))
+
+	nn_tensorOpUs0Idx_t idx =
 	{
-		LOGE("invalid height=%u:%u, width=%u:%u",
-		     dimX->height, dimY->height,
-		     dimX->width, dimY->width);
-		return 0;
-	}
+		.x1n    = xn,
+		.yn     = yn,
+		.count  = count,
+		.x1i    = xi,
+		.yi     = yi,
+		.height = height,
+		.x1j    = xj,
+		.yj     = yj,
+		.width  = width,
+		.x1k    = xk,
+		.yk     = yk,
+		.depth  = depth,
+		.value  = value,
+	};
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, X, NULL, Y,
-	                                xn, 0, yn, count,
-	                                xk, 0, yk, depth,
-	                                value);
+	us0 = nn_engine_getTensorOpUs0(engine, X, NULL, Y, &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1813,36 +1966,43 @@ int nn_tensor_computeScaleK(nn_tensor_t* X,
 		us0,
 	};
 
-	// nn_tensor_scaleK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_scalek;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeScaleOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_computeDispatch(engine, hazard, count,
-	                          dimX->height,
-	                          dimX->width,
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
 }
 
-int nn_tensor_computeScaleAddK(nn_tensor_t* X1,
-                               nn_tensor_t* X2,
-                               nn_tensor_t* Y,
-                               vkk_hazard_e hazard,
-                               uint32_t x1n,
-                               uint32_t x2n,
-                               uint32_t yn,
-                               uint32_t count,
-                               uint32_t x1k,
-                               uint32_t x2k,
-                               uint32_t yk,
-                               uint32_t depth,
-                               float value)
+int nn_tensor_computeScaleAddOp(nn_tensor_t* X1,
+                                nn_tensor_t* X2,
+                                nn_tensor_t* Y,
+                                vkk_hazard_e hazard,
+                                uint32_t x1n,
+                                uint32_t x2n,
+                                uint32_t yn,
+                                uint32_t count,
+                                uint32_t x1i,
+                                uint32_t x2i,
+                                uint32_t yi,
+                                uint32_t height,
+                                uint32_t x1j,
+                                uint32_t x2j,
+                                uint32_t yj,
+                                uint32_t width,
+                                uint32_t x1k,
+                                uint32_t x2k,
+                                uint32_t yk,
+                                uint32_t depth,
+                                float value)
 {
 	ASSERT(X1);
 	ASSERT(X2);
@@ -1878,6 +2038,26 @@ int nn_tensor_computeScaleAddK(nn_tensor_t* X1,
 		     dimX2->count, dimY->count);
 		return 0;
 	}
+	if((height == 0)                    ||
+	   ((x1i + height) > dimX1->height) ||
+	   ((x2i + height) > dimX2->height) ||
+	   ((yi  + height) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u:%u, height=%u:%u:%u:%u",
+		     x1i, x2i, yi, height, dimX1->height,
+		     dimX2->height, dimY->height);
+		return 0;
+	}
+	if((width == 0)                   ||
+	   ((x1j + width) > dimX1->width) ||
+	   ((x2j + width) > dimX2->width) ||
+	   ((yj  + width) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u:%u, width=%u:%u:%u:%u",
+		     x1j, x2j, yj, width, dimX1->width,
+		     dimX2->width, dimY->width);
+		return 0;
+	}
 	if((depth == 0)                   ||
 	   ((x1k + depth) > dimX1->depth) ||
 	   ((x2k + depth) > dimX2->depth) ||
@@ -1888,23 +2068,30 @@ int nn_tensor_computeScaleAddK(nn_tensor_t* X1,
 		     dimX2->depth, dimY->depth);
 		return 0;
 	}
-	if((dimX1->height != dimX2->height) ||
-	   (dimX1->height != dimY->height)  ||
-	   (dimX1->width  != dimX2->width)  ||
-	   (dimX1->width  != dimY->width))
+
+	nn_tensorOpUs0Idx_t idx =
 	{
-		LOGE("invalid height=%u:%u:%u, width=%u:%u:%u",
-		     dimX1->height, dimX2->height,
-		     dimY->height, dimX1->width,
-		     dimX2->width, dimY->width);
-		return 0;
-	}
+		.x1n    = x1n,
+		.x2n    = x2n,
+		.yn     = yn,
+		.count  = count,
+		.x1i    = x1i,
+		.x2i    = x2i,
+		.yi     = yi,
+		.height = height,
+		.x1j    = x1j,
+		.x2j    = x2j,
+		.yj     = yj,
+		.width  = width,
+		.x1k    = x1k,
+		.x2k    = x2k,
+		.yk     = yk,
+		.depth  = depth,
+		.value  = value,
+	};
 
 	vkk_uniformSet_t* us0;
-	us0 = nn_engine_getTensorOpKUs0(engine, X1, X2, Y,
-	                                x1n, x2n, yn, count,
-	                                x1k, x2k, yk, depth,
-	                                value);
+	us0 = nn_engine_getTensorOpUs0(engine, X1, X2, Y, &idx);
 	if(us0 == NULL)
 	{
 		return 0;
@@ -1915,18 +2102,17 @@ int nn_tensor_computeScaleAddK(nn_tensor_t* X1,
 		us0,
 	};
 
-	// nn_tensor_scaleAddK.comp
-	// dispatch(hazard, count, xh, xw, 1, 8, 8)
-	vkk_computePipeline_t* cp = engine->cp_tensor_scaleaddk;
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeScaleAddOp;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return 0;
 	}
 	vkk_compute_bindUniformSets(engine->compute, 1,
 	                            us_array);
-	nn_engine_computeDispatch(engine, hazard, count,
-	                          dimX1->height,
-	                          dimX1->width,
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
 	                          1, 8, 8);
 
 	return 1;
@@ -1958,39 +2144,39 @@ int nn_tensor_computeNormalize(nn_tensor_t* self,
 		return 0;
 	}
 
-	// sb10: u1
-	// sb11: v1
-	// sb12: u2 (optional)
-	// sb13: v2 (optional)
-	// sb14: c
+	// sb100: u1
+	// sb101: v1
+	// sb102: u2 (optional)
+	// sb103: v2 (optional)
+	// sb104: c
 	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb10_data_u1,
+			.buffer  = self->sb100_data_u1,
 		},
 		{
 			.binding = 1,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb11_data_v1,
+			.buffer  = self->sb101_data_v1,
 		},
 		{
 			.binding = 2,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb12_data_u2 ?
-			           self->sb12_data_u2 : self->sb10_data_u1,
+			.buffer  = self->sb102_data_u2 ?
+			           self->sb102_data_u2 : self->sb100_data_u1,
 		},
 		{
 			.binding = 3,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb13_data_v2 ?
-			           self->sb13_data_v2 : self->sb11_data_v1,
+			.buffer  = self->sb103_data_v2 ?
+			           self->sb103_data_v2 : self->sb101_data_v1,
 		},
 		{
 			.binding = 4,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb14_c,
+			.buffer  = self->sb104_c,
 		},
 	};
 

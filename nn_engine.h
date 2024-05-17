@@ -68,7 +68,7 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf0_tensor;
 	vkk_uniformSetFactory_t* usf1_tensor_stats;
 	vkk_uniformSetFactory_t* usf1_tensor_norm;
-	vkk_uniformSetFactory_t* usf0_tensor_opk;
+	vkk_uniformSetFactory_t* usf0_tensor_op;
 
 	vkk_pipelineLayout_t* pl_batchNorm_fp;
 	vkk_pipelineLayout_t* pl_batchNorm_bp;
@@ -85,7 +85,7 @@ typedef struct nn_engine_s
 	vkk_pipelineLayout_t* pl_loss;
 	vkk_pipelineLayout_t* pl_tensor_stats;
 	vkk_pipelineLayout_t* pl_tensor_norm;
-	vkk_pipelineLayout_t* pl_tensor_opk;
+	vkk_pipelineLayout_t* pl_tensor_op;
 
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanTrain;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarTrain;
@@ -142,19 +142,19 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_tensor_stats;
 	vkk_computePipeline_t* cp_tensor_sn;
 	vkk_computePipeline_t* cp_tensor_bssn;
-	vkk_computePipeline_t* cp_tensor_fillk;
-	vkk_computePipeline_t* cp_tensor_copyk;
-	vkk_computePipeline_t* cp_tensor_addk;
-	vkk_computePipeline_t* cp_tensor_mixk;
-	vkk_computePipeline_t* cp_tensor_scalek;
-	vkk_computePipeline_t* cp_tensor_scaleaddk;
+	vkk_computePipeline_t* cp_tensor_computeFillOp;
+	vkk_computePipeline_t* cp_tensor_computeCopyOp;
+	vkk_computePipeline_t* cp_tensor_computeAddOp;
+	vkk_computePipeline_t* cp_tensor_computeMixOp;
+	vkk_computePipeline_t* cp_tensor_computeScaleOp;
+	vkk_computePipeline_t* cp_tensor_computeScaleAddOp;
 
 	nn_tensor_t* Null;
 
 	cc_map_t*  map_bn_us2;
 	cc_map_t*  map_conv_us2;
 	cc_map_t*  map_lanczos_us2;
-	cc_list_t* list_tensorOpK_us0[2];
+	cc_list_t* list_tensorOp_us0[2];
 } nn_engine_t;
 
 nn_engine_t*      nn_engine_new(vkk_engine_t* engine);
@@ -166,19 +166,11 @@ vkk_uniformSet_t* nn_engine_getConvUs2(nn_engine_t* self,
                                        uint32_t fj, uint32_t k);
 vkk_uniformSet_t* nn_engine_getLanczos3Us2(nn_engine_t* self,
                                            uint32_t n);
-vkk_uniformSet_t* nn_engine_getTensorOpKUs0(nn_engine_t* self,
-                                            nn_tensor_t* X1,
-                                            nn_tensor_t* X2,
-                                            nn_tensor_t* Y,
-                                            uint32_t x1n,
-                                            uint32_t x2n,
-                                            uint32_t yn,
-                                            uint32_t count,
-                                            uint32_t x1k,
-                                            uint32_t x2k,
-                                            uint32_t yk,
-                                            uint32_t depth,
-                                            float value);
+vkk_uniformSet_t* nn_engine_getTensorOpUs0(nn_engine_t* self,
+                                           nn_tensor_t* X1,
+                                           nn_tensor_t* X2,
+                                           nn_tensor_t* Y,
+                                           nn_tensorOpUs0Idx_t* idx);
 int               nn_engine_computeBegin(nn_engine_t* self);
 void              nn_engine_computeEnd(nn_engine_t* self);
 void              nn_engine_computeDispatch(nn_engine_t* self,

@@ -268,22 +268,22 @@ Tensor
 
 Uniforms
 
-* sb00: dimX
-* sb01: X
+* sb000: dimX
+* sb001: X
 
 Stats
 
-* sb10: stats
+* sb100: stats
 
 Spectral Normalization
 
-* sb10: u1
-* sb11: v1
-* sb12: u2
-* sb13: v2
-* sb14: c
+* sb100: u1
+* sb101: v1
+* sb102: u2
+* sb103: v2
+* sb104: c
 
-OpK (FillK, CopyK, AddK, MixK, ScaleK, ScaleAddK)
+Op
 
 * sb000: dimX1
 * sb001: X1
@@ -291,4 +291,13 @@ OpK (FillK, CopyK, AddK, MixK, ScaleK, ScaleAddK)
 * sb003: X2
 * sb004: dimY
 * sb005: Y
-* sb006: idx (x1n,x2n,yn,count,x1k,x2k,yk,depth,value)
+* sb006: idx (x1n,...,value)
+
+Op Functions
+
+* FillOp
+* CopyOp
+* AddOp
+* MixOp
+* ScaleOp
+* ScaleAddOp

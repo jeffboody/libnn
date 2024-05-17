@@ -16,17 +16,17 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=1) readonly buffer sb01
+layout(std430, set=0, binding=1) readonly buffer sb001
 {
 	float X[];
 };
 
-layout (std430, set=1, binding=0) buffer sb10
+layout (std430, set=1, binding=0) buffer sb100
 {
 	uint  stats_count;
 	float stats_min;

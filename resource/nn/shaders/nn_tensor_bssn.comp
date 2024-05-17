@@ -14,37 +14,37 @@ struct nn_dim_t
 	uint depth;
 };
 
-layout(std430, set=0, binding=0) readonly buffer sb00
+layout(std430, set=0, binding=0) readonly buffer sb000
 {
 	nn_dim_t dimX;
 };
 
-layout(std430, set=0, binding=1) buffer sb01
+layout(std430, set=0, binding=1) buffer sb001
 {
 	float X[];
 };
 
-layout(std430, set=1, binding=0) buffer sb10
+layout(std430, set=1, binding=0) buffer sb100
 {
 	float u1[];
 };
 
-layout(std430, set=1, binding=1) buffer sb11
+layout(std430, set=1, binding=1) buffer sb101
 {
 	float v1[];
 };
 
-layout(std430, set=1, binding=2) buffer sb12
+layout(std430, set=1, binding=2) buffer sb102
 {
 	float u2[];
 };
 
-layout(std430, set=1, binding=3) buffer sb13
+layout(std430, set=1, binding=3) buffer sb103
 {
 	float v2[];
 };
 
-layout (std430, set=1, binding=4) readonly buffer sb14
+layout (std430, set=1, binding=4) readonly buffer sb104
 {
 	float c;
 };

@@ -39,7 +39,7 @@ static void nn_tensorStats_sync(nn_tensorStats_t* self)
 
 	if(self->dirty)
 	{
-		vkk_buffer_readStorage(self->sb10_stats, 0,
+		vkk_buffer_readStorage(self->sb100_stats, 0,
 		                       sizeof(nn_tensorStatsData_t),
 		                       &self->data);
 		self->dirty = 0;
@@ -68,13 +68,13 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
 
-	self->sb10_stats = vkk_buffer_new(engine->engine, um,
-	                                  VKK_BUFFER_USAGE_STORAGE,
-	                                  sizeof(nn_tensorStatsData_t),
-	                                  NULL);
-	if(self->sb10_stats == NULL)
+	self->sb100_stats = vkk_buffer_new(engine->engine, um,
+	                                   VKK_BUFFER_USAGE_STORAGE,
+	                                   sizeof(nn_tensorStatsData_t),
+	                                   NULL);
+	if(self->sb100_stats == NULL)
 	{
-		goto fail_sb10_stats;
+		goto fail_sb100_stats;
 	}
 
 	self->us1 = vkk_uniformSet_new(engine->engine,
@@ -85,13 +85,13 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 		goto fail_us1;
 	}
 
-	// sb10: stats
+	// sb100: stats
 	vkk_uniformAttachment_t ua1_array[] =
 	{
 		{
 			.binding = 0,
 			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb10_stats,
+			.buffer  = self->sb100_stats,
 		},
 	};
 
@@ -104,8 +104,8 @@ nn_tensorStats_t* nn_tensorStats_new(nn_engine_t* engine)
 
 	// failure
 	fail_us1:
-		vkk_buffer_delete(&self->sb10_stats);
-	fail_sb10_stats:
+		vkk_buffer_delete(&self->sb100_stats);
+	fail_sb100_stats:
 		FREE(self);
 	return NULL;
 }
@@ -118,7 +118,7 @@ void nn_tensorStats_delete(nn_tensorStats_t** _self)
 	if(self)
 	{
 		vkk_uniformSet_delete(&self->us1);
-		vkk_buffer_delete(&self->sb10_stats);
+		vkk_buffer_delete(&self->sb100_stats);
 		FREE(self);
 		*_self = NULL;
 	}
@@ -130,7 +130,7 @@ void nn_tensorStats_update(nn_tensorStats_t* self,
 	ASSERT(self);
 
 	self->data.count = count;
-	vkk_buffer_writeStorage(self->sb10_stats, 0,
+	vkk_buffer_writeStorage(self->sb100_stats, 0,
 	                        sizeof(nn_tensorStatsData_t),
 	                        &self->data);
 	self->dirty = 1;
