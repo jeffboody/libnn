@@ -1184,6 +1184,87 @@ int nn_tensor_ioCopy(nn_tensor_t* X,
 	return 1;
 }
 
+int nn_tensor_ioCopyRegion(nn_tensor_t* X,
+                           nn_tensor_t* Y,
+                           uint32_t xn,
+                           uint32_t yn,
+                           uint32_t count,
+                           uint32_t xi,
+                           uint32_t yi,
+                           uint32_t height,
+                           uint32_t xj,
+                           uint32_t yj,
+                           uint32_t width,
+                           uint32_t xk,
+                           uint32_t yk,
+                           uint32_t depth)
+{
+	ASSERT(X);
+	ASSERT(Y);
+
+	if((X->mode != NN_TENSOR_MODE_IO) ||
+	   (Y->mode != NN_TENSOR_MODE_IO))
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	nn_dim_t* dimY = nn_tensor_dim(Y);
+	if(((count + xn) > dimX->count) ||
+	   ((count + yn) > dimY->count))
+	{
+		LOGE("invalid n=%u:%u, count=%u:%u:%u",
+		     xn, yn, count, dimX->count, dimY->count);
+		return 0;
+	}
+	if(((height + xi) > dimX->height) ||
+	   ((height + yi) > dimY->height))
+	{
+		LOGE("invalid i=%u:%u, height=%u:%u:%u",
+		     xi, yi, height, dimX->height, dimY->height);
+		return 0;
+	}
+	if(((width + xj) > dimX->width) ||
+	   ((width + yj) > dimY->width))
+	{
+		LOGE("invalid j=%u:%u, width=%u:%u:%u",
+		     xj, yj, width, dimX->width, dimY->width);
+		return 0;
+	}
+	if(((depth + xk) > dimX->depth) ||
+	   ((depth + yk) > dimY->depth))
+	{
+		LOGE("invalid k=%u:%u, depth=%u:%u:%u",
+		     xk, yk, depth, dimX->depth, dimY->depth);
+		return 0;
+	}
+
+	int   n;
+	int   i;
+	int   j;
+	int   k;
+	float v;
+	for(n = 0; n < count; ++n)
+	{
+		for(i = 0; i < height; ++i)
+		{
+			for(j = 0; j < width; ++j)
+			{
+				for(k = 0; k < depth; ++k)
+				{
+					v = nn_tensor_ioGet(X, xn + n, xi + i,
+					                    xj + j, xk + k);
+					nn_tensor_ioSet(Y, yn + n, yi + i,
+					                yj + j, yk + k, v);
+				}
+			}
+		}
+	}
+
+	return 1;
+}
+
 float nn_tensor_ioGet(nn_tensor_t* self,
                       uint32_t n, uint32_t i,
                       uint32_t j, uint32_t k)
