@@ -21,39 +21,39 @@
  *
  */
 
-#ifndef nn_lanczosLayer_H
-#define nn_lanczosLayer_H
+#ifndef nn_lanczosResampler_H
+#define nn_lanczosResampler_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
-#include "../libvkk/vkk.h"
-#include "nn_lanczosResampler.h"
-#include "nn_layer.h"
+#include "nn.h"
+#include "nn_dim.h"
 
-typedef struct nn_lanczosUs2Key_s
+typedef struct nn_lanczosParam_s
 {
-	uint32_t n;
-} nn_lanczosUs2Key_t;
+	int a;
+	int fsw;
+	int fsh;
+	int fcw;
+	int fch;
+	int szw;
+	int szh;
+} nn_lanczosParam_t;
 
-typedef struct nn_lanczosUs2Data_s
+void nn_lanczosParam_copy(nn_lanczosParam_t* src,
+                          nn_lanczosParam_t* dst);
+
+typedef struct nn_lanczosResampler_s
 {
-	vkk_buffer_t*     sb200;
-	vkk_uniformSet_t* us2;
-} nn_lanczosUs2Data_t;
-
-nn_lanczosUs2Data_t* nn_lanczosUs2Data_new(nn_engine_t* engine,
-                                           nn_lanczosUs2Key_t* key);
-void                 nn_lanczosUs2Data_delete(nn_lanczosUs2Data_t** _self);
-
-typedef struct nn_lanczosLayer_s
-{
-	nn_layer_t base;
-
 	nn_lanczosParam_t param;
+
+	nn_dim_t dimX;
+	nn_dim_t dimY;
 
 	// Lanczos Resampling
 	// * https://github.com/jeffboody/Lanczos
-	// * see also nn_lanczosResampler_t
+	// * intended only for data initialization
+	// * CPU only and requires IO tensors
+	// * does not support backprop
+	// * see also nn_lanczosLayer_t
 	// * only power-of-two resampling is supported
 	// * support size (a)
 	// * filter scale
@@ -73,35 +73,19 @@ typedef struct nn_lanczosLayer_s
 	// W: width "separable" pass output
 	// Y: output
 	// Lw/Lh: Lanczos kernels (precomputed and premultiplied)
-	nn_tensor_t* X;  // dim(bs,xh,xw,xd) (reference)
 	nn_tensor_t* T;  // dim(bs,xh,yw,xd) (temp)
-	nn_tensor_t* Y;  // dim(bs,yh,yw,xd)
 	nn_tensor_t* Lw; // dim(fcw,1,1,szw)
 	nn_tensor_t* Lh; // dim(fch,1,1,szh)
+} nn_lanczosResampler_t;
 
-	// forward gradients
-	// dT_dX; // Lw : dim(fcw,1,1,szw)
-	// dY_dT; // Lh : dim(fch,1,1,szh)
-
-	// backprop gradients
-	//           dL_dY; // dim(bs,yh,yw,xd)
-	nn_tensor_t* dL_dT; // dim(bs,xh,yw,xd)
-	nn_tensor_t* dL_dX; // dim(bs,xh,xw,xd)
-
-	vkk_buffer_t*     sb008_param;
-	vkk_uniformSet_t* us0;
-	vkk_uniformSet_t* us1_fp;
-	vkk_uniformSet_t* us1_bp;
-} nn_lanczosLayer_t;
-
-nn_lanczosLayer_t* nn_lanczosLayer_new(nn_arch_t* arch,
-                                       nn_dim_t* dimX,
-                                       nn_dim_t* dimY,
-                                       int a);
-void               nn_lanczosLayer_delete(nn_lanczosLayer_t** _self);
-nn_lanczosLayer_t* nn_lanczosLayer_import(nn_arch_t* arch,
-                                          jsmn_val_t* val);
-int                nn_lanczosLayer_export(nn_lanczosLayer_t* self,
-                                          jsmn_stream_t* stream);
+nn_lanczosResampler_t* nn_lanczosResampler_new(nn_engine_t* engine,
+                                               nn_dim_t* dimX,
+                                               nn_dim_t* dimY,
+                                               int a);
+void                   nn_lanczosResampler_delete(nn_lanczosResampler_t** _self);
+int                    nn_lanczosResampler_resample(nn_lanczosResampler_t* self,
+                                                    nn_tensor_t* X,
+                                                    nn_tensor_t* Y,
+                                                    uint32_t bs);
 
 #endif

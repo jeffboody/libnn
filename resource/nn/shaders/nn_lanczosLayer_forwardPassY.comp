@@ -69,7 +69,7 @@ uint umod(uint x, uint y)
 }
 
 float getLh(uint i, uint n)
- {
+{
 	uint fch = param_fch;
 	uint szh = param_szh;
 

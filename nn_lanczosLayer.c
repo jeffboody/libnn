@@ -31,6 +31,7 @@
 #include "../libcc/cc_memory.h"
 #include "../libvkk/vkk.h"
 #include "nn_arch.h"
+#include "nn_lanczosResampler.h"
 #include "nn_lanczosLayer.h"
 #include "nn_engine.h"
 #include "nn_layer.h"
@@ -254,129 +255,6 @@ nn_lanczosLayer_dimYFn(nn_layer_t* base)
 	return nn_tensor_dim(self->Y);
 }
 
-static float nn_lanczosLayer_sinc(float x)
-{
-	if(x == 0.0f)
-	{
-		return 1.0f;
-	}
-
-	return sin(M_PI*x)/(M_PI*x);
-}
-
-static float nn_lanczosLayer_L(float x, float a)
-{
-	if((-a <= x) && (x < a))
-	{
-		return nn_lanczosLayer_sinc(x)*
-		       nn_lanczosLayer_sinc(x/a);
-	}
-
-	return 0.0;
-}
-
-static nn_tensor_t*
-nn_lanczosLayer_newL(nn_lanczosLayer_t* self,
-                     nn_engine_t* engine,
-                     int fs, int fc, int sz,
-                     uint32_t n1, uint32_t n2)
-{
-	ASSERT(self);
-	ASSERT(engine);
-
-	nn_dim_t dimL =
-	{
-		.count  = fc,
-		.height = 1,
-		.width  = 1,
-		.depth  = sz,
-	};
-
-	nn_tensor_t* Lio;
-	Lio = nn_tensor_new(engine, &dimL, NN_TENSOR_INIT_ZERO,
-	                    NN_TENSOR_MODE_IO);
-	if(Lio == NULL)
-	{
-		return 0;
-	}
-
-	nn_tensor_t* L;
-	L = nn_tensor_new(engine, &dimL, NN_TENSOR_INIT_ZERO,
-	                  NN_TENSOR_MODE_COMPUTE);
-	if(L == NULL)
-	{
-		goto fail_L;
-	}
-
-	// compute L premultiplied by 1/w
-	int      i;
-	int      j;
-	int      a = self->param.a;
-	float    l;
-	float    w;
-	float    x;
-	float    step = ((float) n1)/((float) n2);
-	float    fsf  = (float) fs;
-	uint32_t n;
-	for(j = 0; j < fc; ++j)
-	{
-		n = 0;
-		w = 0.0f;
-		x = (((float) j) + 0.5f)*step - 0.5f;
-		for(i = -(fs*a) + 1; i <= (fs*a); ++i)
-		{
-			w += nn_lanczosLayer_L((i - x + floor(x))/fsf, a);
-		}
-		for(i = -(fs*a) + 1; i <= (fs*a); ++i)
-		{
-			l = nn_lanczosLayer_L((i - x + floor(x))/fsf, a);
-			nn_tensor_ioSet(Lio, j, 0, 0, n, (1.0f/w)*l);
-			++n;
-		}
-	}
-
-	if(nn_tensor_copy(Lio, L, 0, 0, fc) == 0)
-	{
-		goto fail_copy;
-	}
-
-	nn_tensor_delete(&Lio);
-
-	// success
-	return L;
-
-	// failure
-	fail_copy:
-		nn_tensor_delete(&L);
-	fail_L:
-		nn_tensor_delete(&Lio);
-	return NULL;
-}
-
-static int
-nn_lanczosLayer_validate(uint32_t x, uint32_t y)
-{
-	// swap order if x > y
-	if(x > y)
-	{
-		return nn_lanczosLayer_validate(y, x);
-	}
-
-	// y must be x*2^n
-	uint32_t x2 = x;
-	while(x2 <= y)
-	{
-		if(x2 == y)
-		{
-			return 1;
-		}
-
-		x2 *= 2;
-	}
-
-	return 0;
-}
-
 /***********************************************************
 * public                                                   *
 ***********************************************************/
@@ -459,32 +337,13 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_engine_t* engine = arch->engine;
 
-	uint32_t xn = dimX->count;
-	uint32_t xh = dimX->height;
-	uint32_t xw = dimX->width;
-	uint32_t xd = dimX->depth;
-	uint32_t yn = dimY->count;
-	uint32_t yh = dimY->height;
-	uint32_t yw = dimY->width;
-	uint32_t yd = dimY->depth;
-
-	// validate a, dimX and dimY
-	if((a < 1) || (xn != yn) || (xd != yd) ||
-	   (nn_lanczosLayer_validate(xh, yh) == 0) ||
-	   (nn_lanczosLayer_validate(xw, yw) == 0))
+	// compute Lanczos param and kernel
+	nn_lanczosResampler_t* lanczos;
+	lanczos = nn_lanczosResampler_new(engine, dimX, dimY, a);
+	if(lanczos == NULL)
 	{
-		LOGE("invalid a=%i, dimX=%u,%u,%u,%u, dimY=%u,%u,%u,%u",
-		     a, xn, xh, xw, xd, yn, yh, yw, yd);
 		return NULL;
 	}
-
-	nn_dim_t dimT =
-	{
-		.count  = xn,
-		.height = xh,
-		.width  = yw,
-		.depth  = xd,
-	};
 
 	nn_layerInfo_t info =
 	{
@@ -501,43 +360,14 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	       nn_layer_new(sizeof(nn_lanczosLayer_t), &info);
 	if(self == NULL)
 	{
-		return NULL;
+		goto failure;
 	}
 
-	nn_lanczosParam_t* param = &self->param;
+	nn_lanczosParam_copy(&lanczos->param, &self->param);
 
-	// support size
-	param->a = a;
+	nn_dim_t* dimT = nn_tensor_dim(lanczos->T);
 
-	// filter scale
-	param->fsw = xw/yw;
-	param->fsh = xh/yh;
-	if(param->fsw < 1)
-	{
-		param->fsw = 1;
-	}
-	if(param->fsh < 1)
-	{
-		param->fsh = 1;
-	}
-
-	// filter count
-	param->fcw = yw/xw;
-	param->fch = yh/xh;
-	if(param->fcw < 1)
-	{
-		param->fcw = 1;
-	}
-	if(param->fch < 1)
-	{
-		param->fch = 1;
-	}
-
-	// filter size
-	param->szw = 2*param->fsw*param->a;
-	param->szh = 2*param->fsh*param->a;
-
-	self->T = nn_tensor_new(engine, &dimT,
+	self->T = nn_tensor_new(engine, dimT,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->T == NULL)
@@ -553,23 +383,41 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto failure;
 	}
 
-	self->Lw = nn_lanczosLayer_newL(self, engine,
-	                                param->fsw, param->fcw,
-	                                param->szw, xw, yw);
+	nn_dim_t* dimLw = nn_tensor_dim(lanczos->Lw);
+
+	self->Lw = nn_tensor_new(engine, dimLw,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Lw == NULL)
 	{
 		goto failure;
 	}
 
-	self->Lh = nn_lanczosLayer_newL(self, engine,
-	                                param->fsh, param->fch,
-	                                param->szh, xh, yh);
+	// copy IO to COMPUTE
+	if(nn_tensor_copy(lanczos->Lw, self->Lw, 0, 0,
+	                  dimLw->count) == 0)
+	{
+		goto failure;
+	}
+
+	nn_dim_t* dimLh = nn_tensor_dim(lanczos->Lh);
+
+	self->Lh = nn_tensor_new(engine, dimLh,
+	                         NN_TENSOR_INIT_ZERO,
+	                         NN_TENSOR_MODE_COMPUTE);
 	if(self->Lh == NULL)
 	{
 		goto failure;
 	}
 
-	self->dL_dT = nn_tensor_new(engine, &dimT,
+	// copy IO to COMPUTE
+	if(nn_tensor_copy(lanczos->Lh, self->Lh, 0, 0,
+	                  dimLh->count) == 0)
+	{
+		goto failure;
+	}
+
+	self->dL_dT = nn_tensor_new(engine, dimT,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dT == NULL)
@@ -589,7 +437,7 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	                                   VKK_UPDATE_MODE_STATIC,
 	                                   VKK_BUFFER_USAGE_STORAGE,
 	                                   sizeof(nn_lanczosParam_t),
-	                                   param);
+	                                   &self->param);
 	if(self->sb008_param == NULL)
 	{
 		goto failure;
@@ -678,12 +526,17 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	                                 self->us0, 9,
 	                                 ua0_array);
 
+	nn_lanczosResampler_delete(&lanczos);
+
 	// success
 	return self;
 
 	// failure
 	failure:
+	{
 		nn_layer_delete((nn_layer_t**) &self);
+		nn_lanczosResampler_delete(&lanczos);
+	}
 	return NULL;
 }
 

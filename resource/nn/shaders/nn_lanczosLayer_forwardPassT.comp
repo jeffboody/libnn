@@ -69,7 +69,7 @@ uint umod(uint x, uint y)
 }
 
 float getLw(uint j, uint n)
- {
+{
 	uint fcw = param_fcw;
 	uint szw = param_szw;
 

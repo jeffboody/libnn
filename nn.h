@@ -41,6 +41,7 @@ typedef struct nn_factLayer_s          nn_factLayer_t;
 typedef struct nn_reshapeLayer_s       nn_reshapeLayer_t;
 typedef struct nn_lanczosLayer_s       nn_lanczosLayer_t;
 typedef struct nn_lanczosParam_s       nn_lanczosParam_t;
+typedef struct nn_lanczosResampler_s   nn_lanczosResampler_t;
 typedef struct nn_layerInfo_s          nn_layerInfo_t;
 typedef struct nn_layer_s              nn_layer_t;
 typedef struct nn_loss_s               nn_loss_t;
