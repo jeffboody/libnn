@@ -696,9 +696,9 @@ int cifar10_upsample_exportYt(cifar10_upsample_t* self,
 	                             0.0f, 1.0f);
 }
 
-int cifar10_upsample_exportY(cifar10_upsample_t* self,
-                             const char* fname,
-                             uint32_t n)
+int cifar10_upsample_exportYLR(cifar10_upsample_t* self,
+                               const char* fname,
+                               uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
@@ -710,9 +710,9 @@ int cifar10_upsample_exportY(cifar10_upsample_t* self,
 	                             0.0f, 1.0f);
 }
 
-int cifar10_upsample_exportU(cifar10_upsample_t* self,
-                             const char* fname,
-                             uint32_t n)
+int cifar10_upsample_exportYHR(cifar10_upsample_t* self,
+                               const char* fname,
+                               uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
@@ -724,14 +724,24 @@ int cifar10_upsample_exportU(cifar10_upsample_t* self,
 	                             0.0f, 1.0f);
 }
 
-int cifar10_upsample_exportL(cifar10_upsample_t* self,
-                             const char* fname,
-                             uint32_t n)
+int cifar10_upsample_exportLLY(cifar10_upsample_t* self,
+                               const char* fname,
+                               uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	return cifar10_lanczos_exportY(self->lanczos, fname, n);
+	return cifar10_lanczos_exportLY(self->lanczos, fname, n);
+}
+
+int cifar10_upsample_exportLRY(cifar10_upsample_t* self,
+                               const char* fname,
+                               uint32_t n)
+{
+	ASSERT(self);
+	ASSERT(fname);
+
+	return cifar10_lanczos_exportRY(self->lanczos, fname, n);
 }
 
 void

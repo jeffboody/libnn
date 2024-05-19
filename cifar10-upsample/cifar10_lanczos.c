@@ -80,31 +80,49 @@ cifar10_lanczos_new(nn_engine_t* engine,
 		.depth  = dimX->depth,
 	};
 
-	self->Tio = nn_tensor_new(engine, &dimT,
-	                          NN_TENSOR_INIT_ZERO,
-	                          NN_TENSOR_MODE_IO);
-	if(self->Tio == NULL)
+	// Layer T
+	self->LTio = nn_tensor_new(engine, &dimT,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_IO);
+	if(self->LTio == NULL)
 	{
 		goto failure;
 	}
 
-	self->Yio = nn_tensor_new(engine, dimY,
-	                          NN_TENSOR_INIT_ZERO,
-	                          NN_TENSOR_MODE_IO);
-	if(self->Yio == NULL)
+	// Layer Y
+	self->LYio = nn_tensor_new(engine, dimY,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_IO);
+	if(self->LYio == NULL)
 	{
 		goto failure;
 	}
 
-	self->lanczos = nn_lanczosLayer_new(&self->base,
-	                                    dimX, dimY, 3);
-	if(self->lanczos == NULL)
+	// Resampler Y
+	self->RYio = nn_tensor_new(engine, dimY,
+	                           NN_TENSOR_INIT_ZERO,
+	                           NN_TENSOR_MODE_IO);
+	if(self->RYio == NULL)
+	{
+		goto failure;
+	}
+
+	self->lanczosL = nn_lanczosLayer_new(&self->base,
+	                                     dimX, dimY, 3);
+	if(self->lanczosL == NULL)
+	{
+		goto failure;
+	}
+
+	self->lanczosR = nn_lanczosResampler_new(engine,
+	                                         dimX, dimY, 3);
+	if(self->lanczosR == NULL)
 	{
 		goto failure;
 	}
 
 	if(nn_arch_attachLayer(&self->base,
-	                       &self->lanczos->base) == 0)
+	                       &self->lanczosL->base) == 0)
 	{
 		goto failure;
 	}
@@ -125,10 +143,12 @@ void cifar10_lanczos_delete(cifar10_lanczos_t** _self)
 	cifar10_lanczos_t* self = *_self;
 	if(self)
 	{
+		nn_lanczosResampler_delete(&self->lanczosR);
+		nn_lanczosLayer_delete(&self->lanczosL);
+		nn_tensor_delete(&self->RYio);
+		nn_tensor_delete(&self->LYio);
+		nn_tensor_delete(&self->LTio);
 		nn_tensor_delete(&self->Xio);
-		nn_tensor_delete(&self->Tio);
-		nn_tensor_delete(&self->Yio);
-		nn_lanczosLayer_delete(&self->lanczos);
 		nn_arch_delete((nn_arch_t**) _self);
 	}
 }
@@ -142,16 +162,17 @@ cifar10_lanczos_computeFp(cifar10_lanczos_t* self,
 	ASSERT(X);
 
 	// update references
-	self->X = X;
-	self->T = self->lanczos->T;
-	self->Y = nn_arch_forwardPass(&self->base, flags, bs, X);
+	self->X  = X;
+	self->LT = self->lanczosL->T;
+	self->LY = nn_arch_forwardPass(&self->base, flags, bs, X);
 
 	// mark dirty
-	self->X_dirty = 1;
-	self->T_dirty = 1;
-	self->Y_dirty = 1;
+	self->X_dirty  = 1;
+	self->LT_dirty = 1;
+	self->LY_dirty = 1;
+	self->RY_dirty = 1;
 
-	return self->Y;
+	return self->LY;
 }
 
 int cifar10_lanczos_exportX(cifar10_lanczos_t* self,
@@ -185,64 +206,107 @@ int cifar10_lanczos_exportX(cifar10_lanczos_t* self,
 	                             0.0f, 1.0f);
 }
 
-int cifar10_lanczos_exportT(cifar10_lanczos_t* self,
-                            const char* fname,
-                            uint32_t n)
+int cifar10_lanczos_exportLT(cifar10_lanczos_t* self,
+                             const char* fname,
+                             uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	nn_dim_t* dim = nn_tensor_dim(self->Tio);
+	nn_dim_t* dim = nn_tensor_dim(self->LTio);
 
-	if(self->T == NULL)
+	if(self->LT == NULL)
 	{
 		LOGE("invalid");
 		return 0;
 	}
 
-	if(self->T_dirty)
+	if(self->LT_dirty)
 	{
-		if(nn_tensor_copy(self->T, self->Tio,
+		if(nn_tensor_copy(self->LT, self->LTio,
 		                  0, 0, dim->count) == 0)
 		{
 			return 0;
 		}
 
-		self->T_dirty = 0;
+		self->LT_dirty = 0;
 	}
 
-	return nn_tensor_ioExportPng(self->Tio, fname,
+	return nn_tensor_ioExportPng(self->LTio, fname,
 	                             n, 0, dim->depth,
 	                             0.0f, 1.0f);
 }
 
-int cifar10_lanczos_exportY(cifar10_lanczos_t* self,
-                            const char* fname,
-                            uint32_t n)
+int cifar10_lanczos_exportLY(cifar10_lanczos_t* self,
+                             const char* fname,
+                             uint32_t n)
 {
 	ASSERT(self);
 	ASSERT(fname);
 
-	nn_dim_t* dim = nn_tensor_dim(self->Yio);
+	nn_dim_t* dim = nn_tensor_dim(self->LYio);
 
-	if(self->Y == NULL)
+	if(self->LY == NULL)
 	{
 		LOGE("invalid");
 		return 0;
 	}
 
-	if(self->Y_dirty)
+	if(self->LY_dirty)
 	{
-		if(nn_tensor_copy(self->Y, self->Yio,
+		if(nn_tensor_copy(self->LY, self->LYio,
 		                  0, 0, dim->count) == 0)
 		{
 			return 0;
 		}
 
-		self->Y_dirty = 0;
+		self->LY_dirty = 0;
 	}
 
-	return nn_tensor_ioExportPng(self->Yio, fname,
+	return nn_tensor_ioExportPng(self->LYio, fname,
+	                             n, 0, dim->depth,
+	                             0.0f, 1.0f);
+}
+
+int cifar10_lanczos_exportRY(cifar10_lanczos_t* self,
+                             const char* fname,
+                             uint32_t n)
+{
+	ASSERT(self);
+	ASSERT(fname);
+
+	nn_dim_t* dim = nn_tensor_dim(self->RYio);
+
+	if(self->X == NULL)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	if(self->X_dirty)
+	{
+		if(nn_tensor_copy(self->X, self->Xio,
+		                  0, 0, dim->count) == 0)
+		{
+			return 0;
+		}
+
+		self->X_dirty = 0;
+	}
+
+	if(self->RY_dirty)
+	{
+		if(nn_lanczosResampler_resample(self->lanczosR,
+		                                self->Xio, self->RYio,
+		                                dim->count) == 0)
+		{
+			return 0;
+		}
+
+		self->RY_dirty = 0;
+	}
+
+	return nn_tensor_ioExportPng(self->RYio, fname,
 	                             n, 0, dim->depth,
 	                             0.0f, 1.0f);
 }

@@ -32,17 +32,20 @@ typedef struct
 	nn_arch_t base;
 
 	int X_dirty;
-	int T_dirty;
-	int Y_dirty;
+	int LT_dirty;
+	int LY_dirty;
+	int RY_dirty;
 
 	nn_tensor_t* Xio;
-	nn_tensor_t* Tio;
-	nn_tensor_t* Yio;
+	nn_tensor_t* LTio;
+	nn_tensor_t* LYio;
+	nn_tensor_t* RYio;
 	nn_tensor_t* X; // reference
-	nn_tensor_t* T; // reference
-	nn_tensor_t* Y; // reference
+	nn_tensor_t* LT; // reference
+	nn_tensor_t* LY; // reference
 
-	nn_lanczosLayer_t* lanczos;
+	nn_lanczosLayer_t*     lanczosL;
+	nn_lanczosResampler_t* lanczosR;
 } cifar10_lanczos_t;
 
 cifar10_lanczos_t* cifar10_lanczos_new(nn_engine_t* engine,
@@ -56,11 +59,14 @@ nn_tensor_t*       cifar10_lanczos_computeFp(cifar10_lanczos_t* self,
 int                cifar10_lanczos_exportX(cifar10_lanczos_t* self,
                                            const char* fname,
                                            uint32_t n);
-int                cifar10_lanczos_exportT(cifar10_lanczos_t* self,
-                                           const char* fname,
-                                           uint32_t n);
-int                cifar10_lanczos_exportY(cifar10_lanczos_t* self,
-                                           const char* fname,
-                                           uint32_t n);
+int                cifar10_lanczos_exportLT(cifar10_lanczos_t* self,
+                                            const char* fname,
+                                            uint32_t n);
+int                cifar10_lanczos_exportLY(cifar10_lanczos_t* self,
+                                            const char* fname,
+                                            uint32_t n);
+int                cifar10_lanczos_exportRY(cifar10_lanczos_t* self,
+                                            const char* fname,
+                                            uint32_t n);
 
 #endif

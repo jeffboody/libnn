@@ -76,15 +76,18 @@ int                 cifar10_upsample_exportX(cifar10_upsample_t* self,
 int                 cifar10_upsample_exportYt(cifar10_upsample_t* self,
                                               const char* fname,
                                               uint32_t n);
-int                 cifar10_upsample_exportY(cifar10_upsample_t* self,
-                                             const char* fname,
-                                             uint32_t n);
-int                 cifar10_upsample_exportU(cifar10_upsample_t* self,
-                                             const char* fname,
-                                             uint32_t n);
-int                 cifar10_upsample_exportL(cifar10_upsample_t* self,
-                                             const char* fname,
-                                             uint32_t n);
+int                 cifar10_upsample_exportYLR(cifar10_upsample_t* self,
+                                               const char* fname,
+                                               uint32_t n);
+int                 cifar10_upsample_exportYHR(cifar10_upsample_t* self,
+                                               const char* fname,
+                                               uint32_t n);
+int                 cifar10_upsample_exportLLY(cifar10_upsample_t* self,
+                                               const char* fname,
+                                               uint32_t n);
+int                 cifar10_upsample_exportLRY(cifar10_upsample_t* self,
+                                               const char* fname,
+                                               uint32_t n);
 void                cifar10_upsample_sampleXt(cifar10_upsample_t* self,
                                               nn_tensor_t* Xt);
 void                cifar10_upsample_sampleXt2(cifar10_upsample_t* self,

@@ -135,15 +135,26 @@ cifar10_upsample_onMain(vkk_engine_t* ve, int argc,
 				snprintf(fname, 256, "data/X-%u-%u.png",
 				         epoch, step);
 				cifar10_upsample_exportX(self, fname, 0);
-				snprintf(fname, 256, "data/Y-%u-%u.png",
+
+				// Y Low Resolution
+				snprintf(fname, 256, "data/YLR-%u-%u.png",
 				         epoch, step);
-				cifar10_upsample_exportY(self, fname, 0);
-				snprintf(fname, 256, "data/U-%u-%u.png",
+				cifar10_upsample_exportYLR(self, fname, 0);
+
+				// Y High Resolution
+				snprintf(fname, 256, "data/YHR-%u-%u.png",
 				         epoch, step);
-				cifar10_upsample_exportU(self, fname, 0);
-				snprintf(fname, 256, "data/L-%u-%u.png",
+				cifar10_upsample_exportYHR(self, fname, 0);
+
+				// Lanczos Layer Y
+				snprintf(fname, 256, "data/LLY-%u-%u.png",
 				         epoch, step);
-				cifar10_upsample_exportL(self, fname, 0);
+				cifar10_upsample_exportLLY(self, fname, 0);
+
+				// Lanczos Resample Y
+				snprintf(fname, 256, "data/LRY-%u-%u.png",
+				         epoch, step);
+				cifar10_upsample_exportLRY(self, fname, 0);
 			}
 
 			// plot loss
