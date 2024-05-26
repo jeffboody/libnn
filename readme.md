@@ -1383,6 +1383,17 @@ References
 See the Autoencoders section for non-GAN based
 super-resolution techniques.
 
+Inpainting
+----------
+
+References
+
+* [Deep Learning-based Image and Video Inpainting: A Survey](https://arxiv.org/pdf/2401.03395)
+* [Deep Image Inpainting](https://cs231n.stanford.edu/reports/2017/pdfs/328.pdf)
+* [Image Inpainting and Object Removal with Deep Convolutional GAN](http://stanford.edu/class/ee367/Winter2018/fu_guan_yang_ee367_win18_report.pdf)
+* [Generative Image Inpainting with Contextual Attention](https://arxiv.org/pdf/1801.07892)
+* [Self-Attention Generative Adversarial Networks](https://arxiv.org/pdf/1805.08318)
+
 3D Applications
 ---------------
 
