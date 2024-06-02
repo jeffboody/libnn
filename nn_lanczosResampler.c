@@ -174,6 +174,9 @@ nn_lanczosResampler_computeT(nn_lanczosResampler_t* self,
 	ASSERT(self);
 	ASSERT(X);
 
+	// CPU implementation of computeT is
+	// equivalent to nn_lanczosLayer_forwardPassT.comp
+
 	nn_dim_t* dimX = &self->dimX;
 	nn_dim_t* dimY = &self->dimY;
 
@@ -207,7 +210,7 @@ nn_lanczosResampler_computeT(nn_lanczosResampler_t* self,
 
 		++n;
 	}
-	nn_tensor_ioSet(self->T, m, i, j, k, s2);
+	nn_tensor_ioSet(self->T, 0, i, j, 0, s2);
 }
 
 static void
@@ -218,6 +221,9 @@ nn_lanczosResampler_computeY(nn_lanczosResampler_t* self,
 {
 	ASSERT(self);
 	ASSERT(Y);
+
+	// CPU implementation of computeY is
+	// equivalent to nn_lanczosLayer_forwardPassY.comp
 
 	nn_dim_t* dimX = &self->dimX;
 	nn_dim_t* dimY = &self->dimY;
@@ -246,7 +252,7 @@ nn_lanczosResampler_computeY(nn_lanczosResampler_t* self,
 			ii = xh - 1;
 		}
 
-		s1  = nn_tensor_ioGet(self->T, m, ii, j, k);
+		s1  = nn_tensor_ioGet(self->T, 0, ii, j, 0);
 		lh  = nn_lanczosResampler_getLh(self, i, n);
 		s2 += s1*lh;
 
@@ -298,10 +304,10 @@ nn_lanczosResampler_new(nn_engine_t* engine,
 
 	nn_dim_t dimT =
 	{
-		.count  = xn,
+		.count  = 1,
 		.height = xh,
 		.width  = yw,
-		.depth  = xd,
+		.depth  = 1,
 	};
 
 	nn_lanczosResampler_t* self;
@@ -401,7 +407,9 @@ nn_lanczosResampler_delete(nn_lanczosResampler_t** _self)
 int
 nn_lanczosResampler_resample(nn_lanczosResampler_t* self,
                              nn_tensor_t* X, nn_tensor_t* Y,
-                             uint32_t bs)
+                             uint32_t bs,
+                             uint32_t xk, uint32_t yk,
+                             uint32_t depth)
 {
 	ASSERT(self);
 	ASSERT(X);
@@ -429,10 +437,18 @@ nn_lanczosResampler_resample(nn_lanczosResampler_t* self,
 		return 0;
 	}
 
-	if(self->dimX.count < bs)
+	if(bs > self->dimX.count)
 	{
-		LOGE("invalid count=%u, bs=%u",
-		     self->dimX.count, bs);
+		LOGE("invalid bs=%u, count=%u",
+		     bs, self->dimX.count);
+		return 0;
+	}
+
+	if((xk + depth > self->dimX.depth) ||
+	   (yk + depth > self->dimY.depth))
+	{
+		LOGE("invalid xk=%u, yk=%u, depth=%u:%u",
+		     xk, yk, depth, self->dimX.depth);
 		return 0;
 	}
 
@@ -445,36 +461,27 @@ nn_lanczosResampler_resample(nn_lanczosResampler_t* self,
 
 	nn_dim_t* dimT = nn_tensor_dim(self->T);
 
-	// CPU implementation of computeT is
-	// equivalent to nn_lanczosLayer_forwardPassT.comp
+	// resample channels one a time
 	uint32_t m;
 	uint32_t i;
 	uint32_t j;
 	uint32_t k;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < dimT->height; ++i)
+		for(k = 0; k < dimX->depth; ++k)
 		{
-			for(j = 0; j < dimT->width; ++j)
+			for(i = 0; i < dimT->height; ++i)
 			{
-				for(k = 0; k < dimT->depth; ++k)
+				for(j = 0; j < dimT->width; ++j)
 				{
 					nn_lanczosResampler_computeT(self, X,
 					                             m, i, j, k);
 				}
 			}
-		}
-	}
 
-	// CPU implementation of computeY is
-	// equivalent to nn_lanczosLayer_forwardPassY.comp
-	for(m = 0; m < bs; ++m)
-	{
-		for(i = 0; i < dimY->height; ++i)
-		{
-			for(j = 0; j < dimY->width; ++j)
+			for(i = 0; i < dimY->height; ++i)
 			{
-				for(k = 0; k < dimY->depth; ++k)
+				for(j = 0; j < dimY->width; ++j)
 				{
 					nn_lanczosResampler_computeY(self, Y,
 					                             m, i, j, k);

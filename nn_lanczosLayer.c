@@ -365,9 +365,15 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	nn_lanczosParam_copy(&lanczos->param, &self->param);
 
-	nn_dim_t* dimT = nn_tensor_dim(lanczos->T);
+	nn_dim_t dimT =
+	{
+		.count  = dimX->count,
+		.height = dimX->height,
+		.width  = dimY->width,
+		.depth  = dimX->depth,
+	};
 
-	self->T = nn_tensor_new(engine, dimT,
+	self->T = nn_tensor_new(engine, &dimT,
 	                        NN_TENSOR_INIT_ZERO,
 	                        NN_TENSOR_MODE_COMPUTE);
 	if(self->T == NULL)
@@ -417,7 +423,7 @@ nn_lanczosLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto failure;
 	}
 
-	self->dL_dT = nn_tensor_new(engine, dimT,
+	self->dL_dT = nn_tensor_new(engine, &dimT,
 	                            NN_TENSOR_INIT_ZERO,
 	                            NN_TENSOR_MODE_COMPUTE);
 	if(self->dL_dT == NULL)

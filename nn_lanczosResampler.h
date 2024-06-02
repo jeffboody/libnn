@@ -73,7 +73,7 @@ typedef struct nn_lanczosResampler_s
 	// W: width "separable" pass output
 	// Y: output
 	// Lw/Lh: Lanczos kernels (precomputed and premultiplied)
-	nn_tensor_t* T;  // dim(bs,xh,yw,xd) (temp)
+	nn_tensor_t* T;  // dim(1,xh,yw,1) (temp)
 	nn_tensor_t* Lw; // dim(fcw,1,1,szw)
 	nn_tensor_t* Lh; // dim(fch,1,1,szh)
 } nn_lanczosResampler_t;
@@ -86,6 +86,9 @@ void                   nn_lanczosResampler_delete(nn_lanczosResampler_t** _self)
 int                    nn_lanczosResampler_resample(nn_lanczosResampler_t* self,
                                                     nn_tensor_t* X,
                                                     nn_tensor_t* Y,
-                                                    uint32_t bs);
+                                                    uint32_t bs,
+                                                    uint32_t xk,
+                                                    uint32_t yk,
+                                                    uint32_t depth);
 
 #endif

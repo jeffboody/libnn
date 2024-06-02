@@ -298,7 +298,8 @@ int cifar10_lanczos_exportRY(cifar10_lanczos_t* self,
 	{
 		if(nn_lanczosResampler_resample(self->lanczosR,
 		                                self->Xio, self->RYio,
-		                                dim->count) == 0)
+		                                dim->count, 0, 0,
+		                                dim->depth) == 0)
 		{
 			return 0;
 		}
