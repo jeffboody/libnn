@@ -125,6 +125,10 @@ int nn_dim_validate(nn_dim_t* self,
 	if((n >= self->count) || (i >= self->height) ||
 	   (j >= self->width) || (k >= self->depth))
 	{
+		LOGE("n=%u, i=%u, j=%u, k=%u", n, i, j, k);
+		LOGE("count=%u, height=%u, width=%u, depth=%u",
+		     self->count, self->height,
+		     self->width, self->depth);
 		return 0;
 	}
 
