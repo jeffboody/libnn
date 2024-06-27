@@ -40,15 +40,17 @@ typedef struct
 	double mu;
 	double sigma;
 
-	nn_tensor_t*     Xio;
-	nn_tensor_t*     X;
-	nn_urrdbLayer_t* urrdb0;
-	nn_coderLayer_t* coder1;
-	nn_coderLayer_t* coder2;
-	nn_loss_t*       loss;
-	nn_tensor_t*     Ytio;
-	nn_tensor_t*     Yt;
-	nn_tensor_t*     Yio;
+	// optionally select encdec0 or urrdb0
+	nn_tensor_t*      Xio;
+	nn_tensor_t*      X;
+	nn_encdecLayer_t* encdec0;
+	nn_urrdbLayer_t*  urrdb0;
+	nn_coderLayer_t*  coder1;
+	nn_coderLayer_t*  coder2;
+	nn_loss_t*        loss;
+	nn_tensor_t*      Ytio;
+	nn_tensor_t*      Yt;
+	nn_tensor_t*      Yio;
 
 	cc_rngNormal_t  rngN;
 	cc_rngUniform_t rngU;

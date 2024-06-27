@@ -5,6 +5,7 @@ CLASSES = \
 	nn_convLayer        \
 	nn_coderLayer       \
 	nn_dim              \
+	nn_encdecLayer      \
 	nn_engine           \
 	nn_factLayer        \
 	nn_lanczosLayer     \

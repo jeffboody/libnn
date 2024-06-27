@@ -36,6 +36,7 @@ typedef struct nn_convUs2Key_s         nn_convUs2Key_t;
 typedef struct nn_coderLayerInfo_s     nn_coderLayerInfo_t;
 typedef struct nn_coderLayer_s         nn_coderLayer_t;
 typedef struct nn_dim_s                nn_dim_t;
+typedef struct nn_encdecLayer_s        nn_encdecLayer_t;
 typedef struct nn_engine_s             nn_engine_t;
 typedef struct nn_factLayer_s          nn_factLayer_t;
 typedef struct nn_reshapeLayer_s       nn_reshapeLayer_t;

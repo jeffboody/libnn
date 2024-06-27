@@ -34,10 +34,13 @@
 #include "libcc/cc_memory.h"
 #include "libnn/nn_arch.h"
 #include "libnn/nn_coderLayer.h"
+#include "libnn/nn_encdecLayer.h"
 #include "libnn/nn_loss.h"
 #include "libnn/nn_tensor.h"
 #include "libnn/nn_urrdbLayer.h"
 #include "cifar10_denoise.h"
+
+#define CIFAR10_DENOISE_URRDB
 
 /***********************************************************
 * private                                                  *
@@ -95,15 +98,16 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		return NULL;
 	}
 
-	jsmn_val_t* val_base   = NULL;
-	jsmn_val_t* val_bs     = NULL;
-	jsmn_val_t* val_fc     = NULL;
-	jsmn_val_t* val_mu     = NULL;
-	jsmn_val_t* val_sigma  = NULL;
-	jsmn_val_t* val_urrdb0 = NULL;
-	jsmn_val_t* val_coder1 = NULL;
-	jsmn_val_t* val_coder2 = NULL;
-	jsmn_val_t* val_loss   = NULL;
+	jsmn_val_t* val_base    = NULL;
+	jsmn_val_t* val_bs      = NULL;
+	jsmn_val_t* val_fc      = NULL;
+	jsmn_val_t* val_mu      = NULL;
+	jsmn_val_t* val_sigma   = NULL;
+	jsmn_val_t* val_encdec0 = NULL;
+	jsmn_val_t* val_urrdb0  = NULL;
+	jsmn_val_t* val_coder1  = NULL;
+	jsmn_val_t* val_coder2  = NULL;
+	jsmn_val_t* val_loss    = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
@@ -116,6 +120,10 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 			if(strcmp(kv->key, "base") == 0)
 			{
 				val_base = kv->val;
+			}
+			else if(strcmp(kv->key, "encdec0") == 0)
+			{
+				val_encdec0 = kv->val;
 			}
 			else if(strcmp(kv->key, "urrdb0") == 0)
 			{
@@ -163,7 +171,8 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 	   (val_fc     == NULL) ||
 	   (val_mu     == NULL) ||
 	   (val_sigma  == NULL) ||
-	   (val_urrdb0 == NULL) ||
+	   ((val_encdec0 == NULL) &&
+	    (val_urrdb0 == NULL)) ||
 	   (val_coder1 == NULL) ||
 	   (val_coder2 == NULL) ||
 	   (val_loss   == NULL))
@@ -210,11 +219,23 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		goto failure;
 	}
 
-	self->urrdb0 = nn_urrdbLayer_import(&self->base,
-	                                    val_urrdb0);
-	if(self->urrdb0 == NULL)
+	if(val_encdec0)
 	{
-		goto failure;
+		self->encdec0 = nn_encdecLayer_import(&self->base,
+		                                      val_encdec0);
+		if(self->encdec0 == NULL)
+		{
+			goto failure;
+		}
+	}
+	else
+	{
+		self->urrdb0 = nn_urrdbLayer_import(&self->base,
+		                                    val_urrdb0);
+		if(self->urrdb0 == NULL)
+		{
+			goto failure;
+		}
 	}
 
 	self->coder1 = nn_coderLayer_import(&self->base,
@@ -261,11 +282,23 @@ cifar10_denoise_parse(nn_engine_t* engine, uint32_t xh,
 		goto failure;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+	if(self->encdec0)
 	{
-		goto failure;
+		if((nn_arch_attachLayer(&self->base, &self->encdec0->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0)  ||
+		   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+		{
+			goto failure;
+		}
+	}
+	else
+	{
+		if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+		{
+			goto failure;
+		}
 	}
 
 	cc_rngNormal_init(&self->rngN, self->mu, self->sigma);
@@ -344,6 +377,7 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 
 	nn_dim_t* dim = nn_tensor_dim(self->X);
 
+	#ifdef CIFAR10_DENOISE_URRDB
 	uint32_t blocks = 2;
 	uint32_t nodes  = 2;
 	nn_urrdbLayerInfo_t urrdb0_info =
@@ -378,6 +412,30 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		goto failure;
 	}
 	dim = nn_layer_dimY(&self->urrdb0->base);
+	#else
+	nn_encdecLayerInfo_t encdec0_info =
+	{
+		.arch         = &self->base,
+		.sampler      = NN_ENCDEC_SAMPLER_LANCZOS,
+		.dimX         = dim,
+		.fc           = fc,
+		.norm_flags0  = 0,
+		.norm_flags12 = 0,
+		.skip_mode    = NN_CODER_SKIP_MODE_CAT,
+		.skip_beta    = 0.2f,
+		.bn_mode0     = NN_CODER_BATCH_NORM_MODE_DISABLE,
+		.bn_mode12    = NN_CODER_BATCH_NORM_MODE_ENABLE,
+		.fact_fn      = NN_FACT_LAYER_FN_RELU,
+		.a            = 3,
+	};
+
+	self->encdec0 = nn_encdecLayer_new(&encdec0_info);
+	if(self->encdec0 == NULL)
+	{
+		goto failure;
+	}
+	dim = nn_layer_dimY(&self->encdec0->base);
+	#endif
 
 	nn_coderLayerInfo_t coder1_info =
 	{
@@ -473,11 +531,23 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		goto failure;
 	}
 
-	if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+	if(self->encdec0)
 	{
-		goto failure;
+		if((nn_arch_attachLayer(&self->base, &self->encdec0->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0)  ||
+		   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+		{
+			goto failure;
+		}
+	}
+	else
+	{
+		if((nn_arch_attachLayer(&self->base, &self->urrdb0->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder1->base) == 0) ||
+		   (nn_arch_attachLayer(&self->base, &self->coder2->base) == 0))
+		{
+			goto failure;
+		}
 	}
 
 	cc_rngNormal_init(&self->rngN, mu, sigma);
@@ -506,6 +576,7 @@ void cifar10_denoise_delete(cifar10_denoise_t** _self)
 		nn_coderLayer_delete(&self->coder2);
 		nn_coderLayer_delete(&self->coder1);
 		nn_urrdbLayer_delete(&self->urrdb0);
+		nn_encdecLayer_delete(&self->encdec0);
 		nn_tensor_delete(&self->X);
 		nn_tensor_delete(&self->Xio);
 		nn_arch_delete((nn_arch_t**) &self);
@@ -567,8 +638,16 @@ int cifar10_denoise_export(cifar10_denoise_t* self,
 	jsmn_stream_double(stream, self->mu);
 	jsmn_stream_key(stream, "%s", "sigma");
 	jsmn_stream_double(stream, self->sigma);
-	jsmn_stream_key(stream, "%s", "urrdb0");
-	nn_urrdbLayer_export(self->urrdb0, stream);
+	if(self->encdec0)
+	{
+		jsmn_stream_key(stream, "%s", "encdec0");
+		nn_encdecLayer_export(self->encdec0, stream);
+	}
+	else
+	{
+		jsmn_stream_key(stream, "%s", "urrdb0");
+		nn_urrdbLayer_export(self->urrdb0, stream);
+	}
 	jsmn_stream_key(stream, "%s", "coder1");
 	nn_coderLayer_export(self->coder1, stream);
 	jsmn_stream_key(stream, "%s", "coder2");
