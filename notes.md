@@ -1364,6 +1364,8 @@ References
 * [Image-to-Image Translation with Conditional Adversarial Networks](https://arxiv.org/pdf/1611.07004.pdf)
 * [Progressive Growing of GANs for Improved Quality, Stability, and Variation](https://arxiv.org/pdf/1710.10196.pdf)
 * [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/pdf/1703.10593.pdf)
+* [StarGAN v2](https://github.com/clovaai/stargan-v2)
+* [StarGAN v2: Diverse Image Synthesis for Multiple Domains](https://arxiv.org/pdf/1912.01865)
 * [High-Resolution Image Synthesis and Semantic Manipulation with Conditional GANs](https://arxiv.org/pdf/1711.11585.pdf)
 * [Learning to Factorize and Relight a City](https://arxiv.org/pdf/2008.02796.pdf)
 * [Persistent Nature: A Generative Model of Unbounded 3D Worlds](https://arxiv.org/pdf/2303.13515.pdf)
@@ -1403,6 +1405,14 @@ References
 * [3D Gaussian Splatting for Real-Time Radiance Field Rendering](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
 * [Deep Learning for 3D Point Clouds: A Survey](https://arxiv.org/pdf/1912.12033.pdf)
 * [3D Elevation Program](https://www.usgs.gov/3d-elevation-program)
+
+Datasets
+--------
+
+References
+
+* [Papers With Code](https://paperswithcode.com/datasets)
+* [StarGAN v2 for CelebA-HQ and AFHQ-v2](https://github.com/clovaai/stargan-v2)
 
 License
 =======
