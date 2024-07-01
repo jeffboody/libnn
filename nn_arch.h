@@ -32,14 +32,13 @@
 // Flag Usage
 //
 // NN_ARCH_FLAG_FP_BN (Forward Pass Batch Normalization)
-// * AVERAGE: Inference pass uses running averages for
+// * RUNNING: Inference pass uses running averages for
 //            mean/variance and does not update the running
 //            average.
-// * INSTANCE: Inference pass performs instance
-//             normalization which uses the test-batch for
-//             mean/variance and does not update the running
-//             average.
-// Only one of AVERAGE/INSTANCE should be set. If neither
+// * COMPUTE: Inference pass performs batch normalization
+//            which uses the test-batch for mean/variance
+//            but does not update the running average.
+// Only one of RUNNING/COMPUTE should be set. If neither
 // flag is set then batch normalization defaults to training
 // which updates running average but uses mini-batch for
 // mean and variance.
@@ -50,10 +49,10 @@
 //
 // NN_ARCH_FLAG_BP_STATS (Backprop Statistics)
 // * Compute and log statistics during backprop
-#define NN_ARCH_FLAG_FP_BN_RUNNING   0x0001
-#define NN_ARCH_FLAG_FP_BN_INSTANCE  0x0002
-#define NN_ARCH_FLAG_BP_NOP          0x0010
-#define NN_ARCH_FLAG_BP_STATS        0x0020
+#define NN_ARCH_FLAG_FP_BN_RUNNING 0x0001
+#define NN_ARCH_FLAG_FP_BN_COMPUTE 0x0002
+#define NN_ARCH_FLAG_BP_NOP        0x0010
+#define NN_ARCH_FLAG_BP_STATS      0x0020
 
 // Recommended Defaults
 // adam_alpha:  0.0001f

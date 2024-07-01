@@ -853,6 +853,19 @@ References
 * [Matrix form of backpropagation with batch normalization](https://stats.stackexchange.com/questions/328242/matrix-form-of-backpropagation-with-batch-normalization)
 * [Diminishing Batch Normalization](https://arxiv.org/pdf/1705.08011.pdf)
 
+Instance Normalization
+----------------------
+
+Instance Normalization is closely related to Batch
+Normalization. The key difference is that the mean and
+standard deviation are calculated for each instance in the
+batch rather than across the entire batch ensemble.
+
+References
+
+* [Instance Normalization: The Missing Ingredient for Fast Stylization](https://arxiv.org/pdf/1607.08022)
+* [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/pdf/1703.10593.pdf)
+
 Spectral Normalization
 ----------------------
 

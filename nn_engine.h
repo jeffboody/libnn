@@ -89,8 +89,8 @@ typedef struct nn_engine_s
 
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanTrain;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarTrain;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanInstance;
-	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarInstance;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXmeanCompute;
+	vkk_computePipeline_t* cp_batchNorm_forwardPassXvarCompute;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassXhat;
 	vkk_computePipeline_t* cp_batchNorm_forwardPassY;
 	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dX;

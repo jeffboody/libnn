@@ -60,7 +60,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 	nn_tensor_t* Xmean = self->Xmean_mb;
 	nn_tensor_t* Xvar  = self->Xvar_mb;
 	if((flags & NN_ARCH_FLAG_FP_BN_RUNNING) &&
-	   (flags & NN_ARCH_FLAG_FP_BN_INSTANCE))
+	   (flags & NN_ARCH_FLAG_FP_BN_COMPUTE))
 	{
 		LOGE("invalid flags=%i", flags);
 		return NULL;
@@ -120,8 +120,8 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 	uint32_t k;
 	vkk_computePipeline_t* cp_mean = NULL;
 	vkk_computePipeline_t* cp_var  = NULL;
-	if(((flags & NN_ARCH_FLAG_FP_BN_RUNNING)  == 0) &&
-	   ((flags & NN_ARCH_FLAG_FP_BN_INSTANCE) == 0))
+	if(((flags & NN_ARCH_FLAG_FP_BN_RUNNING) == 0) &&
+	   ((flags & NN_ARCH_FLAG_FP_BN_COMPUTE) == 0))
 	{
 		// nn_batchNormLayer_forwardPassXmeanTrain
 		cp_mean = engine->cp_batchNorm_forwardPassXmeanTrain;
@@ -129,13 +129,13 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 		// nn_batchNormLayer_forwardPassXvarTrain
 		cp_var = engine->cp_batchNorm_forwardPassXvarTrain;
 	}
-	else if(flags & NN_ARCH_FLAG_FP_BN_INSTANCE)
+	else if(flags & NN_ARCH_FLAG_FP_BN_COMPUTE)
 	{
-		// nn_batchNormLayer_forwardPassXmeanInstance
-		cp_mean = engine->cp_batchNorm_forwardPassXmeanInstance;
+		// nn_batchNormLayer_forwardPassXmeanCompute
+		cp_mean = engine->cp_batchNorm_forwardPassXmeanCompute;
 
-		// nn_batchNormLayer_forwardPassXvarInstance
-		cp_var = engine->cp_batchNorm_forwardPassXvarInstance;
+		// nn_batchNormLayer_forwardPassXvarCompute
+		cp_var = engine->cp_batchNorm_forwardPassXvarCompute;
 	}
 
 	if(cp_mean)

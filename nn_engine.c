@@ -458,27 +458,27 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_batchNorm_forwardPassXvarTrain);
 
-	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXmeanInstance =
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXmeanCompute =
 	{
 		.compute = self->compute,
 		.pl      = self->pl_batchNorm_fp,
-		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXmeanInstance_comp.spv",
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXmeanCompute_comp.spv",
 	};
 
-	self->cp_batchNorm_forwardPassXmeanInstance =
+	self->cp_batchNorm_forwardPassXmeanCompute =
 		vkk_computePipeline_new(engine,
-		                        &cpi_batchNorm_forwardPassXmeanInstance);
+		                        &cpi_batchNorm_forwardPassXmeanCompute);
 
-	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXvarInstance =
+	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXvarCompute =
 	{
 		.compute = self->compute,
 		.pl      = self->pl_batchNorm_fp,
-		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXvarInstance_comp.spv",
+		.cs      = "nn/shaders/nn_batchNormLayer_forwardPassXvarCompute_comp.spv",
 	};
 
-	self->cp_batchNorm_forwardPassXvarInstance =
+	self->cp_batchNorm_forwardPassXvarCompute =
 		vkk_computePipeline_new(engine,
-		                        &cpi_batchNorm_forwardPassXvarInstance);
+		                        &cpi_batchNorm_forwardPassXvarCompute);
 
 	vkk_computePipelineInfo_t cpi_batchNorm_forwardPassXhat =
 	{
@@ -1107,67 +1107,67 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_computeScaleAddOp);
 
-	if((self->cp_batchNorm_forwardPassXmeanTrain    == NULL) ||
-	   (self->cp_batchNorm_forwardPassXvarTrain     == NULL) ||
-	   (self->cp_batchNorm_forwardPassXmeanInstance == NULL) ||
-	   (self->cp_batchNorm_forwardPassXvarInstance  == NULL) ||
-	   (self->cp_batchNorm_forwardPassXhat          == NULL) ||
-	   (self->cp_batchNorm_forwardPassY             == NULL) ||
-	   (self->cp_batchNorm_backprop_dL_dX           == NULL) ||
-	   (self->cp_batchNorm_backprop_dL_dXhat        == NULL) ||
-	   (self->cp_batchNorm_backpropSum              == NULL) ||
-	   (self->cp_batchNorm_backpropSumNOP           == NULL) ||
-	   (self->cp_conv_forwardPass                   == NULL) ||
-	   (self->cp_conv_forwardPassT                  == NULL) ||
-	   (self->cp_conv_backprop_dL_dX                == NULL) ||
-	   (self->cp_conv_backprop_dL_dW                == NULL) ||
-	   (self->cp_conv_backprop_dL_dB                == NULL) ||
-	   (self->cp_conv_backpropT_dL_dX               == NULL) ||
-	   (self->cp_conv_backpropT_dL_dW               == NULL) ||
-	   (self->cp_conv_backpropUpdateW               == NULL) ||
-	   (self->cp_conv_backpropUpdateB               == NULL) ||
-	   (self->cp_fact_forwardPassLinear             == NULL) ||
-	   (self->cp_fact_forwardPassLogistic           == NULL) ||
-	   (self->cp_fact_forwardPassReLU               == NULL) ||
-	   (self->cp_fact_forwardPassPReLU              == NULL) ||
-	   (self->cp_fact_forwardPassTanh               == NULL) ||
-	   (self->cp_fact_forwardPassSink               == NULL) ||
-	   (self->cp_fact_backpropLinear                == NULL) ||
-	   (self->cp_fact_backpropLogistic              == NULL) ||
-	   (self->cp_fact_backpropReLU                  == NULL) ||
-	   (self->cp_fact_backpropPReLU                 == NULL) ||
-	   (self->cp_fact_backpropTanh                  == NULL) ||
-	   (self->cp_fact_backpropSink                  == NULL) ||
-	   (self->cp_lanczos_forwardPassT               == NULL) ||
-	   (self->cp_lanczos_forwardPassY               == NULL) ||
-	   (self->cp_lanczos_backprop_dL_dT             == NULL) ||
-	   (self->cp_lanczos_backprop_dL_dX             == NULL) ||
-	   (self->cp_skip_forwardPassAdd                == NULL) ||
-	   (self->cp_skip_forwardPassCat                == NULL) ||
-	   (self->cp_skip_backpropAdd                   == NULL) ||
-	   (self->cp_skip_backpropCat                   == NULL) ||
-	   (self->cp_skip_backpropFork                  == NULL) ||
-	   (self->cp_weight_forwardPass                 == NULL) ||
-	   (self->cp_weight_backpropUpdateW             == NULL) ||
-	   (self->cp_weight_backpropUpdateB             == NULL) ||
-	   (self->cp_weight_backprop_dL_dX              == NULL) ||
-	   (self->cp_weight_backprop_dL_dW              == NULL) ||
-	   (self->cp_weight_backprop_dL_dB              == NULL) ||
-	   (self->cp_loss_dL_dY_mse                     == NULL) ||
-	   (self->cp_loss_dL_dY_mae                     == NULL) ||
-	   (self->cp_loss_dL_dY_bce                     == NULL) ||
-	   (self->cp_loss_mse                           == NULL) ||
-	   (self->cp_loss_mae                           == NULL) ||
-	   (self->cp_loss_bce                           == NULL) ||
-	   (self->cp_tensor_stats                       == NULL) ||
-	   (self->cp_tensor_sn                          == NULL) ||
-	   (self->cp_tensor_bssn                        == NULL) ||
-	   (self->cp_tensor_computeFillOp               == NULL) ||
-	   (self->cp_tensor_computeCopyOp               == NULL) ||
-	   (self->cp_tensor_computeAddOp                == NULL) ||
-	   (self->cp_tensor_computeMixOp                == NULL) ||
-	   (self->cp_tensor_computeScaleOp              == NULL) ||
-	   (self->cp_tensor_computeScaleAddOp           == NULL))
+	if((self->cp_batchNorm_forwardPassXmeanTrain   == NULL) ||
+	   (self->cp_batchNorm_forwardPassXvarTrain    == NULL) ||
+	   (self->cp_batchNorm_forwardPassXmeanCompute == NULL) ||
+	   (self->cp_batchNorm_forwardPassXvarCompute  == NULL) ||
+	   (self->cp_batchNorm_forwardPassXhat         == NULL) ||
+	   (self->cp_batchNorm_forwardPassY            == NULL) ||
+	   (self->cp_batchNorm_backprop_dL_dX          == NULL) ||
+	   (self->cp_batchNorm_backprop_dL_dXhat       == NULL) ||
+	   (self->cp_batchNorm_backpropSum             == NULL) ||
+	   (self->cp_batchNorm_backpropSumNOP          == NULL) ||
+	   (self->cp_conv_forwardPass                  == NULL) ||
+	   (self->cp_conv_forwardPassT                 == NULL) ||
+	   (self->cp_conv_backprop_dL_dX               == NULL) ||
+	   (self->cp_conv_backprop_dL_dW               == NULL) ||
+	   (self->cp_conv_backprop_dL_dB               == NULL) ||
+	   (self->cp_conv_backpropT_dL_dX              == NULL) ||
+	   (self->cp_conv_backpropT_dL_dW              == NULL) ||
+	   (self->cp_conv_backpropUpdateW              == NULL) ||
+	   (self->cp_conv_backpropUpdateB              == NULL) ||
+	   (self->cp_fact_forwardPassLinear            == NULL) ||
+	   (self->cp_fact_forwardPassLogistic          == NULL) ||
+	   (self->cp_fact_forwardPassReLU              == NULL) ||
+	   (self->cp_fact_forwardPassPReLU             == NULL) ||
+	   (self->cp_fact_forwardPassTanh              == NULL) ||
+	   (self->cp_fact_forwardPassSink              == NULL) ||
+	   (self->cp_fact_backpropLinear               == NULL) ||
+	   (self->cp_fact_backpropLogistic             == NULL) ||
+	   (self->cp_fact_backpropReLU                 == NULL) ||
+	   (self->cp_fact_backpropPReLU                == NULL) ||
+	   (self->cp_fact_backpropTanh                 == NULL) ||
+	   (self->cp_fact_backpropSink                 == NULL) ||
+	   (self->cp_lanczos_forwardPassT              == NULL) ||
+	   (self->cp_lanczos_forwardPassY              == NULL) ||
+	   (self->cp_lanczos_backprop_dL_dT            == NULL) ||
+	   (self->cp_lanczos_backprop_dL_dX            == NULL) ||
+	   (self->cp_skip_forwardPassAdd               == NULL) ||
+	   (self->cp_skip_forwardPassCat               == NULL) ||
+	   (self->cp_skip_backpropAdd                  == NULL) ||
+	   (self->cp_skip_backpropCat                  == NULL) ||
+	   (self->cp_skip_backpropFork                 == NULL) ||
+	   (self->cp_weight_forwardPass                == NULL) ||
+	   (self->cp_weight_backpropUpdateW            == NULL) ||
+	   (self->cp_weight_backpropUpdateB            == NULL) ||
+	   (self->cp_weight_backprop_dL_dX             == NULL) ||
+	   (self->cp_weight_backprop_dL_dW             == NULL) ||
+	   (self->cp_weight_backprop_dL_dB             == NULL) ||
+	   (self->cp_loss_dL_dY_mse                    == NULL) ||
+	   (self->cp_loss_dL_dY_mae                    == NULL) ||
+	   (self->cp_loss_dL_dY_bce                    == NULL) ||
+	   (self->cp_loss_mse                          == NULL) ||
+	   (self->cp_loss_mae                          == NULL) ||
+	   (self->cp_loss_bce                          == NULL) ||
+	   (self->cp_tensor_stats                      == NULL) ||
+	   (self->cp_tensor_sn                         == NULL) ||
+	   (self->cp_tensor_bssn                       == NULL) ||
+	   (self->cp_tensor_computeFillOp              == NULL) ||
+	   (self->cp_tensor_computeCopyOp              == NULL) ||
+	   (self->cp_tensor_computeAddOp               == NULL) ||
+	   (self->cp_tensor_computeMixOp               == NULL) ||
+	   (self->cp_tensor_computeScaleOp             == NULL) ||
+	   (self->cp_tensor_computeScaleAddOp          == NULL))
 	{
 		goto failure;
 	}
@@ -1355,8 +1355,8 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dX);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassY);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXhat);
-		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvarInstance);
-		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmeanInstance);
+		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvarCompute);
+		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmeanCompute);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXvarTrain);
 		vkk_computePipeline_delete(&self->cp_batchNorm_forwardPassXmeanTrain);
 		vkk_pipelineLayout_delete(&self->pl_tensor_op);
