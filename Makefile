@@ -12,6 +12,7 @@ CLASSES = \
 	nn_lanczosResampler \
 	nn_layer            \
 	nn_loss             \
+	nn_resLayer         \
 	nn_reshapeLayer     \
 	nn_skipLayer        \
 	nn_tensorStats      \
