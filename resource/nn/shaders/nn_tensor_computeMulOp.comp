@@ -1,0 +1,72 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX1;
+};
+
+layout(std430, set=0, binding=1) buffer sb001
+{
+	float X1[];
+};
+
+layout(std430, set=0, binding=6) readonly buffer sb006
+{
+	uint  idx_x1n;
+	uint  idx_x2n;
+	uint  idx_yn;
+	uint  idx_count;
+	uint  idx_x1i;
+	uint  idx_x2i;
+	uint  idx_yi;
+	uint  idx_height;
+	uint  idx_x1j;
+	uint  idx_x2j;
+	uint  idx_yj;
+	uint  idx_width;
+	uint  idx_x1k;
+	uint  idx_x2k;
+	uint  idx_yk;
+	uint  idx_depth;
+	float idx_value;
+};
+
+void mulX1(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimX1.height*dimX1.width*dimX1.depth;
+	uint sy = dimX1.width*dimX1.depth;
+	uint sx = dimX1.depth;
+	X1[n*sn + i*sy + j*sx + k] *= v;
+}
+
+void main()
+{
+	// hazard depends on use case
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	uint m = gl_GlobalInvocationID.x;
+	uint i = gl_GlobalInvocationID.y;
+	uint j = gl_GlobalInvocationID.z;
+
+	if((i >= idx_height) || (j >= idx_width))
+	{
+		return;
+	}
+
+	float s = idx_value;
+	uint  k;
+	for(k = 0; k < idx_depth; ++k)
+	{
+		mulX1(idx_x1n + m, idx_x1i + i,
+		      idx_x1j + j, idx_x1k + k, s);
+	}
+}

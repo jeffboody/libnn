@@ -1948,6 +1948,101 @@ int nn_tensor_computeMixOp(nn_tensor_t* X1,
 	return 1;
 }
 
+int nn_tensor_computeMulOp(nn_tensor_t* X,
+                           vkk_hazard_e hazard,
+                           uint32_t xn,
+                           uint32_t count,
+                           uint32_t xi,
+                           uint32_t height,
+                           uint32_t xj,
+                           uint32_t width,
+                           uint32_t xk,
+                           uint32_t depth,
+                           float value)
+{
+	ASSERT(X);
+
+	nn_engine_t* engine = X->engine;
+
+	if(X->mode != NN_TENSOR_MODE_COMPUTE)
+	{
+		LOGE("invalid mode=%i", X->mode);
+		return 0;
+	}
+
+	if(vkk_compute_active(engine->compute) == 0)
+	{
+		LOGE("invalid");
+		return 0;
+	}
+
+	nn_dim_t* dimX = nn_tensor_dim(X);
+	if((count == 0) || ((xn + count) > dimX->count))
+	{
+		LOGE("invalid n=%u, count=%u:%u",
+		     xn, count, dimX->count);
+		return 0;
+	}
+	if((height == 0) || ((xi + height) > dimX->height))
+	{
+		LOGE("invalid i=%u, height=%u:%u",
+		     xi, height, dimX->height);
+		return 0;
+	}
+	if((width == 0) || ((xj + width) > dimX->width))
+	{
+		LOGE("invalid j=%u, width=%u:%u",
+		     xj, width, dimX->width);
+		return 0;
+	}
+	if((depth == 0) || ((xk + depth) > dimX->depth))
+	{
+		LOGE("invalid k=%u, depth=%u:%u",
+		     xk, depth, dimX->depth);
+		return 0;
+	}
+
+	nn_tensorOpUs0Idx_t idx =
+	{
+		.x1n    = xn,
+		.count  = count,
+		.x1i    = xi,
+		.height = height,
+		.x1j    = xj,
+		.width  = width,
+		.x1k    = xk,
+		.depth  = depth,
+		.value  = value,
+	};
+
+	vkk_uniformSet_t* us0;
+	us0 = nn_engine_getTensorOpUs0(engine, X, NULL, NULL, &idx);
+	if(us0 == NULL)
+	{
+		return 0;
+	}
+
+	vkk_uniformSet_t* us_array[] =
+	{
+		us0,
+	};
+
+	// dispatch(hazard, count, height, width, 1, 8, 8)
+	vkk_computePipeline_t* cp;
+	cp = engine->cp_tensor_computeMulOp;
+	if(nn_engine_computeBind(engine, cp) == 0)
+	{
+		return 0;
+	}
+	vkk_compute_bindUniformSets(engine->compute, 1,
+	                            us_array);
+	nn_engine_computeDispatch(engine, hazard,
+	                          count, height, width,
+	                          1, 8, 8);
+
+	return 1;
+}
+
 int nn_tensor_computeScaleOp(nn_tensor_t* X,
                              nn_tensor_t* Y,
                              vkk_hazard_e hazard,

@@ -299,5 +299,6 @@ Op Functions
 * CopyOp
 * AddOp
 * MixOp
+* MulOp
 * ScaleOp
 * ScaleAddOp

@@ -48,6 +48,7 @@ glslangValidator -V nn_tensor_computeAddOp.comp -o nn_tensor_computeAddOp_comp.s
 glslangValidator -V nn_tensor_computeCopyOp.comp -o nn_tensor_computeCopyOp_comp.spv
 glslangValidator -V nn_tensor_computeFillOp.comp -o nn_tensor_computeFillOp_comp.spv
 glslangValidator -V nn_tensor_computeMixOp.comp -o nn_tensor_computeMixOp_comp.spv
+glslangValidator -V nn_tensor_computeMulOp.comp -o nn_tensor_computeMulOp_comp.spv
 glslangValidator -V nn_tensor_computeScaleOp.comp -o nn_tensor_computeScaleOp_comp.spv
 glslangValidator -V nn_tensor_computeScaleAddOp.comp -o nn_tensor_computeScaleAddOp_comp.spv
 glslangValidator -V nn_weightLayer_forwardPass.comp -o nn_weightLayer_forwardPass_comp.spv
@@ -114,6 +115,7 @@ bfs $1 blobSet nn/shaders/nn_tensor_computeAddOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_computeCopyOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_computeFillOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_computeMixOp_comp.spv
+bfs $1 blobSet nn/shaders/nn_tensor_computeMulOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_computeScaleOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_tensor_computeScaleAddOp_comp.spv
 bfs $1 blobSet nn/shaders/nn_weightLayer_forwardPass_comp.spv

@@ -1107,6 +1107,17 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_tensor_computeMixOp);
 
+	vkk_computePipelineInfo_t cpi_tensor_computeMulOp =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_tensor_op,
+		.cs      = "nn/shaders/nn_tensor_computeMulOp_comp.spv",
+	};
+
+	self->cp_tensor_computeMulOp =
+		vkk_computePipeline_new(engine,
+		                        &cpi_tensor_computeMulOp);
+
 	vkk_computePipelineInfo_t cpi_tensor_computeScaleOp =
 	{
 		.compute = self->compute,
@@ -1190,6 +1201,7 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_tensor_computeCopyOp              == NULL) ||
 	   (self->cp_tensor_computeAddOp               == NULL) ||
 	   (self->cp_tensor_computeMixOp               == NULL) ||
+	   (self->cp_tensor_computeMulOp               == NULL) ||
 	   (self->cp_tensor_computeScaleOp             == NULL) ||
 	   (self->cp_tensor_computeScaleAddOp          == NULL))
 	{
@@ -1324,6 +1336,7 @@ void nn_engine_delete(nn_engine_t** _self)
 		nn_tensor_delete(&self->Null);
 		vkk_computePipeline_delete(&self->cp_tensor_computeScaleAddOp);
 		vkk_computePipeline_delete(&self->cp_tensor_computeScaleOp);
+		vkk_computePipeline_delete(&self->cp_tensor_computeMulOp);
 		vkk_computePipeline_delete(&self->cp_tensor_computeMixOp);
 		vkk_computePipeline_delete(&self->cp_tensor_computeAddOp);
 		vkk_computePipeline_delete(&self->cp_tensor_computeCopyOp);

@@ -148,6 +148,7 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_tensor_computeCopyOp;
 	vkk_computePipeline_t* cp_tensor_computeAddOp;
 	vkk_computePipeline_t* cp_tensor_computeMixOp;
+	vkk_computePipeline_t* cp_tensor_computeMulOp;
 	vkk_computePipeline_t* cp_tensor_computeScaleOp;
 	vkk_computePipeline_t* cp_tensor_computeScaleAddOp;
 
