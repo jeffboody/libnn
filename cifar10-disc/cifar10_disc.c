@@ -26,7 +26,7 @@
 #include <string.h>
 
 #define LOG_TAG "cifar10"
-#include "jsmn/wrapper/jsmn_stream.h"
+#include "libcc/jsmn/cc_jsmnStream.h"
 #include "libcc/math/cc_float.h"
 #include "libcc/cc_log.h"
 #include "libcc/cc_memory.h"
@@ -84,35 +84,35 @@ static void cifar10_disc_initYt(cifar10_disc_t* self)
 static cifar10_disc_t*
 cifar10_disc_parse(nn_engine_t* engine,
                    uint32_t xh, uint32_t xw, uint32_t xd,
-                   jsmn_val_t* val)
+                   cc_jsmnVal_t* val)
 {
 	ASSERT(engine);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_base   = NULL;
-	jsmn_val_t* val_bs     = NULL;
-	jsmn_val_t* val_fc     = NULL;
-	jsmn_val_t* val_bn0    = NULL;
-	jsmn_val_t* val_coder1 = NULL;
-	jsmn_val_t* val_coder2 = NULL;
-	jsmn_val_t* val_coder3 = NULL;
-	jsmn_val_t* val_convO  = NULL;
-	jsmn_val_t* val_factO  = NULL;
-	jsmn_val_t* val_loss   = NULL;
+	cc_jsmnVal_t* val_base   = NULL;
+	cc_jsmnVal_t* val_bs     = NULL;
+	cc_jsmnVal_t* val_fc     = NULL;
+	cc_jsmnVal_t* val_bn0    = NULL;
+	cc_jsmnVal_t* val_coder1 = NULL;
+	cc_jsmnVal_t* val_coder2 = NULL;
+	cc_jsmnVal_t* val_coder3 = NULL;
+	cc_jsmnVal_t* val_convO  = NULL;
+	cc_jsmnVal_t* val_factO  = NULL;
+	cc_jsmnVal_t* val_loss   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "base") == 0)
 			{
@@ -147,7 +147,7 @@ cifar10_disc_parse(nn_engine_t* engine,
 				val_loss = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		else if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "bs") == 0)
 			{
@@ -596,7 +596,7 @@ cifar10_disc_import(nn_engine_t* engine,
 	ASSERT(engine);
 	ASSERT(fname);
 
-	jsmn_val_t* val = jsmn_val_import(fname);
+	cc_jsmnVal_t* val = cc_jsmnVal_import(fname);
 	if(val == NULL)
 	{
 		return NULL;
@@ -609,14 +609,14 @@ cifar10_disc_import(nn_engine_t* engine,
 		goto fail_parse;
 	}
 
-	jsmn_val_delete(&val);
+	cc_jsmnVal_delete(&val);
 
 	// success
 	return self;
 
 	// failure
 	fail_parse:
-		jsmn_val_delete(&val);
+		cc_jsmnVal_delete(&val);
 	return NULL;
 }
 
@@ -626,45 +626,45 @@ int cifar10_disc_export(cifar10_disc_t* self,
 	ASSERT(self);
 	ASSERT(fname);
 
-	jsmn_stream_t* stream = jsmn_stream_new();
+	cc_jsmnStream_t* stream = cc_jsmnStream_new();
 	if(stream == NULL)
 	{
 		return 0;
 	}
-	jsmn_stream_beginObject(stream);
-	jsmn_stream_key(stream, "%s", "base");
+	cc_jsmnStream_beginObject(stream);
+	cc_jsmnStream_key(stream, "%s", "base");
 	nn_arch_export(&self->base, stream);
-	jsmn_stream_key(stream, "%s", "bs");
-	jsmn_stream_int(stream, (int) self->bs);
-	jsmn_stream_key(stream, "%s", "fc");
-	jsmn_stream_int(stream, (int) self->fc);
-	jsmn_stream_key(stream, "%s", "bn0");
+	cc_jsmnStream_key(stream, "%s", "bs");
+	cc_jsmnStream_int(stream, (int) self->bs);
+	cc_jsmnStream_key(stream, "%s", "fc");
+	cc_jsmnStream_int(stream, (int) self->fc);
+	cc_jsmnStream_key(stream, "%s", "bn0");
 	nn_batchNormLayer_export(self->bn0, stream);
-	jsmn_stream_key(stream, "%s", "coder1");
+	cc_jsmnStream_key(stream, "%s", "coder1");
 	nn_coderLayer_export(self->coder1, stream);
-	jsmn_stream_key(stream, "%s", "coder2");
+	cc_jsmnStream_key(stream, "%s", "coder2");
 	nn_coderLayer_export(self->coder2, stream);
-	jsmn_stream_key(stream, "%s", "coder3");
+	cc_jsmnStream_key(stream, "%s", "coder3");
 	nn_coderLayer_export(self->coder3, stream);
-	jsmn_stream_key(stream, "%s", "convO");
+	cc_jsmnStream_key(stream, "%s", "convO");
 	nn_convLayer_export(self->convO, stream);
-	jsmn_stream_key(stream, "%s", "factO");
+	cc_jsmnStream_key(stream, "%s", "factO");
 	nn_factLayer_export(self->factO, stream);
-	jsmn_stream_key(stream, "%s", "loss");
+	cc_jsmnStream_key(stream, "%s", "loss");
 	nn_loss_export(self->loss, stream);
-	jsmn_stream_end(stream);
-	if(jsmn_stream_export(stream, fname) == 0)
+	cc_jsmnStream_end(stream);
+	if(cc_jsmnStream_export(stream, fname) == 0)
 	{
 		goto fail_export;
 	}
-	jsmn_stream_delete(&stream);
+	cc_jsmnStream_delete(&stream);
 
 	// success
 	return 1;
 
 	// failure
 	fail_export:
-		jsmn_stream_delete(&stream);
+		cc_jsmnStream_delete(&stream);
 	return 0;
 }
 

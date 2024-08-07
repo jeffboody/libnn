@@ -394,33 +394,33 @@ void nn_coderLayer_delete(nn_coderLayer_t** _self)
 }
 
 nn_coderLayer_t*
-nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
+nn_coderLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val,
                      nn_coderLayer_t* skip_coder)
 {
 	// skip_coder is optional
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX = NULL;
-	jsmn_val_t* val_dimY = NULL;
-	jsmn_val_t* val_conv = NULL;
-	jsmn_val_t* val_skip = NULL;
-	jsmn_val_t* val_bn   = NULL;
-	jsmn_val_t* val_fact = NULL;
+	cc_jsmnVal_t* val_dimX = NULL;
+	cc_jsmnVal_t* val_dimY = NULL;
+	cc_jsmnVal_t* val_conv = NULL;
+	cc_jsmnVal_t* val_skip = NULL;
+	cc_jsmnVal_t* val_bn   = NULL;
+	cc_jsmnVal_t* val_fact = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
@@ -549,42 +549,42 @@ nn_coderLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 }
 
 int nn_coderLayer_export(nn_coderLayer_t* self,
-                         jsmn_stream_t* stream)
+                         cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(&self->dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimY");
+	ret &= cc_jsmnStream_key(stream, "%s", "dimY");
 	ret &= nn_dim_export(&self->dimY, stream);
 
 	if(self->conv)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "conv");
+		ret &= cc_jsmnStream_key(stream, "%s", "conv");
 		ret &= nn_convLayer_export(self->conv, stream);
 	}
 
 	if(self->skip)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "skip");
+		ret &= cc_jsmnStream_key(stream, "%s", "skip");
 		ret &= nn_skipLayer_export(self->skip, stream);
 	}
 
 	if(self->bn)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "bn");
+		ret &= cc_jsmnStream_key(stream, "%s", "bn");
 		ret &= nn_batchNormLayer_export(self->bn, stream);
 	}
 
 	if(self->fact)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "fact");
+		ret &= cc_jsmnStream_key(stream, "%s", "fact");
 		ret &= nn_factLayer_export(self->fact, stream);
 	}
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

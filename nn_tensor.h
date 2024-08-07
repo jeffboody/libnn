@@ -24,8 +24,8 @@
 #ifndef nn_tensor_H
 #define nn_tensor_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn_dim.h"
 
@@ -153,9 +153,9 @@ nn_tensor_t*    nn_tensor_new(nn_engine_t* engine,
                               nn_tensorMode_e mode);
 void            nn_tensor_delete(nn_tensor_t** _self);
 int             nn_tensor_import(nn_tensor_t* self,
-                                 jsmn_val_t* val);
+                                 cc_jsmnVal_t* val);
 int             nn_tensor_export(nn_tensor_t* self,
-                                 jsmn_stream_t* stream);
+                                 cc_jsmnStream_t* stream);
 nn_dim_t*       nn_tensor_dim(nn_tensor_t* self);
 nn_tensorMode_e nn_tensor_mode(nn_tensor_t* self);
 int             nn_tensor_copy(nn_tensor_t* X,

@@ -24,8 +24,8 @@
 #ifndef nn_loss_H
 #define nn_loss_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn.h"
 
@@ -66,9 +66,9 @@ nn_loss_t*   nn_loss_new(nn_engine_t* engine,
                          nn_lossFn_e loss_fn);
 void         nn_loss_delete(nn_loss_t** _self);
 nn_loss_t*   nn_loss_import(nn_engine_t* engine,
-                            jsmn_val_t* val);
+                            cc_jsmnVal_t* val);
 int          nn_loss_export(nn_loss_t* self,
-                            jsmn_stream_t* stream);
+                            cc_jsmnStream_t* stream);
 nn_dim_t*    nn_loss_dimY(nn_loss_t* self);
 float        nn_loss_loss(nn_loss_t* self);
 nn_tensor_t* nn_loss_pass(nn_loss_t* self,

@@ -24,8 +24,8 @@
 #ifndef nn_coderLayer_H
 #define nn_coderLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "nn_dim.h"
 #include "nn_factLayer.h"
 #include "nn_layer.h"
@@ -122,9 +122,9 @@ typedef struct nn_coderLayer_s
 nn_coderLayer_t* nn_coderLayer_new(nn_coderLayerInfo_t* info);
 void             nn_coderLayer_delete(nn_coderLayer_t** _self);
 nn_coderLayer_t* nn_coderLayer_import(nn_arch_t* arch,
-                                      jsmn_val_t* val,
+                                      cc_jsmnVal_t* val,
                                       nn_coderLayer_t* skip_coder);
 int              nn_coderLayer_export(nn_coderLayer_t* self,
-                                      jsmn_stream_t* stream);
+                                      cc_jsmnStream_t* stream);
 
 #endif

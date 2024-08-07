@@ -24,7 +24,7 @@
 #ifndef nn_arch_H
 #define nn_arch_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
 #include "../libcc/cc_list.h"
 #include "../libvkk/vkk.h"
 #include "nn.h"
@@ -101,9 +101,9 @@ int             nn_arch_attachLayer(nn_arch_t* self,
                                     nn_layer_t* layer);
 nn_arch_t*      nn_arch_import(nn_engine_t* engine,
                                size_t base_size,
-                               jsmn_val_t* val);
+                               cc_jsmnVal_t* val);
 int             nn_arch_export(nn_arch_t* self,
-                               jsmn_stream_t* stream);
+                               cc_jsmnStream_t* stream);
 nn_dim_t*       nn_arch_dimX(nn_arch_t* self);
 nn_dim_t*       nn_arch_dimY(nn_arch_t* self);
 nn_archState_t* nn_arch_state(nn_arch_t* self);

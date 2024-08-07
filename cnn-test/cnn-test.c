@@ -46,7 +46,7 @@ static void cnn_print(nn_tensor_t* self, const char* name)
 	ASSERT(self);
 	ASSERT(name);
 
-	jsmn_stream_t* stream = jsmn_stream_new();
+	cc_jsmnStream_t* stream = cc_jsmnStream_new();
 	if(stream == NULL)
 	{
 		return;
@@ -55,13 +55,13 @@ static void cnn_print(nn_tensor_t* self, const char* name)
 	nn_tensor_export(self, stream);
 
 	size_t size = 0;
-	const char* buffer = jsmn_stream_buffer(stream, &size);
+	const char* buffer = cc_jsmnStream_buffer(stream, &size);
 	if(buffer)
 	{
 		printf("%s: %s\n", name, buffer);
 	}
 
-	jsmn_stream_delete(&stream);
+	cc_jsmnStream_delete(&stream);
 }
 
 static void

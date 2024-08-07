@@ -1,3 +1,4 @@
+export CC_USE_JSMN = 1
 export CC_USE_MATH = 1
 export CC_USE_RNG  = 1
 
@@ -13,18 +14,15 @@ CFLAGS   = \
 	$(OPT) -I.             \
 	`sdl2-config --cflags` \
 	-I$(VULKAN_SDK)/include
-LDFLAGS  = -Llibnn -lnn -Llibvkk -lvkk -Ljsmn/wrapper -ljsmn -Llibbfs -lbfs -Ltexgz -ltexgz -Llibcc -lcc -Llibsqlite3 -lsqlite3 -L$(VULKAN_SDK)/lib -lvulkan -L/usr/lib `sdl2-config --libs` -ldl -lpthread -lz -lm
+LDFLAGS  = -Llibnn -lnn -Llibvkk -lvkk -Llibbfs -lbfs -Ltexgz -ltexgz -Llibcc -lcc -Llibsqlite3 -lsqlite3 -L$(VULKAN_SDK)/lib -lvulkan -L/usr/lib `sdl2-config --libs` -ldl -lpthread -lz -lm
 CCC      = gcc
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS) jsmn libbfs libcc libnn libsqlite3 libvkk texgz
+$(TARGET): $(OBJECTS) libbfs libcc libnn libsqlite3 libvkk texgz
 	$(CCC) $(OPT) $(OBJECTS) -o $@ $(LDFLAGS)
 
-.PHONY: jsmn libbfs libcc libnn libsqlite3 libvkk texgz
-
-jsmn:
-	$(MAKE) -C jsmn/wrapper
+.PHONY: libbfs libcc libnn libsqlite3 libvkk texgz
 
 libbfs:
 	$(MAKE) -C libbfs
@@ -46,7 +44,6 @@ texgz:
 
 clean:
 	rm -f $(OBJECTS) *~ \#*\# $(TARGET)
-	$(MAKE) -C jsmn/wrapper clean
 	$(MAKE) -C libbfs clean
 	$(MAKE) -C libcc clean
 	$(MAKE) -C libnn clean

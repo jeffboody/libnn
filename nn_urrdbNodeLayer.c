@@ -202,27 +202,27 @@ void nn_urrdbNodeLayer_delete(nn_urrdbNodeLayer_t** _self)
 
 nn_urrdbNodeLayer_t*
 nn_urrdbNodeLayer_import(nn_arch_t* arch,
-                         jsmn_val_t* val)
+                         cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_coder0 = NULL;
-	jsmn_val_t* val_coder1 = NULL;
+	cc_jsmnVal_t* val_coder0 = NULL;
+	cc_jsmnVal_t* val_coder1 = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "coder0") == 0)
 			{
@@ -290,17 +290,17 @@ nn_urrdbNodeLayer_import(nn_arch_t* arch,
 }
 
 int nn_urrdbNodeLayer_export(nn_urrdbNodeLayer_t* self,
-                             jsmn_stream_t* stream)
+                             cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "coder0");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "coder0");
 	ret &= nn_coderLayer_export(self->coder0, stream);
-	ret &= jsmn_stream_key(stream, "%s", "coder1");
+	ret &= cc_jsmnStream_key(stream, "%s", "coder1");
 	ret &= nn_coderLayer_export(self->coder1, stream);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 	return ret;
 }

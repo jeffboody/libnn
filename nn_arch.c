@@ -173,34 +173,34 @@ int nn_arch_attachLayer(nn_arch_t* self,
 
 nn_arch_t*
 nn_arch_import(nn_engine_t* engine,
-               size_t base_size, jsmn_val_t* val)
+               size_t base_size, cc_jsmnVal_t* val)
 {
 	ASSERT(engine);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
 	// bs not required
-	jsmn_val_t* val_adam_alpha  = NULL;
-	jsmn_val_t* val_adam_beta1  = NULL;
-	jsmn_val_t* val_adam_beta2  = NULL;
-	jsmn_val_t* val_adam_beta1t = NULL;
-	jsmn_val_t* val_adam_beta2t = NULL;
-	jsmn_val_t* val_adam_lambda = NULL;
-	jsmn_val_t* val_adam_nu     = NULL;
-	jsmn_val_t* val_bn_momentum = NULL;
+	cc_jsmnVal_t* val_adam_alpha  = NULL;
+	cc_jsmnVal_t* val_adam_beta1  = NULL;
+	cc_jsmnVal_t* val_adam_beta2  = NULL;
+	cc_jsmnVal_t* val_adam_beta1t = NULL;
+	cc_jsmnVal_t* val_adam_beta2t = NULL;
+	cc_jsmnVal_t* val_adam_lambda = NULL;
+	cc_jsmnVal_t* val_adam_nu     = NULL;
+	cc_jsmnVal_t* val_bn_momentum = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "adam_alpha") == 0)
 			{
@@ -268,7 +268,8 @@ nn_arch_import(nn_engine_t* engine,
 	return nn_arch_new(engine, base_size, &state);
 }
 
-int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
+int nn_arch_export(nn_arch_t* self,
+                   cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -277,24 +278,24 @@ int nn_arch_export(nn_arch_t* self, jsmn_stream_t* stream)
 
 	// bs not required
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "adam_alpha");
-	ret &= jsmn_stream_float(stream, state->adam_alpha);
-	ret &= jsmn_stream_key(stream, "%s", "adam_beta1");
-	ret &= jsmn_stream_float(stream, state->adam_beta1);
-	ret &= jsmn_stream_key(stream, "%s", "adam_beta2");
-	ret &= jsmn_stream_float(stream, state->adam_beta2);
-	ret &= jsmn_stream_key(stream, "%s", "adam_beta1t");
-	ret &= jsmn_stream_float(stream, state->adam_beta1t);
-	ret &= jsmn_stream_key(stream, "%s", "adam_beta2t");
-	ret &= jsmn_stream_float(stream, state->adam_beta2t);
-	ret &= jsmn_stream_key(stream, "%s", "adam_lambda");
-	ret &= jsmn_stream_float(stream, state->adam_lambda);
-	ret &= jsmn_stream_key(stream, "%s", "adam_nu");
-	ret &= jsmn_stream_float(stream, state->adam_nu);
-	ret &= jsmn_stream_key(stream, "%s", "bn_momentum");
-	ret &= jsmn_stream_float(stream, state->bn_momentum);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_alpha");
+	ret &= cc_jsmnStream_float(stream, state->adam_alpha);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_beta1");
+	ret &= cc_jsmnStream_float(stream, state->adam_beta1);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_beta2");
+	ret &= cc_jsmnStream_float(stream, state->adam_beta2);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_beta1t");
+	ret &= cc_jsmnStream_float(stream, state->adam_beta1t);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_beta2t");
+	ret &= cc_jsmnStream_float(stream, state->adam_beta2t);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_lambda");
+	ret &= cc_jsmnStream_float(stream, state->adam_lambda);
+	ret &= cc_jsmnStream_key(stream, "%s", "adam_nu");
+	ret &= cc_jsmnStream_float(stream, state->adam_nu);
+	ret &= cc_jsmnStream_key(stream, "%s", "bn_momentum");
+	ret &= cc_jsmnStream_float(stream, state->bn_momentum);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

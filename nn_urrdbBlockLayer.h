@@ -24,8 +24,8 @@
 #ifndef nn_urrdbBlockLayer_H
 #define nn_urrdbBlockLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
 #include "nn.h"
@@ -43,8 +43,8 @@ nn_urrdbBlockLayer_t* nn_urrdbBlockLayer_new(nn_urrdbLayerInfo_t* info,
                                              nn_dim_t* dimX);
 void                  nn_urrdbBlockLayer_delete(nn_urrdbBlockLayer_t** _self);
 nn_urrdbBlockLayer_t* nn_urrdbBlockLayer_import(nn_arch_t* arch,
-                                                jsmn_val_t* val);
+                                                cc_jsmnVal_t* val);
 int                   nn_urrdbBlockLayer_export(nn_urrdbBlockLayer_t* self,
-                                                jsmn_stream_t* stream);
+                                                cc_jsmnStream_t* stream);
 
 #endif

@@ -1037,44 +1037,44 @@ void nn_skipLayer_delete(nn_skipLayer_t** _self)
 }
 
 nn_skipLayer_t*
-nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
+nn_skipLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val,
                     nn_skipLayer_t* skip_fork)
 {
 	// skip_fork is optional for add/cat
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX      = NULL;
-	jsmn_val_t* val_skip_mode = NULL;
-	jsmn_val_t* val_skip_beta = NULL;
+	cc_jsmnVal_t* val_dimX      = NULL;
+	cc_jsmnVal_t* val_skip_mode = NULL;
+	cc_jsmnVal_t* val_skip_beta = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_STRING)
+		if(kv->val->type == CC_JSMN_TYPE_STRING)
 		{
 			if(strcmp(kv->key, "skip_mode") == 0)
 			{
 				val_skip_mode = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		else if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
 				val_dimX = kv->val;
 			}
 		}
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "skip_beta") == 0)
 			{
@@ -1129,7 +1129,7 @@ nn_skipLayer_import(nn_arch_t* arch, jsmn_val_t* val,
 }
 
 int nn_skipLayer_export(nn_skipLayer_t* self,
-                        jsmn_stream_t* stream)
+                        cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -1137,34 +1137,34 @@ int nn_skipLayer_export(nn_skipLayer_t* self,
 	nn_dim_t* dimX = nn_skipLayer_dimXFn(&self->base);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "skip_mode");
+	ret &= cc_jsmnStream_key(stream, "%s", "skip_mode");
 	if(self->skip_mode == NN_SKIP_MODE_FORK_ADD)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "FORK_ADD");
+		ret &= cc_jsmnStream_string(stream, "%s", "FORK_ADD");
 	}
 	else if(self->skip_mode == NN_SKIP_MODE_FORK_CAT)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "FORK_CAT");
+		ret &= cc_jsmnStream_string(stream, "%s", "FORK_CAT");
 	}
 	else if(self->skip_mode == NN_SKIP_MODE_ADD)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "ADD");
+		ret &= cc_jsmnStream_string(stream, "%s", "ADD");
 	}
 	else if(self->skip_mode == NN_SKIP_MODE_CAT)
 	{
-		ret &= jsmn_stream_string(stream, "%s", "CAT");
+		ret &= cc_jsmnStream_string(stream, "%s", "CAT");
 	}
 	else
 	{
 		LOGE("invalid skip_mode=%i", self->skip_mode);
 		return 0;
 	}
-	ret &= jsmn_stream_key(stream, "%s", "skip_beta");
-	ret &= jsmn_stream_float(stream, self->skip_beta);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "skip_beta");
+	ret &= cc_jsmnStream_float(stream, self->skip_beta);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

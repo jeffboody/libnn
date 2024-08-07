@@ -24,8 +24,8 @@
 #ifndef nn_skipLayer_H
 #define nn_skipLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
@@ -120,9 +120,9 @@ nn_skipLayer_t* nn_skipLayer_newCat(nn_arch_t* arch,
                                     nn_skipLayer_t* skip_fork);
 void            nn_skipLayer_delete(nn_skipLayer_t** _self);
 nn_skipLayer_t* nn_skipLayer_import(nn_arch_t* arch,
-                                    jsmn_val_t* val,
+                                    cc_jsmnVal_t* val,
                                     nn_skipLayer_t* skip_fork);
 int             nn_skipLayer_export(nn_skipLayer_t* self,
-                                    jsmn_stream_t* stream);
+                                    cc_jsmnStream_t* stream);
 
 #endif

@@ -24,8 +24,8 @@
 #ifndef nn_reshapeLayer_H
 #define nn_reshapeLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
 #include "nn_tensor.h"
@@ -48,8 +48,8 @@ nn_reshapeLayer_t* nn_reshapeLayer_new(nn_arch_t* arch,
                                        nn_dim_t* dimY);
 void               nn_reshapeLayer_delete(nn_reshapeLayer_t** _self);
 nn_reshapeLayer_t* nn_reshapeLayer_import(nn_arch_t* arch,
-                                          jsmn_val_t* val);
+                                          cc_jsmnVal_t* val);
 int                nn_reshapeLayer_export(nn_reshapeLayer_t* self,
-                                          jsmn_stream_t* stream);
+                                          cc_jsmnStream_t* stream);
 
 #endif

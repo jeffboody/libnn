@@ -630,41 +630,41 @@ void nn_weightLayer_delete(nn_weightLayer_t** _self)
 }
 
 nn_weightLayer_t*
-nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_weightLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX  = NULL;
-	jsmn_val_t* val_dimW  = NULL;
-	jsmn_val_t* val_flags = NULL;
-	jsmn_val_t* val_W     = NULL;
-	jsmn_val_t* val_B     = NULL;
-	jsmn_val_t* val_MW    = NULL;
-	jsmn_val_t* val_VW    = NULL;
-	jsmn_val_t* val_MB    = NULL;
-	jsmn_val_t* val_VB    = NULL;
+	cc_jsmnVal_t* val_dimX  = NULL;
+	cc_jsmnVal_t* val_dimW  = NULL;
+	cc_jsmnVal_t* val_flags = NULL;
+	cc_jsmnVal_t* val_W     = NULL;
+	cc_jsmnVal_t* val_B     = NULL;
+	cc_jsmnVal_t* val_MW    = NULL;
+	cc_jsmnVal_t* val_VW    = NULL;
+	cc_jsmnVal_t* val_MB    = NULL;
+	cc_jsmnVal_t* val_VB    = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "flags") == 0)
 			{
 				val_flags = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		else if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
@@ -755,7 +755,7 @@ nn_weightLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 }
 
 int nn_weightLayer_export(nn_weightLayer_t* self,
-                          jsmn_stream_t* stream)
+                          cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -764,26 +764,26 @@ int nn_weightLayer_export(nn_weightLayer_t* self,
 	nn_dim_t* dimW = nn_tensor_dim(self->W);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimW");
+	ret &= cc_jsmnStream_key(stream, "%s", "dimW");
 	ret &= nn_dim_export(dimW, stream);
-	ret &= jsmn_stream_key(stream, "%s", "flags");
-	ret &= jsmn_stream_int(stream, self->flags);
-	ret &= jsmn_stream_key(stream, "%s", "W");
+	ret &= cc_jsmnStream_key(stream, "%s", "flags");
+	ret &= cc_jsmnStream_int(stream, self->flags);
+	ret &= cc_jsmnStream_key(stream, "%s", "W");
 	ret &= nn_tensor_export(self->W, stream);
-	ret &= jsmn_stream_key(stream, "%s", "B");
+	ret &= cc_jsmnStream_key(stream, "%s", "B");
 	ret &= nn_tensor_export(self->B, stream);
-	ret &= jsmn_stream_key(stream, "%s", "MW");
+	ret &= cc_jsmnStream_key(stream, "%s", "MW");
 	ret &= nn_tensor_export(self->MW, stream);
-	ret &= jsmn_stream_key(stream, "%s", "VW");
+	ret &= cc_jsmnStream_key(stream, "%s", "VW");
 	ret &= nn_tensor_export(self->VW, stream);
-	ret &= jsmn_stream_key(stream, "%s", "MB");
+	ret &= cc_jsmnStream_key(stream, "%s", "MB");
 	ret &= nn_tensor_export(self->MB, stream);
-	ret &= jsmn_stream_key(stream, "%s", "VB");
+	ret &= cc_jsmnStream_key(stream, "%s", "VB");
 	ret &= nn_tensor_export(self->VB, stream);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

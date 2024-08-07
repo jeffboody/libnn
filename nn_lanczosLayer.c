@@ -568,35 +568,35 @@ void nn_lanczosLayer_delete(nn_lanczosLayer_t** _self)
 }
 
 nn_lanczosLayer_t*
-nn_lanczosLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_lanczosLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_a    = NULL;
-	jsmn_val_t* val_dimX = NULL;
-	jsmn_val_t* val_dimY = NULL;
+	cc_jsmnVal_t* val_a    = NULL;
+	cc_jsmnVal_t* val_dimX = NULL;
+	cc_jsmnVal_t* val_dimY = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "a") == 0)
 			{
 				val_a = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		else if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
@@ -645,7 +645,7 @@ nn_lanczosLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 }
 
 int nn_lanczosLayer_export(nn_lanczosLayer_t* self,
-                           jsmn_stream_t* stream)
+                           cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -654,12 +654,12 @@ int nn_lanczosLayer_export(nn_lanczosLayer_t* self,
 	nn_dim_t* dimY = nn_tensor_dim(self->Y);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimY");
+	ret &= cc_jsmnStream_key(stream, "%s", "dimY");
 	ret &= nn_dim_export(dimY, stream);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

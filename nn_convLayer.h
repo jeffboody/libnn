@@ -24,8 +24,8 @@
 #ifndef nn_convLayer_H
 #define nn_convLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn_layer.h"
 
@@ -109,8 +109,8 @@ nn_convLayer_t* nn_convLayer_new(nn_arch_t* arch,
                                  int flags);
 void            nn_convLayer_delete(nn_convLayer_t** _self);
 nn_convLayer_t* nn_convLayer_import(nn_arch_t* arch,
-                                    jsmn_val_t* val);
+                                    cc_jsmnVal_t* val);
 int             nn_convLayer_export(nn_convLayer_t* self,
-                                    jsmn_stream_t* stream);
+                                    cc_jsmnStream_t* stream);
 
 #endif

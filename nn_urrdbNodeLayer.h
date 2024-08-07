@@ -24,8 +24,8 @@
 #ifndef nn_urrdbNodeLayer_H
 #define nn_urrdbNodeLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "nn_dim.h"
 #include "nn_layer.h"
 #include "nn.h"
@@ -42,8 +42,8 @@ nn_urrdbNodeLayer_t* nn_urrdbNodeLayer_new(nn_urrdbLayerInfo_t* info,
                                            nn_dim_t* dimX);
 void                 nn_urrdbNodeLayer_delete(nn_urrdbNodeLayer_t** _self);
 nn_urrdbNodeLayer_t* nn_urrdbNodeLayer_import(nn_arch_t* arch,
-                                              jsmn_val_t* val);
+                                              cc_jsmnVal_t* val);
 int                  nn_urrdbNodeLayer_export(nn_urrdbNodeLayer_t* self,
-                                              jsmn_stream_t* stream);
+                                              cc_jsmnStream_t* stream);
 
 #endif

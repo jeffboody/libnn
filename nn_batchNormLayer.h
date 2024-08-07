@@ -24,8 +24,8 @@
 #ifndef nn_batchNormLayer_H
 #define nn_batchNormLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libvkk/vkk.h"
 #include "nn_layer.h"
 
@@ -86,8 +86,8 @@ nn_batchNormLayer_t* nn_batchNormLayer_new(nn_arch_t* arch,
                                            nn_dim_t* dimX);
 void                 nn_batchNormLayer_delete(nn_batchNormLayer_t** _self);
 nn_batchNormLayer_t* nn_batchNormLayer_import(nn_arch_t* arch,
-                                              jsmn_val_t* val);
+                                              cc_jsmnVal_t* val);
 int                  nn_batchNormLayer_export(nn_batchNormLayer_t* self,
-                                              jsmn_stream_t* stream);
+                                              cc_jsmnStream_t* stream);
 
 #endif

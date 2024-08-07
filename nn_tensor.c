@@ -73,14 +73,15 @@ nn_tensor_data(nn_tensor_t* self, uint32_t n)
 }
 
 static int
-nn_tensor_importStorage(nn_tensor_t* self, jsmn_val_t* val,
+nn_tensor_importStorage(nn_tensor_t* self,
+                        cc_jsmnVal_t* val,
                         vkk_buffer_t* buf)
 {
 	ASSERT(self);
 	ASSERT(val);
 	ASSERT(buf);
 
-	if(val->type != JSMN_TYPE_ARRAY)
+	if(val->type != CC_JSMN_TYPE_ARRAY)
 	{
 		LOGE("invalid type=%i", val->type);
 		return 0;
@@ -106,9 +107,9 @@ nn_tensor_importStorage(nn_tensor_t* self, jsmn_val_t* val,
 			goto fail_array;
 		}
 
-		jsmn_val_t* elem;
-		elem = (jsmn_val_t*) cc_list_peekIter(iter);
-		if(elem->type != JSMN_TYPE_PRIMITIVE)
+		cc_jsmnVal_t* elem;
+		elem = (cc_jsmnVal_t*) cc_list_peekIter(iter);
+		if(elem->type != CC_JSMN_TYPE_PRIMITIVE)
 		{
 			LOGE("invalid");
 			goto fail_array;
@@ -138,7 +139,7 @@ nn_tensor_importStorage(nn_tensor_t* self, jsmn_val_t* val,
 
 static int
 nn_tensor_exportStorage(nn_tensor_t* self,
-                        jsmn_stream_t* stream,
+                        cc_jsmnStream_t* stream,
                         const char* name,
                         vkk_buffer_t* buf)
 {
@@ -162,15 +163,15 @@ nn_tensor_exportStorage(nn_tensor_t* self,
 	}
 
 	int ret = 0;
-	ret &= jsmn_stream_key(stream, "%s", name);
-	ret &= jsmn_stream_beginArray(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", name);
+	ret &= cc_jsmnStream_beginArray(stream);
 
 	uint32_t i;
 	for(i = 0; i < count; ++i)
 	{
-		ret &= jsmn_stream_float(stream, tmp[i]);
+		ret &= cc_jsmnStream_float(stream, tmp[i]);
 	}
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	FREE(tmp);
 
@@ -184,12 +185,12 @@ nn_tensor_exportStorage(nn_tensor_t* self,
 }
 
 static int
-nn_tensor_importData(nn_tensor_t* self, jsmn_val_t* val)
+nn_tensor_importData(nn_tensor_t* self, cc_jsmnVal_t* val)
 {
 	ASSERT(self);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_ARRAY)
+	if(val->type != CC_JSMN_TYPE_ARRAY)
 	{
 		LOGE("invalid type=%i", val->type);
 		return 0;
@@ -214,9 +215,9 @@ nn_tensor_importData(nn_tensor_t* self, jsmn_val_t* val)
 			return 0;
 		}
 
-		jsmn_val_t* elem;
-		elem = (jsmn_val_t*) cc_list_peekIter(iter);
-		if(elem->type != JSMN_TYPE_PRIMITIVE)
+		cc_jsmnVal_t* elem;
+		elem = (cc_jsmnVal_t*) cc_list_peekIter(iter);
+		if(elem->type != CC_JSMN_TYPE_PRIMITIVE)
 		{
 			LOGE("invalid");
 			return 0;
@@ -833,39 +834,39 @@ void nn_tensor_delete(nn_tensor_t** _self)
 	}
 }
 
-int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
+int nn_tensor_import(nn_tensor_t* self, cc_jsmnVal_t* val)
 {
 	ASSERT(self);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid type=%i", (int) val->type);
 		return 0;
 	}
 
-	jsmn_val_t* val_dim  = NULL;
-	jsmn_val_t* val_data = NULL;
-	jsmn_val_t* val_norm = NULL;
-	jsmn_val_t* val_u1   = NULL;
-	jsmn_val_t* val_v1   = NULL;
-	jsmn_val_t* val_u2   = NULL;
-	jsmn_val_t* val_v2   = NULL;
+	cc_jsmnVal_t* val_dim  = NULL;
+	cc_jsmnVal_t* val_data = NULL;
+	cc_jsmnVal_t* val_norm = NULL;
+	cc_jsmnVal_t* val_u1   = NULL;
+	cc_jsmnVal_t* val_v1   = NULL;
+	cc_jsmnVal_t* val_u2   = NULL;
+	cc_jsmnVal_t* val_v2   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dim") == 0)
 			{
 				val_dim = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_ARRAY)
+		else if(kv->val->type == CC_JSMN_TYPE_ARRAY)
 		{
 			if(strcmp(kv->key, "data") == 0)
 			{
@@ -888,7 +889,7 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 				val_v2 = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_STRING)
+		else if(kv->val->type == CC_JSMN_TYPE_STRING)
 		{
 			if(strcmp(kv->key, "norm") == 0)
 			{
@@ -962,7 +963,7 @@ int nn_tensor_import(nn_tensor_t* self, jsmn_val_t* val)
 }
 
 int nn_tensor_export(nn_tensor_t* self,
-                    jsmn_stream_t* stream)
+                    cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -977,20 +978,20 @@ int nn_tensor_export(nn_tensor_t* self,
 	};
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dim");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dim");
 	ret &= nn_dim_export(dim, stream);
 	if(self->mode == NN_TENSOR_MODE_IO)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "data");
-		ret &= jsmn_stream_beginArray(stream);
+		ret &= cc_jsmnStream_key(stream, "%s", "data");
+		ret &= cc_jsmnStream_beginArray(stream);
 
 		uint32_t i;
 		for(i = 0; i < nn_dim_sizeElements(dim); ++i)
 		{
-			ret &= jsmn_stream_float(stream, self->data[i]);
+			ret &= cc_jsmnStream_float(stream, self->data[i]);
 		}
-		ret &= jsmn_stream_end(stream);
+		ret &= cc_jsmnStream_end(stream);
 	}
 	else
 	{
@@ -999,9 +1000,9 @@ int nn_tensor_export(nn_tensor_t* self,
 
 		if(self->norm)
 		{
-			ret &= jsmn_stream_key(stream, "%s", "norm");
-			ret &= jsmn_stream_string(stream, "%s",
-			                          norm_array[self->norm]);
+			ret &= cc_jsmnStream_key(stream, "%s", "norm");
+			ret &= cc_jsmnStream_string(stream, "%s",
+			                            norm_array[self->norm]);
 			ret &= nn_tensor_exportStorage(self, stream, "u1",
 			                               self->sb100_data_u1);
 			ret &= nn_tensor_exportStorage(self, stream, "v1",
@@ -1012,7 +1013,7 @@ int nn_tensor_export(nn_tensor_t* self,
 			                               self->sb103_data_v2);
 		}
 	}
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

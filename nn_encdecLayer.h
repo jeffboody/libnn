@@ -24,8 +24,8 @@
 #ifndef nn_encdecLayer_H
 #define nn_encdecLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "nn_coderLayer.h"
 #include "nn_dim.h"
 #include "nn_factLayer.h"
@@ -105,8 +105,8 @@ typedef struct nn_encdecLayer_s
 nn_encdecLayer_t* nn_encdecLayer_new(nn_encdecLayerInfo_t* info);
 void              nn_encdecLayer_delete(nn_encdecLayer_t** _self);
 nn_encdecLayer_t* nn_encdecLayer_import(nn_arch_t* arch,
-                                        jsmn_val_t* val);
+                                        cc_jsmnVal_t* val);
 int               nn_encdecLayer_export(nn_encdecLayer_t* self,
-                                        jsmn_stream_t* stream);
+                                        cc_jsmnStream_t* stream);
 
 #endif

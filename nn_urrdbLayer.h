@@ -24,8 +24,8 @@
 #ifndef nn_urrdbLayer_H
 #define nn_urrdbLayer_H
 
-#include "../jsmn/wrapper/jsmn_stream.h"
-#include "../jsmn/wrapper/jsmn_wrapper.h"
+#include "../libcc/jsmn/cc_jsmnStream.h"
+#include "../libcc/jsmn/cc_jsmnWrapper.h"
 #include "../libcc/cc_list.h"
 #include "nn_coderLayer.h"
 #include "nn_dim.h"
@@ -71,8 +71,8 @@ typedef struct nn_urrdbLayer_s
 nn_urrdbLayer_t* nn_urrdbLayer_new(nn_urrdbLayerInfo_t* info);
 void             nn_urrdbLayer_delete(nn_urrdbLayer_t** _self);
 nn_urrdbLayer_t* nn_urrdbLayer_import(nn_arch_t* arch,
-                                      jsmn_val_t* val);
+                                      cc_jsmnVal_t* val);
 int              nn_urrdbLayer_export(nn_urrdbLayer_t* self,
-                                      jsmn_stream_t* stream);
+                                      cc_jsmnStream_t* stream);
 
 #endif

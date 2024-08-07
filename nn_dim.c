@@ -33,29 +33,29 @@
 * public                                                   *
 ***********************************************************/
 
-int nn_dim_import(nn_dim_t* self, jsmn_val_t* val)
+int nn_dim_import(nn_dim_t* self, cc_jsmnVal_t* val)
 {
 	ASSERT(self);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid type=%i", (int) val->type);
 		return 0;
 	}
 
-	jsmn_val_t* val_count  = NULL;
-	jsmn_val_t* val_height = NULL;
-	jsmn_val_t* val_width  = NULL;
-	jsmn_val_t* val_depth  = NULL;
+	cc_jsmnVal_t* val_count  = NULL;
+	cc_jsmnVal_t* val_height = NULL;
+	cc_jsmnVal_t* val_width  = NULL;
+	cc_jsmnVal_t* val_depth  = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_PRIMITIVE)
+		if(kv->val->type == CC_JSMN_TYPE_PRIMITIVE)
 		{
 			if(strcmp(kv->key, "count") == 0)
 			{
@@ -96,22 +96,22 @@ int nn_dim_import(nn_dim_t* self, jsmn_val_t* val)
 	return 1;
 }
 
-int nn_dim_export(nn_dim_t* self, jsmn_stream_t* stream)
+int nn_dim_export(nn_dim_t* self, cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "count");
-	ret &= jsmn_stream_int(stream, (int) self->count);
-	ret &= jsmn_stream_key(stream, "%s", "height");
-	ret &= jsmn_stream_int(stream, (int) self->height);
-	ret &= jsmn_stream_key(stream, "%s", "width");
-	ret &= jsmn_stream_int(stream, (int) self->width);
-	ret &= jsmn_stream_key(stream, "%s", "depth");
-	ret &= jsmn_stream_int(stream, (int) self->depth);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "count");
+	ret &= cc_jsmnStream_int(stream, (int) self->count);
+	ret &= cc_jsmnStream_key(stream, "%s", "height");
+	ret &= cc_jsmnStream_int(stream, (int) self->height);
+	ret &= cc_jsmnStream_key(stream, "%s", "width");
+	ret &= cc_jsmnStream_int(stream, (int) self->width);
+	ret &= cc_jsmnStream_key(stream, "%s", "depth");
+	ret &= cc_jsmnStream_int(stream, (int) self->depth);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

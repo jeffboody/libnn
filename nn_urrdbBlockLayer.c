@@ -316,12 +316,12 @@ void nn_urrdbBlockLayer_delete(nn_urrdbBlockLayer_t** _self)
 }
 
 nn_urrdbBlockLayer_t*
-nn_urrdbBlockLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_urrdbBlockLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
@@ -334,16 +334,16 @@ nn_urrdbBlockLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 		return NULL;
 	}
 
-	jsmn_val_t* val_coder0 = NULL;
-	jsmn_val_t* val_coder1 = NULL;
+	cc_jsmnVal_t* val_coder0 = NULL;
+	cc_jsmnVal_t* val_coder1 = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "coder0") == 0)
 			{
@@ -411,8 +411,8 @@ nn_urrdbBlockLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 	iter = cc_list_head(val_nodes);
 	while(iter)
 	{
-		jsmn_val_t* val_node;
-		val_node = (jsmn_val_t*)
+		cc_jsmnVal_t* val_node;
+		val_node = (cc_jsmnVal_t*)
 		           cc_list_remove(val_nodes, &iter);
 
 		nn_urrdbNodeLayer_t* node;
@@ -461,14 +461,14 @@ nn_urrdbBlockLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 }
 
 int nn_urrdbBlockLayer_export(nn_urrdbBlockLayer_t* self,
-                              jsmn_stream_t* stream)
+                              cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "coder0");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "coder0");
 	ret &= nn_coderLayer_export(self->coder0, stream);
 
 	cc_listIter_t* iter = cc_list_head(self->nodes);
@@ -478,15 +478,15 @@ int nn_urrdbBlockLayer_export(nn_urrdbBlockLayer_t* self,
 		node = (nn_urrdbNodeLayer_t*)
 		       cc_list_peekIter(iter);
 
-		ret &= jsmn_stream_key(stream, "%s", "node");
+		ret &= cc_jsmnStream_key(stream, "%s", "node");
 		ret &= nn_urrdbNodeLayer_export(node, stream);
 
 		iter = cc_list_next(iter);
 	}
 
-	ret &= jsmn_stream_key(stream, "%s", "coder1");
+	ret &= cc_jsmnStream_key(stream, "%s", "coder1");
 	ret &= nn_coderLayer_export(self->coder1, stream);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

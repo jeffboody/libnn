@@ -640,38 +640,38 @@ void nn_encdecLayer_delete(nn_encdecLayer_t** _self)
 }
 
 nn_encdecLayer_t*
-nn_encdecLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_encdecLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_sampler = NULL;
-	jsmn_val_t* val_enc0    = NULL;
-	jsmn_val_t* val_down1   = NULL;
-	jsmn_val_t* val_enc1    = NULL;
-	jsmn_val_t* val_down2   = NULL;
-	jsmn_val_t* val_node20  = NULL;
-	jsmn_val_t* val_node21  = NULL;
-	jsmn_val_t* val_node22  = NULL;
-	jsmn_val_t* val_node23  = NULL;
-	jsmn_val_t* val_up1     = NULL;
-	jsmn_val_t* val_dec1    = NULL;
-	jsmn_val_t* val_up0     = NULL;
-	jsmn_val_t* val_dec0    = NULL;
+	cc_jsmnVal_t* val_sampler = NULL;
+	cc_jsmnVal_t* val_enc0    = NULL;
+	cc_jsmnVal_t* val_down1   = NULL;
+	cc_jsmnVal_t* val_enc1    = NULL;
+	cc_jsmnVal_t* val_down2   = NULL;
+	cc_jsmnVal_t* val_node20  = NULL;
+	cc_jsmnVal_t* val_node21  = NULL;
+	cc_jsmnVal_t* val_node22  = NULL;
+	cc_jsmnVal_t* val_node23  = NULL;
+	cc_jsmnVal_t* val_up1     = NULL;
+	cc_jsmnVal_t* val_dec1    = NULL;
+	cc_jsmnVal_t* val_up0     = NULL;
+	cc_jsmnVal_t* val_dec0    = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_OBJECT)
+		if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "enc0") == 0)
 			{
@@ -722,7 +722,7 @@ nn_encdecLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 				val_dec0 = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_STRING)
+		else if(kv->val->type == CC_JSMN_TYPE_STRING)
 		{
 			if(strcmp(kv->key, "sampler") == 0)
 			{
@@ -909,63 +909,63 @@ nn_encdecLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 }
 
 int nn_encdecLayer_export(nn_encdecLayer_t* self,
-                          jsmn_stream_t* stream)
+                          cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
+	ret &= cc_jsmnStream_beginObject(stream);
 
 	// export sampler
 	if(self->sampler == NN_ENCDEC_SAMPLER_CODER)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "sampler");
-		ret &= jsmn_stream_string(stream, "%s", "CODER");
+		ret &= cc_jsmnStream_key(stream, "%s", "sampler");
+		ret &= cc_jsmnStream_string(stream, "%s", "CODER");
 
-		ret &= jsmn_stream_key(stream, "%s", "down1");
+		ret &= cc_jsmnStream_key(stream, "%s", "down1");
 		ret &= nn_coderLayer_export(self->down1.coder, stream);
-		ret &= jsmn_stream_key(stream, "%s", "down2");
+		ret &= cc_jsmnStream_key(stream, "%s", "down2");
 		ret &= nn_coderLayer_export(self->down2.coder, stream);
-		ret &= jsmn_stream_key(stream, "%s", "up1");
+		ret &= cc_jsmnStream_key(stream, "%s", "up1");
 		ret &= nn_coderLayer_export(self->up1.coder, stream);
-		ret &= jsmn_stream_key(stream, "%s", "up0");
+		ret &= cc_jsmnStream_key(stream, "%s", "up0");
 		ret &= nn_coderLayer_export(self->up0.coder, stream);
 	}
 	else if(self->sampler == NN_ENCDEC_SAMPLER_LANCZOS)
 	{
-		ret &= jsmn_stream_key(stream, "%s", "sampler");
-		ret &= jsmn_stream_string(stream, "%s", "LANCZOS");
+		ret &= cc_jsmnStream_key(stream, "%s", "sampler");
+		ret &= cc_jsmnStream_string(stream, "%s", "LANCZOS");
 
-		ret &= jsmn_stream_key(stream, "%s", "down1");
+		ret &= cc_jsmnStream_key(stream, "%s", "down1");
 		ret &= nn_lanczosLayer_export(self->down1.lanczos, stream);
-		ret &= jsmn_stream_key(stream, "%s", "down2");
+		ret &= cc_jsmnStream_key(stream, "%s", "down2");
 		ret &= nn_lanczosLayer_export(self->down2.lanczos, stream);
-		ret &= jsmn_stream_key(stream, "%s", "up1");
+		ret &= cc_jsmnStream_key(stream, "%s", "up1");
 		ret &= nn_lanczosLayer_export(self->up1.lanczos, stream);
-		ret &= jsmn_stream_key(stream, "%s", "up0");
+		ret &= cc_jsmnStream_key(stream, "%s", "up0");
 		ret &= nn_lanczosLayer_export(self->up0.lanczos, stream);
 	}
 
 	// export encoder/decoder and nodes
-	ret &= jsmn_stream_key(stream, "%s", "enc0");
+	ret &= cc_jsmnStream_key(stream, "%s", "enc0");
 	ret &= nn_coderLayer_export(self->enc0, stream);
-	ret &= jsmn_stream_key(stream, "%s", "enc1");
+	ret &= cc_jsmnStream_key(stream, "%s", "enc1");
 	ret &= nn_coderLayer_export(self->enc1, stream);
-	ret &= jsmn_stream_key(stream, "%s", "node20");
+	ret &= cc_jsmnStream_key(stream, "%s", "node20");
 	ret &= nn_coderLayer_export(self->node20, stream);
-	ret &= jsmn_stream_key(stream, "%s", "node21");
+	ret &= cc_jsmnStream_key(stream, "%s", "node21");
 	ret &= nn_coderLayer_export(self->node21, stream);
-	ret &= jsmn_stream_key(stream, "%s", "node22");
+	ret &= cc_jsmnStream_key(stream, "%s", "node22");
 	ret &= nn_coderLayer_export(self->node22, stream);
-	ret &= jsmn_stream_key(stream, "%s", "node23");
+	ret &= cc_jsmnStream_key(stream, "%s", "node23");
 	ret &= nn_coderLayer_export(self->node23, stream);
-	ret &= jsmn_stream_key(stream, "%s", "dec1");
+	ret &= cc_jsmnStream_key(stream, "%s", "dec1");
 	ret &= nn_coderLayer_export(self->dec1, stream);
-	ret &= jsmn_stream_key(stream, "%s", "dec0");
+	ret &= cc_jsmnStream_key(stream, "%s", "dec0");
 	ret &= nn_coderLayer_export(self->dec0, stream);
 
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }

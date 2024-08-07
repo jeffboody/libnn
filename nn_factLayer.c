@@ -380,34 +380,34 @@ void nn_factLayer_delete(nn_factLayer_t** _self)
 }
 
 nn_factLayer_t*
-nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
+nn_factLayer_import(nn_arch_t* arch, cc_jsmnVal_t* val)
 {
 	ASSERT(arch);
 	ASSERT(val);
 
-	if(val->type != JSMN_TYPE_OBJECT)
+	if(val->type != CC_JSMN_TYPE_OBJECT)
 	{
 		LOGE("invalid");
 		return NULL;
 	}
 
-	jsmn_val_t* val_dimX = NULL;
-	jsmn_val_t* val_fn   = NULL;
+	cc_jsmnVal_t* val_dimX = NULL;
+	cc_jsmnVal_t* val_fn   = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
 	while(iter)
 	{
-		jsmn_keyval_t* kv;
-		kv = (jsmn_keyval_t*) cc_list_peekIter(iter);
+		cc_jsmnKeyval_t* kv;
+		kv = (cc_jsmnKeyval_t*) cc_list_peekIter(iter);
 
-		if(kv->val->type == JSMN_TYPE_STRING)
+		if(kv->val->type == CC_JSMN_TYPE_STRING)
 		{
 			if(strcmp(kv->key, "fn") == 0)
 			{
 				val_fn = kv->val;
 			}
 		}
-		else if(kv->val->type == JSMN_TYPE_OBJECT)
+		else if(kv->val->type == CC_JSMN_TYPE_OBJECT)
 		{
 			if(strcmp(kv->key, "dimX") == 0)
 			{
@@ -436,7 +436,7 @@ nn_factLayer_import(nn_arch_t* arch, jsmn_val_t* val)
 }
 
 int nn_factLayer_export(nn_factLayer_t* self,
-                        jsmn_stream_t* stream)
+                        cc_jsmnStream_t* stream)
 {
 	ASSERT(self);
 	ASSERT(stream);
@@ -451,12 +451,12 @@ int nn_factLayer_export(nn_factLayer_t* self,
 	}
 
 	int ret = 1;
-	ret &= jsmn_stream_beginObject(stream);
-	ret &= jsmn_stream_key(stream, "%s", "dimX");
+	ret &= cc_jsmnStream_beginObject(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "dimX");
 	ret &= nn_dim_export(dimX, stream);
-	ret &= jsmn_stream_key(stream, "%s", "fn");
-	ret &= jsmn_stream_string(stream, "%s", str_fn);
-	ret &= jsmn_stream_end(stream);
+	ret &= cc_jsmnStream_key(stream, "%s", "fn");
+	ret &= cc_jsmnStream_string(stream, "%s", str_fn);
+	ret &= cc_jsmnStream_end(stream);
 
 	return ret;
 }
