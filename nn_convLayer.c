@@ -64,7 +64,7 @@ nn_convLayer_computeFpFn(nn_layer_t* base,
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
 		if(nn_tensor_computeNormalize(self->W,
-		                              VKK_HAZARD_NONE,
+		                              VKK_HAZARD_RAW,
 		                              NN_TENSOR_NORM_SN,
 		                              1.0f) == 0)
 		{
@@ -74,7 +74,7 @@ nn_convLayer_computeFpFn(nn_layer_t* base,
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
 		if(nn_tensor_computeNormalize(self->W,
-		                              VKK_HAZARD_NONE,
+		                              VKK_HAZARD_RAW,
 		                              NN_TENSOR_NORM_BSSN,
 		                              1.2f) == 0)
 		{
@@ -153,7 +153,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	uint32_t  xd   = dimW->depth;
 
 	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
 	                         0, fc, 0.0f) == 0)
 	{
 		return NULL;
@@ -161,14 +161,14 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_NONE,
+		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_RAW,
 		                         0, fc, 0.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
 	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
@@ -244,8 +244,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 
 	// nn_convLayer_backprop_dL_dW
 	// dispatch required for each f,fi,fj,k
-	// RAW hazard handled by nn_convLayer_backprop_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
 	cp = engine->cp_conv_backprop_dL_dW;
@@ -270,7 +269,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 					}
 					vkk_compute_bindUniformSets(engine->compute, 3,
 					                            us_array);
-					nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+					nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 					                          1, 1, 1, 8, 8, 1);
 				}
 			}
@@ -279,8 +278,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 
 	// nn_convLayer_backprop_dL_dB
 	// dispatch required for each f
-	// RAW hazard handled by nn_convLayer_backprop_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		cp = engine->cp_conv_backprop_dL_dB;
@@ -298,7 +296,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 			}
 			vkk_compute_bindUniformSets(engine->compute, 3,
 			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 			                          1, 1, 1, 8, 8, 1);
 		}
 	}
@@ -321,14 +319,13 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	                          fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
-	// RAW hazard handled by nn_convLayer_backpropUpdateW
-	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
+	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
 	cp = engine->cp_conv_backpropUpdateB;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          fc, 1, 1, 64, 1, 1);
 
 	// optionally compute stats
@@ -362,7 +359,7 @@ nn_convLayer_computeFpTFn(nn_layer_t* base,
 	if(self->flags & NN_CONV_LAYER_FLAG_NORM_SN)
 	{
 		if(nn_tensor_computeNormalize(self->W,
-		                              VKK_HAZARD_NONE,
+		                              VKK_HAZARD_RAW,
 		                              NN_TENSOR_NORM_SN,
 		                              1.0f) == 0)
 		{
@@ -372,7 +369,7 @@ nn_convLayer_computeFpTFn(nn_layer_t* base,
 	else if(self->flags & NN_CONV_LAYER_FLAG_NORM_BSSN)
 	{
 		if(nn_tensor_computeNormalize(self->W,
-		                              VKK_HAZARD_NONE,
+		                              VKK_HAZARD_RAW,
 		                              NN_TENSOR_NORM_BSSN,
 		                              1.2f) == 0)
 		{
@@ -451,7 +448,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	uint32_t  xd   = dimW->depth;
 
 	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
 	                         0, fc, 0.0f) == 0)
 	{
 		return NULL;
@@ -459,14 +456,14 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_NONE,
+		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_RAW,
 		                         0, fc, 0.0f) == 0)
 		{
 			return NULL;
 		}
 	}
 
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
 	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
@@ -542,8 +539,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 
 	// nn_convLayer_backpropT_dL_dW
 	// dispatch required for each f,fi,fj,k
-	// RAW hazard handled by nn_convLayer_backpropT_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
 	uint32_t k;
 	cp = engine->cp_conv_backpropT_dL_dW;
@@ -568,7 +564,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 					}
 					vkk_compute_bindUniformSets(engine->compute, 3,
 					                            us_array);
-					nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+					nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 					                          1, 1, 1, 8, 8, 1);
 				}
 			}
@@ -577,8 +573,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 
 	// nn_convLayer_backprop_dL_dB
 	// dispatch required for each f
-	// RAW hazard handled by nn_convLayer_backprop_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		cp = engine->cp_conv_backprop_dL_dB;
@@ -597,7 +592,7 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 			}
 			vkk_compute_bindUniformSets(engine->compute, 3,
 			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 			                          1, 1, 1, 8, 8, 1);
 		}
 	}
@@ -620,17 +615,17 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	                          fc, fh, fw, 4, 4, 4);
 
 	// nn_convLayer_backpropUpdateB
-	// RAW hazard handled by nn_convLayer_backpropUpdateW
-	// dispatch(NONE, fc, 1, 1, 64, 1, 1)
+	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
 	cp = engine->cp_conv_backpropUpdateB;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          fc, 1, 1, 64, 1, 1);
 
 	// optionally compute stats
+	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
 		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,

@@ -135,12 +135,12 @@ nn_lanczosLayer_computeBpFn(nn_layer_t* base,
 	nn_dim_t* dimY = nn_tensor_dim(dL_dY);
 
 	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dT, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dT, VKK_HAZARD_RAW,
 	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;
 	}
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_NONE,
+	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
 	                         0, bs, 0.0f) == 0)
 	{
 		return NULL;

@@ -195,7 +195,7 @@ void setVB(uint n, float v)
 void main()
 {
 	// dispatch required for each k
-	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint p   = gl_GlobalInvocationID.x;
 	uint q   = gl_GlobalInvocationID.y;
 	uint xh  = dimX.height;

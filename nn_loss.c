@@ -448,13 +448,12 @@ nn_loss_pass(nn_loss_t* self,
 	                          1, 1, 1, 8, 8, 1);
 
 	// nn_loss_dL_dY
-	// RAW hazard handled by nn_loss
-	// dispatch(NONE, bs, yh, yw, 1, 8, 8)
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	if(nn_engine_computeBind(engine, cp_dL_dY) == 0)
 	{
 		return NULL;
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          bs, dimY->height, dimY->width,
 	                          1, 8, 8);
 

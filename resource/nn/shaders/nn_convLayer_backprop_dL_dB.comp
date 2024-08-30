@@ -68,8 +68,7 @@ void set_dL_dB(uint n, float v)
 void main()
 {
 	// dispatch required for each f
-	// RAW hazard handled by nn_convLayer_backprop_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;
 	uint yh  = dimY.height;

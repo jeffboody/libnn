@@ -111,8 +111,7 @@ uint umod(uint x, uint y)
 void main()
 {
 	// dispatch required for each f,fi,fj,k
-	// RAW hazard handled by nn_convLayer_backpropT_dL_dX
-	// dispatch(NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint q   = gl_GlobalInvocationID.x;
 	uint p   = gl_GlobalInvocationID.y;
 	uint yh  = dimY.height;

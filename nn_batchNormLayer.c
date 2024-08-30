@@ -141,7 +141,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 	if(cp_mean)
 	{
 		// dispatch required for each k
-		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+		// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 		if(nn_engine_computeBind(engine, cp_mean) == 0)
 		{
 			return NULL;
@@ -163,7 +163,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 			}
 			else
 			{
-				nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+				nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 				                          1, 1, 1, 8, 8, 1);
 			}
 		}
@@ -172,7 +172,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 	if(cp_var)
 	{
 		// dispatch required for each k
-		// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+		// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 		if(nn_engine_computeBind(engine, cp_var) == 0)
 		{
 			return NULL;
@@ -194,7 +194,7 @@ nn_batchNormLayer_computeFpFn(nn_layer_t* base,
 			}
 			else
 			{
-				nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+				nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 				                          1, 1, 1, 8, 8, 1);
 			}
 		}
@@ -290,7 +290,7 @@ nn_batchNormLayer_computeBpFn(nn_layer_t* base,
 	// nn_batchNormLayer_backpropSum or
 	// nn_batchNormLayer_backpropSumNOP
 	// dispatch required for each k
-	// dispatch((k == 0) ? RAW : NONE, 1, 1, 1, 8, 8, 1)
+	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint32_t k;
 	if(flags & NN_ARCH_FLAG_BP_NOP)
 	{
@@ -320,7 +320,7 @@ nn_batchNormLayer_computeBpFn(nn_layer_t* base,
 		}
 		else
 		{
-			nn_engine_computeDispatch(engine, VKK_HAZARD_NONE,
+			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 			                          1, 1, 1, 8, 8, 1);
 		}
 	}
