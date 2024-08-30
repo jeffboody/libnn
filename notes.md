@@ -1239,7 +1239,7 @@ diagram shows the classical GAN network structure.
 
 ![Generative Adversarial Network](docs/gan-network.jpg?raw=true "Generative Adversarial Network")
 
-The descriminator network typically outputs a single value
+The discriminator network typically outputs a single value
 that the objective function uses to determine if the input
 was real or generated. Alternatively, the Patch GAN
 described by Pix-To-Pix GANs uses multiple outputs. The
@@ -1280,11 +1280,11 @@ The GAN training procedure described by the original GAN
 paper consists of a two step process that is repeated for
 each iteration.
 
-Update the descriminator.
+Update the discriminator.
 
 1. Select a minibatch of m samples of z from pz(z)
 2. Sample a minibatch of m samples of x from pdata(x)
-3. Update the descriminator by ascending its stochastic gradient
+3. Update the discriminator by ascending its stochastic gradient
 4. dV/dD[1/m SUM(1, m, log(D(xi)) + log(1 - D(G(zi))))]
 
 Update the generator.
@@ -1307,9 +1307,9 @@ Y=G(z) into the discriminator network but also receives the
 backprop gradient dL/dY from the discriminator network
 input. This differs from a non-GAN neural network where the
 backprop gradient is discarded at the input. Finally, the
-parameter update of the descriminator should be disabled
+parameter update of the discriminator should be disabled
 when training the generator. This is required due to the
-fact that the descriminator update is performed by ascending
+fact that the discriminator update is performed by ascending
 the stochastic gradient and the generator update is
 performed by descending the stochastic gradient.
 
@@ -1345,7 +1345,7 @@ The Pixel-To-Pixel GAN paper proposes a generic architecture
 that incorporates U-Net skip connections for the generator,
 a custom cGAN + L1 objective fuction combined with a Patch
 GAN, divide the objective by 2 when training the
-descriminator, the Adam optimizer, batch normalization with
+discriminator, the Adam optimizer, batch normalization with
 instance normalization, dropout in the generator (to
 increase variation), strided convolutions, and ReLU/leaky
 ReLU activation functions. The role of the L1 objective
@@ -1354,15 +1354,16 @@ seems to fundamentially change the GAN game such that the
 discriminator is able to detect generated samples with a
 very high accuracy.
 
-The Cycle GAN enforces
-transitivity via a cycle consistency loss term. The Cycle
-GAN architecture consists of residual blocks for the
-generator, the objective function is combined with a Patch
-GAN and Least Squares GAN, divide objective by 2 when
-training the descriminator, reduced model oscillation using
-historically generated images, the Adam optimizer, batch
-normalization combined with instance normalization, strided
-convolutions and ReLU/leaky ReLU activation functions.
+The Cycle GAN enforces transitivity via a cycle consistency
+loss term. The Cycle GAN architecture consists of residual
+blocks for the generator, the objective function is combined
+with a Patch GAN and Least Squares GAN (LSGAN), divide
+objective by 2 when training the discriminator, reduced
+model oscillation using historically generated images, the
+Adam optimizer, instance normalization, strided convolutions
+and ReLU/leaky ReLU activation functions. The LSGAN is
+simply a MSE loss function with ones for real, zeros for
+fake and it must also have a linear activation function.
 
 References
 
@@ -1383,6 +1384,9 @@ References
 * [Learning to Factorize and Relight a City](https://arxiv.org/pdf/2008.02796.pdf)
 * [Persistent Nature: A Generative Model of Unbounded 3D Worlds](https://arxiv.org/pdf/2303.13515.pdf)
 * [Least Squares Generative Adversarial Networks](https://arxiv.org/pdf/1611.04076.pdf)
+* [How to Develop a Least Squares Generative Adversarial Network (LSGAN) in Keras](https://machinelearningmastery.com/least-squares-generative-adversarial-network/)
+* [The last layer activation functions of the discriminator](https://github.com/GunhoChoi/LSGAN-TF/issues/1)
+* [Least Squares GAN](https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
 * [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
 * [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
 
