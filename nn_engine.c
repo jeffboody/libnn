@@ -689,6 +689,17 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_fact_forwardPassPReLU);
 
+	vkk_computePipelineInfo_t cpi_fact_forwardPassLReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact_fp,
+		.cs      = "nn/shaders/nn_factLayer_forwardPassLReLU_comp.spv",
+	};
+
+	self->cp_fact_forwardPassLReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_forwardPassLReLU);
+
 	vkk_computePipelineInfo_t cpi_fact_forwardPassTanh =
 	{
 		.compute = self->compute,
@@ -754,6 +765,17 @@ nn_engine_new(vkk_engine_t* engine)
 	self->cp_fact_backpropPReLU =
 		vkk_computePipeline_new(engine,
 		                        &cpi_fact_backpropPReLU);
+
+	vkk_computePipelineInfo_t cpi_fact_backpropLReLU =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_fact_bp,
+		.cs      = "nn/shaders/nn_factLayer_backpropLReLU_comp.spv",
+	};
+
+	self->cp_fact_backpropLReLU =
+		vkk_computePipeline_new(engine,
+		                        &cpi_fact_backpropLReLU);
 
 	vkk_computePipelineInfo_t cpi_fact_backpropTanh =
 	{
@@ -1130,12 +1152,14 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_fact_forwardPassLogistic          == NULL) ||
 	   (self->cp_fact_forwardPassReLU              == NULL) ||
 	   (self->cp_fact_forwardPassPReLU             == NULL) ||
+	   (self->cp_fact_forwardPassLReLU             == NULL) ||
 	   (self->cp_fact_forwardPassTanh              == NULL) ||
 	   (self->cp_fact_forwardPassSink              == NULL) ||
 	   (self->cp_fact_backpropLinear               == NULL) ||
 	   (self->cp_fact_backpropLogistic             == NULL) ||
 	   (self->cp_fact_backpropReLU                 == NULL) ||
 	   (self->cp_fact_backpropPReLU                == NULL) ||
+	   (self->cp_fact_backpropLReLU                == NULL) ||
 	   (self->cp_fact_backpropTanh                 == NULL) ||
 	   (self->cp_fact_backpropSink                 == NULL) ||
 	   (self->cp_lanczos_forwardPassT              == NULL) ||
@@ -1330,12 +1354,14 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_lanczos_forwardPassT);
 		vkk_computePipeline_delete(&self->cp_fact_backpropSink);
 		vkk_computePipeline_delete(&self->cp_fact_backpropTanh);
+		vkk_computePipeline_delete(&self->cp_fact_backpropLReLU);
 		vkk_computePipeline_delete(&self->cp_fact_backpropPReLU);
 		vkk_computePipeline_delete(&self->cp_fact_backpropReLU);
 		vkk_computePipeline_delete(&self->cp_fact_backpropLogistic);
 		vkk_computePipeline_delete(&self->cp_fact_backpropLinear);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassSink);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassTanh);
+		vkk_computePipeline_delete(&self->cp_fact_forwardPassLReLU);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassPReLU);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassReLU);
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassLogistic);

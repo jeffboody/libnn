@@ -38,6 +38,7 @@ const char* NN_FACT_LAYER_STRING_LINEAR   = "linear";
 const char* NN_FACT_LAYER_STRING_LOGISTIC = "logistic";
 const char* NN_FACT_LAYER_STRING_RELU     = "ReLU";
 const char* NN_FACT_LAYER_STRING_PRELU    = "PReLU";
+const char* NN_FACT_LAYER_STRING_LRELU    = "LReLU";
 const char* NN_FACT_LAYER_STRING_TANH     = "tanh";
 const char* NN_FACT_LAYER_STRING_SINK     = "sink";
 
@@ -65,6 +66,7 @@ nn_factLayer_computeFpFn(nn_layer_t* base,
 		engine->cp_fact_forwardPassLogistic,
 		engine->cp_fact_forwardPassReLU,
 		engine->cp_fact_forwardPassPReLU,
+		engine->cp_fact_forwardPassLReLU,
 		engine->cp_fact_forwardPassTanh,
 		engine->cp_fact_forwardPassSink,
 	};
@@ -137,6 +139,7 @@ nn_factLayer_computeBpFn(nn_layer_t* base,
 		engine->cp_fact_backpropLogistic,
 		engine->cp_fact_backpropReLU,
 		engine->cp_fact_backpropPReLU,
+		engine->cp_fact_backpropLReLU,
 		engine->cp_fact_backpropTanh,
 		engine->cp_fact_backpropSink,
 	};
@@ -226,6 +229,7 @@ static const char* nn_factLayer_string(nn_factLayerFn_e fn)
 		NN_FACT_LAYER_STRING_LOGISTIC,
 		NN_FACT_LAYER_STRING_RELU,
 		NN_FACT_LAYER_STRING_PRELU,
+		NN_FACT_LAYER_STRING_LRELU,
 		NN_FACT_LAYER_STRING_TANH,
 		NN_FACT_LAYER_STRING_SINK,
 	};
@@ -243,6 +247,7 @@ static nn_factLayerFn_e nn_factLayer_function(const char* str)
 		NN_FACT_LAYER_STRING_LOGISTIC,
 		NN_FACT_LAYER_STRING_RELU,
 		NN_FACT_LAYER_STRING_PRELU,
+		NN_FACT_LAYER_STRING_LRELU,
 		NN_FACT_LAYER_STRING_TANH,
 		NN_FACT_LAYER_STRING_SINK,
 	};

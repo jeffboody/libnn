@@ -267,8 +267,9 @@ nn_coderLayer_new(nn_coderLayerInfo_t* info)
 		};
 
 		int flags = NN_CONV_LAYER_FLAG_XAVIER;
-		if((info->fact_fn == NN_FACT_LAYER_FN_RELU) ||
-		   (info->fact_fn == NN_FACT_LAYER_FN_PRELU))
+		if((info->fact_fn == NN_FACT_LAYER_FN_RELU)  ||
+		   (info->fact_fn == NN_FACT_LAYER_FN_PRELU) ||
+		   (info->fact_fn == NN_FACT_LAYER_FN_LRELU))
 		{
 			flags = NN_CONV_LAYER_FLAG_HE;
 		}
