@@ -34,13 +34,13 @@ typedef struct nn_reshapeLayer_s
 {
 	nn_layer_t base;
 
-	nn_dim_t dimX; // dim(xbs,xh,xw,xd)
-
 	// output
 	// dim is reshaped
-	// data and sb_data are references to X
+	// Y:     data and sb_data are references to X
+	// dL_dX: data and sb_data are references to dL_dY
 	// sb_dim is owned by reshapeLayer
-	nn_tensor_t Y; // dim(ybs,yh,yw,yd)
+	nn_tensor_t Y;     // dim(bs,yh,yw,yd)
+	nn_tensor_t dL_dX; // dim(bs,xh,xw,xd)
 } nn_reshapeLayer_t;
 
 nn_reshapeLayer_t* nn_reshapeLayer_new(nn_arch_t* arch,

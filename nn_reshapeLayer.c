@@ -48,12 +48,6 @@ nn_reshapeLayer_computeFpFn(nn_layer_t* base,
 	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 	nn_tensor_t*       Y    = &self->Y;
 
-	if(nn_dim_sizeEquals(nn_tensor_dim(X), &self->dimX) == 0)
-	{
-		LOGE("invalid");
-		return NULL;
-	}
-
 	Y->data    = X->data;
 	Y->sb_data = X->sb_data;
 
@@ -68,7 +62,13 @@ nn_reshapeLayer_computeBpFn(nn_layer_t* base,
 	ASSERT(base);
 	ASSERT(dL_dY);
 
-	return dL_dY;
+	nn_reshapeLayer_t* self  = (nn_reshapeLayer_t*) base;
+	nn_tensor_t*       dL_dX = &self->dL_dX;
+
+	dL_dX->data    = dL_dY->data;
+	dL_dX->sb_data = dL_dY->sb_data;
+
+	return dL_dX;
 }
 
 static nn_dim_t*
@@ -78,7 +78,7 @@ nn_reshapeLayer_dimXFn(nn_layer_t* base)
 
 	nn_reshapeLayer_t* self = (nn_reshapeLayer_t*) base;
 
-	return &self->dimX;
+	return nn_tensor_dim(&self->dL_dX);
 }
 
 static nn_dim_t*
@@ -93,13 +93,16 @@ nn_reshapeLayer_dimYFn(nn_layer_t* base)
 
 static int
 nn_reshapeLayer_newCompute(nn_reshapeLayer_t* self,
-                           nn_dim_t* dimY)
+                           nn_dim_t* dimX, nn_dim_t* dimY)
 {
 	ASSERT(self);
+	ASSERT(dimX);
+	ASSERT(dimY);
 
 	nn_arch_t*   arch   = self->base.arch;
 	nn_engine_t* engine = arch->engine;
 	nn_tensor_t* Y      = &self->Y;
+	nn_tensor_t* dL_dX  = &self->dL_dX;
 
 	vkk_updateMode_e um;
 	um = vkk_compute_updateMode(engine->compute);
@@ -113,7 +116,22 @@ nn_reshapeLayer_newCompute(nn_reshapeLayer_t* self,
 		return 0;
 	}
 
+	dL_dX->sb_dim = vkk_buffer_new(engine->engine, um,
+	                               VKK_BUFFER_USAGE_STORAGE,
+	                               sizeof(nn_dim_t),
+	                               dimX);
+	if(dL_dX->sb_dim == NULL)
+	{
+		goto fail_dL_dX;
+	}
+
+	// success
 	return 1;
+
+	// failure
+	fail_dL_dX:
+		vkk_buffer_delete(&Y->sb_dim);
+	return 0;
 }
 
 static void
@@ -121,7 +139,10 @@ nn_reshapeLayer_deleteCompute(nn_reshapeLayer_t* self)
 {
 	ASSERT(self);
 
-	nn_tensor_t* Y = &self->Y;
+	nn_tensor_t* Y     = &self->Y;
+	nn_tensor_t* dL_dX = &self->dL_dX;
+
+	vkk_buffer_delete(&dL_dX->sb_dim);
 	vkk_buffer_delete(&Y->sb_dim);
 }
 
@@ -163,11 +184,12 @@ nn_reshapeLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		return NULL;
 	}
 
-	nn_tensor_t* Y = &self->Y;
-	nn_dim_copy(dimX, &self->dimX);
+	nn_tensor_t* Y     = &self->Y;
+	nn_tensor_t* dL_dX = &self->dL_dX;
+	nn_dim_copy(dimX, nn_tensor_dim(dL_dX));
 	nn_dim_copy(dimY, nn_tensor_dim(Y));
 
-	if(nn_reshapeLayer_newCompute(self, dimY) == 0)
+	if(nn_reshapeLayer_newCompute(self, dimX, dimY) == 0)
 	{
 		goto fail_compute;
 	}
@@ -257,7 +279,7 @@ int nn_reshapeLayer_export(nn_reshapeLayer_t* self,
 	ASSERT(self);
 	ASSERT(stream);
 
-	nn_dim_t* dimX = &self->dimX;
+	nn_dim_t* dimX = nn_tensor_dim(&self->dL_dX);
 	nn_dim_t* dimY = nn_tensor_dim(&self->Y);
 
 	int ret = 1;
