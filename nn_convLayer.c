@@ -146,7 +146,7 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	nn_engine_t*    engine = arch->engine;
 
 	nn_dim_t* dimW = nn_tensor_dim(self->W);
-	nn_dim_t* dimY = nn_tensor_dim(dL_dY);
+	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
 	uint32_t  fc   = dimW->count;
 	uint32_t  fh   = dimW->height;
 	uint32_t  fw   = dimW->width;
@@ -166,12 +166,6 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 		{
 			return NULL;
 		}
-	}
-
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
-	                         0, bs, 0.0f) == 0)
-	{
-		return NULL;
 	}
 
 	// sb100: bs
@@ -214,38 +208,24 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	};
 
 	// nn_convLayer_backprop_dL_dX
-	// dispatch required for each fi,fj
-	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	uint fi;
-	uint fj;
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_conv_backprop_dL_dX;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	for(fi = 0; fi < fh; ++fi)
-	{
-		for(fj = 0; fj < fw; ++fj)
-		{
-			us_array[2] = nn_engine_getConvUs2(engine,
-			                                   0, fi, fj, 0);
-			if(us_array[2] == NULL)
-			{
-				return NULL;
-			}
-			vkk_compute_bindUniformSets(engine->compute, 3,
-			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-			                          bs, dimY->height, dimY->width,
-			                          1, 8, 8);
-		}
-	}
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
 	// nn_convLayer_backprop_dL_dW
 	// dispatch required for each f,fi,fj,k
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
 	uint32_t f;
+	uint32_t fi;
+	uint32_t fj;
 	uint32_t k;
 	cp = engine->cp_conv_backprop_dL_dW;
 	for(f = 0; f < fc; ++f)
