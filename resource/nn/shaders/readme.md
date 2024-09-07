@@ -93,12 +93,9 @@ Backprop Uniforms
 
 Backprop Dispatch Order
 
-* nn_tensor_clear(hazard=NONE, dL_dW)
-* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazard=NONE, dL_dX)
 * nn_convLayer_backprop_dL_dX
-* nn_convLayer_backprop_dL_dW (for each f,fi,fj,k)
-* nn_convLayer_backprop_dL_dB (for each f)
+* nn_convLayer_backprop_dL_dW
+* nn_convLayer_backprop_dL_dW_dB
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 

@@ -151,22 +151,6 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	uint32_t  fh   = dimW->height;
 	uint32_t  fw   = dimW->width;
 
-	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
-	                         0, fc, 0.0f) == 0)
-	{
-		return NULL;
-	}
-
-	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
-	{
-		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_RAW,
-		                         0, fc, 0.0f) == 0)
-		{
-			return NULL;
-		}
-	}
-
 	// sb100: bs
 	// sb101: state
 	// sb102: X
@@ -219,42 +203,31 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	                          bs, dimX->height, dimX->width,
 	                          1, 8, 8);
 
-	// nn_convLayer_backprop_dL_dW
+	// nn_convLayer_backprop_dL_dW and nn_convLayer_backprop_dL_dW_dB
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
-	cp = engine->cp_conv_backprop_dL_dW;
-	if(nn_engine_computeBind(engine, cp) == 0)
+	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
 	{
-		return NULL;
-	}
-	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          dimW->count, dimX->depth, 1,
-	                          8, 8, 1);
-
-	// nn_convLayer_backprop_dL_dB
-	// dispatch required for each f
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	uint32_t f;
-	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
-	{
-		cp = engine->cp_conv_backprop_dL_dB;
+		cp = engine->cp_conv_backprop_dL_dW;
 		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-
-		for(f = 0; f < fc; ++f)
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          dimW->count, dimX->depth, 1,
+		                          8, 8, 1);
+	}
+	else
+	{
+		cp = engine->cp_conv_backprop_dL_dW_dB;
+		if(nn_engine_computeBind(engine, cp) == 0)
 		{
-			us_array[2] = nn_engine_getConvUs2(engine, f, 0, 0, 0);
-			if(us_array[2] == NULL)
-			{
-				return NULL;
-			}
-			vkk_compute_bindUniformSets(engine->compute, 3,
-			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-			                          1, 1, 1, 8, 8, 1);
+			return NULL;
 		}
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          dimW->count, dimX->depth, 1,
+		                          8, 8, 1);
 	}
 
 	// optionally skip parameter update
