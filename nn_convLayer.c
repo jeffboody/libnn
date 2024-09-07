@@ -150,7 +150,6 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	uint32_t  fc   = dimW->count;
 	uint32_t  fh   = dimW->height;
 	uint32_t  fw   = dimW->width;
-	uint32_t  xd   = dimW->depth;
 
 	// clear backprop gradients
 	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
@@ -221,44 +220,21 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	                          1, 8, 8);
 
 	// nn_convLayer_backprop_dL_dW
-	// dispatch required for each f,fi,fj,k
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	uint32_t f;
-	uint32_t fi;
-	uint32_t fj;
-	uint32_t k;
+	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
 	cp = engine->cp_conv_backprop_dL_dW;
-	for(f = 0; f < fc; ++f)
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
-		if(nn_engine_computeBind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-
-		for(fi = 0; fi < fh; ++fi)
-		{
-			for(fj = 0; fj < fw; ++fj)
-			{
-				for(k = 0; k < xd; ++k)
-				{
-					us_array[2] = nn_engine_getConvUs2(engine,
-					                                   f, fi, fj, k);
-					if(us_array[2] == NULL)
-					{
-						return NULL;
-					}
-					vkk_compute_bindUniformSets(engine->compute, 3,
-					                            us_array);
-					nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-					                          1, 1, 1, 8, 8, 1);
-				}
-			}
-		}
+		return NULL;
 	}
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          dimW->count, dimX->depth, 1,
+	                          8, 8, 1);
 
 	// nn_convLayer_backprop_dL_dB
 	// dispatch required for each f
 	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
+	uint32_t f;
 	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
 		cp = engine->cp_conv_backprop_dL_dB;

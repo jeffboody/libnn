@@ -2,8 +2,6 @@
 
 layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
 
-shared float dl_dw_work[64];
-
 struct nn_dim_t
 {
 	uint count;
@@ -65,14 +63,6 @@ layout(std430, set=1, binding=3) readonly buffer sb103
 	float dL_dY[];
 };
 
-layout(std430, set=2, binding=0) readonly buffer sb200
-{
-	uint idx_f;
-	uint idx_fi;
-	uint idx_fj;
-	uint idx_k;
-};
-
 float get_dY_dW(uint n, uint i, uint j, uint k)
 {
 	// X is dY_dW
@@ -98,72 +88,81 @@ void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 	dL_dW[n*sn + i*sy + j*sx + k] = v;
 }
 
-void main()
+void backprop_dL_dW(uint f, uint fi, uint fj, uint k)
 {
-	// dispatch required for each f,fi,fj,k
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	uint q   = gl_GlobalInvocationID.x;
-	uint p   = gl_GlobalInvocationID.y;
-	uint yh  = dimY.height;
-	uint yw  = dimY.width;
-	uint fh  = dimW.height;
-	uint fw  = dimW.width;
-	uint xh  = dimX.height;
-	uint xw  = dimX.width;
-	uint idx = 8*p + q;
-	uint f   = idx_f;
-	uint fi  = idx_fi;
-	uint fj  = idx_fj;
-	uint k   = idx_k;
+	float dl_dw = 0.0f;
 
-	// initialize dl_dw_work
-	dl_dw_work[idx] = 0.0;
+	uint fh = dimW.height;
+	uint fw = dimW.width;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
+	uint yh = dimY.height;
+	uint yw = dimY.width;
 
-	// compute dl_dw_work
-	uint m;
-	uint i;
-	uint j;
-	int  ii;
-	int  jj;
+	uint  m;
+	uint  i;
+	uint  j;
+	int   ii;
+	int   jj;
 	float dl_dy;
 	float dy_dw;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = p; i < yh; i += 8)
+		for(i = 0; i < yh; ++i)
 		{
 			ii = int(param_stride*i + fi) - int(fh/2);
-			if((ii < 0) || (ii >= xh))
+			if(ii < 0)
 			{
-				continue;
+				ii = 0;
+			}
+			else if(ii >= xh)
+			{
+				ii = int(xh) - 1;
 			}
 
-			for(j = q; j < yw; j += 8)
+			for(j = 0; j < yw; ++j)
 			{
 				jj = int(param_stride*j + fj) - int(fw/2);
-				if((jj < 0) || (jj >= xw))
+				if(jj < 0)
 				{
-					continue;
+					jj = 0;
+				}
+				else if(jj >= xw)
+				{
+					jj = int(xw) - 1;
 				}
 
-				dl_dy = get_dL_dY(m, i, j, f);
-				dy_dw = get_dY_dW(m, ii, jj, k);
-				dl_dw_work[idx] += dl_dy*dy_dw;
+				dl_dy  = get_dL_dY(m, i, j, f);
+				dy_dw  = get_dY_dW(m, ii, jj, k);
+				dl_dw += dl_dy*dy_dw;
 			}
 		}
 	}
-	memoryBarrierShared();
-	barrier();
+	set_dL_dW(f, fi, fj, k, dl_dw);
+}
 
-	// compute dl_dw
-	if(idx == 0)
+void main()
+{
+	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
+	uint f  = gl_GlobalInvocationID.x;
+	uint k  = gl_GlobalInvocationID.y;
+	uint fc = dimW.count;
+	uint fh = dimW.height;
+	uint fw = dimW.width;
+	uint xd = dimX.depth;
+
+	if((f >= fc) || (k >= xd))
 	{
-		float dl_dw = 0.0;
+		return;
+	}
 
-		uint n;
-		for(n = 0; n < 64; ++n)
+	uint fi;
+	uint fj;
+	for(fi = 0; fi < fh; ++fi)
+	{
+		for(fj = 0; fj < fw; ++fj)
 		{
-			dl_dw += dl_dw_work[n];
+			backprop_dL_dW(f, fi, fj, k);
 		}
-		set_dL_dW(f, fi, fj, k, dl_dw);
 	}
 }
