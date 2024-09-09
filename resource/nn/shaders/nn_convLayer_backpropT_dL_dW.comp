@@ -157,7 +157,7 @@ void main()
 			if((ii < 0) || (ii >= sh) ||
 			    (umod(ii, param_stride) > 0))
 			{
-				return;
+				continue;
 			}
 			ii = ii/int(param_stride);
 
@@ -167,7 +167,7 @@ void main()
 				if((jj < 0) || (jj >= sw) ||
 				    (umod(jj, param_stride) > 0))
 				{
-					return;
+					continue;
 				}
 				jj = jj/int(param_stride);
 
