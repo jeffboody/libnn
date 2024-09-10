@@ -30,7 +30,7 @@ layout(std430, set=0, binding=4) readonly buffer sb004
 	nn_dim_t dimY;
 };
 
-layout(std430, set=0, binding=12) buffer sb012
+layout(std430, set=0, binding=12) writeonly buffer sb012
 {
 	float dL_dX[];
 };
@@ -44,14 +44,6 @@ layout(std430, set=0, binding=13) readonly buffer sb013
 layout(std430, set=1, binding=3) readonly buffer sb103
 {
 	float dL_dY[];
-};
-
-layout(std430, set=2, binding=0) readonly buffer sb200
-{
-	uint idx_f;
-	uint idx_fi;
-	uint idx_fj;
-	uint idx_k;
 };
 
 float get_dY_dX(uint n, uint i, uint j, uint k)
@@ -71,12 +63,12 @@ float get_dL_dY(uint n, uint i, uint j, uint k)
 	return dL_dY[n*sn + i*sy + j*sx + k];
 }
 
-void add_dL_dX(uint n, uint i, uint j, uint k, float v)
+void set_dL_dX(uint n, uint i, uint j, uint k, float v)
 {
 	uint sn = dimX.height*dimX.width*dimX.depth;
 	uint sy = dimX.width*dimX.depth;
 	uint sx = dimX.depth;
-	dL_dX[n*sn + i*sy + j*sx + k] += v;
+	dL_dX[n*sn + i*sy + j*sx + k] = v;
 }
 
 uint umod(uint x, uint y)
@@ -84,8 +76,10 @@ uint umod(uint x, uint y)
 	return uint(mod(int(x), int(y)));
 }
 
-void backpropT_dL_dX(uint m, uint i, uint j, uint k)
+void backpropT_dL_dX(uint m, uint ii, uint jj, uint k)
 {
+	float dl_dx = 0.0;
+
 	uint fc = dimW.count;
 	uint fh = dimW.height;
 	uint fw = dimW.width;
@@ -93,8 +87,6 @@ void backpropT_dL_dX(uint m, uint i, uint j, uint k)
 	uint xw = dimX.width;
 	uint yh = dimY.height;
 	uint yw = dimY.width;
-	uint fi = idx_fi;
-	uint fj = idx_fj;
 
 	// virtual size
 	uint vh = yh + 2*(fh/2);
@@ -108,48 +100,59 @@ void backpropT_dL_dX(uint m, uint i, uint j, uint k)
 	uint oi = (vh - sh)/2;
 	uint oj = (vw - sw)/2;
 
-	int ii = int(i + fi) - int(oi);
-	if((ii < 0) || (ii >= sh) ||
-	   (umod(ii, param_stride) > 0))
-	{
-		return;
-	}
-	ii = ii/int(param_stride);
-
-	int jj = int(j + fj) - int(oj);
-	if((jj < 0) || (jj >= sw) ||
-	   (umod(jj, param_stride) > 0))
-	{
-		return;
-	}
-	jj = jj/int(param_stride);
-
-	float dy_dx;
-	float dl_dy;
-	float dl_dx = 0.0;
+	uint  fi;
+	uint  fj;
 	uint  f;
-	for(f = 0; f < fc; ++f)
+	int   i;
+	int   j;
+	float dl_dy;
+	float dy_dx;
+	for(fi = 0; fi < fh; ++fi)
 	{
-		dl_dy  = get_dL_dY(m, i, j, f);
-		dy_dx  = get_dY_dX(f, fi, fj, k);
-		dl_dx += dl_dy*dy_dx;
-	}
+		i = int(ii)*int(param_stride) + int(oi) - int(fi);
+		if(i < 0)
+		{
+			i = 0;
+		}
+		else if(i >= yh)
+		{
+			i = int(yh) - 1;
+		}
 
-	add_dL_dX(m, ii, jj, k, dl_dx);
+		for(fj = 0; fj < fw; ++fj)
+		{
+			j = int(jj)*int(param_stride) + int(oj) - int(fj);
+			if(j < 0)
+			{
+				j = 0;
+			}
+			else if(j >= yw)
+			{
+				j = int(yw) - 1;
+			}
+
+			for(f = 0; f < fc; ++f)
+			{
+				dl_dy  = get_dL_dY(m, i, j, f);
+				dy_dx  = get_dY_dX(f, fi, fj, k);
+				dl_dx += dl_dy*dy_dx;
+			}
+		}
+	}
+	set_dL_dX(m, ii, jj, k, dl_dx);
 }
 
 void main()
 {
-	// dispatch required for each fi,fj
-	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
-	uint i  = gl_GlobalInvocationID.y;
-	uint j  = gl_GlobalInvocationID.z;
-	uint yh = dimY.height;
-	uint yw = dimY.width;
-	uint xd = dimW.depth;
+	uint ii = gl_GlobalInvocationID.y;
+	uint jj = gl_GlobalInvocationID.z;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
+	uint xd = dimX.depth;
 
-	if((i >= yh) || (j >= yw))
+	if((ii >= xh) || (jj >= xw))
 	{
 		return;
 	}
@@ -157,6 +160,6 @@ void main()
 	uint k;
 	for(k = 0; k < xd; ++k)
 	{
-		backpropT_dL_dX(m, i, j, k);
+		backpropT_dL_dX(m, ii, jj, k);
 	}
 }

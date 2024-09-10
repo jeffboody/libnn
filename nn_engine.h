@@ -49,7 +49,6 @@ typedef struct nn_engine_s
 	vkk_uniformSetFactory_t* usf0_conv;
 	vkk_uniformSetFactory_t* usf1_conv_fp;
 	vkk_uniformSetFactory_t* usf1_conv_bp;
-	vkk_uniformSetFactory_t* usf2_conv;
 	vkk_uniformSetFactory_t* usf0_fact;
 	vkk_uniformSetFactory_t* usf1_fact_fp;
 	vkk_uniformSetFactory_t* usf1_fact_bp;
@@ -102,9 +101,9 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dW;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dW_dB;
-	vkk_computePipeline_t* cp_conv_backprop_dL_dB;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dX;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dW;
+	vkk_computePipeline_t* cp_conv_backpropT_dL_dW_dB;
 	vkk_computePipeline_t* cp_conv_backpropUpdateW;
 	vkk_computePipeline_t* cp_conv_backpropUpdateB;
 	vkk_computePipeline_t* cp_fact_forwardPassLinear;
@@ -156,7 +155,6 @@ typedef struct nn_engine_s
 	nn_tensor_t* Null;
 
 	cc_map_t*  map_bn_us2;
-	cc_map_t*  map_conv_us2;
 	cc_map_t*  map_lanczos_us2;
 	cc_list_t* list_tensorOp_us0[2];
 } nn_engine_t;
@@ -165,9 +163,6 @@ nn_engine_t*      nn_engine_new(vkk_engine_t* engine);
 void              nn_engine_delete(nn_engine_t** _self);
 vkk_uniformSet_t* nn_engine_getBatchNormUs2(nn_engine_t* self,
                                             uint32_t k);
-vkk_uniformSet_t* nn_engine_getConvUs2(nn_engine_t* self,
-                                       uint32_t f, uint32_t fi,
-                                       uint32_t fj, uint32_t k);
 vkk_uniformSet_t* nn_engine_getLanczos3Us2(nn_engine_t* self,
                                            uint32_t n);
 vkk_uniformSet_t* nn_engine_getTensorOpUs0(nn_engine_t* self,

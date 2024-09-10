@@ -141,10 +141,6 @@ nn_engine_new(vkk_engine_t* engine)
 	self->usf1_conv_bp = vkk_uniformSetFactory_new(engine, um,
 	                                               4, ub_array);
 
-	// sb200: idx (f,fi,fj,k)
-	self->usf2_conv = vkk_uniformSetFactory_new(engine, um,
-	                                            1, ub_array);
-
 	// sb000: dimX
 	// sb001: Y
 	self->usf0_fact = vkk_uniformSetFactory_new(engine, um,
@@ -261,7 +257,6 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->usf0_conv         == NULL) ||
 	   (self->usf1_conv_fp      == NULL) ||
 	   (self->usf1_conv_bp      == NULL) ||
-	   (self->usf2_conv         == NULL) ||
 	   (self->usf0_fact         == NULL) ||
 	   (self->usf1_fact_fp      == NULL) ||
 	   (self->usf1_fact_bp      == NULL) ||
@@ -315,9 +310,8 @@ nn_engine_new(vkk_engine_t* engine)
 	{
 		self->usf0_conv,
 		self->usf1_conv_bp,
-		self->usf2_conv,
 	};
-	self->pl_conv_bp = vkk_pipelineLayout_new(engine, 3,
+	self->pl_conv_bp = vkk_pipelineLayout_new(engine, 2,
 	                                          usf_array_conv_bp);
 
 	vkk_uniformSetFactory_t* usf_array_fact_fp[] =
@@ -601,17 +595,6 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_conv_backprop_dL_dW_dB);
 
-	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dB =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_conv_bp,
-		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dB_comp.spv",
-	};
-
-	self->cp_conv_backprop_dL_dB =
-		vkk_computePipeline_new(engine,
-		                        &cpi_conv_backprop_dL_dB);
-
 	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dX =
 	{
 		.compute = self->compute,
@@ -633,6 +616,17 @@ nn_engine_new(vkk_engine_t* engine)
 	self->cp_conv_backpropT_dL_dW =
 		vkk_computePipeline_new(engine,
 		                        &cpi_conv_backpropT_dL_dW);
+
+	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dW_dB =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv_bp,
+		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dW_dB_comp.spv",
+	};
+
+	self->cp_conv_backpropT_dL_dW_dB =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_backpropT_dL_dW_dB);
 
 	vkk_computePipelineInfo_t cpi_conv_backpropUpdateW =
 	{
@@ -1166,9 +1160,9 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_conv_backprop_dL_dX               == NULL) ||
 	   (self->cp_conv_backprop_dL_dW               == NULL) ||
 	   (self->cp_conv_backprop_dL_dW_dB            == NULL) ||
-	   (self->cp_conv_backprop_dL_dB               == NULL) ||
 	   (self->cp_conv_backpropT_dL_dX              == NULL) ||
 	   (self->cp_conv_backpropT_dL_dW              == NULL) ||
+	   (self->cp_conv_backpropT_dL_dW_dB           == NULL) ||
 	   (self->cp_conv_backpropUpdateW              == NULL) ||
 	   (self->cp_conv_backpropUpdateB              == NULL) ||
 	   (self->cp_fact_forwardPassLinear            == NULL) ||
@@ -1237,12 +1231,6 @@ nn_engine_new(vkk_engine_t* engine)
 
 	self->map_bn_us2 = cc_map_new();
 	if(self->map_bn_us2 == NULL)
-	{
-		goto failure;
-	}
-
-	self->map_conv_us2 = cc_map_new();
-	if(self->map_conv_us2 == NULL)
 	{
 		goto failure;
 	}
@@ -1319,19 +1307,6 @@ void nn_engine_delete(nn_engine_t** _self)
 			cc_map_delete(&self->map_bn_us2);
 		}
 
-		if(self->map_conv_us2)
-		{
-			miter = cc_map_head(self->map_conv_us2);
-			while(miter)
-			{
-				nn_convUs2Data_t* data;
-				data = (nn_convUs2Data_t*)
-				       cc_map_remove(self->map_conv_us2, &miter);
-				nn_convUs2Data_delete(&data);
-			}
-			cc_map_delete(&self->map_conv_us2);
-		}
-
 		if(self->map_lanczos_us2)
 		{
 			miter = cc_map_head(self->map_lanczos_us2);
@@ -1393,11 +1368,11 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassLinear);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateB);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateW);
+		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW_dB);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dX);
-		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dB);
-		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW_dB);
+		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dX);
 		vkk_computePipeline_delete(&self->cp_conv_forwardPassT);
 		vkk_computePipeline_delete(&self->cp_conv_forwardPass);
@@ -1446,7 +1421,6 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_uniformSetFactory_delete(&self->usf1_fact_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_fact_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_fact);
-		vkk_uniformSetFactory_delete(&self->usf2_conv);
 		vkk_uniformSetFactory_delete(&self->usf1_conv_bp);
 		vkk_uniformSetFactory_delete(&self->usf1_conv_fp);
 		vkk_uniformSetFactory_delete(&self->usf0_conv);
@@ -1502,56 +1476,6 @@ nn_engine_getBatchNormUs2(nn_engine_t* self, uint32_t k)
 	// failure
 	fail_add:
 		nn_batchNormUs2Data_delete(&data);
-	return NULL;
-}
-
-vkk_uniformSet_t*
-nn_engine_getConvUs2(nn_engine_t* self,
-                     uint32_t f, uint32_t fi,
-                     uint32_t fj, uint32_t k)
-{
-	ASSERT(self);
-
-	nn_convUs2Data_t* data;
-
-	nn_convUs2Key_t key =
-	{
-		.f  = f,
-		.fi = fi,
-		.fj = fj,
-		.k  = k,
-	};
-
-	// find existing data
-	cc_mapIter_t* miter;
-	miter = cc_map_findp(self->map_conv_us2,
-	                     sizeof(nn_convUs2Key_t),
-	                     &key);
-	if(miter)
-	{
-		data = (nn_convUs2Data_t*) cc_map_val(miter);
-		return data->us2;
-	}
-
-	data = nn_convUs2Data_new(self, &key);
-	if(data == NULL)
-	{
-		return NULL;
-	}
-
-	if(cc_map_addp(self->map_conv_us2,
-	               data, sizeof(nn_convUs2Key_t),
-	               &key) == NULL)
-	{
-		goto fail_add;
-	}
-
-	// success
-	return data->us2;
-
-	// failure
-	fail_add:
-		nn_convUs2Data_delete(&data);
 	return NULL;
 }
 

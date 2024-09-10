@@ -187,7 +187,6 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	{
 		self->us0,
 		self->us1_bp,
-		NULL,
 	};
 
 	// nn_convLayer_backprop_dL_dX
@@ -370,33 +369,10 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	nn_engine_t*    engine = arch->engine;
 
 	nn_dim_t* dimW = nn_tensor_dim(self->W);
-	nn_dim_t* dimY = nn_tensor_dim(dL_dY);
+	nn_dim_t* dimX = nn_tensor_dim(self->dL_dX);
 	uint32_t  fc   = dimW->count;
 	uint32_t  fh   = dimW->height;
 	uint32_t  fw   = dimW->width;
-	uint32_t  xd   = dimW->depth;
-
-	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
-	                         0, fc, 0.0f) == 0)
-	{
-		return NULL;
-	}
-
-	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
-	{
-		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_RAW,
-		                         0, fc, 0.0f) == 0)
-		{
-			return NULL;
-		}
-	}
-
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
-	                         0, bs, 0.0f) == 0)
-	{
-		return NULL;
-	}
 
 	// sb100: bs
 	// sb101: state
@@ -434,96 +410,46 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	{
 		self->us0,
 		self->us1_bp,
-		NULL,
 	};
 
-	// nn_convLayer_backpropT_dL_dX
-	// dispatch required for each fi,fj
-	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
-	uint fi;
-	uint fj;
+	// nn_convLayerT_backprop_dL_dX
+	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_conv_backpropT_dL_dX;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
-	for(fi = 0; fi < fh; ++fi)
-	{
-		for(fj = 0; fj < fw; ++fj)
-		{
-			us_array[2] = nn_engine_getConvUs2(engine,
-			                                   0, fi, fj, 0);
-			if(us_array[2] == NULL)
-			{
-				return NULL;
-			}
-			vkk_compute_bindUniformSets(engine->compute, 3,
-			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-			                          bs, dimY->height, dimY->width,
-			                          1, 8, 8);
-		}
-	}
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          bs, dimX->height, dimX->width,
+	                          1, 8, 8);
 
-	// nn_convLayer_backpropT_dL_dW
-	// dispatch required for each f,fi,fj,k
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	uint32_t f;
-	uint32_t k;
-	cp = engine->cp_conv_backpropT_dL_dW;
-	for(f = 0; f < fc; ++f)
+	// nn_convLayer_backpropT_dL_dW and nn_convLayer_backpropT_dL_dW_dB
+	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
+	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
 	{
+		cp = engine->cp_conv_backpropT_dL_dW;
 		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-
-		for(fi = 0; fi < fh; ++fi)
-		{
-			for(fj = 0; fj < fw; ++fj)
-			{
-				for(k = 0; k < xd; ++k)
-				{
-					us_array[2] = nn_engine_getConvUs2(engine,
-					                                   f, fi, fj, k);
-					if(us_array[2] == NULL)
-					{
-						return NULL;
-					}
-					vkk_compute_bindUniformSets(engine->compute, 3,
-					                            us_array);
-					nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-					                          1, 1, 1, 8, 8, 1);
-				}
-			}
-		}
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          dimW->count, dimX->depth, 1,
+		                          8, 8, 1);
 	}
-
-	// nn_convLayer_backprop_dL_dB
-	// dispatch required for each f
-	// dispatch(RAW, 1, 1, 1, 8, 8, 1)
-	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
+	else
 	{
-		cp = engine->cp_conv_backprop_dL_dB;
+		cp = engine->cp_conv_backpropT_dL_dW_dB;
 		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
-
-		for(f = 0; f < fc; ++f)
-		{
-			us_array[2] = nn_engine_getConvUs2(engine,
-			                                   f, 0, 0, 0);
-			if(us_array[2] == NULL)
-			{
-				return NULL;
-			}
-			vkk_compute_bindUniformSets(engine->compute, 3,
-			                            us_array);
-			nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-			                          1, 1, 1, 8, 8, 1);
-		}
+		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          dimW->count, dimX->depth, 1,
+		                          8, 8, 1);
 	}
 
 	// optionally skip parameter update
@@ -554,7 +480,6 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	                          fc, 1, 1, 64, 1, 1);
 
 	// optionally compute stats
-	// RAW hazard handled by nn_convLayer_backpropUpdateW
 	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
 		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
@@ -609,77 +534,6 @@ nn_convLayer_dimYFn(nn_layer_t* base)
 /***********************************************************
 * public                                                   *
 ***********************************************************/
-
-nn_convUs2Data_t*
-nn_convUs2Data_new(nn_engine_t* engine,
-                   nn_convUs2Key_t* key)
-{
-	ASSERT(engine);
-	ASSERT(key);
-
-	nn_convUs2Data_t* self;
-	self = (nn_convUs2Data_t*)
-	       CALLOC(1, sizeof(nn_convUs2Data_t));
-	if(self == NULL)
-	{
-		LOGE("CALLOC failed");
-		return NULL;
-	}
-
-	self->sb200 = vkk_buffer_new(engine->engine,
-	                             VKK_UPDATE_MODE_STATIC,
-	                             VKK_BUFFER_USAGE_STORAGE,
-	                             sizeof(nn_convUs2Key_t),
-	                             key);
-	if(self->sb200 == NULL)
-	{
-		goto fail_sb200;
-	}
-
-	self->us2 = vkk_uniformSet_new(engine->engine, 2, 0, NULL,
-	                               engine->usf2_conv);
-	if(self->us2 == NULL)
-	{
-		goto fail_us2;
-	}
-
-	vkk_uniformAttachment_t ua2_array[] =
-	{
-		{
-			.binding = 0,
-			.type    = VKK_UNIFORM_TYPE_STORAGE_REF,
-			.buffer  = self->sb200,
-		},
-	};
-
-	vkk_compute_updateUniformSetRefs(engine->compute,
-	                                 self->us2, 1,
-	                                 ua2_array);
-
-	// success
-	return self;
-
-	// failure
-	fail_us2:
-		vkk_buffer_delete(&self->sb200);
-	fail_sb200:
-		FREE(self);
-	return NULL;
-}
-
-void nn_convUs2Data_delete(nn_convUs2Data_t** _self)
-{
-	ASSERT(_self);
-
-	nn_convUs2Data_t* self = *_self;
-	if(self)
-	{
-		vkk_uniformSet_delete(&self->us2);
-		vkk_buffer_delete(&self->sb200);
-		FREE(self);
-		*_self = NULL;
-	}
-}
 
 nn_convLayer_t*
 nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,

@@ -89,8 +89,6 @@ Backprop Uniforms
 * sb102: X
 * sb103: dL_dY
 
-* sb200: idx (f,fi,fj,k)
-
 Backprop Dispatch Order
 
 * nn_convLayer_backprop_dL_dX
@@ -101,12 +99,9 @@ Backprop Dispatch Order
 
 Backprop Dispatch Order (Transpose)
 
-* nn_tensor_clear(hazard=NONE, dL_dW)
-* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazard=NONE, dL_dX)
-* nn_convLayer_backpropT_dL_dX (for each fi,fj)
-* nn_convLayer_backpropT_dL_dW (for each f,fi,fj,k)
-* nn_convLayer_backprop_dL_dB  (for each f)
+* nn_convLayer_backpropT_dL_dX
+* nn_convLayer_backpropT_dL_dW
+* nn_convLayer_backpropT_dL_dW_dB
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 
