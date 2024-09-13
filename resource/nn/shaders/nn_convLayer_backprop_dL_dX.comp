@@ -91,25 +91,17 @@ void backprop_dL_dX(uint m, uint ii, uint jj, uint k)
 	for(fi = 0; fi < fh; ++fi)
 	{
 		i = (int(ii) + int(fh/2) - int(fi))/int(param_stride);
-		if(i < 0)
+		if((i < 0) || (i >= yh))
 		{
-			i = 0;
-		}
-		else if(i >= yh)
-		{
-			i = int(yh) - 1;
+			continue;
 		}
 
 		for(fj = 0; fj < fw; ++fj)
 		{
 			j = (int(jj) + int(fw/2) - int(fj))/int(param_stride);
-			if(j < 0)
+			if((j < 0) || (j >= yw))
 			{
-				j = 0;
-			}
-			else if(j >= yw)
-			{
-				j = int(yw) - 1;
+				continue;
 			}
 
 			for(f = 0; f < fc; ++f)

@@ -123,25 +123,17 @@ void backprop_dL_dW_dB(uint f, uint fi, uint fj, uint k)
 		for(i = 0; i < yh; ++i)
 		{
 			ii = int(param_stride*i + fi) - int(fh/2);
-			if(ii < 0)
+			if((ii < 0) || (ii >= xh))
 			{
-				ii = 0;
-			}
-			else if(ii >= xh)
-			{
-				ii = int(xh) - 1;
+				continue;
 			}
 
 			for(j = 0; j < yw; ++j)
 			{
 				jj = int(param_stride*j + fj) - int(fw/2);
-				if(jj < 0)
+				if((jj < 0) || (jj >= xw))
 				{
-					jj = 0;
-				}
-				else if(jj >= xw)
-				{
-					jj = int(xw) - 1;
+					continue;
 				}
 
 				dl_dy  = get_dL_dY(m, i, j, f);
