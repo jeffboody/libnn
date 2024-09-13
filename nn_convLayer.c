@@ -202,6 +202,16 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	                          bs, dimX->height, dimX->width,
 	                          1, 8, 8);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_BP_STATS)
+	{
+		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dX) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// nn_convLayer_backprop_dL_dW and nn_convLayer_backprop_dL_dW_dB
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
 	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
@@ -255,16 +265,6 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 	}
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          fc, 1, 1, 64, 1, 1);
-
-	// optionally compute stats
-	if(flags & NN_ARCH_FLAG_BP_STATS)
-	{
-		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
-		                          self->stats_dL_dX) == 0)
-		{
-			return NULL;
-		}
-	}
 
 	return self->dL_dX;
 }
@@ -425,6 +425,16 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	                          bs, dimX->height, dimX->width,
 	                          1, 8, 8);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_BP_STATS)
+	{
+		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dX) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// nn_convLayer_backpropT_dL_dW and nn_convLayer_backpropT_dL_dW_dB
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
 	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
@@ -478,16 +488,6 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 	}
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          fc, 1, 1, 64, 1, 1);
-
-	// optionally compute stats
-	if(flags & NN_ARCH_FLAG_BP_STATS)
-	{
-		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
-		                          self->stats_dL_dX) == 0)
-		{
-			return NULL;
-		}
-	}
 
 	return self->dL_dX;
 }
