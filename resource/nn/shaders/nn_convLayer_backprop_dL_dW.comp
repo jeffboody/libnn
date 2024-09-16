@@ -88,7 +88,7 @@ void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 	dL_dW[n*sn + i*sy + j*sx + k] = v;
 }
 
-void backprop_dL_dW(uint f, uint fi, uint fj, uint k)
+void convBackprop_dL_dW(uint f, uint fi, uint fj, uint xk)
 {
 	float dl_dw = 0.0f;
 
@@ -100,50 +100,50 @@ void backprop_dL_dW(uint f, uint fi, uint fj, uint k)
 	uint yw = dimY.width;
 
 	uint  m;
-	uint  i;
-	uint  j;
-	int   ii;
-	int   jj;
+	uint  yi;
+	uint  yj;
+	int   xi;
+	int   xj;
 	float dl_dy;
 	float dy_dw;
 	for(m = 0; m < bs; ++m)
 	{
-		for(i = 0; i < yh; ++i)
+		for(yi = 0; yi < yh; ++yi)
 		{
-			ii = int(param_stride*i + fi) - int(fh/2);
-			if((ii < 0) || (ii >= xh))
+			xi = int(param_stride*yi + fi) - int(fh/2);
+			if((xi < 0) || (xi >= xh))
 			{
 				continue;
 			}
 
-			for(j = 0; j < yw; ++j)
+			for(yj = 0; yj < yw; ++yj)
 			{
-				jj = int(param_stride*j + fj) - int(fw/2);
-				if((jj < 0) || (jj >= xw))
+				xj = int(param_stride*yj + fj) - int(fw/2);
+				if((xj < 0) || (xj >= xw))
 				{
 					continue;
 				}
 
-				dl_dy  = get_dL_dY(m, i, j, f);
-				dy_dw  = get_dY_dW(m, ii, jj, k);
+				dl_dy  = get_dL_dY(m, yi, yj, f);
+				dy_dw  = get_dY_dW(m, xi, xj, xk);
 				dl_dw += dl_dy*dy_dw;
 			}
 		}
 	}
-	set_dL_dW(f, fi, fj, k, dl_dw);
+	set_dL_dW(f, fi, fj, xk, dl_dw);
 }
 
 void main()
 {
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
 	uint f  = gl_GlobalInvocationID.x;
-	uint k  = gl_GlobalInvocationID.y;
+	uint xk = gl_GlobalInvocationID.y;
 	uint fc = dimW.count;
 	uint fh = dimW.height;
 	uint fw = dimW.width;
 	uint xd = dimX.depth;
 
-	if((f >= fc) || (k >= xd))
+	if((f >= fc) || (xk >= xd))
 	{
 		return;
 	}
@@ -154,7 +154,7 @@ void main()
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			backprop_dL_dW(f, fi, fj, k);
+			convBackprop_dL_dW(f, fi, fj, xk);
 		}
 	}
 }
