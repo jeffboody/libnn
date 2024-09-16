@@ -71,7 +71,7 @@ void set_dL_dX(uint n, uint i, uint j, uint k, float v)
 	dL_dX[n*sn + i*sy + j*sx + k] = v;
 }
 
-void backprop_dL_dX(uint m, uint ii, uint jj, uint k)
+void convBackprop_dL_dX(uint m, uint xi, uint xj, uint xk)
 {
 	float dl_dx = 0.0;
 
@@ -84,55 +84,55 @@ void backprop_dL_dX(uint m, uint ii, uint jj, uint k)
 	uint  fi;
 	uint  fj;
 	uint  f;
-	int   i;
-	int   j;
+	int   yi;
+	int   yj;
 	float dl_dy;
 	float dy_dx;
 	for(fi = 0; fi < fh; ++fi)
 	{
-		i = (int(ii) + int(fh/2) - int(fi))/int(param_stride);
-		if((i < 0) || (i >= yh))
+		yi = (int(xi) + int(fh/2) - int(fi))/int(param_stride);
+		if((yi < 0) || (yi >= yh))
 		{
 			continue;
 		}
 
 		for(fj = 0; fj < fw; ++fj)
 		{
-			j = (int(jj) + int(fw/2) - int(fj))/int(param_stride);
-			if((j < 0) || (j >= yw))
+			yj = (int(xj) + int(fw/2) - int(fj))/int(param_stride);
+			if((yj < 0) || (yj >= yw))
 			{
 				continue;
 			}
 
 			for(f = 0; f < fc; ++f)
 			{
-				dl_dy  = get_dL_dY(m, i, j, f);
-				dy_dx  = get_dY_dX(f, fi, fj, k);
+				dl_dy  = get_dL_dY(m, yi, yj, f);
+				dy_dx  = get_dY_dX(f, fi, fj, xk);
 				dl_dx += dl_dy*dy_dx;
 			}
 		}
 	}
-	set_dL_dX(m, ii, jj, k, dl_dx);
+	set_dL_dX(m, xi, xj, xk, dl_dx);
 }
 
 void main()
 {
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
-	uint ii = gl_GlobalInvocationID.y;
-	uint jj = gl_GlobalInvocationID.z;
+	uint xi = gl_GlobalInvocationID.y;
+	uint xj = gl_GlobalInvocationID.z;
 	uint xh = dimX.height;
 	uint xw = dimX.width;
 	uint xd = dimX.depth;
 
-	if((ii >= xh) || (jj >= xw))
+	if((xi >= xh) || (xj >= xw))
 	{
 		return;
 	}
 
-	uint k;
-	for(k = 0; k < xd; ++k)
+	uint xk;
+	for(xk = 0; xk < xd; ++xk)
 	{
-		backprop_dL_dX(m, ii, jj, k);
+		convBackprop_dL_dX(m, xi, xj, xk);
 	}
 }
