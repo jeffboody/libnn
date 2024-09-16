@@ -93,7 +93,7 @@ Backprop Dispatch Order
 
 * nn_convLayer_backprop_dL_dX
 * nn_convLayer_backprop_dL_dW
-* nn_convLayer_backprop_dL_dW_dB
+* nn_convLayer_backprop_dL_dB
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 
@@ -101,7 +101,7 @@ Backprop Dispatch Order (Transpose)
 
 * nn_convLayer_backpropT_dL_dX
 * nn_convLayer_backpropT_dL_dW
-* nn_convLayer_backpropT_dL_dW_dB
+* nn_convLayer_backprop_dL_dB
 * nn_convLayer_backpropUpdateW
 * nn_convLayer_backpropUpdateB
 

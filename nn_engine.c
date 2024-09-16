@@ -584,16 +584,16 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_conv_backprop_dL_dW);
 
-	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dW_dB =
+	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dB =
 	{
 		.compute = self->compute,
 		.pl      = self->pl_conv_bp,
-		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dW_dB_comp.spv",
+		.cs      = "nn/shaders/nn_convLayer_backprop_dL_dB_comp.spv",
 	};
 
-	self->cp_conv_backprop_dL_dW_dB =
+	self->cp_conv_backprop_dL_dB =
 		vkk_computePipeline_new(engine,
-		                        &cpi_conv_backprop_dL_dW_dB);
+		                        &cpi_conv_backprop_dL_dB);
 
 	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dX =
 	{
@@ -616,17 +616,6 @@ nn_engine_new(vkk_engine_t* engine)
 	self->cp_conv_backpropT_dL_dW =
 		vkk_computePipeline_new(engine,
 		                        &cpi_conv_backpropT_dL_dW);
-
-	vkk_computePipelineInfo_t cpi_conv_backpropT_dL_dW_dB =
-	{
-		.compute = self->compute,
-		.pl      = self->pl_conv_bp,
-		.cs      = "nn/shaders/nn_convLayer_backpropT_dL_dW_dB_comp.spv",
-	};
-
-	self->cp_conv_backpropT_dL_dW_dB =
-		vkk_computePipeline_new(engine,
-		                        &cpi_conv_backpropT_dL_dW_dB);
 
 	vkk_computePipelineInfo_t cpi_conv_backpropUpdateW =
 	{
@@ -1159,10 +1148,9 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_conv_forwardPassT                 == NULL) ||
 	   (self->cp_conv_backprop_dL_dX               == NULL) ||
 	   (self->cp_conv_backprop_dL_dW               == NULL) ||
-	   (self->cp_conv_backprop_dL_dW_dB            == NULL) ||
+	   (self->cp_conv_backprop_dL_dB               == NULL) ||
 	   (self->cp_conv_backpropT_dL_dX              == NULL) ||
 	   (self->cp_conv_backpropT_dL_dW              == NULL) ||
-	   (self->cp_conv_backpropT_dL_dW_dB           == NULL) ||
 	   (self->cp_conv_backpropUpdateW              == NULL) ||
 	   (self->cp_conv_backpropUpdateB              == NULL) ||
 	   (self->cp_fact_forwardPassLinear            == NULL) ||
@@ -1368,10 +1356,9 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_fact_forwardPassLinear);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateB);
 		vkk_computePipeline_delete(&self->cp_conv_backpropUpdateW);
-		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW_dB);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backpropT_dL_dX);
-		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW_dB);
+		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dB);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dX);
 		vkk_computePipeline_delete(&self->cp_conv_forwardPassT);

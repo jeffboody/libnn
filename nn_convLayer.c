@@ -212,31 +212,31 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 		}
 	}
 
-	// nn_convLayer_backprop_dL_dW and nn_convLayer_backprop_dL_dW_dB
+	// nn_convLayer_backprop_dL_dW
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
-	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
+	cp = engine->cp_conv_backprop_dL_dW;
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
-		cp = engine->cp_conv_backprop_dL_dW;
-		if(nn_engine_computeBind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-		                          dimW->count, dimX->depth, 1,
-		                          8, 8, 1);
+		return NULL;
 	}
-	else
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          dimW->count, dimX->depth, 1,
+	                          8, 8, 1);
+
+	// nn_convLayer_backprop_dL_dB
+	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		cp = engine->cp_conv_backprop_dL_dW_dB;
+		cp = engine->cp_conv_backprop_dL_dB;
 		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
 		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-		                          dimW->count, dimX->depth, 1,
-		                          8, 8, 1);
+		                          dimW->count, 1, 1,
+		                          64, 1, 1);
 	}
 
 	// optionally skip parameter update
@@ -435,31 +435,31 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 		}
 	}
 
-	// nn_convLayer_backpropT_dL_dW and nn_convLayer_backpropT_dL_dW_dB
+	// nn_convLayer_backpropT_dL_dW
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
-	if(self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS)
+	cp = engine->cp_conv_backpropT_dL_dW;
+	if(nn_engine_computeBind(engine, cp) == 0)
 	{
-		cp = engine->cp_conv_backpropT_dL_dW;
-		if(nn_engine_computeBind(engine, cp) == 0)
-		{
-			return NULL;
-		}
-		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
-		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-		                          dimW->count, dimX->depth, 1,
-		                          8, 8, 1);
+		return NULL;
 	}
-	else
+	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
+	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+	                          dimW->count, dimX->depth, 1,
+	                          8, 8, 1);
+
+	// nn_convLayer_backprop_dL_dB
+	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		cp = engine->cp_conv_backpropT_dL_dW_dB;
+		cp = engine->cp_conv_backprop_dL_dB;
 		if(nn_engine_computeBind(engine, cp) == 0)
 		{
 			return NULL;
 		}
 		vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-		                          dimW->count, dimX->depth, 1,
-		                          8, 8, 1);
+		                          dimW->count, 1, 1,
+		                          64, 1, 1);
 	}
 
 	// optionally skip parameter update

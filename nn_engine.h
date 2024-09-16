@@ -100,10 +100,9 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_conv_forwardPassT;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dW;
-	vkk_computePipeline_t* cp_conv_backprop_dL_dW_dB;
+	vkk_computePipeline_t* cp_conv_backprop_dL_dB;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dX;
 	vkk_computePipeline_t* cp_conv_backpropT_dL_dW;
-	vkk_computePipeline_t* cp_conv_backpropT_dL_dW_dB;
 	vkk_computePipeline_t* cp_conv_backpropUpdateW;
 	vkk_computePipeline_t* cp_conv_backpropUpdateB;
 	vkk_computePipeline_t* cp_fact_forwardPassLinear;

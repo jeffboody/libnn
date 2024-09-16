@@ -1,0 +1,101 @@
+#version 450
+
+layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=11) writeonly buffer sb011
+{
+	float dL_dB[];
+};
+
+layout(std430, set=1, binding=0) readonly buffer sb100
+{
+	uint bs;
+};
+
+layout(std430, set=1, binding=1) readonly buffer sb101
+{
+	float state_adam_alpha;
+	float state_adam_beta1;
+	float state_adam_beta2;
+	float state_adam_beta1t;
+	float state_adam_beta2t;
+	float state_adam_lambda;
+	float state_adam_nu;
+	float state_bn_momentum;
+};
+
+layout(std430, set=1, binding=3) readonly buffer sb103
+{
+	float dL_dY[];
+};
+
+float get_dL_dY(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	return dL_dY[n*sn + i*sy + j*sx + k];
+}
+
+void set_dL_dB(uint n, float v)
+{
+	dL_dB[n] = v;
+}
+
+void convBackprop_dL_dB(uint f)
+{
+	float dl_db = 0.0f;
+
+	uint yh = dimY.height;
+	uint yw = dimY.width;
+
+	uint  m;
+	uint  yi;
+	uint  yj;
+	float dl_dy;
+	float dy_db = 1.0;
+	for(m = 0; m < bs; ++m)
+	{
+		for(yi = 0; yi < yh; ++yi)
+		{
+			for(yj = 0; yj < yw; ++yj)
+			{
+				dl_dy  = get_dL_dY(m, yi, yj, f);
+				dl_db += dl_dy*dy_db;
+			}
+		}
+	}
+	set_dL_dB(f, dl_db);
+}
+
+void main()
+{
+	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
+	uint f  = gl_GlobalInvocationID.x;
+	uint fc = dimW.count;
+
+	if(f >= fc)
+	{
+		return;
+	}
+
+	convBackprop_dL_dB(f);
+}
