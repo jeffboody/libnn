@@ -60,7 +60,7 @@ float log10(float x)
 
 float loss_bce(uint m, uint i, uint j, uint k)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 
 	float y  = getY(m, i, j, k);
 	float yt = getYt(m, i, j, k);

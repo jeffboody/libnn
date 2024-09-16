@@ -90,7 +90,7 @@ void addU1(uint n, float v)
 
 void divU1(uint n, float v)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	u1[n] /= v + epsilon;
 }
 
@@ -117,7 +117,7 @@ void addV1(uint i, uint j, uint k, float v)
 
 void divV1(uint i, uint j, uint k, float v)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	uint sy = dimX.width*dimX.depth;
 	uint sx = dimX.depth;
 	v1[i*sy + j*sx + k] /= v + epsilon;
@@ -140,7 +140,7 @@ void addU2(uint k, float v)
 
 void divU2(uint k, float v)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	u2[k] /= v + epsilon;
 }
 
@@ -167,7 +167,7 @@ void addV2(uint n, uint i, uint j, float v)
 
 void divV2(uint n, uint i, uint j, float v)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	uint sn = dimX.height*dimX.width;
 	uint sy = dimX.width;
 	v2[n*sn + i*sy + j] /= v + epsilon;
@@ -492,7 +492,7 @@ void main()
 
 	// update W
 	// parallelize over fc
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	float bssn    = c/((sigma1_work[0] +
 	                    sigma2_work[0])/2.0 + epsilon);
 	for(n = idx; n < fc; n += 64)

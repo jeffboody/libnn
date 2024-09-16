@@ -133,7 +133,7 @@ void main()
 	float c;
 	float d;
 	float dl_dx;
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	float M       = float(bs)*float(xh)*float(xw);
 	for(k = 0; k < xd; ++k)
 	{

@@ -81,7 +81,7 @@ void main()
 	float xvar;
 	float x;
 	float xhat;
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 	for(k = 0; k < xd; ++k)
 	{
 		xmean = getXmean(k);

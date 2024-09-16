@@ -56,7 +56,7 @@ void set_dL_dY(uint n, uint i, uint j, uint k, float v)
 
 void dL_dY_bce(uint m, uint i, uint j, uint k)
 {
-	float epsilon = 0.00001;
+	float epsilon = 1.192092896e-07;
 
 	float y;
 	float yt;
