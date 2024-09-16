@@ -332,8 +332,6 @@ cifar10_denoise_new(nn_engine_t* engine, uint32_t bs,
 		.adam_beta2  = 0.999f,
 		.adam_beta1t = 1.0f,
 		.adam_beta2t = 1.0f,
-		.adam_lambda = 0.25f*0.001f,
-		.adam_nu     = 1.0f,
 		.bn_momentum = 0.99f,
 	};
 

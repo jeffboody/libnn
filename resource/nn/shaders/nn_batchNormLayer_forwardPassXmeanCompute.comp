@@ -34,8 +34,6 @@ layout(std430, set=1, binding=1) readonly buffer sb101
 	float state_adam_beta2;
 	float state_adam_beta1t;
 	float state_adam_beta2t;
-	float state_adam_lambda;
-	float state_adam_nu;
 	float state_bn_momentum;
 };
 

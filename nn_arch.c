@@ -190,8 +190,6 @@ nn_arch_import(nn_engine_t* engine,
 	cc_jsmnVal_t* val_adam_beta2  = NULL;
 	cc_jsmnVal_t* val_adam_beta1t = NULL;
 	cc_jsmnVal_t* val_adam_beta2t = NULL;
-	cc_jsmnVal_t* val_adam_lambda = NULL;
-	cc_jsmnVal_t* val_adam_nu     = NULL;
 	cc_jsmnVal_t* val_bn_momentum = NULL;
 
 	cc_listIter_t* iter = cc_list_head(val->obj->list);
@@ -222,14 +220,6 @@ nn_arch_import(nn_engine_t* engine,
 			{
 				val_adam_beta2t = kv->val;
 			}
-			else if(strcmp(kv->key, "adam_lambda") == 0)
-			{
-				val_adam_lambda = kv->val;
-			}
-			else if(strcmp(kv->key, "adam_nu") == 0)
-			{
-				val_adam_nu = kv->val;
-			}
 			else if(strcmp(kv->key, "bn_momentum") == 0)
 			{
 				val_bn_momentum = kv->val;
@@ -245,8 +235,6 @@ nn_arch_import(nn_engine_t* engine,
 	   (val_adam_beta2  == NULL) ||
 	   (val_adam_beta1t == NULL) ||
 	   (val_adam_beta2t == NULL) ||
-	   (val_adam_lambda == NULL) ||
-	   (val_adam_nu     == NULL) ||
 	   (val_bn_momentum == NULL))
 	{
 		LOGE("invalid");
@@ -260,8 +248,6 @@ nn_arch_import(nn_engine_t* engine,
 		.adam_beta2  = strtof(val_adam_beta2->data,  NULL),
 		.adam_beta1t = strtof(val_adam_beta1t->data, NULL),
 		.adam_beta2t = strtof(val_adam_beta2t->data, NULL),
-		.adam_lambda = strtof(val_adam_lambda->data, NULL),
-		.adam_nu     = strtof(val_adam_nu->data,     NULL),
 		.bn_momentum = strtof(val_bn_momentum->data, NULL),
 	};
 
@@ -289,10 +275,6 @@ int nn_arch_export(nn_arch_t* self,
 	ret &= cc_jsmnStream_float(stream, state->adam_beta1t);
 	ret &= cc_jsmnStream_key(stream, "%s", "adam_beta2t");
 	ret &= cc_jsmnStream_float(stream, state->adam_beta2t);
-	ret &= cc_jsmnStream_key(stream, "%s", "adam_lambda");
-	ret &= cc_jsmnStream_float(stream, state->adam_lambda);
-	ret &= cc_jsmnStream_key(stream, "%s", "adam_nu");
-	ret &= cc_jsmnStream_float(stream, state->adam_nu);
 	ret &= cc_jsmnStream_key(stream, "%s", "bn_momentum");
 	ret &= cc_jsmnStream_float(stream, state->bn_momentum);
 	ret &= cc_jsmnStream_end(stream);

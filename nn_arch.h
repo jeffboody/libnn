@@ -60,8 +60,6 @@
 // adam_beta2:  0.999f
 // adam_beta1t: 1.0f
 // adam_beta2t: 1.0f
-// adam_lambda: s*0.001f, s=0.25f=[0.0f...2.0f]
-// adam_nu:     1.0f
 // bn_momentum: 0.99f
 //
 // See "Decoupled Weight Decay Regularization"
@@ -74,8 +72,6 @@ typedef struct nn_archState_s
 	float adam_beta2;    // second moment decay rate
 	float adam_beta1t;   // beta1^t
 	float adam_beta2t;   // beta2^t
-	float adam_lambda;   // AdamW decoupled weight decay
-	float adam_nu;       // AdamW schedule multiplier
 	float bn_momentum;
 } nn_archState_t;
 

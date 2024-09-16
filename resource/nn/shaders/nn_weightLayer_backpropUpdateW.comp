@@ -47,8 +47,6 @@ layout(std430, set=1, binding=1) readonly buffer sb101
 	float state_adam_beta2;
 	float state_adam_beta1t;
 	float state_adam_beta2t;
-	float state_adam_lambda;
-	float state_adam_nu;
 	float state_bn_momentum;
 };
 
@@ -125,8 +123,6 @@ void main()
 	float beta2   = state_adam_beta2;
 	float beta1t  = state_adam_beta1t;
 	float beta2t  = state_adam_beta2t;
-	float lambda  = state_adam_lambda;
-	float nu      = state_adam_nu;
 	float epsilon = 0.00001;
 
 	uint k;
@@ -143,8 +139,6 @@ void main()
 		float vt_hat = vt/(1.0 - beta2t);
 		setMW(n, 0, 0, k, mt);
 		setVW(n, 0, 0, k, vt);
-		addW(n, 0, 0, k,
-		     -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
-		     lambda*wt));
+		addW(n, 0, 0, k, -alpha*mt_hat/(sqrt(vt_hat) + epsilon));
 	}
 }

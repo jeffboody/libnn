@@ -189,8 +189,6 @@ cnn_test_onMain(vkk_engine_t* ve, int argc, char** argv)
 		.adam_beta2  = 0.999f,
 		.adam_beta1t = 1.0f,
 		.adam_beta2t = 1.0f,
-		.adam_lambda = 0.25f*0.001f,
-		.adam_nu     = 1.0f,
 		.bn_momentum = 0.99f,
 	};
 

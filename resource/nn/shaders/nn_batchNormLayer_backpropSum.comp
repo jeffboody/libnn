@@ -82,8 +82,6 @@ layout(std430, set=1, binding=1) readonly buffer sb101
 	float state_adam_beta2;
 	float state_adam_beta1t;
 	float state_adam_beta2t;
-	float state_adam_lambda;
-	float state_adam_nu;
 	float state_bn_momentum;
 };
 
@@ -260,8 +258,6 @@ void main()
 		float beta2   = state_adam_beta2;
 		float beta1t  = state_adam_beta1t;
 		float beta2t  = state_adam_beta2t;
-		float lambda  = state_adam_lambda;
-		float nu      = state_adam_nu;
 		float epsilon = 0.00001;
 		float gt;
 		float mt;
@@ -280,8 +276,7 @@ void main()
 		vt_hat = vt/(1.0 - beta2t);
 		setMG(k, mt);
 		setVG(k, vt);
-		addG(k, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
-		             lambda*g));
+		addG(k, -alpha*mt_hat/(sqrt(vt_hat) + epsilon));
 
 		// Adam Update for B
 		gt     = dl_db;
@@ -292,7 +287,6 @@ void main()
 		vt_hat = vt/(1.0 - beta2t);
 		setMB(k, mt);
 		setVB(k, vt);
-		addB(k, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
-		             lambda*b));
+		addB(k, -alpha*mt_hat/(sqrt(vt_hat) + epsilon));
 	}
 }
