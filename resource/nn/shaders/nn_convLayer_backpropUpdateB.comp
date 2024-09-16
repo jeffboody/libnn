@@ -102,7 +102,7 @@ void main()
 	float beta2   = state_adam_beta2;
 	float beta1t  = state_adam_beta1t;
 	float beta2t  = state_adam_beta2t;
-	float epsilon = 0.00001;
+	float epsilon = 0.00000001;
 	float g       = get_dL_dB(f);
 	float m       = beta1*getMB(f) + (1.0 - beta1)*g;
 	float v       = beta2*getVB(f) + (1.0 - beta2)*g*g;
