@@ -104,17 +104,14 @@ void main()
 	float beta2   = state_adam_beta2;
 	float beta1t  = state_adam_beta1t;
 	float beta2t  = state_adam_beta2t;
-	float lambda  = state_adam_lambda;
-	float nu      = state_adam_nu;
 	float epsilon = 0.00001;
-	float gt      = get_dL_dB(f);
-	float mt      = beta1*getMB(f) + (1.0 - beta1)*gt;
-	float vt      = beta2*getVB(f) + (1.0 - beta2)*gt*gt;
-	float bt      = getB(f);
-	float mt_hat  = mt/(1.0 - beta1t);
-	float vt_hat  = vt/(1.0 - beta2t);
-	setMB(f, mt);
-	setVB(f, vt);
-	addB(f, -nu*(alpha*mt_hat/(sqrt(vt_hat) + epsilon) +
-	             lambda*bt));
+	float g       = get_dL_dB(f);
+	float m       = beta1*getMB(f) + (1.0 - beta1)*g;
+	float v       = beta2*getVB(f) + (1.0 - beta2)*g*g;
+	float b       = getB(f);
+	float m_hat   = m/(1.0 - beta1t);
+	float v_hat   = v/(1.0 - beta2t);
+	setMB(f, m);
+	setVB(f, v);
+	addB(f, -alpha*m_hat/(sqrt(v_hat) + epsilon));
 }
