@@ -80,7 +80,7 @@ void setY(uint n, uint i, uint j, uint k, float v)
 	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
-void forwardPassT(uint m, uint i, uint j, uint f)
+void convTForwardPass(uint m, uint yi, uint yj, uint f)
 {
 	// initialize y
 	float y;
@@ -98,71 +98,62 @@ void forwardPassT(uint m, uint i, uint j, uint f)
 	uint xh = dimX.height;
 	uint xw = dimX.width;
 	uint xd = dimX.depth;
-	uint yh = dimY.height;
-	uint yw = dimY.width;
 
-	// virtual size
-	uint vh = yh + 2*(fh/2);
-	uint vw = yw + 2*(fw/2);
-
-	// strided size
-	uint sh = xh + (xh - 1)*(param_stride - 1);
-	uint sw = xw + (xw - 1)*(param_stride - 1);
-
-	// strided offset
-	uint oi = (vh - sh)/2;
-	uint oj = (vw - sw)/2;
+	int start_xi = int(yi/param_stride);
+	int start_xj = int(yj/param_stride);
 
 	// compute weighted sum
-	uint  fi;
-	uint  fj;
-	uint  k;
-	int   ii;
-	int   jj;
-	float w;
+	int   xi;
+	int   xj;
+	int   fi;
+	int   fj;
+	uint  clamped_xi;
+	uint  clamped_xj;
+	uint  xk;
 	float x;
-	for(fi = 0; fi < fh; ++fi)
+	float w;
+	for(xi = start_xi; xi < start_xi + int(fh); xi++)
 	{
-		ii = int(i + fi) - int(oi);
-		if((ii < 0) || (ii >= sh) ||
-		   (mod(ii, param_stride) > 0))
+		fi = int(yi) - int(xi*param_stride) + int(fh/2);
+		if((fi < 0) || (fi >= int(fh)))
 		{
 			continue;
 		}
-		ii = ii/int(param_stride);
 
-		for(fj = 0; fj < fw; ++fj)
+		clamped_xi = uint(clamp(xi, 0, int(xh) - 1));
+
+		for(xj = start_xj; xj < start_xj + int(fw); xj++)
 		{
-			jj = int(j + fj) - int(oj);
-			if((jj < 0) || (jj >= sw) ||
-			   (mod(jj, param_stride) > 0))
+			fj = int(yj) - int(xj*param_stride) + int(fw/2);
+			if((fj < 0) || (fj >= int(fw)))
 			{
 				continue;
 			}
-			jj = jj/int(param_stride);
 
-			for(k = 0; k < xd; ++k)
+			clamped_xj = uint(clamp(xj, 0, int(xw) - 1));
+
+			for(xk = 0; xk < xd; xk++)
 			{
-				w  = getW(f, fi, fj, k);
-				x  = getX(m, ii, jj, k);
+				w  = getW(f, uint(fi), uint(fj), xk);
+				x  = getX(m, clamped_xi, clamped_xj, xk);
 				y += w*x;
 			}
 		}
 	}
-	setY(m, i, j, f, y);
+	setY(m, yi, yj, f, y);
 }
 
 void main()
 {
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
-	uint i  = gl_GlobalInvocationID.y;
-	uint j  = gl_GlobalInvocationID.z;
+	uint yi = gl_GlobalInvocationID.y;
+	uint yj = gl_GlobalInvocationID.z;
 	uint yh = dimY.height;
 	uint yw = dimY.width;
 	uint fc = dimW.count;
 
-	if((i >= yh) || (j >= yw))
+	if((yi >= yh) || (yj >= yw))
 	{
 		return;
 	}
@@ -170,6 +161,6 @@ void main()
 	uint f;
 	for(f = 0; f < fc; ++f)
 	{
-		forwardPassT(m, i, j, f);
+		convTForwardPass(m, yi, yj, f);
 	}
 }

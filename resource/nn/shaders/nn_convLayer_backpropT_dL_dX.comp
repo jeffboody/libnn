@@ -71,12 +71,7 @@ void set_dL_dX(uint n, uint i, uint j, uint k, float v)
 	dL_dX[n*sn + i*sy + j*sx + k] = v;
 }
 
-uint umod(uint x, uint y)
-{
-	return uint(mod(int(x), int(y)));
-}
-
-void backpropT_dL_dX(uint m, uint ii, uint jj, uint k)
+void convTBackprop_dL_dX(uint m, uint xi, uint xj, uint xk)
 {
 	float dl_dx = 0.0;
 
@@ -88,78 +83,58 @@ void backpropT_dL_dX(uint m, uint ii, uint jj, uint k)
 	uint yh = dimY.height;
 	uint yw = dimY.width;
 
-	// virtual size
-	uint vh = yh + 2*(fh/2);
-	uint vw = yw + 2*(fw/2);
-
-	// strided size
-	uint sh = xh + (xh - 1)*(param_stride - 1);
-	uint sw = xw + (xw - 1)*(param_stride - 1);
-
-	// strided offset
-	uint oi = (vh - sh)/2;
-	uint oj = (vw - sw)/2;
-
+	uint  f;
 	uint  fi;
 	uint  fj;
-	uint  f;
-	int   i;
-	int   j;
+	int   yi;
+	int   yj;
 	float dl_dy;
 	float dy_dx;
-	for(fi = 0; fi < fh; ++fi)
+	for(f = 0; f < fc; f++)
 	{
-		i = int(ii)*int(param_stride) + int(oi) - int(fi);
-		if(i < 0)
+		for(fi = 0; fi < fh; fi++)
 		{
-			i = 0;
-		}
-		else if(i >= yh)
-		{
-			i = int(yh) - 1;
-		}
-
-		for(fj = 0; fj < fw; ++fj)
-		{
-			j = int(jj)*int(param_stride) + int(oj) - int(fj);
-			if(j < 0)
+			yi = int(xi*param_stride) + int(fi) - int(fh/2);
+			if((yi < 0) || (yi >= yh))
 			{
-				j = 0;
-			}
-			else if(j >= yw)
-			{
-				j = int(yw) - 1;
+				continue;
 			}
 
-			for(f = 0; f < fc; ++f)
+			for(fj = 0; fj < fw; fj++)
 			{
-				dl_dy  = get_dL_dY(m, i, j, f);
-				dy_dx  = get_dY_dX(f, fi, fj, k);
+				yj = int(xj*param_stride) + int(fj) - int(fw/2);
+				if((yj < 0) || (yj >= yw))
+				{
+					continue;
+				}
+
+				dl_dy  = get_dL_dY(m, yi, yj, f);
+				dy_dx  = get_dY_dX(f, fi, fj, xk);
 				dl_dx += dl_dy*dy_dx;
 			}
 		}
 	}
-	set_dL_dX(m, ii, jj, k, dl_dx);
+	set_dL_dX(m, xi, xj, xk, dl_dx);
 }
 
 void main()
 {
 	// dispatch(RAW, bs, xh, xw, 1, 8, 8)
 	uint m  = gl_GlobalInvocationID.x;
-	uint ii = gl_GlobalInvocationID.y;
-	uint jj = gl_GlobalInvocationID.z;
+	uint xi = gl_GlobalInvocationID.y;
+	uint xj = gl_GlobalInvocationID.z;
 	uint xh = dimX.height;
 	uint xw = dimX.width;
 	uint xd = dimX.depth;
 
-	if((ii >= xh) || (jj >= xw))
+	if((xi >= xh) || (xj >= xw))
 	{
 		return;
 	}
 
-	uint k;
-	for(k = 0; k < xd; ++k)
+	uint xk;
+	for(xk = 0; xk < xd; ++xk)
 	{
-		backpropT_dL_dX(m, ii, jj, k);
+		convTBackprop_dL_dX(m, xi, xj, xk);
 	}
 }

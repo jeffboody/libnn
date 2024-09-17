@@ -86,14 +86,9 @@ void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 	dL_dW[n*sn + i*sy + j*sx + k] = v;
 }
 
-uint umod(uint x, uint y)
+void convTBackprop_dL_dW(uint f, uint fi, uint fj, uint xk)
 {
-	return uint(mod(int(x), int(y)));
-}
-
-void backpropT_dL_dW(uint f, uint fi, uint fj, uint k)
-{
-	float dl_dw = 0.0f;
+	float dl_dw = 0.0;
 
 	uint fh = dimW.height;
 	uint fw = dimW.width;
@@ -102,67 +97,51 @@ void backpropT_dL_dW(uint f, uint fi, uint fj, uint k)
 	uint yh = dimY.height;
 	uint yw = dimY.width;
 
-	// virtual size
-	uint vh = yh + 2*(fh/2);
-	uint vw = yw + 2*(fw/2);
-
-	// strided size
-	uint sh = xh + (xh - 1)*(param_stride - 1);
-	uint sw = xw + (xw - 1)*(param_stride - 1);
-
-	// strided offset
-	uint oi = (vh - sh)/2;
-	uint oj = (vw - sw)/2;
-
 	uint  m;
-	uint  i;
-	uint  j;
-	int   ii;
-	int   jj;
+	uint  xi;
+	uint  xj;
+	int   yi;
+	int   yj;
 	float dl_dy;
 	float dy_dw;
-	for(m = 0; m < bs; ++m)
+	for(m = 0; m < bs; m++)
 	{
-		for(i = 0; i < yh; ++i)
+		for(xi = 0; xi < xh; xi++)
 		{
-			ii = int(i + fi) - int(oi);
-			if((ii < 0) || (ii >= sh) ||
-			    (umod(ii, param_stride) > 0))
+			yi = int(xi*param_stride) + int(fi) - int(fh/2);
+			if((yi < 0) || (yi >= yh))
 			{
 				continue;
 			}
-			ii = ii/int(param_stride);
 
-			for(j = 0; j < yw; ++j)
+			for(xj = 0; xj < xw; xj++)
 			{
-				jj = int(j + fj) - int(oj);
-				if((jj < 0) || (jj >= sw) ||
-				    (umod(jj, param_stride) > 0))
+				yj = int(xj*param_stride) + int(fj) - int(fw/2);
+				if((yj < 0) || (yj >= yw))
 				{
 					continue;
 				}
-				jj = jj/int(param_stride);
 
-				dl_dy  = get_dL_dY(m, i, j, f);
-				dy_dw  = get_dY_dW(m, ii, jj, k);
+				dl_dy  = get_dL_dY(m, yi, yj, f);
+				dy_dw  = get_dY_dW(m, xi, xj, xk);
 				dl_dw += dl_dy*dy_dw;
 			}
 		}
 	}
-	set_dL_dW(f, fi, fj, k, dl_dw);
+	set_dL_dW(f, fi, fj, xk, dl_dw);
 }
 
 void main()
 {
 	// dispatch(RAW, fc, xd, 1, 8, 8, 1)
 	uint f  = gl_GlobalInvocationID.x;
-	uint k  = gl_GlobalInvocationID.y;
+	uint xk = gl_GlobalInvocationID.y;
 	uint fc = dimW.count;
 	uint fh = dimW.height;
 	uint fw = dimW.width;
 	uint xd = dimX.depth;
 
-	if((f >= fc) || (k >= xd))
+	if((f >= fc) || (xk >= xd))
 	{
 		return;
 	}
@@ -173,7 +152,7 @@ void main()
 	{
 		for(fj = 0; fj < fw; ++fj)
 		{
-			backpropT_dL_dW(f, fi, fj, k);
+			convTBackprop_dL_dW(f, fi, fj, xk);
 		}
 	}
 }

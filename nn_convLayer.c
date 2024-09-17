@@ -562,16 +562,6 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	if(flags & NN_CONV_LAYER_FLAG_TRANSPOSE)
 	{
-		// TODO - fix convT shaders
-		// convT compute shaders incorrectly calculate sampling
-		// offsets except when fh, fw and stride are 2
-		if((fh != 2) || (fw != 2) || (stride != 2))
-		{
-			LOGE("unsupported fh=%u, fw=%u, stride=%u",
-			     fh, fw, stride);
-			return NULL;
-		}
-
 		if((fh < stride) || (fh%stride) ||
 		   (fw < stride) || (fw%stride) ||
 		   (stride < 1)  || (stride%2))
