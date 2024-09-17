@@ -113,7 +113,7 @@ nn_weightLayer_computeFpFn(nn_layer_t* base,
 	};
 
 	// nn_weightLayer_forwardPass
-	// dispatch(RAW, bs*nc, 1, 1, 64, 1, 1)
+	// dispatch(RAW, bs, nc, 1, 8, 8, 1)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_weight_forwardPass;
 	if(nn_engine_computeBind(engine, cp) == 0)
@@ -122,7 +122,7 @@ nn_weightLayer_computeFpFn(nn_layer_t* base,
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          bs*nc, 1, 1, 64, 1, 1);
+	                          bs, nc, 1, 8, 8, 1);
 
 	// store reference
 	self->X = X;
@@ -145,28 +145,6 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	nn_dim_t* dimW = nn_tensor_dim(self->W);
 	uint32_t  xd   = dimW->depth;
 	uint32_t  nc   = dimW->count;
-
-	// clear backprop gradients
-	if(nn_tensor_computeFill(self->dL_dW, VKK_HAZARD_RAW,
-	                         0, nc, 0.0f) == 0)
-	{
-		return NULL;
-	}
-
-	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
-	{
-		if(nn_tensor_computeFill(self->dL_dB, VKK_HAZARD_RAW,
-		                         0, nc, 0.0f) == 0)
-		{
-			return NULL;
-		}
-	}
-
-	if(nn_tensor_computeFill(self->dL_dX, VKK_HAZARD_RAW,
-	                         0, bs, 0.0f) == 0)
-	{
-		return NULL;
-	}
 
 	// sb100: bs
 	// sb101: state
@@ -207,7 +185,7 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	};
 
 	// nn_weightLayer_backprop_dL_dX
-	// dispatch(RAW, bs*xd, 1, 1, 64, 1, 1)
+	// dispatch(RAW, bs, xd, 1, 8, 8, 1)
 	vkk_computePipeline_t* cp;
 	cp = engine->cp_weight_backprop_dL_dX;
 	if(nn_engine_computeBind(engine, cp) == 0)
@@ -216,17 +194,17 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	}
 	vkk_compute_bindUniformSets(engine->compute, 2, us_array);
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          bs*xd, 1, 1, 64, 1, 1);
+	                          bs, xd, 1, 8, 8, 1);
 
 	// nn_weightLayer_backprop_dL_dW
-	// dispatch(RAW, nc*xd, 1, 1, 64, 1, 1)
+	// dispatch(RAW, nc, xd, 1, 8, 8, 1)
 	cp = engine->cp_weight_backprop_dL_dW;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          nc*xd, 1, 1, 64, 1, 1);
+	                          nc, xd, 1, 8, 8, 1);
 
 	// nn_weightLayer_backprop_dL_dB
 	// RAW hazard handled by nn_weightLayer_backprop_dL_dX
@@ -249,14 +227,14 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	}
 
 	// nn_weightLayer_backpropUpdateW
-	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
+	// dispatch(RAW, nc, xd, 1, 8, 8, 1)
 	cp = engine->cp_weight_backpropUpdateW;
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
 	}
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          nc, 1, 1, 64, 1, 1);
+	                          nc, xd, 1, 8, 8, 1);
 
 	// nn_weightLayer_backpropUpdateB
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)

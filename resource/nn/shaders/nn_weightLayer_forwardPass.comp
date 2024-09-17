@@ -1,6 +1,6 @@
 #version 450
 
-layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
 
 struct nn_dim_t
 {
@@ -94,20 +94,15 @@ void setY(uint n, uint i, uint j, uint k, float v)
 	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
-uint umod(uint x, uint y)
-{
-	return uint(mod(int(x), int(y)));
-}
-
 void main()
 {
-	// dispatch(RAW, bs*nc, 1, 1, 64, 1, 1)
-	uint i  = gl_GlobalInvocationID.x;
+	// dispatch(RAW, bs, nc, 1, 8, 8, 1)
+	uint m  = gl_GlobalInvocationID.x;
+	uint n  = gl_GlobalInvocationID.y;
 	uint nc = dimW.count;
-	uint m  = i/nc;
-	uint n  = umod(i, nc);
+	uint xd = dimW.depth;
 
-	if(m >= bs)
+	if((m >= bs) || (n >= nc))
 	{
 		return;
 	}
@@ -124,14 +119,13 @@ void main()
 	}
 
 	// compute weighted sum
-	uint  k;
+	uint  xk;
 	float w;
 	float x;
-	uint  xd = dimX.depth;
-	for(k = 0; k < xd; ++k)
+	for(xk = 0; xk < xd; ++xk)
 	{
-		x  = getX(m, 0, 0, k);
-		w  = getW(n, 0, 0, k);
+		x  = getX(m, 0, 0, xk);
+		w  = getW(n, 0, 0, xk);
 		y += w*x;
 	}
 	setY(m, 0, 0, n, y);

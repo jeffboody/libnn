@@ -228,9 +228,6 @@ Backprop Uniforms
 
 Backprop Dispatch Order
 
-* nn_tensor_clear(hazard=NONE, dL_dW)
-* nn_tensor_clear(hazard=NONE, dL_dB) (bias enabled)
-* nn_tensor_clear(hazard=NONE, dL_dX)
 * nn_weightLayer_backprop_dL_dX
 * nn_weightLayer_backprop_dL_dW
 * nn_weightLayer_backprop_dL_dB

@@ -1,6 +1,6 @@
 #version 450
 
-layout (local_size_x=64, local_size_y=1, local_size_z=1) in;
+layout (local_size_x=8, local_size_y=8, local_size_z=1) in;
 
 struct nn_dim_t
 {
@@ -80,21 +80,15 @@ void set_dL_dW(uint n, uint i, uint j, uint k, float v)
 	dL_dW[n*sn + i*sy + j*sx + k] = v;
 }
 
-uint umod(uint x, uint y)
-{
-	return uint(mod(int(x), int(y)));
-}
-
 void main()
 {
-	// dispatch(RAW, nc*xd, 1, 1, 64, 1, 1)
-	uint i  = gl_GlobalInvocationID.x;
+	// dispatch(RAW, nc, xd, 1, 8, 8, 1)
+	uint n  = gl_GlobalInvocationID.x;
+	uint xk = gl_GlobalInvocationID.y;
 	uint nc = dimW.count;
 	uint xd = dimW.depth;
-	uint n  = i/xd;
-	uint k  = umod(i, xd);
 
-	if(n >= nc)
+	if((n >= nc) || (xk >= xd))
 	{
 		return;
 	}
@@ -109,9 +103,9 @@ void main()
 	for(m = 0; m < bs; ++m)
 	{
 		dl_dy = get_dL_dY(m, 0, 0, n);
-		dy_dw = get_dY_dW(m, 0, 0, k);
+		dy_dw = get_dY_dW(m, 0, 0, xk);
 		dl_dw += dl_dy*dy_dw;
 	}
 
-	set_dL_dW(n, 0, 0, k, dl_dw);
+	set_dL_dW(n, 0, 0, xk, dl_dw);
 }
