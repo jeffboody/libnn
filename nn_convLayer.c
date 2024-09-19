@@ -609,16 +609,6 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	}
 	else
 	{
-		// TODO - fix conv shaders
-		// conv compute shaders incorrectly calculate the sampling
-		// offsets for even sizes resulting in a pixel shift and
-		// artifacts near the borders
-		if((fh%2 == 0) || (fw%2 == 0))
-		{
-			LOGE("unsupported fh=%u, fw=%u", fh, fw);
-			return NULL;
-		}
-
 		if((fh < stride) || (fw < stride) || (stride < 1))
 		{
 			LOGE("invalid fh=%u, fw=%u, stride=%u",
