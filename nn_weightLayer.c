@@ -259,13 +259,16 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 
 	// nn_weightLayer_backpropUpdateB
 	// dispatch(RAW, nc, 1, 1, 64, 1, 1)
-	cp = engine->cp_weight_backpropUpdateB;
-	if(nn_engine_computeBind(engine, cp) == 0)
+	if((self->flags & NN_WEIGHT_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		return NULL;
+		cp = engine->cp_weight_backpropUpdateB;
+		if(nn_engine_computeBind(engine, cp) == 0)
+		{
+			return NULL;
+		}
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          nc, 1, 1, 64, 1, 1);
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          nc, 1, 1, 64, 1, 1);
 
 	return self->dL_dX;
 }

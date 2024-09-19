@@ -268,13 +268,16 @@ nn_convLayer_computeBpFn(nn_layer_t* base,
 
 	// nn_convLayer_backpropUpdateB
 	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
-	cp = engine->cp_conv_backpropUpdateB;
-	if(nn_engine_computeBind(engine, cp) == 0)
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		return NULL;
+		cp = engine->cp_conv_backpropUpdateB;
+		if(nn_engine_computeBind(engine, cp) == 0)
+		{
+			return NULL;
+		}
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          fc, 1, 1, 64, 1, 1);
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          fc, 1, 1, 64, 1, 1);
 
 	return self->dL_dX;
 }
@@ -501,13 +504,16 @@ nn_convLayer_computeBpTFn(nn_layer_t* base,
 
 	// nn_convLayer_backpropUpdateB
 	// dispatch(RAW, fc, 1, 1, 64, 1, 1)
-	cp = engine->cp_conv_backpropUpdateB;
-	if(nn_engine_computeBind(engine, cp) == 0)
+	if((self->flags & NN_CONV_LAYER_FLAG_DISABLE_BIAS) == 0)
 	{
-		return NULL;
+		cp = engine->cp_conv_backpropUpdateB;
+		if(nn_engine_computeBind(engine, cp) == 0)
+		{
+			return NULL;
+		}
+		nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
+		                          fc, 1, 1, 64, 1, 1);
 	}
-	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
-	                          fc, 1, 1, 64, 1, 1);
 
 	return self->dL_dX;
 }
