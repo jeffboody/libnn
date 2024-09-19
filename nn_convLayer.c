@@ -127,6 +127,16 @@ nn_convLayer_computeFpFn(nn_layer_t* base,
 	                          bs, dimY->height, dimY->width,
 	                          1, 8, 8);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_FP_STATS)
+	{
+		if(nn_tensor_computeStats(self->Y, VKK_HAZARD_RAW, bs,
+		                          self->stats_Y) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// store reference
 	self->X = X;
 
@@ -350,6 +360,16 @@ nn_convLayer_computeFpTFn(nn_layer_t* base,
 	                          bs, dimY->height, dimY->width,
 	                          1, 8, 8);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_FP_STATS)
+	{
+		if(nn_tensor_computeStats(self->Y, VKK_HAZARD_RAW, bs,
+		                          self->stats_Y) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// store reference
 	self->X = X;
 
@@ -499,6 +519,16 @@ nn_convLayer_postFn(nn_layer_t* base,
 	ASSERT(base);
 
 	nn_convLayer_t* self = (nn_convLayer_t*) base;
+
+	if(flags & NN_ARCH_FLAG_FP_STATS)
+	{
+		LOGI("Y min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_Y),
+		     nn_tensorStats_max(self->stats_Y),
+		     nn_tensorStats_mean(self->stats_Y),
+		     nn_tensorStats_stddev(self->stats_Y),
+		     nn_tensorStats_norm(self->stats_Y));
+	}
 
 	if(flags & NN_ARCH_FLAG_BP_STATS)
 	{
@@ -738,6 +768,12 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		goto fail_dL_dX;
 	}
 
+	self->stats_Y = nn_tensorStats_new(engine);
+	if(self->stats_Y == NULL)
+	{
+		goto fail_stats_Y;
+	}
+
 	self->stats_dL_dX = nn_tensorStats_new(engine);
 	if(self->stats_dL_dX == NULL)
 	{
@@ -885,6 +921,8 @@ nn_convLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_sb013_param:
 		nn_tensorStats_delete(&self->stats_dL_dX);
 	fail_stats_dL_dX:
+		nn_tensorStats_delete(&self->stats_Y);
+	fail_stats_Y:
 		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dL_dB);
@@ -921,6 +959,7 @@ void nn_convLayer_delete(nn_convLayer_t** _self)
 		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb013_param);
 		nn_tensorStats_delete(&self->stats_dL_dX);
+		nn_tensorStats_delete(&self->stats_Y);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);

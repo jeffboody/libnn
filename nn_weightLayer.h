@@ -68,6 +68,10 @@ typedef struct nn_weightLayer_s
 	nn_tensor_t* dL_dB; // dim(nc,1,1,1)
 	nn_tensor_t* dL_dX; // dim(bs,1,1,xd)
 
+	// stats
+	nn_tensorStats_t* stats_Y;
+	nn_tensorStats_t* stats_dL_dX;
+
 	vkk_buffer_t*     sb013_param;
 	vkk_uniformSet_t* us0;
 	vkk_uniformSet_t* us1_fp;

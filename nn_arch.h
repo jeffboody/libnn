@@ -51,6 +51,7 @@
 // * Compute and log statistics during backprop
 #define NN_ARCH_FLAG_FP_BN_RUNNING 0x0001
 #define NN_ARCH_FLAG_FP_BN_COMPUTE 0x0002
+#define NN_ARCH_FLAG_FP_STATS      0x0004
 #define NN_ARCH_FLAG_BP_NOP        0x0010
 #define NN_ARCH_FLAG_BP_STATS      0x0020
 

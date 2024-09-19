@@ -31,6 +31,7 @@
 #include "nn_arch.h"
 #include "nn_engine.h"
 #include "nn_layer.h"
+#include "nn_tensorStats.h"
 #include "nn_tensor.h"
 #include "nn_weightLayer.h"
 
@@ -124,6 +125,16 @@ nn_weightLayer_computeFpFn(nn_layer_t* base,
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          bs, nc, 1, 8, 8, 1);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_FP_STATS)
+	{
+		if(nn_tensor_computeStats(self->Y, VKK_HAZARD_RAW, bs,
+		                          self->stats_Y) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// store reference
 	self->X = X;
 
@@ -196,6 +207,16 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	nn_engine_computeDispatch(engine, VKK_HAZARD_RAW,
 	                          bs, xd, 1, 8, 8, 1);
 
+	// optionally compute stats
+	if(flags & NN_ARCH_FLAG_BP_STATS)
+	{
+		if(nn_tensor_computeStats(self->dL_dX, VKK_HAZARD_RAW, bs,
+		                          self->stats_dL_dX) == 0)
+		{
+			return NULL;
+		}
+	}
+
 	// nn_weightLayer_backprop_dL_dW
 	// dispatch(RAW, nc, xd, 1, 8, 8, 1)
 	cp = engine->cp_weight_backprop_dL_dW;
@@ -249,6 +270,35 @@ nn_weightLayer_computeBpFn(nn_layer_t* base,
 	return self->dL_dX;
 }
 
+static void
+nn_weightLayer_postFn(nn_layer_t* base,
+                      int flags, uint32_t bs)
+{
+	ASSERT(base);
+
+	nn_weightLayer_t* self = (nn_weightLayer_t*) base;
+
+	if(flags & NN_ARCH_FLAG_FP_STATS)
+	{
+		LOGI("Y min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_Y),
+		     nn_tensorStats_max(self->stats_Y),
+		     nn_tensorStats_mean(self->stats_Y),
+		     nn_tensorStats_stddev(self->stats_Y),
+		     nn_tensorStats_norm(self->stats_Y));
+	}
+
+	if(flags & NN_ARCH_FLAG_BP_STATS)
+	{
+		LOGI("dL_dX min=%f, max=%f, mean=%f, stddev=%f, norm=%f",
+		     nn_tensorStats_min(self->stats_dL_dX),
+		     nn_tensorStats_max(self->stats_dL_dX),
+		     nn_tensorStats_mean(self->stats_dL_dX),
+		     nn_tensorStats_stddev(self->stats_dL_dX),
+		     nn_tensorStats_norm(self->stats_dL_dX));
+	}
+}
+
 static nn_dim_t*
 nn_weightLayer_dimXFn(nn_layer_t* base)
 {
@@ -296,6 +346,7 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 		.arch          = arch,
 		.compute_fp_fn = nn_weightLayer_computeFpFn,
 		.compute_bp_fn = nn_weightLayer_computeBpFn,
+		.post_fn       = nn_weightLayer_postFn,
 		.dimX_fn       = nn_weightLayer_dimXFn,
 		.dimY_fn       = nn_weightLayer_dimYFn,
 	};
@@ -416,6 +467,18 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	if(self->dL_dX == NULL)
 	{
 		goto fail_dL_dX;
+	}
+
+	self->stats_Y = nn_tensorStats_new(engine);
+	if(self->stats_Y == NULL)
+	{
+		goto fail_stats_Y;
+	}
+
+	self->stats_dL_dX = nn_tensorStats_new(engine);
+	if(self->stats_dL_dX == NULL)
+	{
+		goto fail_stats_dL_dX;
 	}
 
 	nn_weightLayerParam_t param =
@@ -556,6 +619,10 @@ nn_weightLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 	fail_us0:
 		vkk_buffer_delete(&self->sb013_param);
 	fail_sb013_param:
+		nn_tensorStats_delete(&self->stats_dL_dX);
+	fail_stats_dL_dX:
+		nn_tensorStats_delete(&self->stats_Y);
+	fail_stats_Y:
 		nn_tensor_delete(&self->dL_dX);
 	fail_dL_dX:
 		nn_tensor_delete(&self->dL_dB);
@@ -591,6 +658,8 @@ void nn_weightLayer_delete(nn_weightLayer_t** _self)
 		vkk_uniformSet_delete(&self->us1_fp);
 		vkk_uniformSet_delete(&self->us0);
 		vkk_buffer_delete(&self->sb013_param);
+		nn_tensorStats_delete(&self->stats_dL_dX);
+		nn_tensorStats_delete(&self->stats_Y);
 		nn_tensor_delete(&self->dL_dX);
 		nn_tensor_delete(&self->dL_dB);
 		nn_tensor_delete(&self->dL_dW);
