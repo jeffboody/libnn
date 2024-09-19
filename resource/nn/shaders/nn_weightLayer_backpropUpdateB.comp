@@ -50,11 +50,6 @@ layout(std430, set=1, binding=1) readonly buffer sb101
 	float state_bn_momentum;
 };
 
-float getB(uint n)
-{
-	return B[n];
-}
-
 void addB(uint n, float v)
 {
 	B[n] += v;

@@ -50,14 +50,6 @@ layout(std430, set=1, binding=1) readonly buffer sb101
 	float state_bn_momentum;
 };
 
-float getW(uint n, uint i, uint j, uint k)
-{
-	uint sn = dimW.height*dimW.width*dimW.depth;
-	uint sy = dimW.width*dimW.depth;
-	uint sx = dimW.depth;
-	return W[n*sn + i*sy + j*sx + k];
-}
-
 void addW(uint n, uint i, uint j, uint k, float v)
 {
 	uint sn = dimW.height*dimW.width*dimW.depth;
@@ -120,7 +112,6 @@ void convBackpropUpdateW(uint f, uint fi, uint fj, uint xk)
 	                (1.0 - beta1)*g;
 	float v       = beta2*getVW(f, fi, fj, xk) +
 	                (1.0 - beta2)*g*g;
-	float w       = getW(f, fi, fj, xk);
 	float m_hat   = m/(1.0 - beta1t);
 	float v_hat   = v/(1.0 - beta2t);
 	setMW(f, fi, fj, xk, m);
