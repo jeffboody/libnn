@@ -160,7 +160,7 @@ nn_reshapeLayer_new(nn_arch_t* arch, nn_dim_t* dimX,
 
 	size_t sizeX = nn_dim_sizeBytes(dimX);
 	size_t sizeY = nn_dim_sizeBytes(dimY);
-	if(sizeY > sizeX)
+	if(sizeY != sizeX)
 	{
 		LOGE("invalid sizeX=%u, sizeY=%u",
 		     (uint32_t) sizeX, (uint32_t) sizeY);
