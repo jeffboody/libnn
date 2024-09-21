@@ -243,9 +243,13 @@ nn_tensor_initXavierWeights(nn_tensor_t* self)
 	uint32_t  fh  = dim->height;
 	uint32_t  fw  = dim->width;
 	uint32_t  xd  = dim->depth;
-	uint32_t  hwd = fh*fw*xd;
-	float     min = -1.0/sqrt((double) hwd);
-	float     max = 1.0/sqrt((double) hwd);
+
+	// normalized Xavier initialization
+	double fan_in  = (double) (fh*fw*xd);
+	double fan_out = (double) (fc);
+	double mu      = 0.0;
+	double sigma   = sqrt(2.0/(fan_in + fan_out));
+	cc_rngNormal_reset(&engine->rng_normal, mu, sigma);
 
 	float    w;
 	uint32_t n;
@@ -260,8 +264,7 @@ nn_tensor_initXavierWeights(nn_tensor_t* self)
 			{
 				for(k = 0; k < xd; ++k)
 				{
-					w = cc_rngUniform_rand2F(&engine->rng_uniform,
-					                         min, max);
+					w = cc_rngNormal_rand1F(&engine->rng_normal);
 					nn_tensor_ioSet(self, n, i, j, k, w);
 				}
 			}
@@ -281,10 +284,11 @@ nn_tensor_initHeWeights(nn_tensor_t* self)
 	uint32_t  fh  = dim->height;
 	uint32_t  fw  = dim->width;
 	uint32_t  xd  = dim->depth;
-	uint32_t  hwd = fh*fw*xd;
 
-	double mu    = 0.0;
-	double sigma = sqrt(2.0/((double) hwd));
+	// He initialization
+	double fan_in = (double) (fh*fw*xd);
+	double mu     = 0.0;
+	double sigma  = sqrt(2.0/fan_in);
 	cc_rngNormal_reset(&engine->rng_normal, mu, sigma);
 
 	float    w;
