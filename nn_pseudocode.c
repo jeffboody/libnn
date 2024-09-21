@@ -599,3 +599,38 @@ void lossMSE(tensor_t* Y, tensor_t* Yt, tensor_t* dL_dY,
     // in this function as per the given prototype. If needed, it should be
     // accumulated elsewhere.
 }
+
+void normalized_xavier_init(tensor_t* W) {
+    uint32_t fan_in = W->height * W->width * W->depth;
+    uint32_t fan_out = W->count;
+
+    float std_dev = sqrtf(2.0f / (fan_in + fan_out));
+
+    for (uint32_t f = 0; f < W->count; f++) {
+        for (uint32_t i = 0; i < W->height; i++) {
+            for (uint32_t j = 0; j < W->width; j++) {
+                for (uint32_t k = 0; k < W->depth; k++) {
+                    float random_value = rand_normal(0.0f, std_dev);
+                    tensor_set(W, f, i, j, k, random_value);
+                }
+            }
+        }
+    }
+}
+
+void he_init(tensor_t* W) {
+    uint32_t fan_in = W->height * W->width * W->depth;
+
+    float std_dev = sqrtf(2.0f / fan_in);
+
+    for (uint32_t f = 0; f < W->count; f++) {
+        for (uint32_t i = 0; i < W->height; i++) {
+            for (uint32_t j = 0; j < W->width; j++) {
+                for (uint32_t k = 0; k < W->depth; k++) {
+                    float random_value = rand_normal(0.0f, std_dev);
+                    tensor_set(W, f, i, j, k, random_value);
+                }
+            }
+        }
+    }
+}
