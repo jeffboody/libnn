@@ -538,6 +538,39 @@ void logisticBackprop(tensor_t* X, tensor_t* dL_dY, tensor_t* dL_dX,
     tensor_set(dL_dX, m, xi, xj, xk, dl_dx);
 }
 
+void tanhForwardPass(tensor_t* X, tensor_t* Y,
+                     uint32_t m, uint32_t xi, uint32_t xj, uint32_t xk) {
+    // Get the input value from X
+    float x = tensor_get(X, m, xi, xj, xk);
+
+    // Compute tanh(x)
+    float y = tanhf(x);
+
+    // Set the output value in Y
+    tensor_set(Y, m, xi, xj, xk, y);
+}
+
+void tanhBackprop(tensor_t* X, tensor_t* dL_dY, tensor_t* dL_dX,
+                  uint32_t m, uint32_t xi, uint32_t xj, uint32_t xk) {
+    // Get the input value from X
+    float x = tensor_get(X, m, xi, xj, xk);
+
+    // Compute tanh(x)
+    float tanh_x = tanhf(x);
+
+    // Compute the derivative of tanh(x)
+    float dtanh_dx = 1.0f - tanh_x * tanh_x;
+
+    // Get the gradient from the output
+    float dl_dy = tensor_get(dL_dY, m, xi, xj, xk);
+
+    // Compute the gradient with respect to the input
+    float dl_dx = dl_dy * dtanh_dx;
+
+    // Set the computed gradient in dL_dX
+    tensor_set(dL_dX, m, xi, xj, xk, dl_dx);
+}
+
 void LReLUForwardPass(tensor_t* X, tensor_t* Y,
                       uint32_t m, uint32_t xi, uint32_t xj, uint32_t xk)
 {
