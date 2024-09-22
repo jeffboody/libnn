@@ -109,10 +109,10 @@ mnist_gan_loadDX(cc_rngUniform_t* rng, nn_tensor_t* Xt,
 	nn_dim_t* dimDX   = nn_tensor_dim(DX);
 
 	if((dimDXio->count != dimDX->count)    ||
-	   (dimXt->height  != 28)              ||
+	   (dimXt->height  != 32)              ||
 	   (dimXt->height  != dimDXio->height) ||
 	   (dimXt->height  != dimDX->height)   ||
-	   (dimXt->width   != 28)              ||
+	   (dimXt->width   != 32)              ||
 	   (dimXt->width   != dimDXio->width)  ||
 	   (dimXt->width   != dimDX->width)    ||
 	   (dimXt->depth   != 1)               ||
@@ -185,7 +185,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_tensor_t* Xt = nn_mnist_load(engine, -1.0f, 1.0f);
+	nn_tensor_t* Xt = nn_mnist_load(engine, 2, -1.0f, 1.0f);
 	if(Xt == NULL)
 	{
 		goto fail_Xt;
@@ -197,7 +197,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 	uint32_t  xw    = dimXt->width;
 	uint32_t  xd    = dimXt->depth;
 
-	if((xh != 28) || (xw != 28) || (xd != 1))
+	if((xh != 32) || (xw != 32) || (xd != 1))
 	{
 		LOGE("invalid xh=%u, xw=%u, xd=%u", xh, xw, xd);
 		goto fail_dim;

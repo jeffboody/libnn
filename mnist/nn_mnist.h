@@ -26,7 +26,7 @@
 
 #include "libnn/nn.h"
 
-nn_tensor_t* nn_mnist_load(nn_engine_t* engine,
+nn_tensor_t* nn_mnist_load(nn_engine_t* engine, uint32_t bo,
                            float min, float max);
 
 #endif

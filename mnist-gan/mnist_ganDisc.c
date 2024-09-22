@@ -64,8 +64,8 @@ mnist_ganDisc_new(nn_engine_t* engine, uint32_t bs)
 	nn_dim_t dimX =
 	{
 		.count  = bs,
-		.height = 28,
-		.width  = 28,
+		.height = 32,
+		.width  = 32,
 		.depth  = 1,
 	};
 

@@ -70,7 +70,7 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 
 	nn_dim_t dimW =
 	{
-		.count  = 7*7*128,
+		.count  = 8*8*128,
 		.height = 1,
 		.width  = 1,
 		.depth  = dimX.depth,
@@ -97,8 +97,8 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 	nn_dim_t dim_r1 =
 	{
 		.count  = bs,
-		.height = 7,
-		.width  = 7,
+		.height = 8,
+		.width  = 8,
 		.depth  = 128,
 	};
 

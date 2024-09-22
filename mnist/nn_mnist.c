@@ -60,8 +60,9 @@ static int nn_mnist_readU32(FILE* f, uint32_t* _data)
 * public                                                   *
 ***********************************************************/
 
-nn_tensor_t* nn_mnist_load(nn_engine_t* engine,
-                           float min, float max)
+nn_tensor_t*
+nn_mnist_load(nn_engine_t* engine, uint32_t bo,
+              float min, float max)
 {
 	ASSERT(engine);
 
@@ -110,8 +111,16 @@ nn_tensor_t* nn_mnist_load(nn_engine_t* engine,
 		goto fail_read;
 	}
 
+	nn_dim_t dimT =
+	{
+		.count  = dim.count,
+		.height = 2*bo + dim.height,
+		.width  = 2*bo + dim.width,
+		.depth  = dim.depth,
+	};
+
 	nn_tensor_t* T;
-	T = nn_tensor_new(engine, &dim,
+	T = nn_tensor_new(engine, &dimT,
 	                  NN_TENSOR_INIT_ZERO,
 	                  NN_TENSOR_MODE_IO);
 	if(T == NULL)
@@ -125,15 +134,24 @@ nn_tensor_t* nn_mnist_load(nn_engine_t* engine,
 	uint32_t i;
 	uint32_t j;
 	uint32_t idx = 0;
-	for(m = 0; m < dim.count; ++m)
+	for(m = 0; m < dimT.count; ++m)
 	{
-		for(i = 0; i < dim.height; ++i)
+		for(i = 0; i < dimT.height; ++i)
 		{
-			for(j = 0; j < dim.width; ++j)
+			for(j = 0; j < dimT.width; ++j)
 			{
-				t = ((float) data[idx++])/255.0f;
-				nn_tensor_ioSet(T, m, i, j, 0,
-				                (max - min)*t + min);
+				if((i < bo) ||
+				   (j < bo) ||
+				   (i >= dim.height + bo) ||
+				   (j >= dim.width + bo))
+				{
+					t = 0.0f;
+				}
+				else
+				{
+					t = ((float) data[idx++])/255.0f;
+				}
+				nn_tensor_ioSet(T, m, i, j, 0, (max - min)*t + min);
 			}
 		}
 	}
