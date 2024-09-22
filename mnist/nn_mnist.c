@@ -60,7 +60,8 @@ static int nn_mnist_readU32(FILE* f, uint32_t* _data)
 * public                                                   *
 ***********************************************************/
 
-nn_tensor_t* nn_mnist_load(nn_engine_t* engine)
+nn_tensor_t* nn_mnist_load(nn_engine_t* engine,
+                           float min, float max)
 {
 	ASSERT(engine);
 
@@ -131,7 +132,8 @@ nn_tensor_t* nn_mnist_load(nn_engine_t* engine)
 			for(j = 0; j < dim.width; ++j)
 			{
 				t = ((float) data[idx++])/255.0f;
-				nn_tensor_ioSet(T, m, i, j, 0, t);
+				nn_tensor_ioSet(T, m, i, j, 0,
+				                (max - min)*t + min);
 			}
 		}
 	}

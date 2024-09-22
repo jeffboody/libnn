@@ -185,7 +185,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_tensor_t* Xt = nn_mnist_load(engine);
+	nn_tensor_t* Xt = nn_mnist_load(engine, -1.0f, 1.0f);
 	if(Xt == NULL)
 	{
 		goto fail_Xt;
