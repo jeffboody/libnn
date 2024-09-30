@@ -60,6 +60,12 @@ int32_t clamp(int32_t value, int32_t min, int32_t max) {
     return value;
 }
 
+float clampf(float value, float min, float max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
 void convForwardPass(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
                      uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
                      uint32_t stride)
@@ -631,6 +637,26 @@ void lossMSE(tensor_t* Y, tensor_t* Yt, tensor_t* dL_dY,
     // Note: The actual loss value (squared_error) is not stored or returned
     // in this function as per the given prototype. If needed, it should be
     // accumulated elsewhere.
+}
+
+void lossBCE(tensor_t* Y, tensor_t* Yt, tensor_t* dL_dY,
+             uint32_t m, uint32_t yi, uint32_t yj, uint32_t yk) {
+    // Get the predicted and target values
+    float y = tensor_get(Y, m, yi, yj, yk);
+    float yt = tensor_get(Yt, m, yi, yj, yk);
+
+    // Clip y to avoid log(0) or log(1)
+    float epsilon = 1e-7f;
+    y = clampf(y, epsilon, 1.0f - epsilon);
+
+    // Compute the BCE loss
+    float loss = -yt * logf(y) - (1.0f - yt) * logf(1.0f - y);
+
+    // Compute the gradient of the loss with respect to y
+    float dl_dy = -yt / y + (1.0f - yt) / (1.0f - y);
+
+    // Set the computed gradient
+    tensor_set(dL_dY, m, yi, yj, yk, dl_dy);
 }
 
 void normalized_xavier_init(tensor_t* W) {
