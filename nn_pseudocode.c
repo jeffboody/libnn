@@ -66,9 +66,45 @@ float clampf(float value, float min, float max) {
     return value;
 }
 
-void convForwardPass(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
-                     uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
-                     uint32_t stride)
+void convForwardPassPad(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
+                        uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
+                        uint32_t stride)
+{
+    float y = 0.0f;
+
+    // Iterate over the filter dimensions
+    for (uint32_t fi = 0; fi < W->height; fi++) {
+        // Calculate input indices
+        int32_t xi = (int32_t)yi * stride + fi - (W->height / 2);
+
+        // Pad with zeros
+        if((xi < 0) || (xi >= (int32_t)X->height)) continue;
+
+        for (uint32_t fj = 0; fj < W->width; fj++) {
+            // Calculate input indices
+            int32_t xj = (int32_t)yj * stride + fj - (W->width / 2);
+
+            // Pad with zeros
+            if((xj < 0) || (xj >= (int32_t)X->width)) continue;
+
+            for (uint32_t xk = 0; xk < X->depth; xk++) {
+                float x = tensor_get(X, m, xi, xj, xk);
+                float w = tensor_get(W, f, fi, fj, xk);
+                y += x * w;
+            }
+        }
+    }
+
+    // Add bias
+    y += tensor_get(B, 0, 0, 0, f);
+
+    // Set the output value (without applying ReLU)
+    tensor_set(Y, m, yi, yj, f, y);
+}
+
+void convForwardPassClamp(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
+                          uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
+                          uint32_t stride)
 {
     float y = 0.0f;
 
@@ -261,9 +297,55 @@ void convBackpropUpdateB(tensor_t* dL_dB, tensor_t* MB, tensor_t* VB, tensor_t* 
     tensor_set(B, 0, 0, 0, f, b);
 }
 
-void convTForwardPass(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
-                      uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
-                      uint32_t stride)
+void convTForwardPassPad(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
+                         uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
+                         uint32_t stride)
+{
+    float y = 0.0f;
+
+    // Calculate the starting position in the input
+    int32_t start_xi = (int32_t)yi / stride;
+    int32_t start_xj = (int32_t)yj / stride;
+
+    // Iterate over the input region that contributes to this output pixel
+    for (int32_t xi = start_xi; xi < start_xi + (int32_t)W->height; xi++) {
+        // Calculate the corresponding filter x-position (centered filter approach)
+        int32_t fi = (int32_t)yi - xi * stride + ((int32_t)W->height / 2);
+
+        // Check if the filter x-position is valid
+        if (fi < 0 || fi >= (int32_t)W->height) continue;
+
+        // Pad with zeros
+        if((xi < 0) || (xi >= (int32_t)X->height)) continue;
+
+        for (int32_t xj = start_xj; xj < start_xj + (int32_t)W->width; xj++) {
+            // Calculate the corresponding filter y-position (centered filter approach)
+            int32_t fj = (int32_t)yj - xj * stride + ((int32_t)W->width / 2);
+
+            // Check if the filter y-position is valid
+            if (fj < 0 || fj >= (int32_t)W->width) continue;
+
+            // Pad with zeros
+            if((xj < 0) || (xj >= (int32_t)X->width)) continue;
+
+            for (uint32_t xk = 0; xk < X->depth; xk++) {
+                float x = tensor_get(X, m, xi, xj, xk);
+                float w = tensor_get(W, f, (uint32_t)fi, (uint32_t)fj, xk);
+                y += x * w;
+            }
+        }
+    }
+
+    // Add bias
+    y += tensor_get(B, 0, 0, 0, f);
+
+    // Set the output value
+    tensor_set(Y, m, yi, yj, f, y);
+}
+
+void convTForwardPassClamp(tensor_t* X, tensor_t* W, tensor_t* B, tensor_t* Y,
+                           uint32_t m, uint32_t yi, uint32_t yj, uint32_t f,
+                           uint32_t stride)
 {
     float y = 0.0f;
 
