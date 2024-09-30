@@ -76,11 +76,11 @@ mnist_ganDisc_new(nn_engine_t* engine, uint32_t bs)
 		.arch = &self->base,
 
 		.dimX = dim,
-		.fc   = 64,
+		.fc   = MNIST_GAN_DISC_FC,
 
 		// conv layer
-		.conv_flags  = 0,
-		.conv_size   = 3,
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 4,
 		.conv_stride = 2,
 
 		// fact layer
@@ -99,12 +99,15 @@ mnist_ganDisc_new(nn_engine_t* engine, uint32_t bs)
 		.arch = &self->base,
 
 		.dimX = dim,
-		.fc   = 64,
+		.fc   = 2*MNIST_GAN_DISC_FC,
 
 		// conv layer
-		.conv_flags  = 0,
-		.conv_size   = 3,
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 4,
 		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
 
 		// fact layer
 		.fact_fn = NN_FACT_LAYER_FN_LRELU,
@@ -116,6 +119,58 @@ mnist_ganDisc_new(nn_engine_t* engine, uint32_t bs)
 		goto failure;
 	}
 	dim = nn_layer_dimY(&self->c1->base);
+
+	nn_coderLayerInfo_t c2_info =
+	{
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = 4*MNIST_GAN_DISC_FC,
+
+		// conv layer
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 4,
+		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_LRELU,
+	};
+
+	self->c2 = nn_coderLayer_new(&c2_info);
+	if(self->c2 == NULL)
+	{
+		goto failure;
+	}
+	dim = nn_layer_dimY(&self->c2->base);
+
+	nn_coderLayerInfo_t c3_info =
+	{
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = 8*MNIST_GAN_DISC_FC,
+
+		// conv layer
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 4,
+		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_LRELU,
+	};
+
+	self->c3 = nn_coderLayer_new(&c3_info);
+	if(self->c3 == NULL)
+	{
+		goto failure;
+	}
+	dim = nn_layer_dimY(&self->c3->base);
 
 	nn_dim_t dimR3 =
 	{
@@ -132,36 +187,40 @@ mnist_ganDisc_new(nn_engine_t* engine, uint32_t bs)
 	}
 	dim = nn_layer_dimY(&self->r3->base);
 
-	uint32_t nc = 1;
-	nn_dim_t dimW4 =
+	nn_coderLayerInfo_t c4_info =
 	{
-		.count  = nc,
-		.height = 1,
-		.width  = 1,
-		.depth  = dim->depth,
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = 1,
+
+		// conv layer
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD |
+		               NN_CONV_LAYER_FLAG_DISABLE_BIAS,
+		.conv_size   = 1,
+		.conv_stride = 1,
+
+		// fact layer
+		#ifdef MNIST_GAN_DISC_CLASSIC
+		.fact_fn = NN_FACT_LAYER_FN_LOGISTIC,
+		#else
+		.fact_fn = NN_FACT_LAYER_FN_LINEAR,
+		#endif
 	};
 
-	self->w4 = nn_weightLayer_new(&self->base, dim, &dimW4,
-	                              NN_WEIGHT_LAYER_FLAG_XAVIER);
-	if(self->w4 == NULL)
+	self->c4 = nn_coderLayer_new(&c4_info);
+	if(self->c4 == NULL)
 	{
 		goto failure;
 	}
-	dim = nn_layer_dimY(&self->w4->base);
-
-	self->o5 = nn_factLayer_new(&self->base, dim,
-	                            NN_FACT_LAYER_FN_LOGISTIC);
-	if(self->o5 == NULL)
-	{
-		goto failure;
-	}
-	dim = nn_layer_dimY(&self->o5->base);
+	dim = nn_layer_dimY(&self->c4->base);
 
 	if((nn_arch_attachLayer(&self->base, &self->c0->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->c1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->c2->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->c3->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->r3->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->w4->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->o5->base) == 0))
+	   (nn_arch_attachLayer(&self->base, &self->c4->base) == 0))
 	{
 		goto failure;
 	}
@@ -182,9 +241,10 @@ void mnist_ganDisc_delete(mnist_ganDisc_t** _self)
 	mnist_ganDisc_t* self = *_self;
 	if(self)
 	{
-		nn_factLayer_delete(&self->o5);
-		nn_weightLayer_delete(&self->w4);
+		nn_coderLayer_delete(&self->c4);
 		nn_reshapeLayer_delete(&self->r3);
+		nn_coderLayer_delete(&self->c3);
+		nn_coderLayer_delete(&self->c2);
 		nn_coderLayer_delete(&self->c1);
 		nn_coderLayer_delete(&self->c0);
 		nn_arch_delete((nn_arch_t**) _self);

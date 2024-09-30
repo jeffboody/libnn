@@ -25,6 +25,10 @@
  * How to Develop a GAN for Generating MNIST Handwritten Digits
  * https://machinelearningmastery.com/how-to-develop-a-generative-adversarial-network-for-an-mnist-handwritten-digits-from-scratch-in-keras/
  *
+ * How to build a GAN for generating MNIST digits in PyTorch
+ * https://medium.com/@simple.schwarz/how-to-build-a-gan-for-generating-mnist-digits-in-pytorch-b9bf71269da8
+ * https://github.com/SimpleSchwarz/GAN/blob/main/DCGAN_MNIST/DCGAN_MNIST.ipynb
+ *
  * Development Status:
  * WARNING: This implementation using libnn is under
  * development and currently does not work correctly.
@@ -45,6 +49,8 @@
 #include "libvkk/vkk_platform.h"
 #include "mnist_ganDisc.h"
 #include "mnist_ganGen.h"
+
+#define MNIST_GAN_BS 128
 
 /***********************************************************
 * private                                                  *
@@ -185,7 +191,16 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 		return EXIT_FAILURE;
 	}
 
-	nn_tensor_t* Xt = nn_mnist_load(engine, 2, -1.0f, 1.0f);
+	#ifdef MNIST_GAN_GEN_TANH
+	float gen_min = -1.0f;
+	float gen_max = 1.0f;
+	#else
+	float gen_min = 0.0f;
+	float gen_max = 1.0f;
+	#endif
+
+	nn_tensor_t* Xt;
+	Xt = nn_mnist_load(engine, 2, gen_min, gen_max);
 	if(Xt == NULL)
 	{
 		goto fail_Xt;
@@ -203,7 +218,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 		goto fail_dim;
 	}
 
-	uint32_t bs  = 32;
+	uint32_t bs  = MNIST_GAN_BS;
 	uint32_t bs2 = bs/2;
 
 	nn_dim_t dimGX =
@@ -334,8 +349,18 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 		goto fail_D;
 	}
 
+	#ifdef MNIST_GAN_DISC_CLASSIC
+	float       disc_min     = 0.0f;
+	float       disc_max     = 1.0f;
+	nn_lossFn_e disc_loss_fn = NN_LOSS_FN_BCE;
+	#else
+	float       disc_min     = -2.0f;
+	float       disc_max     = 2.0f;
+	nn_lossFn_e disc_loss_fn = NN_LOSS_FN_MSE;
+	#endif
+
 	nn_loss_t* DL;
-	DL = nn_loss_new(engine, &dimDY, NN_LOSS_FN_BCE);
+	DL = nn_loss_new(engine, &dimDY, disc_loss_fn);
 	if(DL == NULL)
 	{
 		goto fail_DL;
@@ -346,6 +371,17 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 	{
 		goto fail_fplot;
 	}
+
+	// optional debug flags
+	#ifdef LOG_DEBUG
+	int fp_flags   = NN_ARCH_FLAG_FP_STATS;
+	int bp_flags   = NN_ARCH_FLAG_BP_STATS;
+	int loss_flags = NN_LOSS_FLAG_STATS;
+	#else
+	int fp_flags   = 0;
+	int bp_flags   = 0;
+	int loss_flags = 0;
+	#endif
 
 	// training
 	double   t0    = cc_timestamp();
@@ -382,8 +418,10 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 			}
 
 			// GX > G > GY
+			LOGD("D: GX > G > GY");
 			nn_tensor_t* GY;
 			GY = nn_arch_forwardPass(&G->base,
+			                         fp_flags |
 			                         NN_ARCH_FLAG_FP_BN_COMPUTE,
 			                         bs, GX);
 			if(GY == NULL)
@@ -402,17 +440,19 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 			nn_engine_computeEnd(engine);
 
 			// DX > D > DY
+			LOGD("D: DX > D > DY");
 			nn_tensor_t* DY;
 			DY = nn_arch_forwardPass(&D->base,
-			                         0, bs, DX);
+			                         fp_flags, bs, DX);
 			if(DY == NULL)
 			{
 				goto fail_train;
 			}
 
 			// DY + DY01 > DL > DL_dL_dY
+			LOGD("D: DY + DY01 > DL > DL_dL_dY");
 			nn_tensor_t* DL_dL_dY;
-			DL_dL_dY = nn_loss_pass(DL, 0, bs, DY, DY01);
+			DL_dL_dY = nn_loss_pass(DL, loss_flags, bs, DY, DY01);
 			if(DL_dL_dY == NULL)
 			{
 				goto fail_train;
@@ -423,7 +463,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 			LOGD("D: DL_dL_dY > D > D_dL_dY");
 			nn_tensor_t* D_dL_dY;
 			D_dL_dY = nn_arch_backprop(&D->base,
-			                           0, bs, DL_dL_dY);
+			                           bp_flags, bs, DL_dL_dY);
 			if(D_dL_dY == NULL)
 			{
 				goto fail_train;
@@ -443,13 +483,13 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 				         epoch, step);
 				nn_tensor_ioExportPng(DXio, fname,
 				                      0, 0, 1,
-				                      0.0f, 1.0f);
+				                      gen_min, gen_max);
 
 				snprintf(fname, 256, "data/D-DX1-%u-%u.png",
 				         epoch, step);
 				nn_tensor_ioExportPng(DXio, fname,
 				                      bs2, 0, 1,
-				                      0.0f, 1.0f);
+				                      gen_min, gen_max);
 
 				if(nn_tensor_copy(DY, DYio, 0, 0, bs) == 0)
 				{
@@ -460,13 +500,12 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 				         epoch, step);
 				nn_tensor_ioExportPng(DYio, fname,
 				                      0, 0, 1,
-				                      -2.0f, 2.0f);
-
+				                      disc_min, disc_max);
 				snprintf(fname, 256, "data/D-DY1-%u-%u.png",
 				         epoch, step);
 				nn_tensor_ioExportPng(DYio, fname,
 				                      bs2, 0, 1,
-				                      -2.0f, 2.0f);
+				                      disc_min, disc_max);
 
 				if(nn_tensor_copy(D_dL_dY, DXio, 0, 0, bs) == 0)
 				{
@@ -500,23 +539,26 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 				}
 
 				// GX > G > GY
+				LOGD("G: GX > G > GY");
 				GY = nn_arch_forwardPass(&G->base,
-			                             0, bs, GX);
+			                             fp_flags, bs, GX);
 				if(GY == NULL)
 				{
 					goto fail_train;
 				}
 
 				// GY > D > DY
+				LOGD("G: GY > D > DY");
 				DY = nn_arch_forwardPass(&D->base,
-			                             0, bs, GY);
+			                             fp_flags, bs, GY);
 				if(DY == NULL)
 				{
 					goto fail_train;
 				}
 
 				// DY + DY11 > DL > DL_dL_dY
-				DL_dL_dY = nn_loss_pass(DL, 0, bs, DY, DY11);
+				LOGD("G: DY + DY11 > DL > DL_dL_dY");
+				DL_dL_dY = nn_loss_pass(DL, loss_flags, bs, DY, DY11);
 				if(DL_dL_dY == NULL)
 				{
 					goto fail_train;
@@ -526,6 +568,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 				// DL_dL_dY > D > D_dL_dY
 				LOGD("G: DL_dL_dY > D > D_dL_dY");
 				D_dL_dY = nn_arch_backprop(&D->base,
+				                           bp_flags |
 				                           NN_ARCH_FLAG_BP_NOP,
 				                           bs, DL_dL_dY);
 				if(D_dL_dY == NULL)
@@ -537,7 +580,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 				LOGD("G: D_dL_dY > G > G_dL_dY");
 				nn_tensor_t* G_dL_dY;
 				G_dL_dY = nn_arch_backprop(&G->base,
-				                           0, bs, D_dL_dY);
+				                           bp_flags, bs, D_dL_dY);
 				if(G_dL_dY == NULL)
 				{
 					goto fail_train;
@@ -554,7 +597,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 					         epoch, step);
 					nn_tensor_ioExportPng(GYio, fname,
 					                      0, 0, 1,
-					                      0.0f, 1.0f);
+					                      gen_min, gen_max);
 
 					if(nn_tensor_copy(DY, DYio, 0, 0, bs) == 0)
 					{
@@ -565,7 +608,7 @@ mnist_gan_onMain(vkk_engine_t* ve, int argc,
 					         epoch, step);
 					nn_tensor_ioExportPng(DYio, fname,
 					                      0, 0, 1,
-					                      -2.0f, 2.0f);
+					                      disc_min, disc_max);
 
 					if(nn_tensor_copy(D_dL_dY, GYio, 0, 0, bs) == 0)
 					{

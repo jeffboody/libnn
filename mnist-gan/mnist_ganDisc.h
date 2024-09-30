@@ -27,16 +27,33 @@
 #include "../../libnn/nn_arch.h"
 #include "../../libnn/nn.h"
 
+// control the discriminator activation and loss functions
+// CLASSIC: logistic and bce
+// LSGAN:   linear   and mse
+#define MNIST_GAN_DISC_CLASSIC
+#ifndef MNIST_GAN_DISC_CLASSIC
+#define MNIST_GAN_DISC_LSGAN
+#endif
+
+#define MNIST_GAN_DISC_FC 64
+
 typedef struct
 {
 	nn_arch_t base;
 
 	// X: dim(bs, 32, 32, 1)
-	nn_coderLayer_t*   c0; // dim(bs,16,16,64) (conv3x3_s2_lrelu)
-	nn_coderLayer_t*   c1; // dim(bs,8,8,64)   (conv3x3_s2_bn_lrelu)
-	nn_reshapeLayer_t* r3; // dim(bs,1,1,4096) (8x8x64)
-	nn_weightLayer_t*  w4; // dim(bs,1,1,1)
-	nn_factLayer_t*    o5; // dim(bs,1,1,1) (linear)
+	// c0: conv4x4_s2_pad_lrelu
+	// c1: conv4x4_s2_pad_bn_lrelu
+	// c2: conv4x4_s2_pad_bn_lrelu
+	// c3: conv4x4_s2_pad_bn_lrelu
+	// c4: conv1x1_pad_nobias_logistic or (classic)
+	//     conv1x1_pad_nobias_linear      (LSGAN)
+	nn_coderLayer_t*   c0; // dim(bs,16,16,fc)
+	nn_coderLayer_t*   c1; // dim(bs,8,8,2*fc)
+	nn_coderLayer_t*   c2; // dim(bs,4,4,4*fc)
+	nn_coderLayer_t*   c3; // dim(bs,2,2,8*fc)
+	nn_reshapeLayer_t* r3; // dim(bs,1,1,8*fc*2*2)
+	nn_coderLayer_t*   c4; // dim(bs,1,1,1)
 } mnist_ganDisc_t;
 
 mnist_ganDisc_t* mnist_ganDisc_new(nn_engine_t* engine,

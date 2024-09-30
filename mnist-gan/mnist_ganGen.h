@@ -27,17 +27,33 @@
 #include "../../libnn/nn_arch.h"
 #include "../../libnn/nn.h"
 
+// control the MNIST image range
+// TANH:     [-1.0, 1.0]
+// LOGISTIC: [ 0.0, 1.0]
+#define MNIST_GAN_GEN_TANH
+#ifndef MNIST_GAN_GEN_TANH
+#define MNIST_GAN_GEN_LOGISTIC
+#endif
+
+#define MNIST_GAN_GEN_FC 64
+
 typedef struct
 {
 	nn_arch_t base;
 
-	// X: dim(bs, 1, 1, 100)
-	nn_weightLayer_t*  w0; // dim(bs,1,1,8192) (8x8x128)
-	nn_factLayer_t*    f0; // dim(bs,1,1,8192) (8x8x128)
-	nn_reshapeLayer_t* r1; // dim(bs,8,8,128)
-	nn_coderLayer_t*   c2; // dim(bs,16,16,128) (convT_4x4_s2_lrelu)
-	nn_coderLayer_t*   c3; // dim(bs,32,32,128) (convT_4x4_s2_lrelu)
-	nn_coderLayer_t*   c4; // dim(bs,32,32,1)   (conv_7x7_tanh)
+	// X:  dim(bs, 1, 1, 100)
+	// c0: conv_1x1_lrelu
+	// c1: convT_4x4_s2_pad_bn_lrelu
+	// c2: convT_4x4_s2_pad_bn_lrelu
+	// c3: convT_4x4_s2_pad_bn_lrelu
+	// c4: conv_3x3_pad_tanh or
+	//     conv_3x3_pad_logistic
+	nn_coderLayer_t*   c0; // dim(bs,1,1,8*fc*4*4)
+	nn_reshapeLayer_t* r1; // dim(bs,4,4,8*fc)
+	nn_coderLayer_t*   c1; // dim(bs,8,8,4*fc)
+	nn_coderLayer_t*   c2; // dim(bs,16,16,2*fc)
+	nn_coderLayer_t*   c3; // dim(bs,32,32,fc)
+	nn_coderLayer_t*   c4; // dim(bs,32,32,1)
 } mnist_ganGen_t;
 
 mnist_ganGen_t* mnist_ganGen_new(nn_engine_t* engine,

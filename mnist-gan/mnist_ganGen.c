@@ -68,38 +68,37 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 		.depth  = 100,
 	};
 
-	nn_dim_t dimW =
-	{
-		.count  = 8*8*128,
-		.height = 1,
-		.width  = 1,
-		.depth  = dimX.depth,
-	};
-
 	nn_dim_t* dim = &dimX;
 
-	self->w0 = nn_weightLayer_new(&self->base, dim, &dimW,
-	                              NN_WEIGHT_LAYER_FLAG_HE);
-	if(self->w0 == NULL)
+	nn_coderLayerInfo_t c0_info =
 	{
-		goto failure;
-	}
-	dim = nn_layer_dimY(&self->w0->base);
+		.arch = &self->base,
 
-	self->f0 = nn_factLayer_new(&self->base, dim,
-	                            NN_FACT_LAYER_FN_LRELU);
-	if(self->f0 == NULL)
+		.dimX = dim,
+		.fc   = 8*MNIST_GAN_GEN_FC*4*4,
+
+		// conv layer
+		.conv_flags  = 0,
+		.conv_size   = 1,
+		.conv_stride = 1,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_LRELU,
+	};
+
+	self->c0 = nn_coderLayer_new(&c0_info);
+	if(self->c0 == NULL)
 	{
 		goto failure;
 	}
-	dim = nn_layer_dimY(&self->f0->base);
+	dim = nn_layer_dimY(&self->c0->base);
 
 	nn_dim_t dim_r1 =
 	{
 		.count  = bs,
-		.height = 8,
-		.width  = 8,
-		.depth  = 128,
+		.height = 4,
+		.width  = 4,
+		.depth  = 8*MNIST_GAN_GEN_FC,
 	};
 
 	self->r1 = nn_reshapeLayer_new(&self->base,
@@ -110,17 +109,48 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 	}
 	dim = nn_layer_dimY(&self->r1->base);
 
+	nn_coderLayerInfo_t c1_info =
+	{
+		.arch = &self->base,
+
+		.dimX = dim,
+		.fc   = 4*MNIST_GAN_GEN_FC,
+
+		// conv layer
+		.conv_flags  = NN_CONV_LAYER_FLAG_TRANSPOSE |
+		               NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 4,
+		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
+
+		// fact layer
+		.fact_fn = NN_FACT_LAYER_FN_LRELU,
+	};
+
+	self->c1 = nn_coderLayer_new(&c1_info);
+	if(self->c1 == NULL)
+	{
+		goto failure;
+	}
+	dim = nn_layer_dimY(&self->c1->base);
+
 	nn_coderLayerInfo_t c2_info =
 	{
 		.arch = &self->base,
 
 		.dimX = dim,
-		.fc   = 128,
+		.fc   = 2*MNIST_GAN_GEN_FC,
 
 		// conv layer
-		.conv_flags  = NN_CONV_LAYER_FLAG_TRANSPOSE,
+		.conv_flags  = NN_CONV_LAYER_FLAG_TRANSPOSE |
+		               NN_CONV_LAYER_FLAG_MODE_PAD,
 		.conv_size   = 4,
 		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
 
 		// fact layer
 		.fact_fn = NN_FACT_LAYER_FN_LRELU,
@@ -138,12 +168,16 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 		.arch = &self->base,
 
 		.dimX = dim,
-		.fc   = 128,
+		.fc   = MNIST_GAN_GEN_FC,
 
 		// conv layer
-		.conv_flags  = NN_CONV_LAYER_FLAG_TRANSPOSE,
+		.conv_flags  = NN_CONV_LAYER_FLAG_TRANSPOSE |
+		               NN_CONV_LAYER_FLAG_MODE_PAD,
 		.conv_size   = 4,
 		.conv_stride = 2,
+
+		// bn layer
+		.bn_mode = NN_CODER_BATCH_NORM_MODE_ENABLE,
 
 		// fact layer
 		.fact_fn = NN_FACT_LAYER_FN_LRELU,
@@ -164,12 +198,16 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 		.fc   = 1,
 
 		// conv layer
-		.conv_flags  = 0,
-		.conv_size   = 7,
+		.conv_flags  = NN_CONV_LAYER_FLAG_MODE_PAD,
+		.conv_size   = 3,
 		.conv_stride = 1,
 
 		// fact layer
+		#ifdef MNIST_GAN_GEN_TANH
+		.fact_fn = NN_FACT_LAYER_FN_TANH,
+		#else
 		.fact_fn = NN_FACT_LAYER_FN_LOGISTIC,
+		#endif
 	};
 
 	self->c4 = nn_coderLayer_new(&c4_info);
@@ -179,9 +217,9 @@ mnist_ganGen_new(nn_engine_t* engine, uint32_t bs)
 	}
 	dim = nn_layer_dimY(&self->c4->base);
 
-	if((nn_arch_attachLayer(&self->base, &self->w0->base) == 0) ||
-	   (nn_arch_attachLayer(&self->base, &self->f0->base) == 0) ||
+	if((nn_arch_attachLayer(&self->base, &self->c0->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->r1->base) == 0) ||
+	   (nn_arch_attachLayer(&self->base, &self->c1->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->c2->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->c3->base) == 0) ||
 	   (nn_arch_attachLayer(&self->base, &self->c4->base) == 0))
@@ -208,9 +246,9 @@ void mnist_ganGen_delete(mnist_ganGen_t** _self)
 		nn_coderLayer_delete(&self->c4);
 		nn_coderLayer_delete(&self->c3);
 		nn_coderLayer_delete(&self->c2);
+		nn_coderLayer_delete(&self->c1);
 		nn_reshapeLayer_delete(&self->r1);
-		nn_factLayer_delete(&self->f0);
-		nn_weightLayer_delete(&self->w0);
+		nn_coderLayer_delete(&self->c0);
 		nn_arch_delete((nn_arch_t**) _self);
 	}
 }
