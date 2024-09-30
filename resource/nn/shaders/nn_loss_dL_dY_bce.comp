@@ -65,7 +65,7 @@ void dL_dY_bce(uint m, uint i, uint j, uint k)
 	y     = getY(m, i, j, k);
 	y     = clamp(y, epsilon, 1.0 - epsilon);
 	yt    = getYt(m, i, j, k);
-	dl_dy = -(y - yt)/(log(10.0)*(y - 1.0)*y + epsilon);
+	dl_dy = -yt/y + (1.0f - yt)/(1.0f - y);
 	set_dL_dY(m, i, j, k, dl_dy);
 }
 

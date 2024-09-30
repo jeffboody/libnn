@@ -62,10 +62,13 @@ float loss_bce(uint m, uint i, uint j, uint k)
 {
 	float epsilon = 1.192092896e-07;
 
-	float y  = getY(m, i, j, k);
-	float yt = getYt(m, i, j, k);
-	return -(yt*log10(y + epsilon) +
-	         (1.0 - yt)*log10(1.0 - y + epsilon));
+	float y;
+	float yt;
+
+	y  = getY(m, i, j, k);
+	y  = clamp(y, epsilon, 1.0 - epsilon);
+	yt = getYt(m, i, j, k);
+	return -yt*log(y) - (1.0 - yt)*log(1.0 - y);
 }
 
 void main()
