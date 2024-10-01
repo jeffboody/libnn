@@ -96,8 +96,10 @@ typedef struct nn_engine_s
 	vkk_computePipeline_t* cp_batchNorm_backprop_dL_dXhat;
 	vkk_computePipeline_t* cp_batchNorm_backpropSum;
 	vkk_computePipeline_t* cp_batchNorm_backpropSumNOP;
-	vkk_computePipeline_t* cp_conv_forwardPass;
-	vkk_computePipeline_t* cp_conv_forwardPassT;
+	vkk_computePipeline_t* cp_conv_forwardPassClamp;
+	vkk_computePipeline_t* cp_conv_forwardPassPad;
+	vkk_computePipeline_t* cp_conv_forwardPassTClamp;
+	vkk_computePipeline_t* cp_conv_forwardPassTPad;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dX;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dW;
 	vkk_computePipeline_t* cp_conv_backprop_dL_dB;

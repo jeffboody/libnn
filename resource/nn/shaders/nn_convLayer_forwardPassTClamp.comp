@@ -80,7 +80,7 @@ void setY(uint n, uint i, uint j, uint k, float v)
 	Y[n*sn + i*sy + j*sx + k] = v;
 }
 
-void convForwardPass(uint m, uint yi, uint yj, uint f)
+void convTForwardPass(uint m, uint yi, uint yj, uint f)
 {
 	// initialize y
 	float y;
@@ -99,26 +99,45 @@ void convForwardPass(uint m, uint yi, uint yj, uint f)
 	uint xw = dimX.width;
 	uint xd = dimX.depth;
 
+	int start_xi = int(yi/param_stride);
+	int start_xj = int(yj/param_stride);
+
 	// compute weighted sum
-	uint  fi;
-	uint  fj;
 	int   xi;
 	int   xj;
+	int   fi;
+	int   fj;
+	uint  clamped_xi;
+	uint  clamped_xj;
 	uint  xk;
-	float w;
 	float x;
-	for(fi = 0; fi < fh; ++fi)
+	float w;
+	for(xi = start_xi; xi < start_xi + int(fh); xi++)
 	{
-		xi = clamp(int(param_stride*yi + fi) - int(fh/2),
-		           0, int(xh) - 1);
-		for(fj = 0; fj < fw; ++fj)
+		fi = int(yi) - int(xi*param_stride) + int(fh/2);
+		if((fi < 0) || (fi >= int(fh)))
 		{
-			xj = clamp(int(param_stride*yj + fj) - int(fw/2),
-			           0, int(xw) - 1);
-			for(xk = 0; xk < xd; ++xk)
+			continue;
+		}
+
+		// clamp-to-edge
+		clamped_xi = uint(clamp(xi, 0, int(xh) - 1));
+
+		for(xj = start_xj; xj < start_xj + int(fw); xj++)
+		{
+			fj = int(yj) - int(xj*param_stride) + int(fw/2);
+			if((fj < 0) || (fj >= int(fw)))
 			{
-				w  = getW(f, fi, fj, xk);
-				x  = getX(m, xi, xj, xk);
+				continue;
+			}
+
+			// clamp-to-edge
+			clamped_xj = uint(clamp(xj, 0, int(xw) - 1));
+
+			for(xk = 0; xk < xd; xk++)
+			{
+				w  = getW(f, uint(fi), uint(fj), xk);
+				x  = getX(m, clamped_xi, clamped_xj, xk);
 				y += w*x;
 			}
 		}
@@ -144,6 +163,6 @@ void main()
 	uint f;
 	for(f = 0; f < fc; ++f)
 	{
-		convForwardPass(m, yi, yj, f);
+		convTForwardPass(m, yi, yj, f);
 	}
 }

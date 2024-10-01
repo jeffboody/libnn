@@ -9,8 +9,10 @@ glslangValidator -V nn_batchNormLayer_backprop_dL_dX.comp -o nn_batchNormLayer_b
 glslangValidator -V nn_batchNormLayer_backprop_dL_dXhat.comp -o nn_batchNormLayer_backprop_dL_dXhat_comp.spv
 glslangValidator -V nn_batchNormLayer_backpropSum.comp -o nn_batchNormLayer_backpropSum_comp.spv
 glslangValidator -V nn_batchNormLayer_backpropSumNOP.comp -o nn_batchNormLayer_backpropSumNOP_comp.spv
-glslangValidator -V nn_convLayer_forwardPass.comp -o nn_convLayer_forwardPass_comp.spv
-glslangValidator -V nn_convLayer_forwardPassT.comp -o nn_convLayer_forwardPassT_comp.spv
+glslangValidator -V nn_convLayer_forwardPassClamp.comp -o nn_convLayer_forwardPassClamp_comp.spv
+glslangValidator -V nn_convLayer_forwardPassPad.comp -o nn_convLayer_forwardPassPad_comp.spv
+glslangValidator -V nn_convLayer_forwardPassTClamp.comp -o nn_convLayer_forwardPassTClamp_comp.spv
+glslangValidator -V nn_convLayer_forwardPassTPad.comp -o nn_convLayer_forwardPassTPad_comp.spv
 glslangValidator -V nn_convLayer_backprop_dL_dX.comp -o nn_convLayer_backprop_dL_dX_comp.spv
 glslangValidator -V nn_convLayer_backprop_dL_dW.comp -o nn_convLayer_backprop_dL_dW_comp.spv
 glslangValidator -V nn_convLayer_backprop_dL_dB.comp -o nn_convLayer_backprop_dL_dB_comp.spv
@@ -76,8 +78,10 @@ bfs $1 blobSet nn/shaders/nn_batchNormLayer_backprop_dL_dX_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_backprop_dL_dXhat_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_backpropSum_comp.spv
 bfs $1 blobSet nn/shaders/nn_batchNormLayer_backpropSumNOP_comp.spv
-bfs $1 blobSet nn/shaders/nn_convLayer_forwardPass_comp.spv
-bfs $1 blobSet nn/shaders/nn_convLayer_forwardPassT_comp.spv
+bfs $1 blobSet nn/shaders/nn_convLayer_forwardPassClamp_comp.spv
+bfs $1 blobSet nn/shaders/nn_convLayer_forwardPassPad_comp.spv
+bfs $1 blobSet nn/shaders/nn_convLayer_forwardPassTClamp_comp.spv
+bfs $1 blobSet nn/shaders/nn_convLayer_forwardPassTPad_comp.spv
 bfs $1 blobSet nn/shaders/nn_convLayer_backprop_dL_dX_comp.spv
 bfs $1 blobSet nn/shaders/nn_convLayer_backprop_dL_dW_comp.spv
 bfs $1 blobSet nn/shaders/nn_convLayer_backprop_dL_dB_comp.spv

@@ -1,0 +1,172 @@
+#version 450
+
+layout (local_size_x=1, local_size_y=8, local_size_z=8) in;
+
+struct nn_dim_t
+{
+	uint count;
+	uint height;
+	uint width;
+	uint depth;
+};
+
+layout(std430, set=0, binding=0) readonly buffer sb000
+{
+	nn_dim_t dimX;
+};
+
+layout(std430, set=0, binding=1) readonly buffer sb001
+{
+	nn_dim_t dimW;
+};
+
+layout(std430, set=0, binding=2) readonly buffer sb002
+{
+	float W[];
+};
+
+layout(std430, set=0, binding=3) readonly buffer sb003
+{
+	float B[];
+};
+
+layout(std430, set=0, binding=4) readonly buffer sb004
+{
+	nn_dim_t dimY;
+};
+
+layout(std430, set=0, binding=5) writeonly buffer sb005
+{
+	float Y[];
+};
+
+layout(std430, set=0, binding=13) readonly buffer sb013
+{
+	uint param_disable_bias;
+	uint param_stride;
+};
+
+layout(std430, set=1, binding=2) readonly buffer sb102
+{
+	float X[];
+};
+
+float getX(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimX.height*dimX.width*dimX.depth;
+	uint sy = dimX.width*dimX.depth;
+	uint sx = dimX.depth;
+	return X[n*sn + i*sy + j*sx + k];
+}
+
+float getW(uint n, uint i, uint j, uint k)
+{
+	uint sn = dimW.height*dimW.width*dimW.depth;
+	uint sy = dimW.width*dimW.depth;
+	uint sx = dimW.depth;
+	return W[n*sn + i*sy + j*sx + k];
+}
+
+float getB(uint n)
+{
+	return B[n];
+}
+
+void setY(uint n, uint i, uint j, uint k, float v)
+{
+	uint sn = dimY.height*dimY.width*dimY.depth;
+	uint sy = dimY.width*dimY.depth;
+	uint sx = dimY.depth;
+	Y[n*sn + i*sy + j*sx + k] = v;
+}
+
+void convTForwardPass(uint m, uint yi, uint yj, uint f)
+{
+	// initialize y
+	float y;
+	if(param_disable_bias > 0)
+	{
+		y = 0.0;
+	}
+	else
+	{
+		y = getB(f);
+	}
+
+	uint fh = dimW.height;
+	uint fw = dimW.width;
+	uint xh = dimX.height;
+	uint xw = dimX.width;
+	uint xd = dimX.depth;
+
+	int start_xi = int(yi/param_stride);
+	int start_xj = int(yj/param_stride);
+
+	// compute weighted sum
+	int   xi;
+	int   xj;
+	int   fi;
+	int   fj;
+	uint  xk;
+	float x;
+	float w;
+	for(xi = start_xi; xi < start_xi + int(fh); xi++)
+	{
+		fi = int(yi) - int(xi*param_stride) + int(fh/2);
+		if((fi < 0) || (fi >= int(fh)))
+		{
+			continue;
+		}
+
+		// pad with zero
+		if((xi < 0) || (xi >= xh))
+		{
+			continue;
+		}
+
+		for(xj = start_xj; xj < start_xj + int(fw); xj++)
+		{
+			fj = int(yj) - int(xj*param_stride) + int(fw/2);
+			if((fj < 0) || (fj >= int(fw)))
+			{
+				continue;
+			}
+
+			// pad with zero
+			if((xj < 0) || (xj >= xw))
+			{
+				continue;
+			}
+
+			for(xk = 0; xk < xd; xk++)
+			{
+				w  = getW(f, uint(fi), uint(fj), xk);
+				x  = getX(m, xi, xj, xk);
+				y += w*x;
+			}
+		}
+	}
+	setY(m, yi, yj, f, y);
+}
+
+void main()
+{
+	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
+	uint m  = gl_GlobalInvocationID.x;
+	uint yi = gl_GlobalInvocationID.y;
+	uint yj = gl_GlobalInvocationID.z;
+	uint yh = dimY.height;
+	uint yw = dimY.width;
+	uint fc = dimW.count;
+
+	if((yi >= yh) || (yj >= yw))
+	{
+		return;
+	}
+
+	uint f;
+	for(f = 0; f < fc; ++f)
+	{
+		convTForwardPass(m, yi, yj, f);
+	}
+}

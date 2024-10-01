@@ -117,7 +117,11 @@ nn_convLayer_computeFpFn(nn_layer_t* base,
 	// nn_convLayer_forwardPass
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = engine->cp_conv_forwardPass;
+	cp = engine->cp_conv_forwardPassClamp;
+	if(self->flags & NN_CONV_LAYER_FLAG_MODE_PAD)
+	{
+		cp = engine->cp_conv_forwardPassPad;
+	}
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;
@@ -353,7 +357,11 @@ nn_convLayer_computeFpTFn(nn_layer_t* base,
 	// nn_convLayer_forwardPassT
 	// dispatch(RAW, bs, yh, yw, 1, 8, 8)
 	vkk_computePipeline_t* cp;
-	cp = engine->cp_conv_forwardPassT;
+	cp = engine->cp_conv_forwardPassTClamp;
+	if(self->flags & NN_CONV_LAYER_FLAG_MODE_PAD)
+	{
+		cp = engine->cp_conv_forwardPassTPad;
+	}
 	if(nn_engine_computeBind(engine, cp) == 0)
 	{
 		return NULL;

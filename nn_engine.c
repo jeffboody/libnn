@@ -540,27 +540,49 @@ nn_engine_new(vkk_engine_t* engine)
 		vkk_computePipeline_new(engine,
 		                        &cpi_batchNorm_backpropSumNOP);
 
-	vkk_computePipelineInfo_t cpi_conv_forwardPass =
+	vkk_computePipelineInfo_t cpi_conv_forwardPassClamp =
 	{
 		.compute = self->compute,
 		.pl      = self->pl_conv_fp,
-		.cs      = "nn/shaders/nn_convLayer_forwardPass_comp.spv",
+		.cs      = "nn/shaders/nn_convLayer_forwardPassClamp_comp.spv",
 	};
 
-	self->cp_conv_forwardPass =
+	self->cp_conv_forwardPassClamp =
 		vkk_computePipeline_new(engine,
-		                        &cpi_conv_forwardPass);
+		                        &cpi_conv_forwardPassClamp);
 
-	vkk_computePipelineInfo_t cpi_conv_forwardPassT =
+	vkk_computePipelineInfo_t cpi_conv_forwardPassPad =
 	{
 		.compute = self->compute,
 		.pl      = self->pl_conv_fp,
-		.cs      = "nn/shaders/nn_convLayer_forwardPassT_comp.spv",
+		.cs      = "nn/shaders/nn_convLayer_forwardPassPad_comp.spv",
 	};
 
-	self->cp_conv_forwardPassT =
+	self->cp_conv_forwardPassPad =
 		vkk_computePipeline_new(engine,
-		                        &cpi_conv_forwardPassT);
+		                        &cpi_conv_forwardPassPad);
+
+	vkk_computePipelineInfo_t cpi_conv_forwardPassTClamp =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv_fp,
+		.cs      = "nn/shaders/nn_convLayer_forwardPassTClamp_comp.spv",
+	};
+
+	self->cp_conv_forwardPassTClamp =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_forwardPassTClamp);
+
+	vkk_computePipelineInfo_t cpi_conv_forwardPassTPad =
+	{
+		.compute = self->compute,
+		.pl      = self->pl_conv_fp,
+		.cs      = "nn/shaders/nn_convLayer_forwardPassTPad_comp.spv",
+	};
+
+	self->cp_conv_forwardPassTPad =
+		vkk_computePipeline_new(engine,
+		                        &cpi_conv_forwardPassTPad);
 
 	vkk_computePipelineInfo_t cpi_conv_backprop_dL_dX =
 	{
@@ -1144,8 +1166,10 @@ nn_engine_new(vkk_engine_t* engine)
 	   (self->cp_batchNorm_backprop_dL_dXhat       == NULL) ||
 	   (self->cp_batchNorm_backpropSum             == NULL) ||
 	   (self->cp_batchNorm_backpropSumNOP          == NULL) ||
-	   (self->cp_conv_forwardPass                  == NULL) ||
-	   (self->cp_conv_forwardPassT                 == NULL) ||
+	   (self->cp_conv_forwardPassClamp             == NULL) ||
+	   (self->cp_conv_forwardPassPad               == NULL) ||
+	   (self->cp_conv_forwardPassTClamp            == NULL) ||
+	   (self->cp_conv_forwardPassTPad              == NULL) ||
 	   (self->cp_conv_backprop_dL_dX               == NULL) ||
 	   (self->cp_conv_backprop_dL_dW               == NULL) ||
 	   (self->cp_conv_backprop_dL_dB               == NULL) ||
@@ -1361,8 +1385,10 @@ void nn_engine_delete(nn_engine_t** _self)
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dB);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dW);
 		vkk_computePipeline_delete(&self->cp_conv_backprop_dL_dX);
-		vkk_computePipeline_delete(&self->cp_conv_forwardPassT);
-		vkk_computePipeline_delete(&self->cp_conv_forwardPass);
+		vkk_computePipeline_delete(&self->cp_conv_forwardPassTPad);
+		vkk_computePipeline_delete(&self->cp_conv_forwardPassTClamp);
+		vkk_computePipeline_delete(&self->cp_conv_forwardPassPad);
+		vkk_computePipeline_delete(&self->cp_conv_forwardPassClamp);
 		vkk_computePipeline_delete(&self->cp_batchNorm_backpropSum);
 		vkk_computePipeline_delete(&self->cp_batchNorm_backpropSumNOP);
 		vkk_computePipeline_delete(&self->cp_batchNorm_backprop_dL_dXhat);
