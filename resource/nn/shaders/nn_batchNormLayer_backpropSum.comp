@@ -258,7 +258,7 @@ void main()
 		float beta2   = state_adam_beta2;
 		float beta1t  = state_adam_beta1t;
 		float beta2t  = state_adam_beta2t;
-		float epsilon = 0.00000001;
+		float epsilon = 1e-07;
 		float gt;
 		float mt;
 		float vt;
