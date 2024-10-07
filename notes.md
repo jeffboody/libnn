@@ -1389,6 +1389,8 @@ References
 * [Least Squares GAN](https://agustinus.kristia.de/techblog/2017/03/02/least-squares-gan/)
 * [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf)
 * [Improved Training of Wasserstein GANs](https://arxiv.org/pdf/1704.00028.pdf)
+* [Large Scale GAN Training for High Fidelity Natural Image Synthesis](https://arxiv.org/pdf/1809.11096)
+* [MSG-GAN: Multi-Scale Gradients for Generative Adversarial Networks](https://arxiv.org/pdf/1903.06048)
 
 GAN Based Super-Resolution
 --------------------------
